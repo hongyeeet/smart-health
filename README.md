@@ -14,6 +14,7 @@ Built for the AI CAN DO IT Tencent Cloud Hackathon Singapore 2026, Healthcare tr
 | [schema.md](schema.md) | Database tables, columns, constraints, consistency rules |
 | [design.md](design.md) | UI/UX system: colours, type, components, accessibility, doctor-brief style |
 | [rules.md](rules.md) | Boundaries for AI coding agents: safety invariants, data source policy, error handling, definition of done |
+| [backlog.md](backlog.md) | Task backlog: 22 epics (E2-E19 = features F1-F18), stories with success criteria, milestones, integration checkpoints, capacity check |
 
 ## Data
 

@@ -4,6 +4,12 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 
 ---
 
+> **Platform decisions (2026-09-29, override anything below that disagrees):**
+> - **Front end is a mobile-first web app shown in a phone-sized frame or WebView**, not a store-published native app (no store fees). Wherever this document says Expo / React Native / Health Connect / HealthKit, read "mobile-first web app". Device data arrives by replay of the cited datasets and file import, not live phone-health APIs.
+> - **No Docker required.** Use a hosted Postgres (with pgvector) and a free web host. Docker Compose is optional for anyone who wants a local database.
+> - **No sign-up/sign-in flows.** A "Start as demo patient" button creates a session, and every query is scoped by the session's user id. Consent records, the audit log and doctor share-link tokens stay.
+> - **LLM/AI provider is undecided.** It is chosen in backlog story E0-9. Everything calls it through the gateway in `llm/gateway.py`.
+
 ## 1. System overview
 
 ```
@@ -58,7 +64,7 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 
 | Layer | Choice | Why |
 |---|---|---|
-| Mobile | **Expo SDK (latest stable), React Native, TypeScript (strict)**, Expo Router, dev build (not Expo Go) | One codebase, Android and iOS; native modules for health data |
+| Front end | **Mobile-first web app (React + TypeScript, strict)** shown in a phone frame / WebView | No store publishing cost; runs anywhere for the demo. (Earlier Expo plan superseded, see note above) |
 | State / data | TanStack Query (server state), Zustand (UI state), react-hook-form + zod | Caching, offline, typed forms |
 | Charts (app) | `react-native-gifted-charts` (or Victory Native) | Line/bar/heat-cell charts |
 | Health data | `react-native-health-connect` (Android), `@kingstinct/react-native-healthkit` (iOS) | Device-agnostic wearables |
@@ -75,7 +81,7 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 | TTS | Tencent Cloud TTS (fallback: device TTS via `expo-speech`) | Multilingual speech |
 | Calendar | Google Calendar API (OAuth, user-initiated) + `.ics` fallback | Scheduling |
 | Storage | Tencent Cloud COS (prod) / local MinIO or filesystem (dev) | Images, PDFs, audio |
-| Deploy | Docker Compose (dev); Tencent Cloud Lighthouse/CVM + TencentDB for PostgreSQL (demo) | Aligns with hackathon ecosystem |
+| Deploy | Hosted Postgres + free web host for the demo (Docker optional locally) | Zero-cost demo; Tencent Cloud hosting optional |
 | Quality | Backend: ruff, mypy (strict), pytest, pytest-asyncio. App: eslint, prettier, tsc, jest + RNTL | See rules.md |
 
 > Verify current package names and Hunyuan model IDs and endpoint in the official docs at setup time; keep them in `.env`, never hard-coded.
@@ -353,7 +359,7 @@ OpenAPI is the contract; the mobile client is generated from it (`openapi-typesc
 `DEMO_MODE=true` → seed demo patient ("Uncle Tan", 90 days history incl. one CGM sprint), `replay.py` streams today's CGM/watch data at 1× or accelerated speed, and a hidden debug menu in the app lets you trigger: a missed dose, a hypo reading, a momentum flag, a clash, and brief generation. See flow.md §5.
 
 ## 10. Build order (critical path)
-1. Repo, Docker Compose, DB and Alembic baseline, auth, event log
+1. Repo, hosted DB and migrations baseline, demo session, event log
 2. Reference data + knowledge ingest + LLM gateway + guardrails + red-team tests (safety first)
 3. Onboarding (form) → meds (manual) → dose loop → notifications
 4. Scan + extractor → clash checker → explainer (+TTS, i18n)

@@ -226,7 +226,7 @@ The system improves for each user through four concrete mechanisms (details in a
 
 | # | Item | Current assumption | Owner |
 |---|---|---|---|
-| A1 | Mobile framework | Expo (React Native) so Health Connect / HealthKit are readable | Team |
+| A1 | Front end | Mobile-first web app in a phone frame / WebView (no store fees). No live Health Connect/HealthKit: device data is replayed from the cited datasets | Team |
 | A2 | LLM | Tencent Hunyuan via OpenAI-compatible API, behind a provider gateway (swappable) | Team |
 | A3 | Clinical thresholds | Rules, not data: hypo levels (3.9 / 3.0 mmol/L) and configurable highs are team-written config. No cited source contains them, so this is under "Needs your OK". **Validate with a clinical advisor** | Team |
 | A4 | Drug corpus and interactions | Drug facts (uses, side effects, classes, aliases) come from the 250k Medicines dataset only. Interactions come from its interactions column **if it exists** (unverified: check after download). No supplement/TCM interaction data exists in the cited sources, so those items show "not checked" | Team |

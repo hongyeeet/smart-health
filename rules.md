@@ -60,7 +60,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 - LLM calls that return structure use JSON-schema / function-calling output and are validated with Pydantic; on validation failure retry once, then fail safe.
 - Config via `pydantic-settings` from env; every new variable is added to `.env.example` with a comment.
 
-## 5. Mobile conventions (Expo / React Native / TypeScript)
+## 5. Front-end conventions (mobile-first web app, React / TypeScript; the Expo references below now mean this web app)
 
 - `strict: true`; no `any` (use `unknown` + narrowing); no `@ts-ignore` without a linked reason.
 - Server state via TanStack Query hooks in `src/features/<feature>/`; API types generated from OpenAPI, not hand-written.
