@@ -1,0 +1,24 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# Office lock files
+~$*
+
+# raw datasets (large and licensed): never commit
+data/raw/
+data/kaggle/
+data/uci/
+data/physionet/
+data/nhanes/
+*.zip
+
+# language / tooling
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+.expo/
+dist/
+.DS_Store
