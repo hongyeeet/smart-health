@@ -11,8 +11,8 @@ Related: [prd.md](prd.md) (what/why) · [architecture.md](architecture.md) (wher
 These protect patients and are what the judges score under Responsible AI. **Breaking one is a failed build.**
 
 1. **No medication advice, ever.** No code path may produce text recommending starting, stopping, skipping, changing, doubling or substituting a medication or dose. Dose text shown to users comes **only** from `patient_medications` fields the user confirmed.
-2. **LLM generates language, code generates facts.** Interactions (`services/clash.py`), thresholds (`services/thresholds.py`), adherence, momentum, food response and every number in the brief are computed deterministically. Never ask an LLM to compute, infer or "estimate" these.
-3. **`app/services/` must not import from `app/agents/` or `app/llm/`.** (Enforced by an import-linter test.)
+2. **LLM generates language, code generates facts.** Interactions (`services/clash.py`), thresholds (`services/thresholds.py`), adherence, momentum, food response and every number in the brief are computed deterministically. Never ask an LLM to compute, infer or "estimate" these. (The only allowed estimate is meal nutrients, see rule 13.)
+3. **`app/services/` must not import from `app/agents/`, `app/llm/`, `app/decision/` or `app/memory/`.** (Enforced by an import-linter test.)
 4. **Every patient-facing AI output passes `guardrails/output_guard.py`.** No direct `llm.generate()` → UI path. On guard failure, return the approved template, never the raw draft.
 5. **Urgent path has no LLM.** Threshold breaches and red-flag symptoms go straight to templated urgent content. Never block or delay it on a network/LLM call.
 6. **No diagnosis.** Never output condition names as a conclusion about the user ("you have neuropathy"). Patterns are phrased as "worth discussing with your doctor".
@@ -22,6 +22,9 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 10. **Agents have least privilege.** Tools are registered per agent (architecture.md §5.2). Do not add a write tool to an agent without updating that table and adding tests. No agent may write medications, doses, thresholds or consents.
 11. **Thresholds live in `config/thresholds.yaml`**, never hard-coded, and carry the comment `# clinical validation pending`.
 12. **Red-team suite must be 100% green** (`services/api/tests/redteam/`). Never skip, xfail or weaken a red-team test to make CI pass.
+13. **Estimates are labelled as estimates.** The LLM may estimate meal nutrients from a photo or text. Store them as `evidence_status = inferred` with a confidence, keep the original and the raw analysis, show "Estimated" until the user confirms, and let the user edit. Never present an estimate as measured. Everything downstream is computed in code from the stored values.
+14. **JEV supports decisions and never controls safety.** Urgent thresholds, interaction lookup, refusal rules and dose logic run in code. A JEV answer below the confidence floor (start at 0.8), or a JEV outage, takes the conservative path (refusal template, "not checked", ask the user). A rule that fires always beats a JEV answer.
+15. **Nothing is "validated".** Never use the words validated, verified or clinically confirmed for AI output, reference lookups, thresholds or patterns. Use the evidence statuses in memory.md.
 
 ## 1b. Data source policy
 
@@ -29,6 +32,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 - Every seeded or imported row records its source (`data_sources`, manifest #). If a task needs data these sources don't have, stop and list it as "Needs your OK" instead of sourcing it yourself.
 - Simulated data may only be built from cited data, must be marked `entry_source = 'demo_dataset'` or simulated, and must be disclosed.
 - Raw datasets are never committed (see licences in `data/README.md`).
+- Branches: work on `dev` or a `feature/<task-id>-<name>` branch from it. Only the owner promotes `dev` to `uat` and `uat` to `main`. Never force-push.
 
 ## 2. Scope discipline
 
@@ -46,7 +50,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 - Enforce state machines in services (dose, scan, fact, appointment); invalid transitions raise `InvalidTransition`.
 - Multi-step writes (e.g. scan confirm) run in one transaction.
 - `event_log` is append-only. Never UPDATE/DELETE it. Every state change in flow.md emits its listed event, in the same transaction.
-- Never send name, email, phone, NRIC or exact birth date to the LLM or TTS. Use the context builder, which strips them.
+- Never send name, email, phone, NRIC or exact birth date to the LLM or TTS. Use the Memory Service evidence packet, which strips them.
 - Don't log health values or free-text notes in application logs; use ids. (The audit trail is `event_log`, not stdout.)
 
 ## 4. Backend conventions (Python 3.12 / FastAPI)
@@ -55,7 +59,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 - Pydantic v2 models for every request/response; no raw dicts across layers.
 - Layering: `routers` (HTTP only) → `services` (domain logic, deterministic) / `agents` (LLM orchestration) → `db` (models, queries). Routers contain no business logic.
 - Async SQLAlchemy 2.0; no N+1 queries in list endpoints (use `selectinload` / joins).
-- All external calls (LLM, TTS, OCR, Calendar, storage) go through a wrapper in `llm/` or `integrations/`, with timeout, retry and logging. Never call SDKs directly from routers/services.
+- All external calls (LLM, TTS, OCR, Calendar, storage) go through a wrapper in `llm/`, `decision/` or `integrations/`, with timeout, retry and logging. Never call SDKs directly from routers/services.
 - Prompts live in `agents/prompts/*.md` with a `version:` header; `agent_runs.prompt_version` records it. No prompt strings inline in Python.
 - LLM calls that return structure use JSON-schema / function-calling output and are validated with Pydantic; on validation failure retry once, then fail safe.
 - Config via `pydantic-settings` from env; every new variable is added to `.env.example` with a comment.
@@ -108,6 +112,8 @@ A task is done only when:
 - [ ] UI changes checked on a device/emulator at 100% and 200% font scale, light and dark.
 
 ## 8. Security basics (PII hardening is deferred, these are not)
+
+Demo scope: row-level security, consent-scoped retrieval, data-classification tagging and retention workflows are deferred (memory.md section 13). The basics below still apply.
 - No secrets in code, fixtures or git history; use `.env` (git-ignored) and `.env.example`.
 - JWT auth on every non-public route; every query scoped by `user_id` from the token (never from the request body).
 - Share tokens: 32 random bytes, stored as SHA-256 hash, expiring, revocable, access-logged.
@@ -124,6 +130,10 @@ A task is done only when:
 - Never force-push shared branches; never commit `.env`, data exports with real personal data, or model keys.
 - Real watch exports from teammates go in `data/mock/watch_export/` **only after** removing identifiers; prefer committing synthetic/replay data.
 - **Hackathon proof:** development must happen through CodeBuddy/WorkBuddy for a meaningful share of work; take chat screenshots at each milestone (≥ 3 required) into `docs/proof/`.
+
+## 10b. Session handover
+
+At the end of every session, follow `docs/handover/HANDOVER.md`: update the tasks you worked on in `docs/backlog/backlog.md` (tick finished subtasks, set Status and Owner, add a one-line Note), write the session log in `docs/handover/sessions/` (named `<user>_<YYYY-MM-DD_HHMM>.md`, including every decision made outside the docs), and include both in your pull request into `dev`. List the tasks you moved in the PR description.
 
 ## 11. When unsure
 - If a requirement is ambiguous, choose the **safer** interpretation (less advice, more uncertainty disclosure, more logging) and leave a `TODO(decision):` note plus a question in the PR description.

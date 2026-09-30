@@ -1,14 +1,16 @@
 # Architecture — Smart Health
 
-Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/why*, [schema.md](schema.md) for tables, [flow.md](flow.md) for journeys, [rules.md](rules.md) for coding boundaries, [design.md](design.md) for UI.
+Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/why*, [schema.md](schema.md) for tables, [flow.md](flow.md) for journeys, [rules.md](rules.md) for coding boundaries, [design.md](design.md) for UI, [memory.md](memory.md) for memory, evidence and the JEV decision layer.
 
 ---
 
 > **Platform decisions (2026-09-29, override anything below that disagrees):**
 > - **Front end is a mobile-first web app shown in a phone-sized frame or WebView**, not a store-published native app (no store fees). Wherever this document says Expo / React Native / Health Connect / HealthKit, read "mobile-first web app". Device data arrives by replay of the cited datasets and file import, not live phone-health APIs.
-> - **No Docker required.** Use a hosted Postgres (with pgvector) and a free web host. Docker Compose is optional for anyone who wants a local database.
+> - **Local-first.** Everything runs on each developer's machine for now: Postgres 16 with pgvector, local file storage, one command to start. No hosted database, no hosting, no Supabase. Docker Compose is the easiest way to get Postgres with pgvector but is optional. The only outbound calls are the AI APIs (Hunyuan for chat, vision and speech, and JEV if it is not run locally). Postgres is standard, so moving to a hosted database later needs no redesign.
 > - **No sign-up/sign-in flows.** A "Start as demo patient" button creates a session, and every query is scoped by the session's user id. Consent records, the audit log and doctor share-link tokens stay.
 > - **LLM/AI provider is undecided.** It is chosen in backlog story E0-9. Everything calls it through the gateway in `llm/gateway.py`.
+> - **JEV** is the typed decision layer ([OpenJev](https://github.com/razorback16/openjev): yes/no, choice and score answers with calibrated confidence). It is chosen and wired in backlog story E0-12 and always called through `decision/`, with a Hunyuan fallback. See [memory.md](memory.md).
+> - **Security is demo-grade.** Row-level security, consent-scoped retrieval, data-classification tagging and retention workflows are deferred (memory.md section 13). The clinical safety path is never deferred.
 
 ## 1. System overview
 
@@ -25,9 +27,9 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 │     │          · preventive schedule · brief data builder                  │
 │     │                                                                      │
 │     └──►  Agent harness (LangGraph)                                        │
-│             context builder ─► INPUT GUARD ─► router ─► specialist agent   │
-│             ─► OUTPUT GUARD (safety gate) ─► persist + event log           │
-│             tools = typed wrappers over domain services (least privilege)  │
+│             Memory Service ─► INPUT GUARD ─► router ─► specialist agent    │
+│             (JEV decisions in guard, router) ─► OUTPUT GUARD ─► log        │
+│             tools = typed wrappers over services and the Memory Service    │
 │                                                                            │
 │  Worker (APScheduler): reminders · window close · nightly momentum ·       │
 │          reflection (memory) · brief pre-generation · replay feeder         │
@@ -54,9 +56,22 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 | TB-3 | API ↔ TTS | Speaking unsafe text | Only guarded, final text is synthesised |
 | TB-4 | API ↔ Calendar | Unwanted bookings | Explicit user confirmation per event; scoped OAuth |
 | TB-5 | Doctor ↔ Brief | Unauthorised access | Consent record, random 32-byte token (hashed at rest), expiry, revocation, access logged |
+| TB-7 | API ↔ JEV decision server | Sending health text to a third party; wrong or low-confidence decision | State is de-identified; a JEV answer below the confidence floor, or an outage, takes the conservative path; rules always override JEV; provider swappable behind `decision/` |
 | TB-6 | Agent ↔ tools | Agent overreach | Per-agent tool allowlist; tools are read-only except explicitly listed writes (e.g. `log_symptom`, `add_doctor_question`, `propose_memory_fact`) |
 
-**Core rule:** *The LLM generates language; code generates facts.* Interactions, thresholds, adherence stats, trends and brief numbers are computed by deterministic services.
+**Core rule:** *The LLM generates language; code generates facts.* Interactions, thresholds, adherence stats, trends and brief numbers are computed by deterministic services. The one allowed model estimate is meal nutrients: stored as `inferred`, shown as "Estimated" until the user confirms, then used by code like any other value.
+
+### Data layers
+Bronze (originals plus `ingestion_events`) → Silver (canonical, user-confirmed records) → Gold (derived tables, four views, application memory). Every table is in the `public` schema; the layer of each table is in the layer map in [schema.md](schema.md). Full rules, memory planes and evidence statuses are in [memory.md](memory.md).
+
+```
+storage/{user_id}/
+├── meals/          # original meal photos
+├── medications/    # prescription, box, supplement and TCM images
+├── documents/
+└── exports/        # wearable and dataset files
+```
+Originals are never overwritten. A better analysis is a new record that links to the same original.
 
 ---
 
@@ -74,14 +89,15 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 | Backend | **Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0 (async), Alembic** | Typed APIs; strong data/ML ecosystem |
 | Agents | **LangGraph** (state graphs, checkpoints) + own guardrail and memory layer | Observable, controllable agent flows |
 | LLM | **Tencent Hunyuan** (chat, vision, embeddings) via an OpenAI-compatible client, wrapped by `llm/gateway.py` | Tencent ecosystem; swappable provider |
+| Decision layer (JEV) | **OpenJev** typed decisions (`noul`, `choice`, `score`) behind `decision/`; hosted, small CPU models, or self-hosted; fallback to Hunyuan structured output | Fast, bounded, calibrated classification for routing and guards. Decided in E0-12 |
 | Vector search | **pgvector** in Postgres | One DB for relational and vectors |
 | DB | PostgreSQL 16 | JSONB, enums, pgvector |
 | Jobs | APScheduler in a separate worker process, jobs persisted in Postgres | Simple, no Redis needed |
 | Brief rendering | Jinja2 HTML + Matplotlib (SVG charts) → WeasyPrint PDF | Deterministic, printable, no headless browser |
 | TTS | Tencent Cloud TTS (fallback: device TTS via `expo-speech`) | Multilingual speech |
 | Calendar | Google Calendar API (OAuth, user-initiated) + `.ics` fallback | Scheduling |
-| Storage | Tencent Cloud COS (prod) / local MinIO or filesystem (dev) | Images, PDFs, audio |
-| Deploy | Hosted Postgres + free web host for the demo (Docker optional locally) | Zero-cost demo; Tencent Cloud hosting optional |
+| Storage | Local filesystem folders (`STORAGE_BACKEND=local`) | Images, PDFs, audio, exports |
+| Runtime | Local: Postgres 16 + pgvector, local file storage, API and web app started with one command per machine | No hosting cost; the same seeded demo data on every machine. Hosting is a later option |
 | Quality | Backend: ruff, mypy (strict), pytest, pytest-asyncio. App: eslint, prettier, tsc, jest + RNTL | See rules.md |
 
 > Verify current package names and Hunyuan model IDs and endpoint in the official docs at setup time; keep them in `.env`, never hard-coded.
@@ -92,10 +108,16 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 
 ```
 smart-health/
-├─ prd.md  architecture.md  flow.md  schema.md  design.md  rules.md
-├─ README.md                         # setup + run in 5 commands
+├─ README.md                         # what this is, where to start, branches
+├─ docs/                             # ALL documents
+│  ├─ specs/                         # prd, architecture, flow, schema, design, rules, memory
+│  ├─ backlog/backlog.md             # the live task list
+│  ├─ handover/                      # HANDOVER.md (start here), session-log-template.md, sessions/
+│  ├─ mockup/                        # prompt and outputs for the design mockup
+│  └─ reference/                     # superseded starting templates
+├─ .github/                          # pull request template, CODEOWNERS
 ├─ .env.example                      # every env var documented
-├─ docker-compose.yml                # postgres(pgvector), api, worker, minio
+├─ docker-compose.yml                # optional: Postgres with pgvector only
 │
 ├─ apps/
 │  └─ mobile/                        # Expo app
@@ -159,16 +181,18 @@ smart-health/
 │     │  ├─ agents/
 │     │  │  ├─ graph.py              # main LangGraph (chat + tasks)
 │     │  │  ├─ state.py              # AgentState TypedDict
-│     │  │  ├─ context.py            # context builder (memory + data, token budget)
+│     │  │  ├─ context.py            # asks the Memory Service for the evidence packet (token budget)
 │     │  │  ├─ router.py             # intent → specialist
 │     │  │  ├─ specialists/          # onboarding, med_explainer, extractor, adherence_coach,
 │     │  │  │                        # lifestyle_coach, checkin, scheduler, question_helper,
 │     │  │  │                        # brief_writer, reflection
 │     │  │  ├─ tools/                # typed tool wrappers → services (allowlists per agent)
 │     │  │  ├─ guardrails/           # input_guard.py, output_guard.py, policies.yaml, templates/
-│     │  │  ├─ memory/               # store.py, reflection.py, retrieval.py, episodes.py
+│     │  │  ├─ memory/               # reflection.py, episodes.py (read and write only through the Memory Service)
 │     │  │  └─ prompts/              # *.md prompt files, versioned
-│     │  ├─ llm/                     # gateway.py (retry, timeout, logging), providers/hunyuan.py
+│     │  ├─ llm/                     # gateway.py (retry, timeout, logging), providers/hunyuan.py, meal_analysis.py (photo/text → macros)
+│     │  ├─ decision/                # jev_client.py (OpenJev wire API), fallback_hunyuan.py, questions.py (typed question sets)
+│     │  ├─ memory/                  # service.py (scoped reads/writes), evidence_packet.py, lifecycle.py (propose, supersede)
 │     │  ├─ knowledge/               # ingest.py, chunk.py, retrieve.py (pgvector)
 │     │  ├─ brief/                   # builder.py (data), narrative.py (LLM+validator),
 │     │  │                           # charts.py (matplotlib SVG), templates/*.html, pdf.py
@@ -178,11 +202,14 @@ smart-health/
 │        ├─ unit/  integration/
 │        └─ redteam/                 # guardrail suite: must be 100% pass
 │
-├─ data/
+├─ data/                             # ALL data (see data/README.md)
+│  ├─ README.md                      # what lives where, licences, rules
+│  ├─ plan/                          # smart_health_data_plan.xlsx
+│  ├─ raw/                           # downloaded datasets (gitignored, never committed)
+│  ├─ processed/                     # importer outputs (gitignored)
+│  ├─ reference/                     # small seed tables: interactions, foods, preventive items
 │  ├─ knowledge/                     # approved corpus only: drug facts from 250k Medicines (+ sources.csv listing manifest # and licence). No other source without approval (prd.md A10)
-│  ├─ reference/                     # interactions.csv, foods.csv, preventive_items.csv
-│  ├─ mock/                          # cgm/, watch_export/, demo_patient.json
-│  └─ README.md                      # provenance + licences
+│  └─ demo/                          # small synthetic demo data (simulated 60-day history)
 │
 └─ scripts/
    ├─ seed_reference.py              # load interactions, foods, preventive items
@@ -265,10 +292,10 @@ No LLM is involved; the brief narrative may only cite these results by evidence 
 
 ### 4.5 Chat turn (F15), the agent harness path
 ```
-user msg → input_guard (rules + classifier)
+user msg → input_guard (rules first, then JEV yes/no questions; rules always win)
    ├─ urgent → thresholds/red-flag template → urgent screen (no LLM)
    ├─ med_advice_request → refusal template + "add to doctor questions?" (no LLM needed)
-   └─ ok → context.build(user) → router → specialist (tools) → draft
+   └─ ok → JEV route → memory_service.get_* → evidence packet → specialist (tools) → draft
            → output_guard (policy checks) ─ pass → reply (+TTS optional)
                                            └ fail → safe template + log guardrail_event
 → persist message, episode summary (async), event_log
@@ -284,18 +311,30 @@ brief.builder (deterministic): profile, meds, adherence matrix, glucose stats, n
 → Jinja2 HTML → WeasyPrint PDF → storage → briefs row → share link (optional, consented)
 ```
 
+### 4.7 Meal analysis (F6, F7)
+```
+photo or text → storage + ingestion_events (Bronze)
+→ llm/meal_analysis.py (Hunyuan vision/text): items + estimated kcal, carbs, protein, fat, fibre, sugar, sodium, confidence per field
+→ meal_analyses row (model_id, prompt_version, raw_output)
+→ meal_items (estimated_by='llm_estimate', evidence_status='inferred') shown with an "Estimated" badge
+→ user confirms or edits → estimated_by='user', evidence_status='observed'
+→ nutrition flags (code) · food_response (needs measured CGM glucose, n ≥ 2) · daily_aggregates
+```
+Open Food Facts and NHANES dietary values are only a sanity check that can add a "check this" flag. Re-running with a newer model or prompt adds a new `meal_analyses` row.
+
 ---
 
 ## 5. Agent harness and memory ("grows with the user")
 
 ### 5.1 Graph
 ```
-START → load_context → guard_input ─┬─ urgent → END (template)
-                                    ├─ blocked → END (template)
-                                    └─ route → {specialist} → guard_output ─┬─ ok → persist → END
+START → guard_input (rules + JEV) ─┬─ urgent → END (template)
+                                   ├─ blocked → END (template)
+                                   └─ route (JEV) → memory_service → {specialist} → guard_output ─┬─ ok → persist → END
                                                                             └─ fail → fallback → persist → END
 ```
-- `AgentState`: user_id, locale, messages, intent, context (profile, facts, episodes, recent aggregates), tool_results, draft, guard_verdicts, run_id.
+- `AgentState`: user_id, locale, messages, intent, route, evidence_packet, tool_results, draft, guard_verdicts, run_id.
+- JEV and the Memory Service are called as graph nodes; each writes an `agent_steps` row (`node` = `jev` or `memory`). See [memory.md](memory.md) sections 5 to 7.
 - Every node writes an `agent_steps` row (inputs hash, outputs, latency, tokens).
 
 ### 5.2 Specialists and tool allowlists
@@ -314,17 +353,19 @@ START → load_context → guard_input ─┬─ urgent → END (template)
 
 No agent can write medications, doses or thresholds. Those paths are user- or code-only.
 
-### 5.3 Memory tiers
-| Tier | Store | Written by | Used for |
-|---|---|---|---|
-| Profile (authoritative) | relational tables (patient_profiles, patient_medications, conditions…) | user and onboarding | every context |
-| Observations | glucose_readings, health_samples, meals, dose_events, … + daily_aggregates | ingest and user | trends, brief |
-| **User model** | `memory_facts` (key, value, category, confidence, evidence_refs, status, version) | reflection agent (proposes); user (confirms/edits) | personalisation, nudges, chat |
-| Episodic | `memory_episodes` (summary + embedding) | async after each chat session | recall in chat |
+### 5.3 Memory planes and lifecycle
+Full design in [memory.md](memory.md). Summary:
 
-**Fact lifecycle:** `proposed` (confidence < 0.7) → `active` (confidence ≥ 0.7 or user-confirmed) → `superseded` (new version) / `rejected` (user deleted, never re-proposed with same key+value). Confidence rises with repeated evidence and decays when there's no supporting evidence for 30 days.
+| Plane | Stored in | Written by |
+|---|---|---|
+| Semantic | `memory_facts`, `memory_episodes`, `health_goals`, `patient_profiles` | User, nightly reflection (proposes), user confirms |
+| Temporal | `timeline_events` (view), `event_windows`, `daily_aggregates`, `meal_responses` | Deterministic services |
+| Entity | `patient_medications`, `medication_ingredients`, `foods`, `meals`, `devices`, `health_goals`, `appointments` | User confirmation, importers |
+| Relationship | `pattern_candidates`, `interaction_alerts`, `food_responses` | Deterministic services and lookups |
 
-**Context builder** (token budget ~3k): profile summary → active facts (top 20 by relevance/recency) → top-5 episodes by vector similarity → last 7-day aggregates → relevant flags. Never includes name, NRIC, phone or email.
+**Fact lifecycle:** `proposed` (confidence < 0.7) → `active` (confidence ≥ 0.7 or user-confirmed) → `superseded` (linked by `supersedes_id`) / `rejected` (never re-proposed with the same key and value). Confidence rises with repeated evidence and decays after 30 days without support. Every fact carries `evidence_status` (`inferred` when proposed by reflection, `observed` when the user confirms). Nothing is `validated`.
+
+**Evidence packet** replaces the old context builder (budget about 3k tokens): profile summary, active facts (top 20), top 5 episodes by similarity, last 7 days of aggregates, open flags, and the evidence for the question, each with source ids, status and confidence. It never includes a name, NRIC, phone or email. The LLM answers from the packet only.
 
 ### 5.4 Adaptive nudging (nudge_policy.py)
 State per user: (nudge_type × time_slot) → {sent, acted}. Choose slot = argmax Beta-smoothed act-rate with ε = 0.15 exploration. Hard caps: ≤ 3 nudges/day, quiet hours 22:00–07:00. Updated nightly.
@@ -359,7 +400,7 @@ OpenAPI is the contract; the mobile client is generated from it (`openapi-typesc
 `DEMO_MODE=true` → seed demo patient ("Uncle Tan", 90 days history incl. one CGM sprint), `replay.py` streams today's CGM/watch data at 1× or accelerated speed, and a hidden debug menu in the app lets you trigger: a missed dose, a hypo reading, a momentum flag, a clash, and brief generation. See flow.md §5.
 
 ## 10. Build order (critical path)
-1. Repo, hosted DB and migrations baseline, demo session, event log
+1. Repo, local DB and migrations baseline, demo session, event log
 2. Reference data + knowledge ingest + LLM gateway + guardrails + red-team tests (safety first)
 3. Onboarding (form) → meds (manual) → dose loop → notifications
 4. Scan + extractor → clash checker → explainer (+TTS, i18n)

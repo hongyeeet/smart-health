@@ -18,6 +18,18 @@ Source of truth for the database. Any change here must ship with an Alembic migr
 | Naming | snake_case, plural table names, FK column `<singular>_id` |
 | Vectors | `vector(EMBED_DIM)`, where EMBED_DIM is set once from config at migration time; HNSW index, cosine |
 
+## 0b. Layer map
+
+Every table lives in the `public` schema. The layer says what kind of data it holds (see [memory.md](memory.md) sections 1 and 2).
+
+| Layer | Tables and views |
+|---|---|
+| **Bronze** (raw, as received) | `ingestion_events` plus the stored original objects (meal photos, medication and supplement images, wearable and dataset exports, documents) |
+| **Silver** (canonical, user-confirmed) | `users`, `patient_profiles`, `conditions`, `allergies`, `family_history`, `consents`, `prescription_scans`, `patient_medications`, `medication_ingredients`, `dose_events`, `refill_forecasts`, `glucose_readings`, `cgm_sprints`, `health_samples`, `sleep_sessions`, `meals`, `meal_items`, `meal_analyses`, `workouts`, `mood_checkins`, `symptom_logs`, `symptom_checkins`, `lab_results`, `blood_pressure_readings`, `body_measurements`, `appointments`, `doctor_questions`, `patient_preventive_status`, `devices`, `health_goals`, `notifications` |
+| **Gold** (derived values and application memory) | `daily_aggregates`, `baselines`, `momentum_snapshots`, `clinical_flags`, `urgent_events`, `meal_responses`, `food_responses`, `sprint_summaries`, `event_windows`, `pattern_candidates`, `interaction_alerts`, `memory_facts`, `memory_episodes`, `nudge_stats`, `briefs`, `brief_shares`, `brief_share_access`; views `timeline_events`, `health_state`, `trends`, `adherence_summary`, `insight_context` |
+| **Reference** (seeded, versioned) | `drug_reference`, `drug_aliases`, `drug_side_effects`, `interaction_rules`, `foods`, `preventive_items`, `routing_rules`, `population_priors`, `knowledge_documents`, `knowledge_chunks`, `data_sources` |
+| **Operations** (cross-cutting) | `agent_runs`, `agent_steps`, `guardrail_events`, `conversations`, `messages`, `event_log` |
+
 ---
 
 ## 1. Enums
@@ -52,6 +64,10 @@ CREATE TYPE notification_kind  AS ENUM ('dose_reminder','dose_renudge','miss_rea
 CREATE TYPE actor_type         AS ENUM ('user','agent','system','clinician_link');
 CREATE TYPE guard_verdict      AS ENUM ('pass','blocked_med_advice','blocked_diagnosis','urgent','blocked_injection','blocked_uncited','blocked_other');
 CREATE TYPE knowledge_kind     AS ENUM ('drug','lifestyle','hypo_guidance','condition_education','food');
+CREATE TYPE evidence_status    AS ENUM ('observed','derived','inferred','reference_matched');   -- nothing is 'validated'
+CREATE TYPE relationship_type  AS ENUM ('user_reported','temporal_association','observed_association','repeated_observation');
+CREATE TYPE goal_kind          AS ENUM ('weekly_moderate_minutes','weekly_strength_sessions','daily_steps','sleep_hours','fasting_glucose_range','custom');
+CREATE TYPE device_kind        AS ENUM ('watch','cgm','glucometer','phone_camera','other');
 ```
 
 ---
@@ -234,7 +250,7 @@ Inputs in mg/dL are converted at the API (÷ 18.0, round to 0.1) and never store
 `id, user_id, eaten_at timestamptz NOT NULL, meal_type meal_type NOT NULL, photo_key text NULL, description text NULL, source entry_source, deleted_at, created_at, updated_at`.
 
 ### meal_items
-`id, meal_id uuid FK meals ON DELETE CASCADE, food_id uuid FK foods NULL, custom_name text NULL, portion_multiplier numeric(4,2) NOT NULL DEFAULT 1.0 CHECK 0.1..5, carbs_g numeric, sugar_g numeric, sodium_mg numeric, kcal numeric, protein_g numeric, fat_g numeric, fibre_g numeric, alcohol_units numeric(3,1) NOT NULL DEFAULT 0, estimated_by text CHECK IN ('food_db','vision_estimate','user')`. CHECK (food_id IS NOT NULL OR custom_name IS NOT NULL). Nutrients are snapshotted at log time (foods may be edited later).
+`id, meal_id uuid FK meals ON DELETE CASCADE, food_id uuid FK foods NULL, custom_name text NULL, portion_multiplier numeric(4,2) NOT NULL DEFAULT 1.0 CHECK 0.1..5, carbs_g numeric, sugar_g numeric, sodium_mg numeric, kcal numeric, protein_g numeric, fat_g numeric, fibre_g numeric, alcohol_units numeric(3,1) NOT NULL DEFAULT 0, estimated_by text CHECK IN ('dataset','llm_estimate','user','food_db'), estimate_confidence numeric(3,2) NULL CHECK 0..1, evidence_status evidence_status NOT NULL DEFAULT 'inferred', analysis_id uuid FK meal_analyses NULL`. CHECK (food_id IS NOT NULL OR custom_name IS NOT NULL). Nutrients are snapshotted at log time (foods may be edited later). LLM estimates start as `llm_estimate` / `inferred`; when the user confirms or edits them they become `user` / `observed`. Dataset meals (CGMacros, BIG IDEAs) are `dataset` / `observed` and their parent meal is marked `demo_dataset`.
 
 ### meal_responses (per meal, CGM sprint only)
 `meal_id uuid PK FK meals, baseline_mmol numeric(4,1), peak_rise_mmol numeric(4,1), iauc_mmol_min numeric(7,1), window_complete boolean NOT NULL, is_mixed boolean NOT NULL, dominant_food_id uuid FK foods NULL, computed_at`.
@@ -355,6 +371,7 @@ Briefs are **immutable** once `ready`; regenerating creates a new row and marks 
 | value | jsonb | NOT NULL |
 | statement_key | text | NULL (i18n template) / `statement` text for display |
 | confidence | numeric(3,2) | NOT NULL CHECK 0..1 |
+| evidence_status | evidence_status | NOT NULL (`inferred` when proposed by reflection; `observed` when the user stated or confirmed it) |
 | evidence_refs | jsonb | NOT NULL (array of {table,id}) |
 | status | fact_status | NOT NULL |
 | version | integer | NOT NULL DEFAULT 1 |
@@ -471,7 +488,33 @@ Columns: `user_id, occurred_at, end_at, stream timeline_stream, ref_table, ref_i
 Rows with `quality_ok = false` are stored (so gaps are visible) but excluded from `pattern_candidates`.
 
 ### pattern_candidates
-`id, user_id, pattern_key text NOT NULL (e.g. 'late_dinner_next_fasting', 'postmeal_walk_glucose', 'missed_dose_glucose'), anchor_kind text, outcome_metric text, n_pairs int NOT NULL CHECK >= 5, median_delta numeric NOT NULL, iqr_low numeric, iqr_high numeric, first_seen_on date, last_seen_on date, status text CHECK IN ('open','in_brief','dismissed'), evidence jsonb NOT NULL (list of event_windows ids), brief_id uuid FK briefs NULL, created_at, updated_at`. UNIQUE (user_id, pattern_key) WHERE status = 'open'. Always rendered as *"associated with"*, never *"caused by"*, and labelled unverified in the brief.
+`id, user_id, pattern_key text NOT NULL (e.g. 'late_dinner_next_fasting', 'postmeal_walk_glucose', 'missed_dose_glucose'), anchor_kind text, outcome_metric text, n_pairs int NOT NULL CHECK >= 5, median_delta numeric NOT NULL, iqr_low numeric, iqr_high numeric, first_seen_on date, last_seen_on date, status text CHECK IN ('open','in_brief','dismissed'), relationship_type relationship_type NOT NULL, evidence_status evidence_status NOT NULL DEFAULT 'derived', evidence jsonb NOT NULL (list of event_windows ids), brief_id uuid FK briefs NULL, created_at, updated_at`. `relationship_type` becomes `repeated_observation` once n_pairs >= 5; never anything causal. UNIQUE (user_id, pattern_key) WHERE status = 'open'. Always rendered as *"associated with"*, never *"caused by"*, and labelled unverified in the brief.
+
+---
+
+## 9c. Layer and memory additions (2026-09-30)
+
+### ingestion_events (Bronze)
+`id, user_id, source_type text CHECK IN ('meal_photo','meal_text','prescription_image','medication_image','supplement_image','wearable_export','dataset_import','document'), object_key text NULL (private storage path), checksum text NOT NULL, received_at timestamptz NOT NULL, source_recorded_at timestamptz NULL, source_timezone text NULL, content_type text NULL, schema_version text NOT NULL, processing_status text CHECK IN ('received','processed','failed','deleted'), entry_source entry_source NOT NULL, created_at`. UNIQUE (user_id, checksum). Rows and objects are never modified. A user-initiated deletion sets `processing_status = 'deleted'`, removes the object, and is written to `event_log`.
+
+### meal_analyses
+`id, user_id, meal_id uuid FK meals, ingestion_event_id uuid FK ingestion_events NULL, model_id text NOT NULL, prompt_version text NOT NULL, raw_output jsonb NOT NULL (items, per-field estimates, per-field confidence), status text CHECK IN ('ok','failed','superseded'), created_at`. A re-run with a newer model or prompt inserts a new row and marks the old one `superseded`; the original object is untouched.
+
+### devices
+`id, user_id, kind device_kind NOT NULL, label text NOT NULL, source entry_source NOT NULL, last_synced_at timestamptz NULL, status text CHECK IN ('connected','disconnected'), created_at, updated_at`. The "Connected sources" row in the app. External sources only supply data; this table records that they are connected and when they last synced.
+
+### health_goals
+`id, user_id, kind goal_kind NOT NULL, target_value numeric NULL, target_low numeric NULL, target_high numeric NULL, unit text NULL, set_by text CHECK IN ('user','clinician','default'), active boolean NOT NULL DEFAULT true, starts_on date NULL, ends_on date NULL, created_at, updated_at`. Defaults (such as weekly moderate minutes) are placeholders until a clinician sets them.
+
+### Gold views
+Plain-named views, recomputed from Silver and other Gold tables. Each row carries the calculation version, evidence window, freshness timestamp, and quality status.
+
+| View | Columns (logical) |
+|---|---|
+| `health_state` | user_id, as_of, glucose_state, sleep_state, activity_state, nutrition_state, adherence_state, symptom_state, quality_status |
+| `trends` | user_id, metric, day, value, baseline_median, baseline_mad, z, ewma, slope, accel (from `momentum_snapshots` and `baselines`) |
+| `adherence_summary` | user_id, period, scheduled, taken, unconfirmed, missed, adherence_pct, top_reasons |
+| `insight_context` | user_id, as_of, open flags, active facts (top n), latest patterns, latest food responses, data completeness |
 
 ---
 
@@ -497,6 +540,8 @@ users 1─* lab_results | blood_pressure_readings | body_measurements | sleep_se
 cgm_sprints 1─1 sprint_summaries ; drug_reference 1─* drug_aliases | drug_side_effects
 event_windows *─1 (meals | workouts | dose_events | sleep_sessions) via anchor_table/anchor_id ; pattern_candidates *─* event_windows via evidence
 timeline_events (view) ← meals, dose_events, workouts, sleep_sessions, symptom_logs, mood_checkins, urgent_events
+users 1─* ingestion_events ; meals 1─* meal_analyses ─1 ingestion_events ; meal_items *─1 meal_analyses
+users 1─* devices | health_goals
 ```
 
 ## 11. Data consistency rules
@@ -516,4 +561,8 @@ timeline_events (view) ← meals, dose_events, workouts, sleep_sessions, symptom
 13. **Association, not cause:** `pattern_candidates` require n_pairs ≥ 5, store the median difference with IQR and the evidence ids, and are only ever worded as "associated with".
 14. **Insulin is out of scope:** no table stores insulin doses. Datasets containing insulin fields are imported with those columns discarded.
 15. **Provenance:** seeded reference and demo rows carry `source` (and `entry_source = 'demo_dataset'` for dataset-derived logs) so demo data is always distinguishable from user-entered data.
-16. **Reference data versioning:** `interaction_rules`, `foods`, `knowledge_documents` carry source and licence; changes go through `scripts/seed_*.py`, never ad-hoc SQL.
+16. **Evidence status:** every AI-estimated or AI-proposed item is `inferred`; deterministic calculations are `derived`; direct records and user-confirmed values are `observed`; an unreviewed reference lookup is `reference_matched`. Nothing is `validated`. Confidence never changes the status.
+17. **Bronze is immutable:** originals and `ingestion_events` are never modified. The only exceptions are a user-initiated deletion or retention expiry, both logged. A better analysis is a new record linked to the same original.
+18. **LLM estimates are labelled:** LLM-estimated meal nutrients are stored as estimates, shown as "Estimated" until confirmed, and never presented as measured. Deterministic services read the stored values; the LLM is not asked to recompute them.
+19. **No parallel tables:** one table per job. Semantic memory is `memory_facts`, associations are `pattern_candidates`, the timeline is `timeline_events`.
+20. **Reference data versioning:** `interaction_rules`, `foods`, `knowledge_documents` carry source and licence; changes go through `scripts/seed_*.py`, never ad-hoc SQL.

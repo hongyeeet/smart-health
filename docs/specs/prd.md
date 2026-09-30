@@ -103,7 +103,7 @@ Deterministic lookup against an interaction reference table. The LLM only rephra
 
 ### F6 Health tracking and logging
 - **Glucose:** glucometer entry (fasting / pre-meal / post-meal / random), and CGM stream during sprints. Unit: mmol/L.
-- **Meals:** photo and/or search of a local food database → estimated carbs, sugar, sodium, GI category, with flags for high salt, high sugar or high GI.
+- **Meals:** a photo or a text description is analysed by the LLM, which returns the items and estimated kcal, carbs, protein, fat, fibre, sugar and sodium with a confidence per field. Estimates are tagged "Estimated" until the user confirms or edits them, then behave like any other logged value. Flags for high salt, high sugar or high GI are computed in code from the stored values. Local dish names are fine; Open Food Facts and NHANES values are only a sanity check that can add a "check this" flag. Meals from the demo datasets keep their measured macros.
 - **Workouts:** manual entry (type, duration, intensity) plus wearable import.
 - **Wearables:** steps, heart rate, sleep, HRV/stress (where available) via Health Connect (Android) / HealthKit (iOS), or file import plus demo replay.
 - **Mood / stress / sleep check-in:** a 30-second evening check-in (1–5 scales and an optional note).
@@ -178,6 +178,8 @@ In-app assistant for "what is this med for", "how was my week", "what does this 
 
 ### F16 "What Smart Health has learned about you" (transparent memory)
 A screen listing learned facts (preferences, routines, barriers, food responses) with evidence, confidence and date. The user can confirm, correct or delete; changes are versioned.
+- AC: each fact shows how it is supported: *observed* (you told us or we measured it), *derived* (calculated from your data) or *inferred* (proposed by the app, waiting for you). Nothing is labelled "validated": no part of this project is clinically validated yet.
+- AC: proposed facts never drive nudges or briefs until confirmed or until confidence reaches 0.7 with at least the minimum evidence for that feature.
 
 ### F17 Multilingual and TTS
 EN / 中文 / BM / தமிழ் UI strings and explanations; TTS playback for explanations and reminders.
@@ -189,7 +191,7 @@ Puts every stream on one clock (meals, doses taken/missed, workouts, glucose, wa
 - AC: findings are worded "associated with", never "caused by", labelled unverified in the brief, and shown to the patient too (no hidden findings).
 - AC: the three representative days in the brief are chosen by fixed rules (lowest time-in-range, highest, closest to median) and each links to its underlying logs.
 - AC: gaps are visible. A day with missing CGM, watch or meal data shows "no data" for that stream instead of an interpolated line.
-- Event-window catalogue: architecture.md §4.4b. Data plan: `data/smart_health_data_plan.xlsx`.
+- Event-window catalogue: architecture.md §4.4b. Data plan: `data/plan/smart_health_data_plan.xlsx`.
 
 ### Stretch (only after F1–F18 pass)
 - S1 Caregiver read-only view (consent-gated)
@@ -203,7 +205,8 @@ The system improves for each user through four concrete mechanisms (details in a
 1. **User model memory:** a nightly reflection agent reviews the day's data and chat, and proposes evidence-backed facts ("usually walks after dinner", "misses evening dose on weekends", "chicken rice → high response, n=3"). Facts carry confidence, evidence links and versions, and are visible and editable in F16.
 2. **Adaptive nudging:** tracks which nudge types and times this user acts on and shifts toward them (epsilon-greedy over time slots and nudge types).
 3. **Personal baselines:** every alert and trend is relative to *this* user's recent normal, recomputed daily.
-4. **Episodic recall:** past conversations are summarised and embedded so the companion remembers context ("last week you mentioned stomach upset after metformin, is that still happening?"), and reported side effects flow into the brief.
+4. **Typed decisions (JEV):** a fast decision layer answers small yes/no and choice questions with a calibrated confidence: which memory a question needs, whether a message asks for medication advice or a diagnosis, what kind of fact a candidate is. Rules always win and low confidence takes the conservative path (memory.md).
+5. **Episodic recall:** past conversations are summarised and embedded so the companion remembers context ("last week you mentioned stomach upset after metformin, is that still happening?"), and reported side effects flow into the brief.
 
 ## 8. Safety and responsible AI principles
 
@@ -230,12 +233,15 @@ The system improves for each user through four concrete mechanisms (details in a
 | A2 | LLM | Tencent Hunyuan via OpenAI-compatible API, behind a provider gateway (swappable) | Team |
 | A3 | Clinical thresholds | Rules, not data: hypo levels (3.9 / 3.0 mmol/L) and configurable highs are team-written config. No cited source contains them, so this is under "Needs your OK". **Validate with a clinical advisor** | Team |
 | A4 | Drug corpus and interactions | Drug facts (uses, side effects, classes, aliases) come from the 250k Medicines dataset only. Interactions come from its interactions column **if it exists** (unverified: check after download). No supplement/TCM interaction data exists in the cited sources, so those items show "not checked" | Team |
-| A5 | Food database | Nutrient lookup from Open Food Facts and NHANES dietary files (cited sources only). No Singapore hawker foods: the app shows meal profiles (carbs, fibre) or the US food names as logged unless you approve another source | Team |
+| A5 | Food nutrients | Meal photos and text are analysed by the LLM for macros (kcal, carbs, protein, fat, fibre, sugar, sodium), stored as estimates with confidence and confirmed by the user. Open Food Facts and NHANES dietary files are sanity-check references only. Dataset meals keep measured macros. Glucose response is always measured | Team |
 | A6 | Mock CGM | CGMacros (T2D participants) and BIG IDEAs, both on PhysioNet. Only CGMacros has T2D (14 people); BIG IDEAs participants are HbA1c 5.2-6.4% | Team |
 | A7 | Healthier SG integration | Dropped for now | — |
-| A8 | Demo data | **Only data from the cited sources** (see A10). Real data covers the CGM/meal/watch streams and the patient profile; the 60-day history, adherence, mood, BP and workouts are simulated from cited data and disclosed as simulated. Summary: `data/smart_health_data_plan.xlsx` (Use now / Still missing / Domain knowledge). | Team |
+| A8 | Demo data | **Only data from the cited sources** (see A10). Real data covers the CGM/meal/watch streams and the patient profile; the 60-day history, adherence, mood, BP and workouts are simulated from cited data and disclosed as simulated. Summary: `data/plan/smart_health_data_plan.xlsx` (Use now / Still missing / Domain knowledge). | Team |
 | A10 | Data source policy | The app may ingest data only from the datasets in `download_manifest.csv` (48) and the GlucoBench Kaggle link. Anything else (guideline text, drug labels, own watch export or label photos) needs explicit approval first and is listed under "Needs your OK" in the workbook | Team |
 | A9 | Insulin | Out of scope: no dose tracking or advice. Datasets with insulin columns are imported with those columns discarded | — |
+| A11 | Decision layer (JEV) | OpenJev typed decisions behind `decision/`, with a Hunyuan fallback. Hosted, small CPU models or self-hosted is decided in backlog story E0-12. Rules always override JEV | Team |
+| A12 | Security scope | Demo-grade. Deferred until after the demo: row-level security, consent-scoped retrieval, data-classification tagging, retention workflows. Never deferred: the clinical safety path and keeping names and identifiers out of prompts | Team |
+| A13 | Runtime | Local-first: everything runs on each developer's machine (local Postgres with pgvector, local file storage). No hosted database or hosting for now. The only outbound calls are the AI APIs. A live URL (an optional bonus in the submission) is therefore not planned | Team |
 
 ## 11. Submission deliverables checklist
 - [ ] Project title and ≤10-word blurb

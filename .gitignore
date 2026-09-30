@@ -8,6 +8,7 @@
 
 # raw datasets (large and licensed): never commit
 data/raw/
+data/processed/
 data/kaggle/
 data/uci/
 data/physionet/

@@ -105,6 +105,7 @@ These are **fills only**. Text labels on or next to them use `text` or the statu
 | `ReadingInput` | numeric keypad, big value display, context segmented control, unit shown, range feedback after save |
 | `FoodSearch` | local-food autocomplete (multilingual aliases), recent and favourites first, portion stepper (½, 1, 1½, 2) |
 | `ConfidenceChip` | high (success) / check this (warning) / unknown (danger) with icon; used in scan review |
+| `EstimateBadge` | "Estimated" pill on AI-estimated nutrients with tap to edit; disappears once the user confirms. Never shown on measured values |
 | `SourceTag` | small "Source: Your data" / "Source: <approved dataset>" chip on all health content |
 | `TrendCard` | sparkline + plain-language line ("Higher than your usual this week") + "Why am I seeing this?" |
 | `FoodResponseBar` | horizontal bar of personal response with n and range, gentlest to spikiest |
