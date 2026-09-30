@@ -51,7 +51,7 @@ apps/  services/          created when development starts (planned layout: docs/
 | `uat` | Acceptance testing. The owner promotes `dev` into `uat` |
 | `main` | Production, the submitted and demoed version. The owner promotes `uat` into `main` |
 
-`dev` is the default branch, so a fresh clone lands on it. Never commit directly to `uat` or `main`. After cloning, run once: `git config core.hooksPath .githooks` (blocks commits and pushes to `uat` and `main`). Details: [docs/handover/HANDOVER.md](docs/handover/HANDOVER.md) section 4.
+`dev` is the default branch, so a fresh clone lands on it. Never commit directly to `uat` or `main`. After cloning, run once: `git config core.hooksPath .githooks` (blocks commits and pushes to `uat` and `main`). Details: [docs/handover/HANDOVER.md](docs/handover/HANDOVER.md) section 3.
 
 ## Data
 
