@@ -241,7 +241,7 @@ The system improves for each user through four concrete mechanisms (details in a
 | A9 | Insulin | Out of scope: no dose tracking or advice. Datasets with insulin columns are imported with those columns discarded | — |
 | A11 | Decision layer (JEV) | OpenJev typed decisions behind `decision/`, with a Hunyuan fallback. Hosted, small CPU models or self-hosted is decided in backlog story E0-12. Rules always override JEV | Team |
 | A12 | Security scope | Demo-grade. Deferred until after the demo: row-level security, consent-scoped retrieval, data-classification tagging, retention workflows. Never deferred: the clinical safety path and keeping names and identifiers out of prompts | Team |
-| A13 | Runtime | Local-first: everything runs on each developer's machine (local Postgres with pgvector, local file storage). No hosted database or hosting for now. The only outbound calls are the AI APIs. A live URL (an optional bonus in the submission) is therefore not planned | Team |
+| A13 | Runtime | The web app and API run locally on each developer's machine. The database and file storage are Supabase (Postgres with pgvector), one shared project. Row-level security is on with no policies and only the backend connects. The other outbound calls are the AI APIs. There is no hosting for the app, so a live URL (an optional submission bonus) is not planned | Team |
 
 ## 11. Submission deliverables checklist
 - [ ] Project title and ≤10-word blurb

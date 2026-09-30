@@ -90,13 +90,14 @@ _Mockup first. Wireframes cover the app only; watch, CGM and camera are just dat
   - Depends on: E0-3
   - Note:
   - [ ] 30-minute walkthrough by all 3, change list applied, prototype v1 frozen and hosted at a public URL, open questions logged in the repo
-- [ ] **E0-6 App skeleton and local runtime** · P0 · M · Phase 0
+- [ ] **E0-6 App skeleton and Supabase connection** · P0 · M · Phase 0
   - Owner: —
   - Status: backlog
   - Depends on: E0-1 · Spec: architecture
   - Note:
   - [ ] Mobile-first web app and API start locally with one command per machine
-  - [ ] Local Postgres with pgvector is reachable (Docker Compose is optional, native install also fine)
+  - [ ] Supabase project renamed to smart-health; connection details shared privately and kept in .env, never committed
+  - [ ] Row-level security is on with no policies for every table, and only the backend connects
   - [ ] One page reads a database row through the API
   - [ ] .env.example complete and setup takes at most 5 commands
 - [ ] **E0-7 Demo session (replaces sign-in)** · P1 · S · Phase 1
@@ -179,6 +180,7 @@ _Data ready for analysis and model training, stored in the schema, with scaffold
   - [ ] They apply cleanly to an empty database and roll back
   - [ ] Constraints and enums present
   - [ ] Seeding one empty user succeeds. schema.md updated if anything changed
+  - [ ] Row-level security is enabled on every table with no policies
 - [ ] **E1-4 User-data scaffolding and data dictionary** · P0 · M · Phase 0
   - Owner: —
   - Status: backlog
@@ -259,7 +261,7 @@ _Data ready for analysis and model training, stored in the schema, with scaffold
   - Depends on: E1-3 · Spec: schema 9c; architecture layers
   - Note:
   - [ ] ingestion_events table with checksum, source type, timestamps and processing status; unique per user and checksum
-  - [ ] Storage layout by type (meals, medications, documents, exports); originals are never overwritten
+  - [ ] Storage layout by type (meals, medications, documents, exports) in a private Supabase Storage bucket; originals are never overwritten
   - [ ] Every photo, image and import writes an ingestion_events row
   - [ ] A user-initiated deletion removes the object, marks the row deleted and is logged
 - [ ] **E1-14 Gold views and layer map** · P1 · M · Phase 1

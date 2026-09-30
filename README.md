@@ -23,7 +23,8 @@ data/                     all data (see data/README.md)
   raw/  processed/        downloads and importer output (gitignored)
   reference/  knowledge/  demo/
 .github/                  pull request template, CODEOWNERS
-apps/  services/  scripts/   created when development starts (planned layout: docs/specs/architecture.md section 3)
+scripts/                  verify_docs.py checks the documents; more scripts arrive with development
+apps/  services/          created when development starts (planned layout: docs/specs/architecture.md section 3)
 ```
 
 ## Documents
@@ -38,6 +39,7 @@ apps/  services/  scripts/   created when development starts (planned layout: do
 | [docs/specs/design.md](docs/specs/design.md) | UI/UX system: colours, type, components, accessibility |
 | [docs/specs/rules.md](docs/specs/rules.md) | Boundaries for AI coding agents: safety rules, data source policy, definition of done |
 | [docs/backlog/backlog.md](docs/backlog/backlog.md) | The live task list: epics E0-E22 (E2-E19 are features F1-F18), tasks and subtasks with owner, status and completion boxes |
+| [docs/handover/project-memory.md](docs/handover/project-memory.md) | Team memory: current state, decisions register, session index, spec change log, open questions. Read at the start of a session, update at the end. (Not the same as `docs/specs/memory.md`, which is the app's memory design) |
 | [docs/mockup/mockup-prompt.md](docs/mockup/mockup-prompt.md) | The prompt for the interactive design mockup |
 | [docs/reference/](docs/reference/) | The two starting-template documents that `memory.md` and `schema.md` grew from |
 
@@ -45,7 +47,7 @@ apps/  services/  scripts/   created when development starts (planned layout: do
 
 | Branch | Purpose |
 |---|---|
-| `dev` | Where the team works. Changes arrive by pull request from `feature/<task-id>-<name>` branches |
+| `dev` | Where the team works. Commit straight to `dev` (small commits, `git pull --rebase origin dev` before pushing); feature branches are optional |
 | `uat` | Acceptance testing. The owner promotes `dev` into `uat` |
 | `main` | Production, the submitted and demoed version. The owner promotes `uat` into `main` |
 
@@ -57,7 +59,7 @@ Data comes only from the datasets in the hackathon download manifest and the Glu
 
 ## Runtime
 
-Everything runs locally for now (local Postgres with pgvector and local file storage). There is no hosted database or hosting. The only outbound calls are the AI APIs.
+The web app and API run locally on each developer's machine. The database is Supabase (Postgres with pgvector), one shared project, reached through a private `.env` that is never committed. The other outbound calls are the AI APIs.
 
 ## Status
 

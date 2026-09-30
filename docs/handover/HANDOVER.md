@@ -5,9 +5,9 @@ For each of the three developers and the AI coding assistant working with them (
 ## 1. The short version
 
 - **Product:** Smart Health is an AI companion for adults with Type 2 diabetes. It learns each person from their food, glucose, watch, exercise and medication data, supports them daily, and produces a doctor brief. It explains, organises and reminds. It never advises on medication and never diagnoses.
-- **Work on the `dev` branch** (or a `feature/<task-id>-<name>` branch cut from `dev`). Never work directly on `uat` or `main`. See section 4.
+- **Work on the `dev` branch.** Committing straight to `dev` is fine: commit small and often, run `git pull --rebase origin dev` before every push, never force-push. A `feature/<task-id>-<name>` branch is optional for bigger changes. Never work directly on `uat` or `main`. See section 4.
 - **The plan is `docs/backlog/backlog.md`.** Tasks have IDs like `E9-2` and subtasks with success criteria.
-- **Every session leaves two records:** the updated backlog, and a session log in `docs/handover/sessions/`.
+- **Every session leaves three records:** the updated backlog, a session log in `docs/handover/sessions/`, and an updated `docs/handover/project-memory.md` (the one place that consolidates the state, decisions and session index).
 
 ## 2. Copy-paste start prompt for your AI
 
@@ -23,7 +23,7 @@ Keep a session log in docs/handover/sessions/ as we go, including any decision w
 ## 3. What the AI does, step by step
 
 ### Step 0. Set up the session
-1. Run `git status` and `git branch --show-current`. If you are on `uat` or `main`, stop and switch to `dev` (`git checkout dev`). Run `git pull` so you start from the latest. Also run `git config core.hooksPath`: if it does not print `.githooks`, ask the user to run `git config core.hooksPath .githooks` (do not change git settings yourself).
+1. Run `git status` and `git branch --show-current`. If you are on `uat` or `main`, stop and switch to `dev` (`git checkout dev`). Run `git pull` so you start from the latest. Check for a `.env` (copy `.env.example` when it exists and ask the owner for the Supabase details; never commit them). Also run `git config core.hooksPath`: if it does not print `.githooks`, ask the user to run `git config core.hooksPath .githooks` (do not change git settings yourself).
 2. Ask the user for their first name in lowercase with no spaces. This is `user`.
 3. Take the current local time as `YYYY-MM-DD_HHMM`. The session id is `user_time`, for example `alex_2026-10-01_1430`.
 4. Copy `docs/handover/session-log-template.md` to `docs/handover/sessions/<user_time>.md` now, not at the end. Fill it in as you go so nothing is lost if the session stops suddenly.
@@ -34,17 +34,19 @@ Read these in order. Do not skip any.
 | Order | File | What to take from it |
 |---|---|---|
 | 1 | `README.md` | Repository layout and branches |
-| 2 | `docs/specs/prd.md` | The product, users, features F1-F18 with acceptance criteria, safety principles, assumptions A1-A13 |
-| 3 | `docs/specs/architecture.md` | Tech stack, trust boundaries, folder layout, data flows. The "Platform decisions" note at the top overrides anything below it |
-| 4 | `docs/specs/memory.md` | Standard terms and names, Bronze/Silver/Gold layers, evidence statuses, the JEV decision layer, the Memory Service, meal analysis |
-| 5 | `docs/specs/schema.md` | Tables, the layer map, data consistency rules |
-| 6 | `docs/specs/rules.md` | Safety rules that are never broken, the data source policy, coding conventions, definition of done |
-| 7 | `docs/specs/flow.md` | User journeys, screens, the event names, the demo script |
-| 8 | `docs/specs/design.md` | Colours, type, components, accessibility |
-| 9 | `data/README.md` and `data/plan/smart_health_data_plan.xlsx` | Which datasets are allowed, what is still missing, what strengthens the AI |
-| 10 | `docs/backlog/backlog.md` | All tasks, their status and owners |
+| 2 | `docs/handover/project-memory.md` | Current state, the decisions register, the session index (what earlier sessions did), spec change log and open questions |
+| 3 | `docs/specs/prd.md` | The product, users, features F1-F18 with acceptance criteria, safety principles, assumptions A1-A13 |
+| 4 | `docs/specs/architecture.md` | Tech stack, trust boundaries, folder layout, data flows. The "Platform decisions" note at the top overrides anything below it |
+| 5 | `docs/specs/memory.md` | Standard terms and names, Bronze/Silver/Gold layers, evidence statuses, the JEV decision layer, the Memory Service, meal analysis |
+| 6 | `docs/specs/schema.md` | Tables, the layer map, data consistency rules |
+| 7 | `docs/specs/rules.md` | Safety rules that are never broken, the data source policy, coding conventions, definition of done |
+| 8 | `docs/specs/flow.md` | User journeys, screens, the event names, the demo script |
+| 9 | `docs/specs/design.md` | Colours, type, components, accessibility |
+| 10 | `data/README.md` and `data/plan/smart_health_data_plan.xlsx` | Which datasets are allowed, what is still missing, what strengthens the AI |
+| 11 | `docs/backlog/backlog.md` | All tasks, their status and owners |
+| 12 | The two most recent files in `docs/handover/sessions/` | What the last sessions changed and decided, so you do not repeat or contradict it |
 
-Then tell the user in about ten lines: what the product is, the hard rules (no medication advice, no diagnosis, only the cited data sources, nothing is "validated", AI estimates are labelled), which branch you are on, and where the backlog stands.
+Then tell the user in about ten lines: what the product is, what the last sessions did, the hard rules (no medication advice, no diagnosis, only the cited data sources, nothing is "validated", AI estimates are labelled), which branch you are on, and where the backlog stands.
 
 If two documents disagree, do not guess. Stop and tell the user. The order of authority is: `rules.md` safety rules first, then `memory.md` and `schema.md`, then `architecture.md`, then `prd.md`, then `flow.md` and `design.md`. A decision recorded in a session log applies until the spec is updated.
 
@@ -71,15 +73,16 @@ Whenever a decision is made that is not in the docs, or that changes them, add i
 ### Step 5. End the session
 1. Update `docs/backlog/backlog.md` for every task touched: tick finished subtasks, set `Status:` (`backlog`, `in progress`, `blocked` or `done`), put your name in `Owner:` if unassigned, and write a one-line `Note:` for what is left or what blocks you. Tick the task's own box only when all its subtasks are done.
 2. Finish the session log: files changed, tables and endpoints touched, tests run and results, decisions, open questions, next steps.
-3. Commit with `type(task-id): summary` (for example `feat(E9-2): baseline and momentum flags`).
-4. Push your branch and open a pull request **into `dev`** using the template. List the tasks you moved.
-5. Tell the user what was done and what comes next. Never merge into `uat` or `main`.
+3. Update `docs/handover/project-memory.md`: add your row to the session index, add every decision made outside the docs to the decisions register, add a row per spec you edited to the spec change log, and refresh current state and open questions.
+4. Run `python scripts/verify_docs.py --stamp`. Fix every FAIL, then run it again. Paste the result line into the session log.
+5. Commit with `type(task-id): summary` (for example `feat(E9-2): baseline and momentum flags`). Run `git pull --rebase origin dev`, then `git push origin dev`. (If you used a `feature/` branch, push it and open a pull request into `dev` with the template instead.)
+6. Tell the user what was done and what comes next. Never push to `uat` or `main`.
 
 ## 4. Branches and promotion
 
 | Branch | Purpose | Who moves code in |
 |---|---|---|
-| `dev` | Where the team works. Integration of everyone's changes | All developers, by pull request from `feature/<task-id>-<name>` branches (or small direct commits if the team agrees) |
+| `dev` | Where the team works. Integration of everyone's changes | All developers commit straight to `dev` (small commits, `git pull --rebase origin dev` before pushing). `feature/<task-id>-<name>` branches with a pull request are optional |
 | `uat` | Acceptance testing of what is in `dev` | The owner only, by promoting `dev` into `uat` after a check that the demo script works |
 | `main` | Production: the version that is submitted and demoed | The owner only, by promoting `uat` into `main` after UAT passes. Tag releases here |
 
@@ -90,4 +93,4 @@ Rules: nothing goes directly into `uat` or `main`. Never force-push. Promotion i
 1. Clone the repo and run `git checkout dev` and `git pull`.
 2. Open your AI assistant in the repository root and paste the start prompt from section 2.
 3. Answer its questions, review its plan before it builds, and check each subtask against its success criterion.
-4. At the end, read the session log it wrote. Fix anything wrong, then open the pull request into `dev`.
+4. At the end, read the session log and the project memory update it wrote. Fix anything wrong, run `python scripts/verify_docs.py --stamp`, then `git pull --rebase origin dev` and `git push origin dev`.

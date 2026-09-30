@@ -166,7 +166,7 @@ Response per question: `noul` gives the probability of yes; `choice` gives the c
 
 ### 5.4 Deployment options (decide in E0-12)
 
-The project runs locally for now, so prefer the options that run on a developer's machine: the small models or the Hunyuan fallback. The hosted option is a convenience, not a requirement.
+The app runs locally for now, so prefer the options that run on a developer's machine: the small models or the Hunyuan fallback. The hosted option is a convenience, not a requirement.
 
 | Option | Good for | Watch out for |
 |---|---|---|
@@ -342,6 +342,8 @@ Log control decisions, not health content, using existing tables:
 ## 13. Demo scope
 
 **Build now:** Memory Service functions with user scope from the session; evidence packet; `memory_facts` lifecycle with `evidence_status`; the decision gateway with JEV and the Hunyuan fallback; meal analysis with `meal_analyses`; the layer map; four Gold views.
+
+**Minimum now:** row-level security is enabled on every table with no policies, so the public Supabase key can do nothing, and only the backend connects with server-side credentials.
 
 **Deferred until after the demo** (security and governance depth that does not change what the demo shows): Supabase row-level security per user, consent-scoped retrieval, data-classification tagging at ingestion, purpose-limitation policy engine, short-lived signed URLs, retention and deletion workflows beyond a user deleting their own logs, audit dashboards, contradiction detection.
 

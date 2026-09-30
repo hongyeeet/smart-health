@@ -32,7 +32,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 - Every seeded or imported row records its source (`data_sources`, manifest #). If a task needs data these sources don't have, stop and list it as "Needs your OK" instead of sourcing it yourself.
 - Simulated data may only be built from cited data, must be marked `entry_source = 'demo_dataset'` or simulated, and must be disclosed.
 - Raw datasets are never committed (see licences in `data/README.md`).
-- Branches: work on `dev` or a `feature/<task-id>-<name>` branch from it. Only the owner promotes `dev` to `uat` and `uat` to `main`. Never force-push.
+- Branches: commit straight to `dev` (small commits, `git pull --rebase origin dev` before pushing); a `feature/<task-id>-<name>` branch is optional. Only the owner promotes `dev` to `uat` and `uat` to `main`. Never force-push.
 
 ## 2. Scope discipline
 
@@ -133,7 +133,7 @@ Demo scope: row-level security, consent-scoped retrieval, data-classification ta
 
 ## 10b. Session handover
 
-At the end of every session, follow `docs/handover/HANDOVER.md`: update the tasks you worked on in `docs/backlog/backlog.md` (tick finished subtasks, set Status and Owner, add a one-line Note), write the session log in `docs/handover/sessions/` (named `<user>_<YYYY-MM-DD_HHMM>.md`, including every decision made outside the docs), and include both in your pull request into `dev`. List the tasks you moved in the PR description.
+At the end of every session, follow `docs/handover/HANDOVER.md`: update the tasks you worked on in `docs/backlog/backlog.md`, write the session log in `docs/handover/sessions/` (named `<user>_<YYYY-MM-DD_HHMM>.md`, including every decision made outside the docs), update `docs/handover/project-memory.md`, and run `python scripts/verify_docs.py --stamp` before pushing to `dev`.
 
 ## 11. When unsure
 - If a requirement is ambiguous, choose the **safer** interpretation (less advice, more uncertainty disclosure, more logging) and leave a `TODO(decision):` note plus a question in the PR description.

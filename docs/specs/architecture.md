@@ -6,7 +6,7 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 
 > **Platform decisions (2026-09-29, override anything below that disagrees):**
 > - **Front end is a mobile-first web app shown in a phone-sized frame or WebView**, not a store-published native app (no store fees). Wherever this document says Expo / React Native / Health Connect / HealthKit, read "mobile-first web app". Device data arrives by replay of the cited datasets and file import, not live phone-health APIs.
-> - **Local-first.** Everything runs on each developer's machine for now: Postgres 16 with pgvector, local file storage, one command to start. No hosted database, no hosting, no Supabase. Docker Compose is the easiest way to get Postgres with pgvector but is optional. The only outbound calls are the AI APIs (Hunyuan for chat, vision and speech, and JEV if it is not run locally). Postgres is standard, so moving to a hosted database later needs no redesign.
+> - **Local app, Supabase database.** The web app and API run on each developer's machine. The database is Supabase (Postgres 16 with pgvector): every developer uses the same project through a private `.env` that is never committed. Row-level security is enabled on every table with no policies, so the public API key cannot read or write anything, and only the backend connects (direct connection string or service key, server-side only). Photos and exports go to a private Supabase Storage bucket. The only other outbound calls are the AI APIs (Hunyuan, and JEV if it is not run locally). There is no hosting for the app and no Docker requirement. Postgres is standard, so the database can move later without a redesign.
 > - **No sign-up/sign-in flows.** A "Start as demo patient" button creates a session, and every query is scoped by the session's user id. Consent records, the audit log and doctor share-link tokens stay.
 > - **LLM/AI provider is undecided.** It is chosen in backlog story E0-9. Everything calls it through the gateway in `llm/gateway.py`.
 > - **JEV** is the typed decision layer ([OpenJev](https://github.com/razorback16/openjev): yes/no, choice and score answers with calibrated confidence). It is chosen and wired in backlog story E0-12 and always called through `decision/`, with a Hunyuan fallback. See [memory.md](memory.md).
@@ -57,6 +57,7 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 | TB-4 | API ↔ Calendar | Unwanted bookings | Explicit user confirmation per event; scoped OAuth |
 | TB-5 | Doctor ↔ Brief | Unauthorised access | Consent record, random 32-byte token (hashed at rest), expiry, revocation, access logged |
 | TB-7 | API ↔ JEV decision server | Sending health text to a third party; wrong or low-confidence decision | State is de-identified; a JEV answer below the confidence floor, or an outage, takes the conservative path; rules always override JEV; provider swappable behind `decision/` |
+| TB-8 | API ↔ Supabase | Public API key used to read tables; leaked service key | RLS on with no policies; service key and connection string only in the server environment; only the backend connects |
 | TB-6 | Agent ↔ tools | Agent overreach | Per-agent tool allowlist; tools are read-only except explicitly listed writes (e.g. `log_symptom`, `add_doctor_question`, `propose_memory_fact`) |
 
 **Core rule:** *The LLM generates language; code generates facts.* Interactions, thresholds, adherence stats, trends and brief numbers are computed by deterministic services. The one allowed model estimate is meal nutrients: stored as `inferred`, shown as "Estimated" until the user confirms, then used by code like any other value.
@@ -91,13 +92,13 @@ Originals are never overwritten. A better analysis is a new record that links to
 | LLM | **Tencent Hunyuan** (chat, vision, embeddings) via an OpenAI-compatible client, wrapped by `llm/gateway.py` | Tencent ecosystem; swappable provider |
 | Decision layer (JEV) | **OpenJev** typed decisions (`noul`, `choice`, `score`) behind `decision/`; hosted, small CPU models, or self-hosted; fallback to Hunyuan structured output | Fast, bounded, calibrated classification for routing and guards. Decided in E0-12 |
 | Vector search | **pgvector** in Postgres | One DB for relational and vectors |
-| DB | PostgreSQL 16 | JSONB, enums, pgvector |
+| DB | Supabase (managed PostgreSQL 16 with pgvector), one shared project | JSONB, enums, pgvector; RLS on with no policies |
 | Jobs | APScheduler in a separate worker process, jobs persisted in Postgres | Simple, no Redis needed |
 | Brief rendering | Jinja2 HTML + Matplotlib (SVG charts) → WeasyPrint PDF | Deterministic, printable, no headless browser |
 | TTS | Tencent Cloud TTS (fallback: device TTS via `expo-speech`) | Multilingual speech |
 | Calendar | Google Calendar API (OAuth, user-initiated) + `.ics` fallback | Scheduling |
-| Storage | Local filesystem folders (`STORAGE_BACKEND=local`) | Images, PDFs, audio, exports |
-| Runtime | Local: Postgres 16 + pgvector, local file storage, API and web app started with one command per machine | No hosting cost; the same seeded demo data on every machine. Hosting is a later option |
+| Storage | Supabase Storage, private bucket (`STORAGE_BACKEND=supabase`) | Images, PDFs, audio, exports |
+| Runtime | Web app and API run locally on each machine; database and file storage on Supabase (Postgres 16 + pgvector, private Storage bucket); one command to start | No hosting cost for the app; one shared database with the same seeded demo data for everyone |
 | Quality | Backend: ruff, mypy (strict), pytest, pytest-asyncio. App: eslint, prettier, tsc, jest + RNTL | See rules.md |
 
 > Verify current package names and Hunyuan model IDs and endpoint in the official docs at setup time; keep them in `.env`, never hard-coded.
@@ -117,7 +118,6 @@ smart-health/
 │  └─ reference/                     # superseded starting templates
 ├─ .github/                          # pull request template, CODEOWNERS
 ├─ .env.example                      # every env var documented
-├─ docker-compose.yml                # optional: Postgres with pgvector only
 │
 ├─ apps/
 │  └─ mobile/                        # Expo app
@@ -394,13 +394,13 @@ OpenAPI is the contract; the mobile client is generated from it (`openapi-typesc
 ---
 
 ## 8. Configuration (`.env.example`)
-`DATABASE_URL`, `JWT_SECRET`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `EMBED_MODEL`, `EMBED_DIM`, `TENCENT_SECRET_ID`, `TENCENT_SECRET_KEY`, `TTS_REGION`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `STORAGE_BACKEND`, `STORAGE_BUCKET`, `SHARE_LINK_TTL_HOURS`, `TZ=Asia/Singapore`, `DEMO_MODE`.
+`DATABASE_URL` (Supabase direct connection string), `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (server only, never in the web app), `JWT_SECRET`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `EMBED_MODEL`, `EMBED_DIM`, `TENCENT_SECRET_ID`, `TENCENT_SECRET_KEY`, `TTS_REGION`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `STORAGE_BACKEND`, `STORAGE_BUCKET`, `SHARE_LINK_TTL_HOURS`, `TZ=Asia/Singapore`, `DEMO_MODE`.
 
 ## 9. Demo mode
 `DEMO_MODE=true` → seed demo patient ("Uncle Tan", 90 days history incl. one CGM sprint), `replay.py` streams today's CGM/watch data at 1× or accelerated speed, and a hidden debug menu in the app lets you trigger: a missed dose, a hypo reading, a momentum flag, a clash, and brief generation. See flow.md §5.
 
 ## 10. Build order (critical path)
-1. Repo, local DB and migrations baseline, demo session, event log
+1. Repo, Supabase connection and migrations baseline, demo session, event log
 2. Reference data + knowledge ingest + LLM gateway + guardrails + red-team tests (safety first)
 3. Onboarding (form) → meds (manual) → dose loop → notifications
 4. Scan + extractor → clash checker → explainer (+TTS, i18n)

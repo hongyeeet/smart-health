@@ -17,6 +17,7 @@ Source of truth for the database. Any change here must ship with an Alembic migr
 | JSONB | Only for semi-structured payloads (extractions, evidence, event payloads). Never for values we filter or aggregate on |
 | Naming | snake_case, plural table names, FK column `<singular>_id` |
 | Vectors | `vector(EMBED_DIM)`, where EMBED_DIM is set once from config at migration time; HNSW index, cosine |
+| Row-level security | Enabled on every table with no policies, so the public API key gets nothing. Only the backend connects, with server-side credentials. Per-user policies are deferred |
 
 ## 0b. Layer map
 

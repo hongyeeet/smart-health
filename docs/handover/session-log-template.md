@@ -43,6 +43,8 @@ _Which spec sections were edited, and which new tasks were added to the backlog.
 - **Tests run and results:**
 - **Success criteria verified** (task and subtask):
 - **Rules check:** no medication advice or diagnosis; only cited data sources; AI estimates labelled; nothing called validated; no names or identifiers in prompts.
+- **Project memory updated** (session index, decisions, spec change log): yes / no
+- **Verification result** (`python scripts/verify_docs.py --stamp`):
 
 ## Open questions and blockers
 -
