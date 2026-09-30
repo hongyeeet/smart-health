@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-09-30 12:14: PASS (21 of 21 checks passed)
+**Last docs check:** 2026-09-30 12:15: PASS (21 of 21 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -46,12 +46,13 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-016 | 2026-09-30 | GitHub cannot protect branches on a private free-plan repo, so dev-only working is enforced by the default branch, the hooks and convention | GitHub plan limit | HANDOVER.md 3 | Pending |
 | D-017 | 2026-09-30 | HANDOVER.md is written only for the AI assistant. It contains no copy-paste prompt and no human-facing steps; the owner gives developers the start prompt separately | Owner's instruction | HANDOVER.md | Yes |
 | D-018 | 2026-09-30 | Only the owner verifies UAT and production readiness, promotes `dev` to `uat` and `main`, and marks items owner confirmed or verified. Developers and AI assistants never do. The docs check script is an automatic consistency check only | Owner's instruction | HANDOVER.md 3, rules.md, this file | Yes |
+| D-019 | 2026-09-30 | Each developer starts with one first prompt that clones the repo in Claude Code, checks out `dev`, sets the hooks and starts the handover. The prompt is kept by the owner, not in the repo | Owner's instruction | HANDOVER.md 2 (Step 0) | Yes |
 
 ## Session index
 
 | Session | Developer | Date | Tasks | Summary | Decisions | Owner verified |
 |---|---|---|---|---|---|---|
-| setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-09-30 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, backlog, mockup prompt, handover, repo layout and branches | D-001 to D-018 | Pending |
+| setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-09-30 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, backlog, mockup prompt, handover, repo layout and branches | D-001 to D-019 | Pending |
 
 ## Spec change log
 
@@ -66,6 +67,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-09-30 | docs/backlog/backlog.md | Tasks E0-12, E1-13 to E1-15, E16-6, E17-5; E7-2 rewritten | D-008, D-011 |
 | 2026-09-30 | docs/handover/HANDOVER.md | Rewritten as AI-only: removed the start prompt and the human section, renumbered sections | D-017 |
 | 2026-09-30 | docs/handover/HANDOVER.md, docs/specs/rules.md, this file | Owner-only verification and promotion; the script is a docs check, not a sign-off; owner-confirmed columns | D-018 |
+| 2026-09-30 | docs/handover/HANDOVER.md | Step 0 lets the AI set the hooks when the first prompt says to set the repo up | D-019 |
 
 ## Open questions and blockers
 

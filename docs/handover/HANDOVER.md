@@ -12,7 +12,7 @@ This document is for the AI coding assistant (CodeBuddy, WorkBuddy or any other)
 ## 2. What you do, step by step
 
 ### Step 0. Set up the session
-1. Run `git status` and `git branch --show-current`. If you are on `uat` or `main`, stop and switch to `dev` (`git checkout dev`). Run `git pull` so you start from the latest. Check for a `.env` (copy `.env.example` when it exists and ask the owner for the Supabase details; never commit them). Also run `git config core.hooksPath`: if it does not print `.githooks`, ask the user to run `git config core.hooksPath .githooks` (do not change git settings yourself). The hooks block commits and pushes to `uat` and `main`.
+1. Run `git status` and `git branch --show-current`. If you are on `uat` or `main`, stop and switch to `dev` (`git checkout dev`). Run `git pull` so you start from the latest. Check for a `.env` (copy `.env.example` when it exists and ask the owner for the Supabase details; never commit them). Also run `git config core.hooksPath`: if it does not print `.githooks`, run `git config core.hooksPath .githooks` if the user's first message told you to set the repo up, otherwise ask the user to run it. Do not change any other git setting. The hooks block commits and pushes to `uat` and `main`.
 2. Ask the user for their first name in lowercase with no spaces. This is `user`.
 3. Take the current local time as `YYYY-MM-DD_HHMM`. The session id is `user_time`, for example `alex_2026-10-01_1430`.
 4. Copy `docs/handover/session-log-template.md` to `docs/handover/sessions/<user_time>.md` now, not at the end. Fill it in as you go so nothing is lost if the session stops suddenly.
