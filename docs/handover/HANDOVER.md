@@ -62,12 +62,14 @@ Whenever a decision is made that is not in the docs, or that changes them, add i
 ### Step 5. End the session
 1. Update `docs/backlog/backlog.md` for every task touched: tick finished subtasks, set `Status:` (`backlog`, `in progress`, `blocked` or `done`), put the user's name in `Owner:` if unassigned, and write a one-line `Note:` for what is left or what blocks them. Tick the task's own box only when all its subtasks are done.
 2. Finish the session log: files changed, tables and endpoints touched, tests run and results, decisions, open questions, next steps.
-3. Update `docs/handover/project-memory.md`: add your row to the session index, add every decision made outside the docs to the decisions register, add a row per spec you edited to the spec change log, and refresh current state and open questions.
-4. Run `python scripts/verify_docs.py --stamp`. Fix every FAIL, then run it again. Paste the result line into the session log.
+3. Update `docs/handover/project-memory.md`: add your row to the session index, add every decision made outside the docs to the decisions register, add a row per spec you edited to the spec change log, and refresh current state and open questions. Add new rows as `Pending`. Never mark anything owner confirmed or owner verified: only the owner does.
+4. Run the docs check: `python scripts/verify_docs.py --stamp`. It is an automatic consistency check, not a sign-off. Fix every FAIL, then run it again. Paste the result line into the session log.
 5. Commit with `type(task-id): summary` (for example `feat(E9-2): baseline and momentum flags`). Run `git pull --rebase origin dev`, then `git push origin dev`. (If you used a `feature/` branch, push it and open a pull request into `dev` with the template instead.)
-6. Tell the user what was done and what comes next. Never push to `uat` or `main`.
+6. Tell the user what was done and what comes next. Never push to `uat` or `main`, and never say a release is verified.
 
 ## 3. Branches and promotion
+
+**Only the owner verifies and promotes.** The owner alone runs UAT, decides that something is verified, and promotes `dev` to `uat` and `uat` to `main`. No developer and no AI assistant pushes to `uat` or `main`, opens a promotion, or declares a release verified. If asked to, refuse and point to the owner.
 
 | Branch | Purpose | Who moves code in |
 |---|---|---|

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Verify the repository's documents are consistent.
+"""Docs check: automatic consistency check of the repository documents.
+
+This is not a sign-off. Only the owner verifies and promotes work to uat and main.
 
 Run from anywhere:  python scripts/verify_docs.py
-Add --stamp to record the result in docs/handover/project-memory.md.
+Add --stamp to record the result line in docs/handover/project-memory.md.
 Exit code is 0 only if every check passes.
 """
 import glob
@@ -189,7 +191,7 @@ print("\nOVERALL: " + stamp)
 
 if "--stamp" in sys.argv and os.path.exists(mem_path):
     t = read(mem_path)
-    t = re.sub(r"^\*\*Last verification:\*\*.*$", "**Last verification:** " + stamp, t, count=1, flags=re.M)
+    t = re.sub(r"^\*\*Last docs check:\*\*.*$", "**Last docs check:** " + stamp, t, count=1, flags=re.M)
     with open(mem_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(t)
     print("Stamped " + mem_path)
