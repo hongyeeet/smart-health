@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-01 14:05: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-01 22:10: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -92,6 +92,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-01 | docs/specs/rules.md, schema.md, architecture.md, prd.md, README.md, HANDOVER.md, PR template | New rule that tables and reference data are created only in E1; schema ownership note; links and task ids (E0-9 and E0-12 are now E0-3) updated | D-023, D-024 |
 | 2026-10-01 | docs/specs/design.md | Palette, typeface, icons and motion updated for the new look; points to apps/web/design.md | D-029 |
 | 2026-10-01 | docs/handover/HANDOVER.md, docs/specs/rules.md | Build in `apps/web`, never edit `apps/mock` | D-035 |
+| 2026-10-01 | data/data-map.md (new), data/README.md | Data map: sources with links, missing data, and what the user enters in the app | none (summarises the data plan workbook) |
 | 2026-10-01 | docs/specs/architecture.md, README.md | App folders `apps/mock` and `apps/web`; front-end, charts and i18n rows; status line | D-028, D-034 |
 
 ## Open questions and blockers

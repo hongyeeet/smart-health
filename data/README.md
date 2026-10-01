@@ -4,6 +4,7 @@ Everything data-related lives here. Documents live in `docs/`.
 
 | Folder | Holds | Committed? |
 |---|---|---|
+| `data-map.md` | What data we need, what it is for, where it comes from (with links), what is missing, and what the user enters in the app | Yes |
 | `plan/` | `smart_health_data_plan.xlsx`: datasets to use now, what is still missing, and data that strengthens the AI | Yes |
 | `raw/` | Downloaded datasets, one subfolder per dataset (`cgmacros/`, `big-ideas/`, `nhanes/`, `fitbit/`, `medicines-250k/`, `open-food-facts/`, `glucobench/`, `doctor-specialty/`) | **No.** Large and licensed |
 | `processed/` | Output of the importers (cleaned, converted, time-shifted) | **No** |
