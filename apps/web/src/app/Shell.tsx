@@ -4,11 +4,9 @@ import { AnimatePresence, motion } from 'motion/react'
 import { appConfig } from '@/config/app'
 import { useUi } from '@/state/store'
 import { cn } from '@/lib/cn'
-import { clock } from '@/lib/format'
 import { ChartLineUp, ChatCircleDots, House, Pill, Plus, UserCircle, type IconType } from '@/ui/icons'
 import { duration, ease } from '@/motion/tokens'
-import { SheetHost } from '@/features/sheets'
-import { DemoPanel } from './DemoPanel'
+import { SheetHost } from './SheetHost'
 import { href, type RouteId } from './routeIds'
 import { useGo } from './navigation'
 
@@ -56,40 +54,32 @@ const isTabRoot = (p: string) => p === '/' || p.startsWith('/insights') || p ===
 
 export function Shell() {
   const wide = useMedia('(min-width: 1000px) and (min-height: 700px)')
-  const fit = useFit(wide)
-  const [demoOpen, setDemoOpen] = useState(false)
+  const device = appConfig.frame === 'device' && wide
+  const fit = useFit(device)
 
-  if (!wide)
+  if (device)
     return (
-      <div className="fixed inset-0 bg-canvas">
-        <AppFrame fullBleed onDemo={() => setDemoOpen(true)} />
-        <AnimatePresence>
-          {demoOpen && (
-            <motion.div className="fixed inset-0 z-50 overflow-y-auto bg-canvas p-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.18 }}>
-              <DemoPanel onClose={() => setDemoOpen(false)} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="flex h-full items-center justify-center bg-well/60 p-6">
+        <div style={{ width: 390 * fit + 24, height: 844 * fit + 24 }} className="flex-none">
+          <div style={{ transform: `scale(${fit})`, transformOrigin: 'top left' }} className="rounded-[54px] bg-[#0B100E] p-3 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.55)]">
+            <div className="relative h-[844px] w-[390px] overflow-hidden rounded-[42px]">
+              <AppFrame />
+            </div>
+          </div>
+        </div>
       </div>
     )
 
   return (
-    <div className="flex h-full items-center justify-center gap-12 bg-well/60 p-6">
-      <div className="hide-scroll max-h-full w-[340px] flex-none overflow-y-auto">
-        <DemoPanel />
-      </div>
-      <div style={{ width: 390 * fit + 24, height: 844 * fit + 24 }} className="flex-none">
-        <div style={{ transform: `scale(${fit})`, transformOrigin: 'top left' }} className="rounded-[54px] bg-[#0B100E] p-3 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.55)]">
-          <div className="relative h-[844px] w-[390px] overflow-hidden rounded-[42px]">
-            <AppFrame />
-          </div>
-        </div>
+    <div className="fixed inset-0 flex justify-center bg-well/60">
+      <div className="relative h-full w-full max-w-[480px] bg-canvas">
+        <AppFrame fullBleed />
       </div>
     </div>
   )
 }
 
-function AppFrame({ fullBleed, onDemo }: { fullBleed?: boolean; onDemo?: () => void }) {
+function AppFrame({ fullBleed }: { fullBleed?: boolean }) {
   const { pathname } = useLocation()
   const textScale = useUi((s) => s.textScale)
   const tab = activeTab(pathname)
@@ -101,16 +91,7 @@ function AppFrame({ fullBleed, onDemo }: { fullBleed?: boolean; onDemo?: () => v
 
   return (
     <div data-ts={textScale} style={{ ['--ts' as string]: textScale }} className={cn('relative h-full w-full overflow-hidden bg-canvas text-ink', fullBleed && 'pt-[env(safe-area-inset-top)]')}>
-      <div className="absolute inset-x-0 top-0 z-30 flex h-10 items-center justify-between px-5 text-micro font-bold text-ink3">
-        <span aria-hidden>{clock(appConfig.demo.nowMinutes)}</span>
-        {onDemo ? (
-          <button type="button" onClick={onDemo} className="press rounded-chip border border-line bg-card px-2.5 py-0.5">
-            Demo data
-          </button>
-        ) : (
-          <span className="rounded-chip border border-line bg-card px-2.5 py-0.5">Demo data</span>
-        )}
-      </div>
+      <div className="absolute inset-x-0 top-0 z-30 h-10" aria-hidden />
       <main className="absolute inset-x-0 bottom-0 top-10">
         <motion.div key={pathname} className="absolute inset-0" initial={animate ? { opacity: 0, y: 8 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: duration.page, ease: ease.out }}>
           <Outlet />

@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-01 12:42: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-01 13:54: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -56,19 +56,20 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-025 | 2026-10-01 | Epic E0 reduces to E0-1, a hardcoded visual mockup (no logic, no backend), assigned to Hong Yi. Onboarding (E2) stays with Damien and uses medical domain knowledge for past illnesses and history | Owner's instruction | mockup-prompt.md, hongyi.md, damien.md | Yes |
 | D-026 | 2026-10-01 | E0-2 (app skeleton and design kit) and E0-3 (AI services, including the JEV option) were missing from the owner's pasted list and were kept under Hong Yi because most tasks depend on them. E1-5 is provisionally Joely. Leads for team tasks are provisional: E21-1 Damien, E21-2 Joely, E21-3 Hong Yi, E20-1 Hong Yi, E20-2 Joely | Assistant's assumption, to confirm | SOT.md notes | Pending |
 | D-027 | 2026-10-01 | Three Silver columns that point at Gold tables (`symptom_checkins.triggered_by_flag_id`, `appointments.brief_id`, `doctor_questions.brief_id`) are created as plain uuid columns in E1-2 and their foreign keys are added at the end of E1-3, so Silver and Gold do not wait on each other. JEV has no tables of its own; its calls are logged in `agent_steps` | Assistant's fix for a circular dependency found while drawing the data flow | data-flow.md 6, details/e1-data-foundation.md | Pending |
-| D-028 | 2026-10-01 | The web app lives in `apps/web` (Vite, React, TypeScript, React Router, Tailwind v4 on CSS-variable tokens, `motion`, TanStack Query, Zustand). It is both the mockup and the main app: screens call hooks, hooks call a repository interface, a mock implements it now and the real API later | Owner: one app, not a throwaway mockup | architecture.md, apps/web/design.md | Pending |
+| D-028 | 2026-10-01 | The web app was first built in `apps/web` (since D-034 that folder is the production app and the first build is `apps/mock`) (Vite, React, TypeScript, React Router, Tailwind v4 on CSS-variable tokens, `motion`, TanStack Query, Zustand). It is both the mockup and the main app: screens call hooks, hooks call a repository interface, a mock implements it now and the real API later | Owner: one app, not a throwaway mockup | architecture.md, apps/web/design.md | Pending |
 | D-029 | 2026-10-01 | New look: deep pine green on warm ivory with a brass accent, Atkinson Hyperlegible plus Newsreader for titles and numbers, Phosphor icons, no emoji. The old teal is retired | Owner wanted a high-class look that is not generic | docs/specs/design.md | Pending |
 | D-030 | 2026-10-01 | A Demo panel outside the phone holds prototype controls (dark mode, text size, simulate a low reading or a sync, jump to a screen). It is removed after the owner vets it | E0-1 says no simulator panel; owner asked to add first and vet | hongyi.md E0-1 | Pending |
 | D-031 | 2026-10-01 | Screens added beyond the reference so every feature F1 to F18 appears: eligibility, chat onboarding, add medicine by hand, sensor sprint, notifications, plan an appointment, data and account, edit or delete an entry, the targeted check-in card and the high-salt swap card | Owner: all features must be in the app | apps/web/src/app/routeIds.ts | Pending |
 | D-032 | 2026-10-01 | `reference/` (the three design exports) is git-ignored; the owner deletes it later | Owner's instruction | .gitignore | Yes |
 | D-033 | 2026-10-01 | The demo scan uses Clarithromycin against the demo patient's Atorvastatin to show the interaction sheet. Demo data only; needs the owner's OK and a check against the cited reference data when E6-1 loads it | A believable demo using a well known interaction | session log hongyi_2026-10-01_1143 | Pending |
+| D-034 | 2026-10-01 | Two apps: `apps/mock` is the clickable mock version (every screen, demo data, Demo panel). `apps/web` is the production app: the same shell, design system and data layer with no screens, a `NotWired` http data layer, and placeholders for every route in the registry. Real data, models and analysis are connected in `apps/web`. Replaces the single-app part of D-028 | Owner: keep the mock as a reference and build production separately | architecture.md, README.md, apps/*/design.md | Pending |
 
 ## Session index
 
 | Session | Developer | Date | Tasks | Summary | Decisions | Owner verified |
 |---|---|---|---|---|---|---|
 | setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-10-01 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, mockup prompt, handover, repo layout and branches; consolidated and split the backlog into three personal backlogs and a tracker | D-001 to D-027 | Pending |
-| [hongyi_2026-10-01_1143](sessions/hongyi_2026-10-01_1143.md) | Hong Yi with Claude | 2026-10-01 | E0-1, E0-2 (both in progress) | Built the whole front end in `apps/web`: design tokens, UI kit, charts, mock data layer, 40 screens and 6 sheets, A4 brief, generated screen index, design.md. Specs updated for the new look and folder | D-028 to D-033 | Pending |
+| [hongyi_2026-10-01_1143](sessions/hongyi_2026-10-01_1143.md) | Hong Yi with Claude | 2026-10-01 | E0-1, E0-2 (both in progress) | Built the whole front end in `apps/web`: design tokens, UI kit, charts, mock data layer, 40 screens and 6 sheets, A4 brief, generated screen index, design.md. Specs updated for the new look and folder | D-028 to D-034 | Pending |
 
 ## Spec change log
 
@@ -89,7 +90,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-01 | docs/specs/data-flow.md (new), docs/backlog/details/e1-data-foundation.md, joely.md, hongyi.md, README.md, HANDOVER.md | One-page Bronze, Silver, Gold and JEV flow with table build order; Silver-to-Gold foreign keys deferred to the end of E1-3 | D-027 |
 | 2026-10-01 | docs/specs/rules.md, schema.md, architecture.md, prd.md, README.md, HANDOVER.md, PR template | New rule that tables and reference data are created only in E1; schema ownership note; links and task ids (E0-9 and E0-12 are now E0-3) updated | D-023, D-024 |
 | 2026-10-01 | docs/specs/design.md | Palette, typeface, icons and motion updated for the new look; points to apps/web/design.md | D-029 |
-| 2026-10-01 | docs/specs/architecture.md, README.md | App folder is `apps/web`; front-end, charts and i18n rows; status line | D-028 |
+| 2026-10-01 | docs/specs/architecture.md, README.md | App folders `apps/mock` and `apps/web`; front-end, charts and i18n rows; status line | D-028, D-034 |
 
 ## Open questions and blockers
 

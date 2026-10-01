@@ -1,6 +1,6 @@
 # Design — Smart Health UI/UX system
 
-Design rules for the patient app and the doctor brief. Tokens here are mirrored in `apps/web/src/theme/palettes.ts` and `services/api/app/brief/templates/brief.css`; change them here first. Build detail (components, motion, how to add a screen) is in [apps/web/design.md](../../apps/web/design.md).
+Design rules for the patient app and the doctor brief. Tokens here are mirrored in `apps/web/src/theme/palettes.ts` and `services/api/app/brief/templates/brief.css`; change them here first. Build detail (components, motion, how to add a screen) is in [apps/web/design.md](../../apps/web/design.md); the same file for the mock version is [apps/mock/design.md](../../apps/mock/design.md).
 
 ## 1. Who we're designing for
 

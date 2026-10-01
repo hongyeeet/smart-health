@@ -24,7 +24,8 @@ data/                     all data (see data/README.md)
   reference/  knowledge/  demo/
 .github/                  pull request template, CODEOWNERS
 scripts/                  verify_docs.py checks the documents, update_tracker.py refreshes the tracker; more arrive with development
-apps/web/                 the web app (Vite, React, TypeScript): `cd apps/web && npm install && npm run dev`
+apps/mock/                the mock version: every screen on demo data (Vite, React, TypeScript): `cd apps/mock && npm install && npm run dev`
+apps/web/                 the production app: shell, design system and data layer, no screens yet: `cd apps/web && npm install && npm run dev`
 services/                 created when the backend starts (planned layout: docs/specs/architecture.md section 3)
 ```
 
@@ -66,4 +67,4 @@ The web app and API run locally on each developer's machine. The database is Sup
 
 ## Status
 
-Specification written. The web app mockup (all screens, demo data, no backend) is in `apps/web`. The backend is not started.
+Specification written. The mock version (all screens, demo data, no backend) is in `apps/mock`. The production app skeleton is in `apps/web`. The backend is not started.

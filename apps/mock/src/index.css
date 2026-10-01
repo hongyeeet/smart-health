@@ -1,0 +1,156 @@
+@import 'tailwindcss';
+@import '@fontsource/atkinson-hyperlegible/400.css';
+@import '@fontsource/atkinson-hyperlegible/700.css';
+@import '@fontsource/newsreader/400.css';
+@import '@fontsource/newsreader/500.css';
+@import '@fontsource/newsreader/600.css';
+
+@theme inline {
+  --color-canvas: var(--c-canvas);
+  --color-card: var(--c-card);
+  --color-well: var(--c-well);
+  --color-line: var(--c-line);
+  --color-ink: var(--c-ink);
+  --color-ink2: var(--c-ink2);
+  --color-ink3: var(--c-ink3);
+  --color-brand: var(--c-brand);
+  --color-brand-press: var(--c-brand-press);
+  --color-brand-soft: var(--c-brand-soft);
+  --color-on-brand: var(--c-on-brand);
+  --color-brass: var(--c-brass);
+  --color-brass-soft: var(--c-brass-soft);
+  --color-ok: var(--c-ok);
+  --color-ok-soft: var(--c-ok-soft);
+  --color-warn: var(--c-warn);
+  --color-warn-soft: var(--c-warn-soft);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-info: var(--c-info);
+  --color-info-soft: var(--c-info-soft);
+  --color-urgent: var(--c-urgent-bg);
+  --color-overlay: var(--c-overlay);
+
+  --font-sans: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', 'Noto Sans SC', 'Noto Sans Tamil', sans-serif;
+  --font-serif: 'Newsreader', 'Iowan Old Style', Georgia, 'Noto Serif SC', serif;
+
+  /* type scale follows the text-size setting (--ts is 1 or 2) */
+  --text-display: calc(44px * var(--ts, 1));
+  --text-display--line-height: 1.02;
+  --text-xl: calc(32px * var(--ts, 1));
+  --text-xl--line-height: 1.08;
+  --text-h1: calc(28px * var(--ts, 1));
+  --text-h1--line-height: 1.15;
+  --text-h2: calc(20px * var(--ts, 1));
+  --text-h2--line-height: 1.22;
+  --text-body: calc(18px * var(--ts, 1));
+  --text-body--line-height: 1.38;
+  --text-sub: calc(16px * var(--ts, 1));
+  --text-sub--line-height: 1.38;
+  --text-micro: calc(13px * var(--ts, 1));
+  --text-micro--line-height: 1.3;
+
+  --radius-chip: 999px;
+  --radius-card: 18px;
+  --radius-field: 12px;
+  --radius-sheet: 26px;
+
+  --shadow-sheet: 0 -10px 40px -12px rgba(10, 20, 15, 0.28);
+  --shadow-lift: 0 1px 2px rgba(10, 20, 15, 0.05), 0 8px 24px -14px rgba(10, 20, 15, 0.22);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  --ts: 1;
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@layer base {
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  font-family: var(--font-sans);
+  background: var(--c-canvas);
+  color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+:focus-visible {
+  outline: 3px solid var(--c-brand);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+}
+
+/* press feedback: every pressable thing acknowledges the finger */
+.press {
+  transition:
+    transform 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+.hide-scroll {
+  scrollbar-width: none;
+}
+.hide-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* serif numerals for readings and titles */
+.num {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press:active {
+    transform: none;
+  }
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+}

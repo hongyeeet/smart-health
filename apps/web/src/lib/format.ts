@@ -36,7 +36,10 @@ export const levelText: Record<GlucoseLevel, string> = {
 export const num1 = (n: number) => (Math.round(n * 10) / 10).toFixed(1)
 export const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(Math.round(n * 10) / 10).toFixed(1)}`
 export const thousands = (n: number) => n.toLocaleString('en-US')
-export const nowMinutes = () => appConfig.demo.nowMinutes
+export const nowMinutes = () => {
+  const d = new Date()
+  return d.getHours() * 60 + d.getMinutes()
+}
 
 export function shortDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00')

@@ -1,4 +1,6 @@
-# Smart Health web app: design and build notes
+# Smart Health web app (production): design and build notes
+
+> This is the production app. It has the shell, design system, charts and the data layer, and **no screens**: every screen shows a "not built yet" placeholder until you build it. The finished clickable version, with every screen on demo data, is in [apps/mock](../mock). Copy a screen from there, point it at real data, and register it in `src/app/screens.tsx`. The design system is duplicated between the two apps for now; when it starts to drift, move `theme`, `motion`, `ui` and `charts` into a shared package.
 
 This file is for whoever builds screens in `apps/web`. The product-level design rules (who it is for, tone of voice, accessibility checklist, doctor brief style) are in [docs/specs/design.md](../../docs/specs/design.md). Where the two disagree, `docs/specs/design.md` wins and this file needs fixing. This file holds the detail that belongs next to the code: tokens, motion, components and how to extend them.
 
@@ -44,7 +46,7 @@ To add a theme (for example high contrast), add one object to `palettes.ts` and 
 
 ## 3. Layout
 
-- Mobile first. On a wide window the app sits in a 390 x 844 device frame with the prototype controls on the left. On a phone or iPad it fills the screen. The frame is `src/app/Shell.tsx`.
+- Mobile first. On a phone or iPad the app fills the screen; on a wide window it sits in a centred 480 px column (set `appConfig.frame` to `'device'` for a phone frame). The shell is `src/app/Shell.tsx`.
 - One screen is one `Screen` (scroll container, 20 px side padding) with a `Header`. Pass `tabs` when the bottom bar is showing.
 - One primary action per screen: full width, 56 px high, `Footer` keeps it on screen.
 - Touch targets are at least 48 px. Chips are 48 px high.
@@ -91,27 +93,23 @@ If an animation freezes while you test in a hidden browser window, open the app 
 ## 6. Data and services
 
 ```
-screens  ->  data/hooks.ts (TanStack Query)  ->  data/repositories/index.ts  ->  mock.ts  (today)
-                                                                              ->  http client  (later)
-services/mealAnalysis.ts   photo or text -> estimated macros   (mock now, vision model later)
-services/prediction.ts     personal food-response note          (reads the sprint now, the baseline model later)
+screens  ->  data/hooks.ts (TanStack Query)  ->  data/repositories/index.ts  ->  http.ts  (production, this app)
+                                                                              ->  mock.ts  (apps/mock)
 ```
 
 - `data/types.ts` holds the types and mirrors `docs/specs/schema.md`.
-- `data/repositories/types.ts` is the `Api` interface. **Screens only ever call hooks.** To connect the backend, write a second object that implements `Api` and change one line in `repositories/index.ts`.
-- `data/fixtures/mrTan.ts` is the demo patient. It is simulated and shown as "Demo data".
+- `data/repositories/types.ts` is the `Api` interface: the contract between screens and data. **Screens only ever call hooks.**
+- `data/repositories/http.ts` implements `Api` against the backend. `getPatient` is wired as an example; every other method throws `NotWired` until its endpoint exists. Wire one at a time.
+- Analysis, models and predictions belong behind the backend (or behind a service interface in `src/services`), never inside a screen. `apps/mock/src/services` shows the two interfaces the mock uses (meal analysis, food-response note).
 - Every write invalidates every read (`useWrite` in `hooks.ts`). Narrow the keys later if it matters.
-- Estimates are labelled: `EstimateBadge` until the person confirms.
 
 ## 7. Routing
 
-`src/app/routeIds.ts` lists every screen and sheet once, with its path, group, where it opens from and where it links. The router paths in `App.tsx`, the Demo panel, the screen index at `/screens` and the click paths all read from it. To add a screen:
+`src/app/routeIds.ts` lists every planned screen and sheet once, with its path, group, where it opens from and where it links. `src/app/App.tsx` makes a route for every one of them. A screen that is not built yet renders `NotBuilt`, which shows its notes from the registry. To build a screen:
 
-1. Add it to `ROUTES` (id, path, title, kind, group, from, links).
-2. Add the `<Route>` in `src/app/App.tsx`.
+1. Build the component in `src/features/<group>/`.
+2. Register it in `src/app/screens.tsx` (`built = { B1: Home }`) or, for a sheet, in `src/app/sheetRegistry.tsx`.
 3. Navigate with `useGo()`: `go('D1', { params: { date } })`. Sheets open with `go('H7', { sheet: { doseId } })`.
-
-`/brief/a4` and `/screens` sit outside the phone frame.
 
 ## 8. Language and copy
 
@@ -129,4 +127,4 @@ Voice: plain, short, kind. "Not confirmed", not "you missed it". "Worth mentioni
 - [ ] Anything estimated says so; anything compared says "associated with" and is marked unverified
 - [ ] Empty, loading and error states exist
 - [ ] Motion follows section 5
-- [ ] The route is in `routeIds.ts` and appears in `/screens`
+- [ ] The route is in `routeIds.ts` and registered in `screens.tsx`

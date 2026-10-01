@@ -1,9 +1,6 @@
 import type { Api } from './types'
-import { mockApi } from './mock'
+import { httpApi } from './http'
 
-/**
- * Swap this line for the real client when the backend exists:
- *   export const api: Api = httpApi
- */
-export const api: Api = mockApi
+/** The production data layer. The clickable mock lives in apps/mock and uses an in-memory implementation of the same interface. */
+export const api: Api = httpApi
 export type { Api, LogInput, NewMedication } from './types'

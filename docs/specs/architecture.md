@@ -120,7 +120,8 @@ smart-health/
 ├─ .env.example                      # every env var documented
 │
 ├─ apps/
-│  └─ web/                           # Vite + React + TypeScript app (see apps/web/design.md)
+│  ├─ mock/                          # clickable mock version, every screen on demo data (see apps/mock/design.md)
+│  └─ web/                           # production app: shell, design system, data layer; screens are built here (see apps/web/design.md)
 │     ├─ src/app/                    # shell, router, route registry (routeIds.ts)
 │     │  ├─ _layout.tsx              # providers: query, theme, i18n, auth
 │     │  ├─ (auth)/sign-in.tsx
