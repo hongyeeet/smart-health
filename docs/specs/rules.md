@@ -39,6 +39,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 - Build what prd.md specifies. Do not add features, screens, tables or dependencies that aren't in the docs; propose them instead.
 - Keep the docs true: if you change a table, event, route, flow, token or agent tool, update schema.md / flow.md / architecture.md / design.md **in the same change**.
 - Don't refactor unrelated code in a feature change.
+- **Build in `apps/web`, never in `apps/mock`.** The mock is the frozen clickable reference. Copy from it, do not edit it unless a task says "update the mock". A task that names no app means `apps/web`.
 - Follow the build order in architecture.md §10 unless told otherwise.
 
 ## 3. Data rules

@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-01 13:54: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-01 14:05: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -63,13 +63,14 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-032 | 2026-10-01 | `reference/` (the three design exports) is git-ignored; the owner deletes it later | Owner's instruction | .gitignore | Yes |
 | D-033 | 2026-10-01 | The demo scan uses Clarithromycin against the demo patient's Atorvastatin to show the interaction sheet. Demo data only; needs the owner's OK and a check against the cited reference data when E6-1 loads it | A believable demo using a well known interaction | session log hongyi_2026-10-01_1143 | Pending |
 | D-034 | 2026-10-01 | Two apps: `apps/mock` is the clickable mock version (every screen, demo data, Demo panel). `apps/web` is the production app: the same shell, design system and data layer with no screens, a `NotWired` http data layer, and placeholders for every route in the registry. Real data, models and analysis are connected in `apps/web`. Replaces the single-app part of D-028 | Owner: keep the mock as a reference and build production separately | architecture.md, README.md, apps/*/design.md | Pending |
+| D-035 | 2026-10-01 | Rule: all feature work goes in `apps/web`; `apps/mock` is frozen and is only edited when a task says "update the mock". Pushing to `dev` saves code only; it does not deploy | Owner: stop the assistant guessing which app to edit | HANDOVER.md (section 1 and Step 3 item 8), rules.md section 2 | Pending |
 
 ## Session index
 
 | Session | Developer | Date | Tasks | Summary | Decisions | Owner verified |
 |---|---|---|---|---|---|---|
 | setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-10-01 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, mockup prompt, handover, repo layout and branches; consolidated and split the backlog into three personal backlogs and a tracker | D-001 to D-027 | Pending |
-| [hongyi_2026-10-01_1143](sessions/hongyi_2026-10-01_1143.md) | Hong Yi with Claude | 2026-10-01 | E0-1, E0-2 (both in progress) | Built the whole front end in `apps/web`: design tokens, UI kit, charts, mock data layer, 40 screens and 6 sheets, A4 brief, generated screen index, design.md. Specs updated for the new look and folder | D-028 to D-034 | Pending |
+| [hongyi_2026-10-01_1143](sessions/hongyi_2026-10-01_1143.md) | Hong Yi with Claude | 2026-10-01 | E0-1, E0-2 (both in progress) | Built the whole front end in `apps/web`: design tokens, UI kit, charts, mock data layer, 40 screens and 6 sheets, A4 brief, generated screen index, design.md. Specs updated for the new look and folder | D-028 to D-035 | Pending |
 
 ## Spec change log
 
@@ -90,6 +91,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-01 | docs/specs/data-flow.md (new), docs/backlog/details/e1-data-foundation.md, joely.md, hongyi.md, README.md, HANDOVER.md | One-page Bronze, Silver, Gold and JEV flow with table build order; Silver-to-Gold foreign keys deferred to the end of E1-3 | D-027 |
 | 2026-10-01 | docs/specs/rules.md, schema.md, architecture.md, prd.md, README.md, HANDOVER.md, PR template | New rule that tables and reference data are created only in E1; schema ownership note; links and task ids (E0-9 and E0-12 are now E0-3) updated | D-023, D-024 |
 | 2026-10-01 | docs/specs/design.md | Palette, typeface, icons and motion updated for the new look; points to apps/web/design.md | D-029 |
+| 2026-10-01 | docs/handover/HANDOVER.md, docs/specs/rules.md | Build in `apps/web`, never edit `apps/mock` | D-035 |
 | 2026-10-01 | docs/specs/architecture.md, README.md | App folders `apps/mock` and `apps/web`; front-end, charts and i18n rows; status line | D-028, D-034 |
 
 ## Open questions and blockers
