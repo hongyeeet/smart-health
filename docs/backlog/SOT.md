@@ -30,8 +30,8 @@ Points to watch:
 
 | | Tasks done | Subtasks ticked | Progress |
 |---|---|---|---|
-| **Whole project** | 0 of 51 | 0 of 254 | `[--------------------] 0%` |
-| Hong Yi | 0 of 27 | 0 of 134 | `[--------------------] 0%` |
+| **Whole project** | 0 of 51 | 2 of 254 | `[--------------------] 1%` |
+| Hong Yi | 0 of 27 | 2 of 134 | `[--------------------] 1%` |
 | Joely | 0 of 14 | 0 of 71 | `[--------------------] 0%` |
 | Damien | 0 of 10 | 0 of 49 | `[--------------------] 0%` |
 
@@ -50,7 +50,7 @@ Tasks whose **Needs first** are all done. Sorted by how many other tasks they un
 
 | Person | Ready now | Blocked | In progress or review | Done |
 |---|---|---|---|---|
-| Hong Yi | E0-2 (34), E0-1 (5) | 25 | 0 | 0 |
+| Hong Yi | none | 25 | 2 | 0 |
 | Joely | E1-2 (39), E1-1 (28), E11-1 (4), E21-2 (1) | 10 | 0 | 0 |
 | Damien | E21-1 (1) | 9 | 0 | 0 |
 
@@ -60,8 +60,8 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 
 | ID | Task | Owner | Priority | State | Subtasks | Waiting for | Reviewer |
 |---|---|---|---|---|---|---|---|
-| E0-1 | Hardcoded mockup | Hong Yi | P0 | ready | 0/3 | none |  |
-| E0-2 | App skeleton and design kit | Hong Yi | P0 | ready | 0/7 | none |  |
+| E0-1 | Hardcoded mockup | Hong Yi | P0 | in progress | 1/3 | none |  |
+| E0-2 | App skeleton and design kit | Hong Yi | P0 | in progress | 1/7 | none |  |
 | E0-3 | AI services | Hong Yi | P0 | blocked | 0/4 | E0-2 |  |
 | E1-1 | Raw and Bronze | Joely | P0 | ready | 0/4 | none |  |
 | E1-2 | Silver and reference tables | Joely | P0 | ready | 0/5 | none |  |

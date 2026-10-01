@@ -11,35 +11,39 @@ If a task has a **Reviewer**, set `in review` when you finish; only the Reviewer
 <!-- BLOCKERS:START -->
 Ready means everything under **Needs first** is done, so you can start. Blocked means you must wait.
 
-**Ready now (2)**
+**Ready now (0)**
 
-- E0-2 App skeleton and design kit: unblocks 34 other tasks. Later you will need: E1-3 (Hong Yi, backlog).
-- E0-1 Hardcoded mockup: unblocks 5 other tasks.
+- Nothing is ready right now.
+
+**In progress or in review**
+
+- E0-1 Hardcoded mockup (in progress)
+- E0-2 App skeleton and design kit (in progress)
 
 **Blocked (25)**
 
-- E0-3 AI services: waiting for E0-2 (Hong Yi, backlog)
+- E0-3 AI services: waiting for E0-2 (Hong Yi, in progress)
 - E1-3 Gold and operations tables and views: waiting for E1-2 (Joely, backlog)
-- E3-1 Scan and read: waiting for E0-2 (Hong Yi, backlog), E0-3 (Hong Yi, backlog)
+- E3-1 Scan and read: waiting for E0-2 (Hong Yi, in progress), E0-3 (Hong Yi, backlog)
 - E3-2 Match, parse and save: waiting for E3-1 (Hong Yi, backlog), E1-2 (Joely, backlog), E1-4 (Joely, backlog)
 - E3-3 Accuracy report: waiting for E3-1 (Hong Yi, backlog)
 - E4-1 Medicine explainer: waiting for E0-3 (Hong Yi, backlog), E1-4 (Joely, backlog), E16-2 (Hong Yi, backlog)
-- E5-1 Doses and reminders: waiting for E0-2 (Hong Yi, backlog), E1-2 (Joely, backlog)
+- E5-1 Doses and reminders: waiting for E0-2 (Hong Yi, in progress), E1-2 (Joely, backlog)
 - E5-2 Missed doses and refills: waiting for E5-1 (Hong Yi, backlog)
 - E9-1 Daily totals, baseline and flags: waiting for E1-3 (Hong Yi, backlog), E1-4 (Joely, backlog)
-- E9-2 Insights screen: waiting for E9-1 (Hong Yi, backlog), E0-2 (Hong Yi, backlog)
+- E9-2 Insights screen: waiting for E9-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E13-1 Brief data and charts: waiting for E1-4 (Joely, backlog), E9-1 (Hong Yi, backlog)
 - E13-2 Narrative and PDF: waiting for E13-1 (Hong Yi, backlog), E0-3 (Hong Yi, backlog)
 - E13-3 Brief screens and sharing: waiting for E13-2 (Hong Yi, backlog)
 - E16-1 Chat pipeline and Memory Service: waiting for E0-3 (Hong Yi, backlog), E1-2 (Joely, backlog), E1-3 (Hong Yi, backlog)
 - E16-2 Safety net and JEV decisions: waiting for E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, backlog)
-- E16-3 Chat screen, helpers and chat memory: waiting for E16-1 (Hong Yi, backlog), E0-2 (Hong Yi, backlog)
+- E16-3 Chat screen, helpers and chat memory: waiting for E16-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E17-1 Memory and nightly reflection: waiting for E1-3 (Hong Yi, backlog), E1-4 (Joely, backlog), E16-1 (Hong Yi, backlog)
-- E17-2 What it learned screen: waiting for E17-1 (Hong Yi, backlog), E0-2 (Hong Yi, backlog)
+- E17-2 What it learned screen: waiting for E17-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E17-3 Week 1 versus week 8: waiting for E17-1 (Hong Yi, backlog), E9-1 (Hong Yi, backlog)
 - E20-1 Safety and engine tests: waiting for E16-2 (Hong Yi, backlog), E9-1 (Hong Yi, backlog), E8-1 (Damien, backlog)
-- E21-3 Public-ready repo and rehearsals: waiting for E0-2 (Hong Yi, backlog)
-- CP0 Gate 0: mockup and data ready: waiting for E0-1 (Hong Yi, backlog), E0-2 (Hong Yi, backlog), E1-4 (Joely, backlog)
+- E21-3 Public-ready repo and rehearsals: waiting for E0-2 (Hong Yi, in progress)
+- CP0 Gate 0: mockup and data ready: waiting for E0-1 (Hong Yi, in progress), E0-2 (Hong Yi, in progress), E1-4 (Joely, backlog)
 - CP1 Gate 1: thin working slice: waiting for CP0 (Hong Yi, backlog), E3-2 (Hong Yi, backlog), E5-1 (Hong Yi, backlog), E7-2 (Joely, backlog), E8-1 (Damien, backlog), E11-1 (Joely, backlog), E16-2 (Hong Yi, backlog)
 - CP2 Gate 2: all features and the brief: waiting for CP1 (Hong Yi, backlog), E13-3 (Hong Yi, backlog), E17-3 (Hong Yi, backlog), E19-2 (Joely, backlog)
 - CP3 Gate 3: submission ready: waiting for CP2 (Hong Yi, backlog), E21-1 (Damien, backlog), E21-2 (Joely, backlog), E21-3 (Hong Yi, backlog)
@@ -52,35 +56,35 @@ Done: 0 of 27 tasks.
 ### E0-1 Hardcoded mockup · P0
 
 - **Ask:** Produce the hardcoded mockup of the whole app: visuals only, with fixed fake data, no logic and no backend. It is the agreed picture of what we are building. Use the Claude Design prompt, review it with the team, then freeze it and share the link.
-- **Status:** backlog
+- **Status:** in progress
 - **Needs first:** none
 - **Needed later:** none
 - **Phase:** 0
 - **Spec:** flow 5; design
 - **Detail:** [docs/mockup/mockup-prompt.md](../mockup/mockup-prompt.md)
-- **Note:**
+- **Note:** Built as the real web app in apps/web (D-028), not a separate mockup. Screens, demo data and click paths done; the Demo panel stays until the owner has vetted it, then it is removed (D-030). Team walkthrough, freeze and share link still to do.
 - **Success criteria:**
-  - [ ] Mockup generated from the prompt covers every feature F1 to F18 on at least one screen, with the demo patient's numbers used consistently
+  - [x] Mockup generated from the prompt covers every feature F1 to F18 on at least one screen, with the demo patient's numbers used consistently
   - [ ] Everything is hardcoded visuals: no logic, no backend, no simulator panel
   - [ ] Team walkthrough done, changes applied, version 1 frozen and shared as a link
 
 ### E0-2 App skeleton and design kit · P0
 
 - **Ask:** Get the empty app running: the web app and API start locally with one command and connect to Supabase, a 'Start as demo patient' button, the activity-log writer, and the reusable design blocks for the real screens. Everything else is built on this.
-- **Status:** backlog
+- **Status:** in progress
 - **Needs first:** none
 - **Needed later:** E1-3
 - **Phase:** 0
 - **Spec:** architecture; design 2-5
 - **Flag:** Missing from your pasted list; kept because most tasks depend on it. Confirm it stays with Hong Yi.
-- **Note:**
+- **Note:** Front end skeleton, design tokens and UI kit done in apps/web. Still to do: the API, Supabase connection, row-level security, demo-patient session, event writer and .env.example.
 - **Success criteria:**
   - [ ] Web app and API start locally with one command per machine
   - [ ] Supabase connection works (project renamed to smart-health, details shared privately in .env, never committed) and one page reads a database row through the API
   - [ ] Row-level security is on with no policies, and only the backend connects
   - [ ] 'Start as demo patient' creates a session and every query is scoped to that user; no passwords
   - [ ] Activity-log writer appends events with duplicate protection, and a test proves a tampered entry is detected (needs the event_log table from E1-3)
-  - [ ] Design tokens and the reusable UI blocks (buttons, cards, dose card, chat bubble and so on) work in light and dark mode and at large text sizes
+  - [x] Design tokens and the reusable UI blocks (buttons, cards, dose card, chat bubble and so on) work in light and dark mode and at large text sizes
   - [ ] .env.example is complete and setup takes at most five commands
 
 ### E0-3 AI services · P0

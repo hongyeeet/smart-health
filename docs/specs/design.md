@@ -1,6 +1,6 @@
 # Design — Smart Health UI/UX system
 
-Design rules for the patient app and the doctor brief. Tokens here are mirrored in `apps/mobile/src/theme/tokens.ts` and `services/api/app/brief/templates/brief.css`; change them here first.
+Design rules for the patient app and the doctor brief. Tokens here are mirrored in `apps/web/src/theme/palettes.ts` and `services/api/app/brief/templates/brief.css`; change them here first. Build detail (components, motion, how to add a screen) is in [apps/web/design.md](../../apps/web/design.md).
 
 ## 1. Who we're designing for
 
@@ -21,38 +21,38 @@ Adults 45–65 with Type 2 diabetes. Many have early presbyopia, some have reduc
 ### 2.1 Core tokens
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `bg` | `#FAFAF7` | `#0F1416` | App background (warm off-white) |
-| `surface` | `#FFFFFF` | `#172024` | Cards, sheets |
-| `surfaceAlt` | `#F1F5F4` | `#1E2A2E` | Subtle sections, input fills |
-| `border` | `#E3E7E6` | `#2A3A3F` | Hairlines, dividers |
-| `text` | `#1C2426` | `#E7ECEC` | Primary text |
-| `textSecondary` | `#4B5563` | `#A7B0B2` | Secondary text (still AA) |
-| `textMuted` | `#6B7280` | `#8A9496` | Hints, timestamps (≥ 16 px only) |
-| `primary` | `#0F766E` | `#2DD4BF` | Primary buttons, active tab, links |
-| `primaryPressed` | `#115E59` | `#5EEAD4` | Pressed state |
-| `primarySoft` | `#E6F4F1` | `#12302C` | Selected chips, highlight backgrounds |
-| `onPrimary` | `#FFFFFF` | `#062522` | Text on primary |
-| `accent` | `#C2410C` | `#FB923C` | Warm highlights, streaks (sparingly) |
+| `canvas` | `#F6F4EE` | `#0D1411` | App background (warm ivory) |
+| `card` | `#FFFEFB` | `#141D19` | Cards, sheets |
+| `well` | `#EFECE3` | `#1B2621` | Inset areas, input fills |
+| `line` | `#E1DDD0` | `#2A3731` | Hairlines, dividers |
+| `ink` | `#16201B` | `#ECEFE8` | Primary text |
+| `ink2` | `#46524B` | `#B3BEB7` | Secondary text (above 7:1) |
+| `ink3` | `#5F6B64` | `#8D9993` | Hints, timestamps (16 px or larger only) |
+| `brand` (pine) | `#1D4A3C` | `#86C9AA` | Primary buttons, active tab, links |
+| `brand-press` | `#143629` | `#A8DBC3` | Pressed state |
+| `brand-soft` | `#E2ECE6` | `#1A2E26` | Selected chips, highlights |
+| `on-brand` | `#FBFAF5` | `#0A110E` | Text on brand |
+| `brass` | `#7A5C22` | `#D8B46C` | Estimates, proposed facts, safety messages. Sparingly |
 
-Primary teal reads as calm and health-related without the "hospital blue" look. `#0F766E` on white ≈ 5.5:1 (AA).
+Deep pine on warm ivory reads as calm and private, closer to a good clinic than a wellness app. The earlier teal `#0F766E` is retired (2026-10-01, owner approved). `brand` on `card` is above 9:1 in light mode.
 
 ### 2.2 Semantic status
 | Token | Light | Dark | Icon | Use |
 |---|---|---|---|---|
-| `success` | `#15803D` | `#4ADE80` | check-circle | Taken, in range, completed |
-| `warning` | `#B45309` | `#FBBF24` | alert-triangle | Trending, due soon, not checked |
-| `danger` | `#B91C1C` | `#F87171` | alert-octagon | Urgent, missed, clash |
-| `info` | `#1D4ED8` | `#60A5FA` | info | Tips, sources |
-| `*Soft` variants | 8–10% tint of each | 15% tint | | Card backgrounds for the status |
+| `ok` | `#2B6B47` | `#7CCB9A` | check-circle | Taken, in range, completed |
+| `warn` | `#935812` | `#E4B25C` | warning | Trending, due soon, not checked |
+| `danger` | `#A12B2B` | `#F08A80` | warning-circle | Urgent, missed, clash |
+| `info` | `#2E5A85` | `#8DB6E6` | info | Tips, sources |
+| `*-soft` variants | 8 to 10% tint of each | 15% tint | | Card backgrounds for the status |
 
 ### 2.3 Glucose range colours (AGP convention, familiar to clinicians)
 | Range (mmol/L, default targets) | Token | Fill | Pattern (charts/print) |
 |---|---|---|---|
-| Very low < 3.0 | `gVeryLow` | `#7F1D1D` | solid dark |
-| Low 3.0–3.8 | `gLow` | `#DC2626` | dense dots |
-| In range 3.9–10.0 | `gInRange` | `#16A34A` | none |
-| High 10.1–13.9 | `gHigh` | `#EAB308` | diagonal lines |
-| Very high > 13.9 | `gVeryHigh` | `#EA580C` | cross-hatch |
+| Very low < 3.0 | `gVeryLow` | `#6B1D1D` | solid dark |
+| Low 3.0–3.8 | `gLow` | `#B8372C` | dense dots |
+| In range 3.9–10.0 | `gIn` | `#4C9168` | none |
+| High 10.1–13.9 | `gHigh` | `#D3A21F` | diagonal lines |
+| Very high > 13.9 | `gVeryHigh` | `#CC6A1F` | cross-hatch |
 
 These are **fills only**. Text labels on or next to them use `text` or the status token, and ranges come from the patient's `targets` when set.
 
@@ -68,7 +68,7 @@ These are **fills only**. Text labels on or next to them use `text` or the statu
 
 ## 3. Typography
 
-**Typeface:** **Atkinson Hyperlegible Next** (Google Fonts, designed for low-vision legibility, with distinct letterforms like 1/l/I and 0/O). Numeric readouts use `fontVariant: ['tabular-nums']`. Fallbacks: system (Roboto / SF Pro). CJK and Tamil fall back to Noto Sans SC / Noto Sans Tamil; test line heights per locale.
+**Typeface:** **Atkinson Hyperlegible** for everything read (designed for low-vision legibility, with distinct letterforms like 1/l/I and 0/O), and **Newsreader** (a refined serif) for screen titles, section titles and every numeric readout. Numbers use tabular figures. Fallbacks: system (Roboto / SF Pro). CJK and Tamil fall back to Noto Sans SC / Noto Sans Tamil; test line heights per locale.
 
 | Style | Size / line height | Weight | Use |
 |---|---|---|---|
@@ -92,7 +92,7 @@ These are **fills only**. Text labels on or next to them use `text` or the statu
 - **Elevation:** flat by default; cards use `border` hairline. One shadow level only for bottom sheets and the FAB.
 - **Grid:** single column on phones; max content width 560 on tablets/web.
 - **Touch:** targets ≥ 48 dp, ≥ 8 dp apart; primary buttons full-width, 56 dp tall, fixed at the bottom of forms.
-- **Iconography:** `lucide-react-native`, outline, 24 px (28 px in tabs), always with a text label except universally understood close/back.
+- **Iconography:** Phosphor icons (`@phosphor-icons/react`), regular weight, 24 px (26 px in tabs, filled when active), always with a text label except universally understood close/back. No emoji anywhere.
 
 ## 5. Components (design-system primitives)
 
@@ -136,9 +136,12 @@ These are **fills only**. Text labels on or next to them use `text` or the statu
 
 ## 8. Motion and feedback
 
-- Durations 150–250 ms, ease-out; respect OS "reduce motion" (disable non-essential animation).
-- Haptic light tap on confirm (Taken, Save). No celebratory confetti; a subtle check animation is enough.
-- Toasts for non-blocking confirmation ("Saved"); never for errors that need action (use inline or banner).
+- Frequent actions (tab bar, insights tabs) do not animate. Pushed screens fade in over 190 ms with an 8 px rise.
+- Sheets slide in over 270 ms on `cubic-bezier(0.32, 0.72, 0, 1)` and leave in 200 ms. Everything else stays under 300 ms and uses `ease-out`. Nothing starts from `scale(0)`.
+- Every pressable element scales to 0.97 on press (140 ms). Charts draw in once, on first view.
+- Only `transform` and `opacity` animate. Respect OS "reduce motion": remove movement, keep fades. The urgent screen has no motion.
+- Toasts for non-blocking confirmation ("Saved"); never for errors that need action (use inline or banner). No celebratory confetti.
+- Full table: [apps/web/design.md](../../apps/web/design.md) section 5.
 
 ## 9. Voice and tone
 
@@ -174,5 +177,5 @@ Audience: a clinician scanning in < 2 minutes. **Dense, structured, printable.**
 - Footer on every page: "Generated by Smart Health from patient-reported and device data. Not a diagnosis. Numbers computed deterministically; see data completeness."
 
 ## 12. Brand
-- Name: Smart Health. Logo: a simple rounded speech-bubble + leaf mark in `primary`.
-- Cover image (16:9, 380×216 for submission): Today screen + brief page side by side on `bg`, with the tagline "Your everyday buddy. Your doctor's missing notes."
+- Name: Smart Health. Logo: a simple leaf mark in `brand`, set beside the name in Newsreader.
+- Cover image (16:9, 380×216 for submission): Today screen + brief page side by side on `canvas`, with the tagline "Your everyday buddy. Your doctor's missing notes."

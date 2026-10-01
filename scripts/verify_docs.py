@@ -35,8 +35,13 @@ def norm(p):
     return p.replace("\\", "/")
 
 
+def skipped(p):
+    """Dependencies, build output and the git-ignored design exports are not documents."""
+    return any(part in ("node_modules", "dist", "reference") and (part != "reference" or p.startswith("reference/")) for part in p.split("/"))
+
+
 mds = [norm(f) for f in glob.glob("**/*.md", recursive=True)] + [norm(f) for f in glob.glob(".github/*.md")]
-mds = sorted(set(f for f in mds if not f.startswith("node_modules/")))
+mds = sorted(set(f for f in mds if not skipped(f)))
 
 # 1. relative links resolve
 bad = []
@@ -70,7 +75,7 @@ secret_patterns = [r"sb_publishable_", r"sb_secret_", r"eyJhbGci", r"sk-[A-Za-z0
 hits = []
 for f in glob.glob("**/*", recursive=True) + glob.glob(".github/*") + glob.glob(".githooks/*"):
     f = norm(f)
-    if os.path.isdir(f) or f.endswith((".xlsx", ".png", ".jpg", ".pdf")) or f.startswith(("data/raw/", "data/processed/", "node_modules/")):
+    if os.path.isdir(f) or f.endswith((".xlsx", ".png", ".jpg", ".pdf")) or f.startswith(("data/raw/", "data/processed/")) or skipped(f):
         continue
     try:
         t = read(f)

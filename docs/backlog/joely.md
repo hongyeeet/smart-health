@@ -15,7 +15,7 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 
 - E1-2 Silver and reference tables: unblocks 39 other tasks.
 - E1-1 Raw and Bronze: unblocks 28 other tasks.
-- E11-1 Urgent alerts: unblocks 4 other tasks. Later you will need: E0-2 (Hong Yi, backlog), E1-4 (Joely, backlog).
+- E11-1 Urgent alerts: unblocks 4 other tasks. Later you will need: E0-2 (Hong Yi, in progress), E1-4 (Joely, backlog).
 - E21-2 Build proof and video: unblocks 1 other task. Later you will need: E20-2 (Joely, backlog).
 
 **Blocked (10)**
@@ -23,11 +23,11 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 - E1-4 Ingestion: waiting for E1-1 (Joely, backlog), E1-2 (Joely, backlog)
 - E1-5 Analysis data and baseline model: waiting for E1-4 (Joely, backlog)
 - E6-1 Clash checker: waiting for E3-2 (Hong Yi, backlog), E1-4 (Joely, backlog)
-- E7-1 Quick logs: waiting for E0-2 (Hong Yi, backlog), E1-2 (Joely, backlog)
+- E7-1 Quick logs: waiting for E0-2 (Hong Yi, in progress), E1-2 (Joely, backlog)
 - E7-2 Meal logging with AI macros: waiting for E0-3 (Hong Yi, backlog), E1-1 (Joely, backlog), E1-2 (Joely, backlog), E1-4 (Joely, backlog)
 - E7-3 Connected sources and log upkeep: waiting for E7-1 (Joely, backlog), E1-4 (Joely, backlog)
-- E18-1 Languages, audio and translation review: waiting for E0-2 (Hong Yi, backlog)
-- E19-1 Timeline and Day view: waiting for E1-3 (Hong Yi, backlog), E1-4 (Joely, backlog), E0-2 (Hong Yi, backlog)
+- E18-1 Languages, audio and translation review: waiting for E0-2 (Hong Yi, in progress)
+- E19-1 Timeline and Day view: waiting for E1-3 (Hong Yi, backlog), E1-4 (Joely, backlog), E0-2 (Hong Yi, in progress)
 - E19-2 Pattern finder and brief day traces: waiting for E19-1 (Joely, backlog), E8-1 (Damien, backlog)
 - E20-2 Demo and device checks: waiting for CP1 (Hong Yi, backlog)
 

@@ -80,13 +80,13 @@ Originals are never overwritten. A better analysis is a new record that links to
 
 | Layer | Choice | Why |
 |---|---|---|
-| Front end | **Mobile-first web app (React + TypeScript, strict)** shown in a phone frame / WebView | No store publishing cost; runs anywhere for the demo. (Earlier Expo plan superseded, see note above) |
+| Front end | **Mobile-first web app: Vite, React, TypeScript (strict), React Router, Tailwind v4 over CSS-variable tokens, `motion`** shown in a phone frame on a laptop and full screen on a phone or iPad | No store publishing cost; runs anywhere for the demo. (Earlier Expo plan superseded, see note above) |
 | State / data | TanStack Query (server state), Zustand (UI state), react-hook-form + zod | Caching, offline, typed forms |
-| Charts (app) | `react-native-gifted-charts` (or Victory Native) | Line/bar/heat-cell charts |
+| Charts (app) | Hand-built SVG chart components in `src/charts` | One consistent look, grayscale patterns, no chart-library styling |
 | Health data | `react-native-health-connect` (Android), `@kingstinct/react-native-healthkit` (iOS) | Device-agnostic wearables |
 | Camera / media | `expo-camera`, `expo-image-picker`, `expo-audio` | Rx scans, meal photos, TTS playback |
 | Notifications | `expo-notifications` (local schedule plus server push) | Dose reminders, nudges |
-| i18n | `i18next` + `react-i18next` (en, zh, ms, ta) | Multilingual |
+| i18n | `i18next` + `react-i18next` (en, zh, ms, ta); keys written as `t('key', 'English default')`, extracted with `i18next-parser` | Multilingual |
 | Backend | **Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0 (async), Alembic** | Typed APIs; strong data/ML ecosystem |
 | Agents | **LangGraph** (state graphs, checkpoints) + own guardrail and memory layer | Observable, controllable agent flows |
 | LLM | **Tencent Hunyuan** (chat, vision, embeddings) via an OpenAI-compatible client, wrapped by `llm/gateway.py` | Tencent ecosystem; swappable provider |
@@ -120,8 +120,8 @@ smart-health/
 ├─ .env.example                      # every env var documented
 │
 ├─ apps/
-│  └─ mobile/                        # Expo app
-│     ├─ app/                        # Expo Router (file = route)
+│  └─ web/                           # Vite + React + TypeScript app (see apps/web/design.md)
+│     ├─ src/app/                    # shell, router, route registry (routeIds.ts)
 │     │  ├─ _layout.tsx              # providers: query, theme, i18n, auth
 │     │  ├─ (auth)/sign-in.tsx
 │     │  ├─ onboarding/              # index (choose form|chat), form/[step].tsx, chat.tsx, consent.tsx

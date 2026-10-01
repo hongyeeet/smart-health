@@ -24,7 +24,8 @@ data/                     all data (see data/README.md)
   reference/  knowledge/  demo/
 .github/                  pull request template, CODEOWNERS
 scripts/                  verify_docs.py checks the documents, update_tracker.py refreshes the tracker; more arrive with development
-apps/  services/          created when development starts (planned layout: docs/specs/architecture.md section 3)
+apps/web/                 the web app (Vite, React, TypeScript): `cd apps/web && npm install && npm run dev`
+services/                 created when the backend starts (planned layout: docs/specs/architecture.md section 3)
 ```
 
 ## Documents
@@ -65,4 +66,4 @@ The web app and API run locally on each developer's machine. The database is Sup
 
 ## Status
 
-Specification phase. No application code yet.
+Specification written. The web app mockup (all screens, demo data, no backend) is in `apps/web`. The backend is not started.

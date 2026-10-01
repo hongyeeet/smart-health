@@ -23,3 +23,6 @@ __pycache__/
 .expo/
 dist/
 .DS_Store
+
+# design exports used as a one-off reference (owner deletes later)
+reference/
