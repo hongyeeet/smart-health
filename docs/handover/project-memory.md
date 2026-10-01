@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-09-30 12:15: PASS (21 of 21 checks passed)
+**Last docs check:** 2026-10-01 10:39: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -21,8 +21,9 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 - **Phase:** specification is written; development has not started (as of 2026-09-30).
 - **Branches:** `dev` is the default branch and where everyone works. The owner promotes `dev` to `uat`, then `uat` to `main`. `main` and `uat` still hold the first commit until then.
 - **Runtime:** the web app and API run locally on each machine. The database is Supabase (Postgres with pgvector). AI calls (Hunyuan, JEV) go to their services. Connection details are shared privately and never committed.
-- **Backlog:** 118 tasks in `docs/backlog/backlog.md`, none started, none assigned yet.
-- **Team:** hongyeeet (owner), chua-damien, joelyhee, all with write access.
+- **Backlog:** 118 tasks in `docs/backlog/backlog.md`, all assigned by epic, none started. Every task and epic has a plain-language explanation. Estimates (sizes and days) were removed.
+- **Timeline:** two weeks to the submission on 16 October 2026.
+- **Team:** Hong Yi (hongyeeet, owner), Joely (joelyhee), Damien (chua-damien), all with write access. Split: Hong Yi owns E0, E3, E4, E5, E9, E13, E16, E17, E22; Joely owns E1, E6, E7, E11, E18, E19; Damien owns E2, E8, E10, E12, E14, E15 and reviews E4 and E13; E20 is Hong Yi and Joely; E21 is the whole team.
 
 ## Decisions register
 
@@ -47,12 +48,15 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-017 | 2026-09-30 | HANDOVER.md is written only for the AI assistant. It contains no copy-paste prompt and no human-facing steps; the owner gives developers the start prompt separately | Owner's instruction | HANDOVER.md | Yes |
 | D-018 | 2026-09-30 | Only the owner verifies UAT and production readiness, promotes `dev` to `uat` and `main`, and marks items owner confirmed or verified. Developers and AI assistants never do. The docs check script is an automatic consistency check only | Owner's instruction | HANDOVER.md 3, rules.md, this file | Yes |
 | D-019 | 2026-09-30 | Each developer starts with one first prompt that clones the repo in Claude Code, checks out `dev`, sets the hooks and starts the handover. The prompt is kept by the owner, not in the repo | Owner's instruction | HANDOVER.md 2 (Step 0) | Yes |
+| D-020 | 2026-10-01 | Workload split by epic: Hong Yi E0, E3, E4, E5, E9, E13, E16, E17, E22; Joely E1, E6, E7, E11, E18, E19; Damien E2, E8, E10, E12, E14, E15; E20 Hong Yi and Joely; E21 team | Owner's assignment | backlog.md | Yes |
+| D-021 | 2026-10-01 | Damien is the Reviewer for E4 and E13. A task with a Reviewer goes to `in review` and only the Reviewer or the owner moves it to done. New status `in review`. Promotion to uat and main stays owner-only (D-018) | Owner's instruction | backlog.md, HANDOVER.md, rules.md | Yes |
+| D-022 | 2026-10-01 | Estimates (sizes and days) are removed from the backlog; there are two weeks to deliver. Each task and epic has a plain-language Ask | Owner's instruction | backlog.md | Yes |
 
 ## Session index
 
 | Session | Developer | Date | Tasks | Summary | Decisions | Owner verified |
 |---|---|---|---|---|---|---|
-| setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-09-30 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, backlog, mockup prompt, handover, repo layout and branches | D-001 to D-019 | Pending |
+| setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-09-30 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, backlog, mockup prompt, handover, repo layout and branches | D-001 to D-022 | Pending |
 
 ## Spec change log
 
@@ -68,11 +72,11 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-09-30 | docs/handover/HANDOVER.md | Rewritten as AI-only: removed the start prompt and the human section, renumbered sections | D-017 |
 | 2026-09-30 | docs/handover/HANDOVER.md, docs/specs/rules.md, this file | Owner-only verification and promotion; the script is a docs check, not a sign-off; owner-confirmed columns | D-018 |
 | 2026-09-30 | docs/handover/HANDOVER.md | Step 0 lets the AI set the hooks when the first prompt says to set the repo up | D-019 |
+| 2026-10-01 | docs/backlog/backlog.md, docs/handover/HANDOVER.md, docs/specs/rules.md, this file | Owners and reviewers assigned, sizes removed, plain-language Ask lines, `in review` status | D-020 to D-022 |
 
 ## Open questions and blockers
 
 - **E0-12:** choose the JEV deployment (hosted OpenJev, small CPU models, self-hosted, or only the Hunyuan fallback). Not decided yet.
 - **E0-9:** choose the AI provider and gateway settings.
 - **Supabase:** the project is still named `smart-health-backlog`. The owner renames it to `smart-health` in the Supabase dashboard. Storage for photos and exports: Supabase Storage is the default unless the owner says otherwise.
-- **Workload split:** the owner assigns owners in the backlog.
 - **Needs the owner's OK** (outside the cited data): clinical thresholds and screening intervals, supplement and TCM interaction data, medication label photos for testing, lifestyle guidance text, a Mi Watch export.

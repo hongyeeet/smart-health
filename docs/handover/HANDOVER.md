@@ -48,7 +48,7 @@ Do not start coding before the user answers.
 
 ### Step 3. Find the task and guide the user
 1. **Match it in `docs/backlog/backlog.md`.** By task ID first. Otherwise by feature or epic (epics E2-E19 are features F1-F18, so E9 is F8). Otherwise search the backlog for keywords. If several tasks match, list them and ask which one. If none matches, offer to add a new task with the next free ID and subtasks, and record that as a decision in the session log.
-2. **Show the task:** its subtasks, priority, size, `Depends on`, spec references, current Status and Owner.
+2. **Show the task:** its plain-language `Ask`, subtasks, priority, `Depends on`, spec references, current Status, Owner and Reviewer if any.
 3. **Check dependencies.** If something it depends on is not done, say so and offer three options: do the dependency first, stub it, or proceed with a written assumption.
 4. **Read what the task points to:** the cited section of the specs, the tables it touches in `schema.md`, the events in `flow.md`, and the rules that apply.
 5. **Propose a plan and wait for a yes.** For each subtask: the files to create or change, the tables and events involved, and how you will check its success criterion.
@@ -60,7 +60,7 @@ Do not start coding before the user answers.
 Whenever a decision is made that is not in the docs, or that changes them, add it straight away to "Decisions made outside the docs" in the session log: what was decided, why, the alternatives, who decided, and which document needs updating. If the user agrees and the change is small, update the spec in the same commit and say so. If it is large or affects others, leave a `TODO(decision)` and tell the owner.
 
 ### Step 5. End the session
-1. Update `docs/backlog/backlog.md` for every task touched: tick finished subtasks, set `Status:` (`backlog`, `in progress`, `blocked` or `done`), put the user's name in `Owner:` if unassigned, and write a one-line `Note:` for what is left or what blocks them. Tick the task's own box only when all its subtasks are done.
+1. Update `docs/backlog/backlog.md` for every task touched: tick finished subtasks, set `Status:` (`backlog`, `in progress`, `in review`, `blocked` or `done`). If the task has a `Reviewer:`, set `in review`, not `done`, and tell the user who must verify it. Only the Reviewer (or the owner) moves it to `done`, after checking it against the success criteria and writing `Verified by <name> <date>` in the Note, put the user's name in `Owner:` if unassigned (a new task you add gets the user as Owner), and write a one-line `Note:` for what is left or what blocks them. Tick the task's own box only when all its subtasks are done.
 2. Finish the session log: files changed, tables and endpoints touched, tests run and results, decisions, open questions, next steps.
 3. Update `docs/handover/project-memory.md`: add your row to the session index, add every decision made outside the docs to the decisions register, add a row per spec you edited to the spec change log, and refresh current state and open questions. Add new rows as `Pending`. Never mark anything owner confirmed or owner verified: only the owner does.
 4. Run the docs check: `python scripts/verify_docs.py --stamp`. It is an automatic consistency check, not a sign-off. Fix every FAIL, then run it again. Paste the result line into the session log.

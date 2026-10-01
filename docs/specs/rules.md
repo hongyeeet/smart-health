@@ -32,7 +32,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 - Every seeded or imported row records its source (`data_sources`, manifest #). If a task needs data these sources don't have, stop and list it as "Needs your OK" instead of sourcing it yourself.
 - Simulated data may only be built from cited data, must be marked `entry_source = 'demo_dataset'` or simulated, and must be disclosed.
 - Raw datasets are never committed (see licences in `data/README.md`).
-- Branches: commit straight to `dev` (small commits, `git pull --rebase origin dev` before pushing); a `feature/<task-id>-<name>` branch is optional. Only the owner verifies UAT and production readiness and promotes `dev` to `uat` and `uat` to `main`; developers and AI assistants never push there or mark anything verified. Never force-push.
+- Branches: commit straight to `dev` (small commits, `git pull --rebase origin dev` before pushing); a `feature/<task-id>-<name>` branch is optional. Only the owner verifies UAT and production readiness and promotes `dev` to `uat` and `uat` to `main`; developers and AI assistants never push there or declare a release verified. A task's named Reviewer verifies that task before it is done. Never force-push.
 
 ## 2. Scope discipline
 

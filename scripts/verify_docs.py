@@ -86,7 +86,7 @@ check("no keys or connection strings in tracked files", not hits, hits)
 # 4. backlog integrity
 backlog_path = "docs/backlog/backlog.md"
 b = read(backlog_path)
-tasks = re.findall(r"^- \[(.)\] \*\*(\S+) (.+?)\*\* · (P\d) · ([SML]) · (Phase \d)", b, re.M)
+tasks = re.findall(r"^- \[(.)\] \*\*(\S+) (.+?)\*\* · (P\d) · (Phase \d)", b, re.M)
 ids = [t[1] for t in tasks]
 check("backlog task ids unique", len(ids) == len(set(ids)), len(ids))
 blocks = re.split(r"^- \[.\] \*\*", b, flags=re.M)[1:]
@@ -100,7 +100,8 @@ for blk in blocks:
 check("every dependency exists", not bad_dep, bad_dep)
 check("every task has subtasks", all(re.search(r"^  - \[.\] ", x, re.M) for x in blocks))
 statuses = re.findall(r"^  - Status: (.+)$", b, re.M)
-check("statuses are valid", all(s in ("backlog", "in progress", "blocked", "done") for s in statuses), set(statuses))
+check("every task has an Ask line and a named owner", all(re.search(r"^  - Ask: .{20,}", x, re.M) and re.search(r"^  - Owner: (?!—)\S", x, re.M) for x in blocks))
+check("statuses are valid", all(s in ("backlog", "in progress", "in review", "blocked", "done") for s in statuses), set(statuses))
 done_wrong = []
 for blk in blocks:
     head_done = blk.startswith("x] ") or re.match(r"^\S", blk) and False
