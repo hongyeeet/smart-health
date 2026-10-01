@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-01 11:08: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-01 11:14: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -55,12 +55,13 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-024 | 2026-10-01 | All tables, views, reference data and demo data are created and loaded in epic E1 only. Joely creates Raw, Bronze, Silver and reference tables and loads every value (E1-1, E1-2, E1-4); Hong Yi creates the Gold (JEV and memory) and operations tables and views (E1-3). Later tasks only read and write rows | Owner's instruction | rules.md 3, schema.md 0b, details/e1-data-foundation.md | Yes |
 | D-025 | 2026-10-01 | Epic E0 reduces to E0-1, a hardcoded visual mockup (no logic, no backend), assigned to Hong Yi. Onboarding (E2) stays with Damien and uses medical domain knowledge for past illnesses and history | Owner's instruction | mockup-prompt.md, hongyi.md, damien.md | Yes |
 | D-026 | 2026-10-01 | E0-2 (app skeleton and design kit) and E0-3 (AI services, including the JEV option) were missing from the owner's pasted list and were kept under Hong Yi because most tasks depend on them. E1-5 is provisionally Joely. Leads for team tasks are provisional: E21-1 Damien, E21-2 Joely, E21-3 Hong Yi, E20-1 Hong Yi, E20-2 Joely | Assistant's assumption, to confirm | SOT.md notes | Pending |
+| D-027 | 2026-10-01 | Three Silver columns that point at Gold tables (`symptom_checkins.triggered_by_flag_id`, `appointments.brief_id`, `doctor_questions.brief_id`) are created as plain uuid columns in E1-2 and their foreign keys are added at the end of E1-3, so Silver and Gold do not wait on each other. JEV has no tables of its own; its calls are logged in `agent_steps` | Assistant's fix for a circular dependency found while drawing the data flow | data-flow.md 6, details/e1-data-foundation.md | Pending |
 
 ## Session index
 
 | Session | Developer | Date | Tasks | Summary | Decisions | Owner verified |
 |---|---|---|---|---|---|---|
-| setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-10-01 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, mockup prompt, handover, repo layout and branches; consolidated and split the backlog into three personal backlogs and a tracker | D-001 to D-026 | Pending |
+| setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-10-01 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, mockup prompt, handover, repo layout and branches; consolidated and split the backlog into three personal backlogs and a tracker | D-001 to D-027 | Pending |
 
 ## Spec change log
 
@@ -78,6 +79,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-09-30 | docs/handover/HANDOVER.md | Step 0 lets the AI set the hooks when the first prompt says to set the repo up | D-019 |
 | 2026-10-01 | docs/backlog/backlog.md, docs/handover/HANDOVER.md, docs/specs/rules.md, this file | Owners and reviewers assigned, sizes removed, plain-language Ask lines, `in review` status | D-020 to D-022 |
 | 2026-10-01 | docs/backlog/ (SOT.md, hongyi.md, joely.md, damien.md, details/), scripts/update_tracker.py, scripts/verify_docs.py | Old backlog.md retired; 51 tasks in three personal backlogs, generated tracker, E1 detail file; docs check updated | D-023 to D-026 |
+| 2026-10-01 | docs/specs/data-flow.md (new), docs/backlog/details/e1-data-foundation.md, joely.md, hongyi.md, README.md, HANDOVER.md | One-page Bronze, Silver, Gold and JEV flow with table build order; Silver-to-Gold foreign keys deferred to the end of E1-3 | D-027 |
 | 2026-10-01 | docs/specs/rules.md, schema.md, architecture.md, prd.md, README.md, HANDOVER.md, PR template | New rule that tables and reference data are created only in E1; schema ownership note; links and task ids (E0-9 and E0-12 are now E0-3) updated | D-023, D-024 |
 
 ## Open questions and blockers

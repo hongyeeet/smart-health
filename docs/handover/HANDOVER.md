@@ -27,7 +27,7 @@ Read these in order. Do not skip any.
 | 3 | `docs/specs/prd.md` | The product, users, features F1-F18 with acceptance criteria, safety principles, assumptions A1-A13 |
 | 4 | `docs/specs/architecture.md` | Tech stack, trust boundaries, folder layout, data flows. The "Platform decisions" note at the top overrides anything below it |
 | 5 | `docs/specs/memory.md` | Standard terms and names, Bronze/Silver/Gold layers, evidence statuses, the JEV decision layer, the Memory Service, meal analysis |
-| 6 | `docs/specs/schema.md` | Tables, the layer map, data consistency rules |
+| 6 | `docs/specs/schema.md` and `docs/specs/data-flow.md` | Tables, the layer map, data consistency rules; and the one-page flow of Bronze, Silver, Gold and JEV with the table build order |
 | 7 | `docs/specs/rules.md` | Safety rules that are never broken, the data source policy, coding conventions, definition of done |
 | 8 | `docs/specs/flow.md` | User journeys, screens, the event names, the demo script |
 | 9 | `docs/specs/design.md` | Colours, type, components, accessibility |

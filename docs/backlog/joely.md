@@ -66,6 +66,7 @@ Done: 0 of 14 tasks.
   - [ ] Migrations create every Silver and reference table in the layer map and apply cleanly to an empty database and roll back
   - [ ] Constraints, enums and unique keys are in; row-level security is on with no policies for every table
   - [ ] Every user-data field has a table, column, unit and source flag, written up in a data dictionary
+  - [ ] `symptom_checkins.triggered_by_flag_id`, `appointments.brief_id` and `doctor_questions.brief_id` are plain nullable uuid columns with no foreign key (Hong Yi adds those in E1-3)
   - [ ] schema.md and the layer map match the migrated tables exactly
 
 ### E1-4 Ingestion · P0

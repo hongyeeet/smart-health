@@ -113,6 +113,7 @@ Done: 0 of 27 tasks.
   - [ ] Migrations create every Gold and operations table in the layer map and apply cleanly on top of the Silver tables
   - [ ] Views health_state, trends, adherence_summary, insight_context and timeline_events exist with calculation version, evidence window, freshness and quality status
   - [ ] event_log is append-only for the app role
+  - [ ] The three foreign keys from Silver up to Gold (symptom_checkins to clinical_flags, appointments and doctor_questions to briefs) are added once the Gold tables exist
   - [ ] Row-level security is on with no policies for every table; no table or view uses a gold., silver. or bronze. prefix
 
 ### E3-1 Scan and read · P0

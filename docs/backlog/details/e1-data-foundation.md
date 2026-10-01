@@ -12,7 +12,9 @@ Owners: Joely does E1-1, E1-2, E1-4 and E1-5. Hong Yi does E1-3. Layer map: [sch
 | E1-2 | Silver and Reference | Every canonical user-data table and every lookup table in schema.md sections 2 to 9b and the Silver tables in 9c (`devices`, `health_goals`, `meal_analyses` and so on) | Joely |
 | E1-3 | Gold and Operations | Aggregates, baselines, flags, patterns, memory facts, memory evidence, briefs and brief sections; `agent_runs`, `agent_steps`, `guardrail_events`, `conversations`, `messages`, `event_log`; the views `health_state`, `trends`, `adherence_summary`, `insight_context`, `timeline_events` | Hong Yi |
 
-Order: E1-1 and E1-2 first and in parallel, then E1-3 (it links to the Silver tables), then E1-4 (loads the values).
+Order inside Joely's work: Reference tables first, then `ingestion_events` (E1-1), then the Silver tables (E1-2), because Silver points at both. Then Hong Yi does E1-3 (it points at Silver), then Joely does E1-4 (loads the values). The picture and the full build order are in [data-flow.md](../../specs/data-flow.md) sections 1 and 6.
+
+**Silver-to-Gold foreign keys.** Three Silver columns point at Gold tables: `symptom_checkins.triggered_by_flag_id` (to `clinical_flags`), `appointments.brief_id` and `doctor_questions.brief_id` (to `briefs`). Joely creates them in E1-2 as plain nullable `uuid` columns with no constraint. Hong Yi adds the three foreign keys at the end of E1-3. Otherwise E1-2 and E1-3 wait on each other.
 
 ## E1-1 Raw and Bronze
 
@@ -26,7 +28,8 @@ Order: E1-1 and E1-2 first and in parallel, then E1-3 (it links to the Silver ta
 1. Turn schema.md into migrations that apply to an empty Supabase database and roll back.
 2. Constraints, enums and unique keys as specified. Row-level security on for every table, no policies.
 3. Data dictionary (`docs/data_dictionary.md`): for every user-data field, the table, column, unit and source flag (manual, imported, simulated). It covers profile, conditions, allergies, medications and ingredients, doses, glucose, meals, workouts, sleep, wearable samples, symptoms, mood, blood pressure, labs, appointments, questions and memory.
-4. schema.md and the layer map match the migrated tables exactly. If you must change schema.md, say so in the session log.
+4. Create `symptom_checkins.triggered_by_flag_id`, `appointments.brief_id` and `doctor_questions.brief_id` as plain nullable `uuid` columns without a foreign key (E1-3 adds the constraints).
+5. schema.md and the layer map match the migrated tables exactly. If you must change schema.md, say so in the session log.
 
 ## E1-3 Gold and operations tables and views
 
@@ -34,6 +37,7 @@ Order: E1-1 and E1-2 first and in parallel, then E1-3 (it links to the Silver ta
 2. The five views carry calculation version, evidence window, freshness and quality status.
 3. `event_log` is append-only for the app role.
 4. No table or view uses `gold.`, `silver.` or `bronze.` as a prefix. The layer is a label in the layer map, not part of the name.
+5. Add the three foreign keys that point from Silver up to Gold (see the note under Order). Create one side of the `conversations.summary_episode_id` and `memory_episodes.conversation_id` loop without its constraint, then add it.
 
 ## E1-4 Ingestion: what is loaded, per source
 

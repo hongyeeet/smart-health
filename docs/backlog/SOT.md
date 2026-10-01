@@ -30,9 +30,9 @@ Points to watch:
 
 | | Tasks done | Subtasks ticked | Progress |
 |---|---|---|---|
-| **Whole project** | 0 of 51 | 0 of 252 | `[--------------------] 0%` |
-| Hong Yi | 0 of 27 | 0 of 133 | `[--------------------] 0%` |
-| Joely | 0 of 14 | 0 of 70 | `[--------------------] 0%` |
+| **Whole project** | 0 of 51 | 0 of 254 | `[--------------------] 0%` |
+| Hong Yi | 0 of 27 | 0 of 134 | `[--------------------] 0%` |
+| Joely | 0 of 14 | 0 of 71 | `[--------------------] 0%` |
 | Damien | 0 of 10 | 0 of 49 | `[--------------------] 0%` |
 
 ## Gates
@@ -64,8 +64,8 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E0-2 | App skeleton and design kit | Hong Yi | P0 | ready | 0/7 | none |  |
 | E0-3 | AI services | Hong Yi | P0 | blocked | 0/4 | E0-2 |  |
 | E1-1 | Raw and Bronze | Joely | P0 | ready | 0/4 | none |  |
-| E1-2 | Silver and reference tables | Joely | P0 | ready | 0/4 | none |  |
-| E1-3 | Gold and operations tables and views | Hong Yi | P0 | blocked | 0/4 | E1-2 |  |
+| E1-2 | Silver and reference tables | Joely | P0 | ready | 0/5 | none |  |
+| E1-3 | Gold and operations tables and views | Hong Yi | P0 | blocked | 0/5 | E1-2 |  |
 | E1-4 | Ingestion | Joely | P0 | blocked | 0/6 | E1-1, E1-2 |  |
 | E1-5 | Analysis data and baseline model | Joely | P1 | blocked | 0/2 | E1-4 |  |
 | E2-1 | Onboarding flow | Damien | P0 | blocked | 0/10 | E0-2, E1-2 |  |

@@ -13,7 +13,7 @@ New to the repo, human or AI assistant? Read **[docs/handover/HANDOVER.md](docs/
 ```
 README.md
 docs/                     all documents
-  specs/                  prd, architecture, flow, schema, design, rules, memory
+  specs/                  prd, architecture, flow, schema, data-flow, design, rules, memory
   backlog/                SOT.md (central tracker), hongyi.md, joely.md, damien.md (one backlog each), details/
   handover/               HANDOVER.md (start here), session-log-template.md, sessions/
   mockup/                 prompt and outputs for the design mockup
@@ -35,6 +35,7 @@ apps/  services/          created when development starts (planned layout: docs/
 | [docs/specs/architecture.md](docs/specs/architecture.md) | Tech stack, trust boundaries, folder structure, data flows, agent harness |
 | [docs/specs/memory.md](docs/specs/memory.md) | Standard names, data layers, memory planes, evidence model, the JEV decision layer, Memory Service, meal analysis |
 | [docs/specs/schema.md](docs/specs/schema.md) | Database tables, layer map, consistency rules |
+| [docs/specs/data-flow.md](docs/specs/data-flow.md) | One-page picture of Bronze, Silver and Gold, where JEV sits, and the order to build the tables in. Start here before creating the database |
 | [docs/specs/flow.md](docs/specs/flow.md) | User journeys, screens, event logging, demo script |
 | [docs/specs/design.md](docs/specs/design.md) | UI/UX system: colours, type, components, accessibility |
 | [docs/specs/rules.md](docs/specs/rules.md) | Boundaries for AI coding agents: safety rules, data source policy, definition of done |
