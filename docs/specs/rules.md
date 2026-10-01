@@ -44,6 +44,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 ## 3. Data rules
 
 - Schema changes **only** via Alembic migrations, matching schema.md exactly (names, types, constraints). No `create_all()` outside tests.
+- **All tables, views and reference and demo values are created and loaded in epic E1 only** (Joely: Raw, Bronze, Silver and reference tables; Hong Yi: Gold and operations tables and views; Joely loads all values in E1-4). Every later task reads and writes rows in tables that already exist. If a later task seems to need a new table or a new reference dataset, stop and ask the owner: the fix belongs in E1 and the layer map in schema.md.
 - Canonical units at write (mmol/L, mg, g, seconds). Convert only in the API schema layer.
 - Use `NULL` for "no data", never `0` or empty string.
 - Ingest endpoints must be idempotent (`source` + `external_id`).
@@ -133,7 +134,7 @@ Demo scope: row-level security, consent-scoped retrieval, data-classification ta
 
 ## 10b. Session handover
 
-At the end of every session, follow `docs/handover/HANDOVER.md`: update the tasks you worked on in `docs/backlog/backlog.md`, write the session log in `docs/handover/sessions/` (named `<user>_<YYYY-MM-DD_HHMM>.md`, including every decision made outside the docs), update `docs/handover/project-memory.md`, and run the docs check (`python scripts/verify_docs.py --stamp`, an automatic consistency check and not a sign-off) before pushing to `dev`.
+At the end of every session, follow `docs/handover/HANDOVER.md`: update the tasks you worked on in your own backlog (`docs/backlog/<your-name>.md`) and run `python scripts/update_tracker.py` to refresh the central tracker (`docs/backlog/SOT.md`), write the session log in `docs/handover/sessions/` (named `<user>_<YYYY-MM-DD_HHMM>.md`, including every decision made outside the docs), update `docs/handover/project-memory.md`, and run the docs check (`python scripts/verify_docs.py --stamp`, an automatic consistency check and not a sign-off) before pushing to `dev`.
 
 ## 11. When unsure
 - If a requirement is ambiguous, choose the **safer** interpretation (less advice, more uncertainty disclosure, more logging) and leave a `TODO(decision):` note plus a question in the PR description.

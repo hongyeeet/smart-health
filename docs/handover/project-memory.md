@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-01 10:39: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-01 11:08: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -21,9 +21,9 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 - **Phase:** specification is written; development has not started (as of 2026-09-30).
 - **Branches:** `dev` is the default branch and where everyone works. The owner promotes `dev` to `uat`, then `uat` to `main`. `main` and `uat` still hold the first commit until then.
 - **Runtime:** the web app and API run locally on each machine. The database is Supabase (Postgres with pgvector). AI calls (Hunyuan, JEV) go to their services. Connection details are shared privately and never committed.
-- **Backlog:** 118 tasks in `docs/backlog/backlog.md`, all assigned by epic, none started. Every task and epic has a plain-language explanation. Estimates (sizes and days) were removed.
+- **Backlog:** 51 tasks split across three personal backlogs (`docs/backlog/hongyi.md`, `joely.md`, `damien.md`) plus a generated central tracker (`docs/backlog/SOT.md`), none started. Every task has a plain-language Ask, a Needs-first list and subtasks. Each person edits only their own file and runs `python scripts/update_tracker.py`. Estimates were removed.
 - **Timeline:** two weeks to the submission on 16 October 2026.
-- **Team:** Hong Yi (hongyeeet, owner), Joely (joelyhee), Damien (chua-damien), all with write access. Split: Hong Yi owns E0, E3, E4, E5, E9, E13, E16, E17, E22; Joely owns E1, E6, E7, E11, E18, E19; Damien owns E2, E8, E10, E12, E14, E15 and reviews E4 and E13; E20 is Hong Yi and Joely; E21 is the whole team.
+- **Team:** Hong Yi (hongyeeet, owner, 27 tasks), Joely (joelyhee, 14 tasks), Damien (chua-damien, 10 tasks and reviewer for E4-1 and E13-1 to E13-3), all with write access. The task-level split is in `docs/backlog/SOT.md`. All tables and values are created and loaded in epic E1 only.
 
 ## Decisions register
 
@@ -48,15 +48,19 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-017 | 2026-09-30 | HANDOVER.md is written only for the AI assistant. It contains no copy-paste prompt and no human-facing steps; the owner gives developers the start prompt separately | Owner's instruction | HANDOVER.md | Yes |
 | D-018 | 2026-09-30 | Only the owner verifies UAT and production readiness, promotes `dev` to `uat` and `main`, and marks items owner confirmed or verified. Developers and AI assistants never do. The docs check script is an automatic consistency check only | Owner's instruction | HANDOVER.md 3, rules.md, this file | Yes |
 | D-019 | 2026-09-30 | Each developer starts with one first prompt that clones the repo in Claude Code, checks out `dev`, sets the hooks and starts the handover. The prompt is kept by the owner, not in the repo | Owner's instruction | HANDOVER.md 2 (Step 0) | Yes |
-| D-020 | 2026-10-01 | Workload split by epic: Hong Yi E0, E3, E4, E5, E9, E13, E16, E17, E22; Joely E1, E6, E7, E11, E18, E19; Damien E2, E8, E10, E12, E14, E15; E20 Hong Yi and Joely; E21 team | Owner's assignment | backlog.md | Yes |
-| D-021 | 2026-10-01 | Damien is the Reviewer for E4 and E13. A task with a Reviewer goes to `in review` and only the Reviewer or the owner moves it to done. New status `in review`. Promotion to uat and main stays owner-only (D-018) | Owner's instruction | backlog.md, HANDOVER.md, rules.md | Yes |
-| D-022 | 2026-10-01 | Estimates (sizes and days) are removed from the backlog; there are two weeks to deliver. Each task and epic has a plain-language Ask | Owner's instruction | backlog.md | Yes |
+| D-020 | 2026-10-01 | Workload split by epic: Hong Yi E0, E3, E4, E5, E9, E13, E16, E17, E22; Joely E1, E6, E7, E11, E18, E19; Damien E2, E8, E10, E12, E14, E15; E20 Hong Yi and Joely; E21 team. Refined at task level by D-023 | Owner's assignment | SOT.md | Yes |
+| D-021 | 2026-10-01 | Damien is the Reviewer for E4-1 and E13-1 to E13-3. A task with a Reviewer goes to `in review` and only the Reviewer or the owner moves it to done (the Reviewer may set Status and Note of the task they review). New status `in review`. Promotion to uat and main stays owner-only (D-018) | Owner's instruction | personal backlogs, HANDOVER.md, rules.md | Yes |
+| D-022 | 2026-10-01 | Estimates (sizes and days) are removed from the backlog; there are two weeks to deliver. Each task has a plain-language Ask | Owner's instruction | personal backlogs | Yes |
+| D-023 | 2026-10-01 | The backlog is consolidated from 118 to 51 tasks (similar work merged, for example all ingestion into E1-4) and split into one backlog per person plus a generated central tracker, `SOT.md`. Each person edits only their own file; `scripts/update_tracker.py` regenerates the tracker and each person's blocker check | Owner's instruction | docs/backlog/, HANDOVER.md | Yes |
+| D-024 | 2026-10-01 | All tables, views, reference data and demo data are created and loaded in epic E1 only. Joely creates Raw, Bronze, Silver and reference tables and loads every value (E1-1, E1-2, E1-4); Hong Yi creates the Gold (JEV and memory) and operations tables and views (E1-3). Later tasks only read and write rows | Owner's instruction | rules.md 3, schema.md 0b, details/e1-data-foundation.md | Yes |
+| D-025 | 2026-10-01 | Epic E0 reduces to E0-1, a hardcoded visual mockup (no logic, no backend), assigned to Hong Yi. Onboarding (E2) stays with Damien and uses medical domain knowledge for past illnesses and history | Owner's instruction | mockup-prompt.md, hongyi.md, damien.md | Yes |
+| D-026 | 2026-10-01 | E0-2 (app skeleton and design kit) and E0-3 (AI services, including the JEV option) were missing from the owner's pasted list and were kept under Hong Yi because most tasks depend on them. E1-5 is provisionally Joely. Leads for team tasks are provisional: E21-1 Damien, E21-2 Joely, E21-3 Hong Yi, E20-1 Hong Yi, E20-2 Joely | Assistant's assumption, to confirm | SOT.md notes | Pending |
 
 ## Session index
 
 | Session | Developer | Date | Tasks | Summary | Decisions | Owner verified |
 |---|---|---|---|---|---|---|
-| setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-09-30 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, backlog, mockup prompt, handover, repo layout and branches | D-001 to D-022 | Pending |
+| setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-10-01 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, mockup prompt, handover, repo layout and branches; consolidated and split the backlog into three personal backlogs and a tracker | D-001 to D-026 | Pending |
 
 ## Spec change log
 
@@ -73,10 +77,13 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-09-30 | docs/handover/HANDOVER.md, docs/specs/rules.md, this file | Owner-only verification and promotion; the script is a docs check, not a sign-off; owner-confirmed columns | D-018 |
 | 2026-09-30 | docs/handover/HANDOVER.md | Step 0 lets the AI set the hooks when the first prompt says to set the repo up | D-019 |
 | 2026-10-01 | docs/backlog/backlog.md, docs/handover/HANDOVER.md, docs/specs/rules.md, this file | Owners and reviewers assigned, sizes removed, plain-language Ask lines, `in review` status | D-020 to D-022 |
+| 2026-10-01 | docs/backlog/ (SOT.md, hongyi.md, joely.md, damien.md, details/), scripts/update_tracker.py, scripts/verify_docs.py | Old backlog.md retired; 51 tasks in three personal backlogs, generated tracker, E1 detail file; docs check updated | D-023 to D-026 |
+| 2026-10-01 | docs/specs/rules.md, schema.md, architecture.md, prd.md, README.md, HANDOVER.md, PR template | New rule that tables and reference data are created only in E1; schema ownership note; links and task ids (E0-9 and E0-12 are now E0-3) updated | D-023, D-024 |
 
 ## Open questions and blockers
 
-- **E0-12:** choose the JEV deployment (hosted OpenJev, small CPU models, self-hosted, or only the Hunyuan fallback). Not decided yet.
-- **E0-9:** choose the AI provider and gateway settings.
+- **E0-3:** choose the AI provider and gateway settings, and the JEV deployment (hosted OpenJev, small CPU models, self-hosted, or only the Hunyuan fallback). Not decided yet.
+- **Confirm the assumptions in D-026:** E0-2 and E0-3 stay with Hong Yi, E1-5 owner, leads for E20 and E21 tasks.
+- **Workload:** Damien has almost nothing ready until E0-2 and E1-2 are done, and Hong Yi carries about half the effort. See the notes in `docs/backlog/SOT.md` for rebalancing options.
 - **Supabase:** the project is still named `smart-health-backlog`. The owner renames it to `smart-health` in the Supabase dashboard. Storage for photos and exports: Supabase Storage is the default unless the owner says otherwise.
 - **Needs the owner's OK** (outside the cited data): clinical thresholds and screening intervals, supplement and TCM interaction data, medication label photos for testing, lifestyle guidance text, a Mi Watch export.

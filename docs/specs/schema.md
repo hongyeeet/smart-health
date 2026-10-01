@@ -31,6 +31,8 @@ Every table lives in the `public` schema. The layer says what kind of data it ho
 | **Reference** (seeded, versioned) | `drug_reference`, `drug_aliases`, `drug_side_effects`, `interaction_rules`, `foods`, `preventive_items`, `routing_rules`, `population_priors`, `knowledge_documents`, `knowledge_chunks`, `data_sources` |
 | **Operations** (cross-cutting) | `agent_runs`, `agent_steps`, `guardrail_events`, `conversations`, `messages`, `event_log` |
 
+**Who creates what.** Every table and view is created once, in epic E1. Joely creates the Bronze, Silver and Reference tables (E1-1 and E1-2). Hong Yi creates the Gold and Operations tables and views (E1-3), after the Silver tables exist. Joely loads every seed and demo value in E1-4. Later tasks only read and write rows. See [the E1 detail file](../backlog/details/e1-data-foundation.md).
+
 ---
 
 ## 1. Enums

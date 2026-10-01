@@ -83,37 +83,43 @@ for f in glob.glob("**/*", recursive=True) + glob.glob(".github/*") + glob.glob(
             hits.append((f, p))
 check("no keys or connection strings in tracked files", not hits, hits)
 
-# 4. backlog integrity
-backlog_path = "docs/backlog/backlog.md"
-b = read(backlog_path)
-tasks = re.findall(r"^- \[(.)\] \*\*(\S+) (.+?)\*\* · (P\d) · (Phase \d)", b, re.M)
-ids = [t[1] for t in tasks]
-check("backlog task ids unique", len(ids) == len(set(ids)), len(ids))
-blocks = re.split(r"^- \[.\] \*\*", b, flags=re.M)[1:]
-check("every task has Owner, Status and Note", all("  - Owner:" in x and "  - Status:" in x and "  - Note:" in x for x in blocks))
+# 4. backlog integrity (three personal backlogs plus the generated tracker)
+people_files = ["docs/backlog/hongyi.md", "docs/backlog/joely.md", "docs/backlog/damien.md"]
+heading = re.compile(r"^### (\S+) (.+?) · (P\d)( · NEEDS OK)?\s*$", re.M)
+all_ids, blocks, owner_of = [], [], {}
+for pf in people_files:
+    bt = read(pf)
+    ms = list(heading.finditer(bt))
+    for i, m in enumerate(ms):
+        body = bt[m.end():(ms[i + 1].start() if i + 1 < len(ms) else len(bt))]
+        all_ids.append(m.group(1))
+        owner_of[m.group(1)] = pf
+        blocks.append((m.group(1), body))
+check("backlog task ids unique across the three backlogs", len(all_ids) == len(set(all_ids)), len(all_ids))
+check("every task has Status, Needs first, Needed later, Note and an Ask of 20+ characters",
+      all(re.search(r"^- \*\*Status:\*\* (backlog|in progress|in review|blocked|done)$", x, re.M)
+          and "- **Needs first:**" in x and "- **Needed later:**" in x and "- **Note:**" in x
+          and re.search(r"^- \*\*Ask:\*\* .{20,}", x, re.M) for _, x in blocks))
 bad_dep = []
-for blk in blocks:
-    tid = blk.split(" ")[0]
-    m = re.search(r"Depends on: ([^·\n]+)", blk)
-    if m:
-        bad_dep += [(tid, d) for d in re.findall(r"(?:E\d+-\d+|CP\d)", m.group(1)) if d not in ids]
+for tid, blk in blocks:
+    for key in ("Needs first", "Needed later"):
+        m = re.search(r"^- \*\*%s:\*\* (.*)$" % key, blk, re.M)
+        if m and m.group(1).strip().lower() != "none":
+            bad_dep += [(tid, d.strip()) for d in m.group(1).split(",") if d.strip() not in all_ids]
 check("every dependency exists", not bad_dep, bad_dep)
-check("every task has subtasks", all(re.search(r"^  - \[.\] ", x, re.M) for x in blocks))
-statuses = re.findall(r"^  - Status: (.+)$", b, re.M)
-check("every task has an Ask line and a named owner", all(re.search(r"^  - Ask: .{20,}", x, re.M) and re.search(r"^  - Owner: (?!—)\S", x, re.M) for x in blocks))
-check("statuses are valid", all(s in ("backlog", "in progress", "in review", "blocked", "done") for s in statuses), set(statuses))
+check("every task has subtasks", all(re.search(r"^  - \[.\] ", x, re.M) for _, x in blocks))
+check("each person has a BLOCKERS block", all("<!-- BLOCKERS:START -->" in read(pf) for pf in people_files))
 done_wrong = []
-for blk in blocks:
-    head_done = blk.startswith("x] ") or re.match(r"^\S", blk) and False
-for m in re.finditer(r"^- \[(.)\] \*\*(\S+) .*?(?=^- \[.\] \*\*|^## |\Z)", b, re.M | re.S):
-    box, tid, body = m.group(1), m.group(2), m.group(0)
-    status = re.search(r"  - Status: (.+)", body).group(1)
-    subs = re.findall(r"^  - \[(.)\] ", body, re.M)
-    if (box == "x") != (status == "done"):
-        done_wrong.append((tid, "box and Status disagree"))
-    elif box == "x" and any(s != "x" for s in subs):
+for tid, blk in blocks:
+    status = re.search(r"^- \*\*Status:\*\* (.+)$", blk, re.M).group(1)
+    subs = re.findall(r"^  - \[(.)\] ", blk, re.M)
+    if status == "done" and any(s != "x" for s in subs):
         done_wrong.append((tid, "done with unticked subtasks"))
-check("task boxes agree with Status and subtasks", not done_wrong, done_wrong)
+    if subs and all(s == "x" for s in subs) and status in ("backlog", "in progress", "blocked"):
+        done_wrong.append((tid, "every subtask ticked but Status is " + status))
+check("Status agrees with the subtask boxes", not done_wrong, done_wrong)
+tr = subprocess.run([sys.executable, "scripts/update_tracker.py", "--check"], capture_output=True, text=True)
+check("generated tracker (SOT.md and BLOCKERS blocks) is up to date", tr.returncode == 0, (tr.stdout + tr.stderr).strip())
 
 # 5. schema layer map covers every table
 sch = read("docs/specs/schema.md")
@@ -147,9 +153,10 @@ except FileNotFoundError:
 required = ["README.md", ".gitignore", ".gitattributes", ".github/pull_request_template.md", ".github/CODEOWNERS",
             ".githooks/pre-commit", ".githooks/pre-push", "docs/specs/prd.md", "docs/specs/architecture.md",
             "docs/specs/memory.md", "docs/specs/schema.md", "docs/specs/flow.md", "docs/specs/design.md",
-            "docs/specs/rules.md", "docs/backlog/backlog.md", "docs/handover/HANDOVER.md",
+            "docs/specs/rules.md", "docs/backlog/SOT.md", "docs/backlog/hongyi.md", "docs/backlog/joely.md",
+            "docs/backlog/damien.md", "docs/backlog/details/e1-data-foundation.md", "docs/handover/HANDOVER.md",
             "docs/handover/session-log-template.md", "docs/handover/project-memory.md", "docs/mockup/mockup-prompt.md",
-            "data/README.md", "scripts/verify_docs.py"]
+            "data/README.md", "scripts/verify_docs.py", "scripts/update_tracker.py"]
 check("required files present", all(os.path.exists(p) for p in required), [p for p in required if not os.path.exists(p)])
 root_md = [f for f in os.listdir(".") if f.endswith(".md")]
 check("only README.md at the repo root", root_md == ["README.md"], root_md)

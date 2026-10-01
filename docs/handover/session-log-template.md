@@ -14,7 +14,7 @@ Copy this file to `docs/handover/sessions/<user_time>.md` at the start of the se
 _What the user said they were assigned or wanted to finish._
 
 ## Backlog tasks worked on
-_One row per task. Status is `backlog`, `in progress`, `blocked` or `done`._
+_One row per task. Status is `backlog`, `in progress`, `in review`, `blocked` or `done`._
 
 | Task | Status before | Status after | Subtasks completed | Note |
 |---|---|---|---|---|

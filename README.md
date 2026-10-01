@@ -14,7 +14,7 @@ New to the repo, human or AI assistant? Read **[docs/handover/HANDOVER.md](docs/
 README.md
 docs/                     all documents
   specs/                  prd, architecture, flow, schema, design, rules, memory
-  backlog/backlog.md      the live task list
+  backlog/                SOT.md (central tracker), hongyi.md, joely.md, damien.md (one backlog each), details/
   handover/               HANDOVER.md (start here), session-log-template.md, sessions/
   mockup/                 prompt and outputs for the design mockup
   reference/              superseded starting templates
@@ -23,7 +23,7 @@ data/                     all data (see data/README.md)
   raw/  processed/        downloads and importer output (gitignored)
   reference/  knowledge/  demo/
 .github/                  pull request template, CODEOWNERS
-scripts/                  verify_docs.py checks the documents; more scripts arrive with development
+scripts/                  verify_docs.py checks the documents, update_tracker.py refreshes the tracker; more arrive with development
 apps/  services/          created when development starts (planned layout: docs/specs/architecture.md section 3)
 ```
 
@@ -38,7 +38,8 @@ apps/  services/          created when development starts (planned layout: docs/
 | [docs/specs/flow.md](docs/specs/flow.md) | User journeys, screens, event logging, demo script |
 | [docs/specs/design.md](docs/specs/design.md) | UI/UX system: colours, type, components, accessibility |
 | [docs/specs/rules.md](docs/specs/rules.md) | Boundaries for AI coding agents: safety rules, data source policy, definition of done |
-| [docs/backlog/backlog.md](docs/backlog/backlog.md) | The live task list: epics E0-E22 (E2-E19 are features F1-F18), tasks and subtasks with owner, status and completion boxes |
+| [docs/backlog/SOT.md](docs/backlog/SOT.md) | The central tracker: progress, gates, who can start now, who is blocked. Generated from the three personal backlogs |
+| [docs/backlog/hongyi.md](docs/backlog/hongyi.md), [joely.md](docs/backlog/joely.md), [damien.md](docs/backlog/damien.md) | One backlog per person: 51 tasks in total (epics E0-E21, with E2-E19 matching features F1-F18, plus four gates CP0-CP3), each with an Ask, what it needs first, subtasks and status. Each person edits only their own file |
 | [docs/handover/project-memory.md](docs/handover/project-memory.md) | Team memory: current state, decisions register, session index, spec change log, open questions. Read at the start of a session, update at the end. (Not the same as `docs/specs/memory.md`, which is the app's memory design) |
 | [docs/mockup/mockup-prompt.md](docs/mockup/mockup-prompt.md) | The prompt for the interactive design mockup |
 | [docs/reference/](docs/reference/) | The two starting-template documents that `memory.md` and `schema.md` grew from |

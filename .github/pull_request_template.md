@@ -8,7 +8,7 @@
 - [ ] This PR goes into `dev`. (Only the owner opens `dev` to `uat` and `uat` to `main` promotions.)
 
 ## Checklist
-- [ ] `docs/backlog/backlog.md` is updated (subtasks ticked, Status, Owner, Note)
+- [ ] Your personal backlog (`docs/backlog/<your-name>.md`) is updated (subtasks ticked, Status, Note) and `python scripts/update_tracker.py` has been run
 - [ ] Session log added in `docs/handover/sessions/` (`<user>_<YYYY-MM-DD_HHMM>.md`)
 - [ ] `docs/handover/project-memory.md` updated (session index, decisions, spec change log)
 - [ ] The docs check passes (`python scripts/verify_docs.py`)

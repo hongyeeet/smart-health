@@ -8,8 +8,8 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 > - **Front end is a mobile-first web app shown in a phone-sized frame or WebView**, not a store-published native app (no store fees). Wherever this document says Expo / React Native / Health Connect / HealthKit, read "mobile-first web app". Device data arrives by replay of the cited datasets and file import, not live phone-health APIs.
 > - **Local app, Supabase database.** The web app and API run on each developer's machine. The database is Supabase (Postgres 16 with pgvector): every developer uses the same project through a private `.env` that is never committed. Row-level security is enabled on every table with no policies, so the public API key cannot read or write anything, and only the backend connects (direct connection string or service key, server-side only). Photos and exports go to a private Supabase Storage bucket. The only other outbound calls are the AI APIs (Hunyuan, and JEV if it is not run locally). There is no hosting for the app and no Docker requirement. Postgres is standard, so the database can move later without a redesign.
 > - **No sign-up/sign-in flows.** A "Start as demo patient" button creates a session, and every query is scoped by the session's user id. Consent records, the audit log and doctor share-link tokens stay.
-> - **LLM/AI provider is undecided.** It is chosen in backlog story E0-9. Everything calls it through the gateway in `llm/gateway.py`.
-> - **JEV** is the typed decision layer ([OpenJev](https://github.com/razorback16/openjev): yes/no, choice and score answers with calibrated confidence). It is chosen and wired in backlog story E0-12 and always called through `decision/`, with a Hunyuan fallback. See [memory.md](memory.md).
+> - **LLM/AI provider is undecided.** It is chosen in backlog task E0-3. Everything calls it through the gateway in `llm/gateway.py`.
+> - **JEV** is the typed decision layer ([OpenJev](https://github.com/razorback16/openjev): yes/no, choice and score answers with calibrated confidence). It is chosen and wired in backlog task E0-3 and always called through `decision/`, with a Hunyuan fallback. See [memory.md](memory.md).
 > - **Security is demo-grade.** Row-level security, consent-scoped retrieval, data-classification tagging and retention workflows are deferred (memory.md section 13). The clinical safety path is never deferred.
 
 ## 1. System overview
@@ -112,7 +112,7 @@ smart-health/
 ├─ README.md                         # what this is, where to start, branches
 ├─ docs/                             # ALL documents
 │  ├─ specs/                         # prd, architecture, flow, schema, design, rules, memory
-│  ├─ backlog/backlog.md             # the live task list
+│  ├─ backlog/                        # SOT.md tracker + one backlog per person
 │  ├─ handover/                      # HANDOVER.md (start here), session-log-template.md, sessions/
 │  ├─ mockup/                        # prompt and outputs for the design mockup
 │  └─ reference/                     # superseded starting templates
