@@ -4,6 +4,10 @@ A one-page picture for whoever creates the database (E1) and for anyone who need
 
 ## 1. The whole flow
 
+![Bronze, Silver, Gold and JEV data flow](img/data-flow.png)
+
+The picture above is the full version ([SVG source](img/data-flow.svg), open it in a browser to zoom). The diagram below is the same flow as text that GitHub draws, so it stays easy to diff.
+
 ```mermaid
 flowchart TB
   subgraph SRC["SOURCES"]

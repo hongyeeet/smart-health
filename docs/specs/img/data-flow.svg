@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1400" viewBox="0 0 2000 1400">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="2000" height="1400" fill="#FFFFFF"/>
+<text x="30" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" fill="#2C2C2A" text-anchor="start">Smart Health data flow: Bronze, Silver, Gold and where JEV sits</text>
+<text x="30" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="400" fill="#5F5E5A" text-anchor="start">Data only moves down. Bronze is never edited, Gold is built only from Silver, and JEV and the LLM reach data only through the Memory Service.</text>
+<text x="30" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#5F5E5A" text-anchor="start">SOURCES</text>
+<rect x="30" y="118" width="280" height="76" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="1.2"/>
+<text x="42" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Typed entries</text>
+<text x="42" y="160.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">glucometer, doses taken, mood,</text>
+<text x="42" y="177.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">symptoms, workouts</text>
+<rect x="330.0" y="118" width="280.0" height="76" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="1.2"/>
+<text x="342.0" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Meal photo or text</text>
+<rect x="630.0" y="118" width="280.0" height="76" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="1.2"/>
+<text x="642.0" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Prescription, medicine and</text>
+<text x="642.0" y="158.9" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">supplement photos</text>
+<rect x="930.0" y="118" width="280.0" height="76" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="1.2"/>
+<text x="942.0" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Watch, CGM and dataset files</text>
+<rect x="330" y="240" width="880" height="150" rx="14" fill="#FAEEDA" stroke="#BA7517" stroke-width="1.6"/>
+<text x="346" y="266" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#633806" text-anchor="start">BRONZE  raw, kept exactly as received, never edited</text>
+<text x="1194" y="266" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#854F0B" text-anchor="end">created in E1-1 · Joely</text>
+<rect x="346" y="282" width="360" height="94" rx="10" fill="#FFFFFF" stroke="#BA7517" stroke-width="1.2"/>
+<text x="358" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Original object</text>
+<text x="358" y="324.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Photo, export or document in a private Supabase</text>
+<text x="358" y="341.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Storage bucket. Never overwritten.</text>
+<rect x="722" y="282" width="472" height="94" rx="10" fill="#FFFFFF" stroke="#BA7517" stroke-width="1.2"/>
+<text x="734" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">ingestion_events (one row per input)</text>
+<text x="734" y="324.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">checksum (unique per user), source_type, received_at,</text>
+<text x="734" y="341.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">schema_version, processing_status, entry_source. Changed only by</text>
+<text x="734" y="358.65" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">a logged user deletion.</text>
+<line x1="470.0" y1="196" x2="470.0" y2="238" stroke="#854F0B" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="770.0" y1="196" x2="770.0" y2="238" stroke="#854F0B" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="1070.0" y1="196" x2="1070.0" y2="238" stroke="#854F0B" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="170.0" y1="196" x2="170.0" y2="478" stroke="#0F6E56" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ah)"/>
+<text x="180.0" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="400" fill="#0F6E56" text-anchor="start" font-style="italic">No original to keep,</text>
+<text x="180.0" y="278" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="400" fill="#0F6E56" text-anchor="start" font-style="italic">so straight to Silver</text>
+<text x="346" y="420" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start" font-style="italic">Vision / LLM reads the original and proposes candidates (labelled inferred).</text>
+<text x="346" y="438" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start" font-style="italic">The user confirms or edits before anything counts. Dataset and watch files come in through importers.</text>
+<text x="346" y="456" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start" font-style="italic">Reading the original again with a newer model adds a new record. The original is untouched.</text>
+<line x1="1090" y1="392" x2="1090" y2="478" stroke="#854F0B" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="30" y="480" width="860" height="150" rx="14" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.6"/>
+<text x="46" y="506" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#04342C" text-anchor="start">SILVER  canonical, UTC time, canonical units, deduplicated</text>
+<text x="874" y="506" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#0F6E56" text-anchor="end">created in E1-2 · Joely</text>
+<rect x="46" y="522" width="412" height="96" rx="10" fill="#FFFFFF" stroke="#0F6E56" stroke-width="1.2"/>
+<text x="58" y="544" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Measurements and logs</text>
+<text x="58" y="564.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">glucose_readings, health_samples, sleep_sessions,</text>
+<text x="58" y="581.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">workouts, meals, meal_items, meal_analyses, dose_events,</text>
+<text x="58" y="598.65" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">mood, symptoms, labs, blood pressure</text>
+<rect x="474" y="522" width="400" height="96" rx="10" fill="#FFFFFF" stroke="#0F6E56" stroke-width="1.2"/>
+<text x="486" y="544" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Profile and entities</text>
+<text x="486" y="564.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">users, patient_profiles, patient_medications,</text>
+<text x="486" y="581.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">medication_ingredients, devices, health_goals,</text>
+<text x="486" y="598.65" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">appointments, doctor_questions</text>
+<rect x="910" y="480" width="300" height="150" rx="14" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.6"/>
+<text x="924" y="506" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#26215C" text-anchor="start">REFERENCE  seeded lookups</text>
+<text x="924" y="528" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3C3489" text-anchor="start">drug_reference, drug_aliases,</text>
+<text x="924" y="544.875" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3C3489" text-anchor="start">interaction_rules, foods,</text>
+<text x="924" y="561.75" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3C3489" text-anchor="start">preventive_items, routing_rules,</text>
+<text x="924" y="578.625" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3C3489" text-anchor="start">population_priors, knowledge_chunks</text>
+<text x="924" y="601.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#534AB7" text-anchor="start">Tables E1-2, values E1-4 · Joely</text>
+<line x1="908" y1="555" x2="892" y2="555" stroke="#534AB7" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+<rect x="30" y="695" width="1180" height="290" rx="14" fill="#E6F1FB" stroke="#185FA5" stroke-width="1.6"/>
+<text x="46" y="721" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#042C53" text-anchor="start">GOLD  built only from Silver. Every row keeps calculation version, evidence window, freshness and quality status</text>
+<text x="1194" y="741" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#185FA5" text-anchor="end">created in E1-3 · Hong Yi</text>
+<line x1="330" y1="632" x2="330" y2="693" stroke="#185FA5" stroke-width="2" marker-end="url(#ah)"/>
+<text x="342" y="664" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="400" fill="#185FA5" text-anchor="start" font-style="italic">built from Silver rows only</text>
+<rect x="590" y="640" width="620" height="46" rx="8" fill="#FFF8E6" stroke="#BA7517" stroke-width="1" stroke-dasharray="4 3"/>
+<text x="600" y="657" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="400" fill="#633806" text-anchor="start">Catch: 3 Silver columns point up at Gold (symptom_checkins.triggered_by_flag_id,</text>
+<text x="600" y="669.5" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="400" fill="#633806" text-anchor="start">appointments.brief_id, doctor_questions.brief_id). Plain uuid in E1-2, foreign key added at the end</text>
+<text x="600" y="682.0" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="400" fill="#633806" text-anchor="start">of E1-3.</text>
+<rect x="46" y="753" width="366" height="136" rx="10" fill="#FFFFFF" stroke="#185FA5" stroke-width="1.2"/>
+<text x="58" y="775" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Derived by code (no AI)</text>
+<text x="58" y="795.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">daily_aggregates, baselines, momentum_snapshots,</text>
+<text x="58" y="812.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">clinical_flags, urgent_events (rules),</text>
+<text x="58" y="829.65" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">meal_responses, food_responses, sprint_summaries,</text>
+<text x="58" y="846.525" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">event_windows, pattern_candidates,</text>
+<text x="58" y="863.4" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">interaction_alerts</text>
+<rect x="426" y="753" width="300" height="136" rx="10" fill="#FFFFFF" stroke="#185FA5" stroke-width="1.2"/>
+<text x="438" y="775" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Outputs</text>
+<text x="438" y="795.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">briefs (fixed once ready), brief_shares,</text>
+<text x="438" y="812.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">brief_share_access. The patient sees</text>
+<text x="438" y="829.65" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">exactly what the doctor sees.</text>
+<rect x="740" y="753" width="454" height="136" rx="10" fill="#FFFFFF" stroke="#993C1D" stroke-width="2"/>
+<text x="752" y="775" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#712B13" text-anchor="start">Application memory</text>
+<text x="752" y="795.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">memory_facts, memory_episodes, nudge_stats. Proposed by the</text>
+<text x="752" y="812.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">nightly reflection, typed by JEV, confirmed by the user.</text>
+<text x="752" y="831.65" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#993C1D" text-anchor="start">proposed, then active, then superseded or rejected</text>
+<line x1="412" y1="821" x2="426" y2="821" stroke="#185FA5" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="46" y="909" width="1148" height="62" rx="10" fill="#FFFFFF" stroke="#185FA5" stroke-width="1.2"/>
+<text x="58" y="931" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Views (read-only, recomputed on read)</text>
+<text x="58" y="951.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">timeline_events, health_state, trends, adherence_summary, insight_context</text>
+<line x1="230" y1="889" x2="230" y2="909" stroke="#185FA5" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="967.0" y1="889" x2="967.0" y2="909" stroke="#993C1D" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="30" y="1029" width="1180" height="84" rx="14" fill="#F1EFE8" stroke="#2C2C2A" stroke-width="2"/>
+<text x="46" y="1057" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#2C2C2A" text-anchor="start">MEMORY SERVICE  the only door to memory (our code, not JEV)</text>
+<text x="46" y="1079" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">get_context · get_timeline · get_entities · get_relationships · search_memories · propose_memory · supersede_memory. The user comes from the session, never from</text>
+<text x="46" y="1095" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">arguments. Returns an evidence packet: source ids, evidence status, confidence, freshness. No names or identifiers. No free SQL for anyone.</text>
+<line x1="630" y1="987" x2="630" y2="1027" stroke="#2C2C2A" stroke-width="2" marker-end="url(#ah)"/>
+<text x="642" y="1011" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="400" fill="#2C2C2A" text-anchor="start" font-style="italic">reads views first, then timeline and entities</text>
+<rect x="30" y="1149" width="380.0" height="70" rx="10" fill="#FFFFFF" stroke="#888780" stroke-width="1.2"/>
+<text x="42" y="1171" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Dashboards and deterministic services</text>
+<text x="42" y="1191.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Doses, glucose, insights, brief charts. Code</text>
+<text x="42" y="1208.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">computes every number.</text>
+<rect x="430.0" y="1149" width="380.0" height="70" rx="10" fill="#FFFFFF" stroke="#888780" stroke-width="1.2"/>
+<text x="442.0" y="1171" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">LLM</text>
+<text x="442.0" y="1191.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Writes language from the evidence packet only.</text>
+<text x="442.0" y="1208.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Never computes or invents sources.</text>
+<rect x="830.0" y="1149" width="380.0" height="70" rx="10" fill="#FFFFFF" stroke="#888780" stroke-width="1.2"/>
+<text x="842.0" y="1171" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2C2C2A" text-anchor="start">Output guard, then the user</text>
+<text x="842.0" y="1191.9" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">No medication advice, no diagnosis, no uncited</text>
+<text x="842.0" y="1208.775" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">claims. Otherwise an approved template.</text>
+<line x1="220.0" y1="1115" x2="220.0" y2="1147" stroke="#2C2C2A" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="620.0" y1="1115" x2="620.0" y2="1147" stroke="#2C2C2A" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="1020.0" y1="1115" x2="1020.0" y2="1147" stroke="#2C2C2A" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="30" y="1243" width="1180" height="62" rx="14" fill="#F1EFE8" stroke="#888780" stroke-width="1.4" stroke-dasharray="6 4"/>
+<text x="46" y="1267" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#444441" text-anchor="start">OPERATIONS  every step is logged (ids and digests only, never health values)</text>
+<text x="46" y="1289" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">agent_runs · agent_steps (node = jev or memory) · guardrail_events · conversations · messages · event_log (append-only)  ·  created in E1-3 · Hong Yi</text>
+<rect x="1360" y="100" width="610" height="1205" rx="16" fill="#FAECE7" stroke="#993C1D" stroke-width="2"/>
+<text x="1378" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#712B13" text-anchor="start">JEV  (OpenJev, behind decision/)</text>
+<text x="1378" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="400" fill="#4A1B0C" text-anchor="start">Small typed questions answered fast, each with a confidence. JEV has no tables</text>
+<text x="1378" y="171.55" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="400" fill="#4A1B0C" text-anchor="start">of its own: it reads a short de-identified state and returns an answer. Every</text>
+<text x="1378" y="189.10000000000002" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="400" fill="#4A1B0C" text-anchor="start">call is logged in agent_steps.</text>
+<rect x="1374" y="218.65000000000003" width="582" height="138.5" rx="10" fill="#FFFFFF" stroke="#D85A30" stroke-width="1.2"/>
+<text x="1388" y="240.65000000000003" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#712B13" text-anchor="start">When a message arrives (read time)</text>
+<text x="1388" y="262.55" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">1. Rules go first: urgent thresholds and refusal rules, no AI.</text>
+<text x="1388" y="282.05" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">2. yes/no checks: asking to stop, skip or change a medicine? asking what</text>
+<text x="1388" y="298.55" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">condition they have? urgent wording? A yes returns the safe template.</text>
+<text x="1388" y="318.05" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">3. choice: message intent, and which memory route is needed.</text>
+<text x="1388" y="337.55" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">4. The Memory Service then reads only that route's Gold tables (next box).</text>
+<rect x="1374" y="427.15000000000003" width="582" height="158.0" rx="10" fill="#FFFFFF" stroke="#D85A30" stroke-width="1.2"/>
+<text x="1388" y="449.15000000000003" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#712B13" text-anchor="start">Memory route decides which Gold tables are read</text>
+<text x="1388" y="471.05" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">semantic: memory_facts, memory_episodes, health_goals, patient_profiles</text>
+<text x="1388" y="490.55" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">temporal: timeline_events, event_windows, daily_aggregates, meal_responses</text>
+<text x="1388" y="510.05" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">entity: patient_medications, medication_ingredients, foods, meals, devices,</text>
+<text x="1388" y="526.55" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">appointments</text>
+<text x="1388" y="546.05" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">relationship: pattern_candidates, food_responses, interaction_alerts</text>
+<text x="1388" y="565.55" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">Low confidence: semantic plus temporal, small limits.</text>
+<rect x="1374" y="655.1500000000001" width="582" height="135.5" rx="10" fill="#FFFFFF" stroke="#D85A30" stroke-width="1.2"/>
+<text x="1388" y="677.1500000000001" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#712B13" text-anchor="start">When memory is written (write time)</text>
+<text x="1388" y="699.0500000000001" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">choice: what kind of fact is this? preference, routine, barrier, food_response,</text>
+<text x="1388" y="715.5500000000001" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">goal or context. It sets memory_facts.category.</text>
+<text x="1388" y="735.0500000000001" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">yes/no: does this evidence support the statement? If not, the brief sentence is</text>
+<text x="1388" y="751.5500000000001" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">dropped.</text>
+<text x="1388" y="771.0500000000001" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">yes/no (stretch): do two facts conflict? Keep both and ask the user.</text>
+<rect x="1374" y="860.6500000000001" width="582" height="80.0" rx="10" fill="#FFFFFF" stroke="#D85A30" stroke-width="1.2"/>
+<text x="1388" y="882.6500000000001" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#712B13" text-anchor="start">When an image arrives</text>
+<text x="1388" y="904.5500000000001" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">choice: prescription label, box, supplement, TCM product or food? It picks which</text>
+<text x="1388" y="921.0500000000001" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">Silver pipeline handles the Bronze object.</text>
+<rect x="1374" y="1010.6500000000001" width="582" height="152.0" rx="10" fill="#FFFFFF" stroke="#D85A30" stroke-width="1.2"/>
+<text x="1388" y="1032.65" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#712B13" text-anchor="start">Safety rules for JEV</text>
+<text x="1388" y="1054.5500000000002" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">A rule that fires always beats JEV.</text>
+<text x="1388" y="1074.0500000000002" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">Confidence under 0.8, or JEV down: conservative path (refusal template, 'not</text>
+<text x="1388" y="1090.5500000000002" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">checked', ask the user).</text>
+<text x="1388" y="1110.0500000000002" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">Never decides: any number, threshold, baseline or food response; urgent alerts;</text>
+<text x="1388" y="1126.5500000000002" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">interaction lookup; doses or adherence; meal nutrients (the LLM estimates those,</text>
+<text x="1388" y="1143.0500000000002" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2C2C2A" text-anchor="start">stored as inferred).</text>
+<line x1="1360" y1="1071" x2="1212" y2="1071" stroke="#993C1D" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ah)"/>
+<text x="1285.0" y="1063" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#993C1D" text-anchor="middle" font-style="italic">routes, types, checks</text>
+<line x1="1360" y1="821" x2="1212" y2="821" stroke="#993C1D" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ah)"/>
+<text x="1285.0" y="813" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#993C1D" text-anchor="middle" font-style="italic">types new facts</text>
+<line x1="1360" y1="1273" x2="1212" y2="1273" stroke="#993C1D" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ah)"/>
+<text x="1285.0" y="1265" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#993C1D" text-anchor="middle" font-style="italic">logs every call</text>
+<text x="30" y="1341" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#5F5E5A" text-anchor="start">Colour key</text>
+<rect x="120" y="1327" width="18" height="18" rx="4" fill="#FAEEDA" stroke="#BA7517" stroke-width="1.4"/>
+<text x="146" y="1341" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Bronze</text>
+<rect x="217.2" y="1327" width="18" height="18" rx="4" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.4"/>
+<text x="243.2" y="1341" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Silver</text>
+<rect x="314.4" y="1327" width="18" height="18" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.4"/>
+<text x="340.4" y="1341" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Reference</text>
+<rect x="433.2" y="1327" width="18" height="18" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1.4"/>
+<text x="459.2" y="1341" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Gold</text>
+<rect x="516.0" y="1327" width="18" height="18" rx="4" fill="#FAECE7" stroke="#993C1D" stroke-width="1.4"/>
+<text x="542.0" y="1341" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">JEV and memory</text>
+<rect x="670.8" y="1327" width="18" height="18" rx="4" fill="#F1EFE8" stroke="#888780" stroke-width="1.4"/>
+<text x="696.8" y="1341" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#444441" text-anchor="start">Sources, service, operations</text>
+<text x="30" y="1371" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="400" fill="#5F5E5A" text-anchor="start">Solid arrows: data moves. Dashed arrows: lookups, bypass or logging. Source of truth: docs/specs/data-flow.md, memory.md and schema.md.</text>
+</svg>
