@@ -67,7 +67,7 @@ Each journey lists: **Trigger → Steps (screen · system action · events)**.
 |---|---|---|---|
 | 1 | Med detail | load cached explainer or generate (RAG) | `med.explainer.viewed` {med_id} |
 | 2 | Sections: What it's for · How you take it (from **your** label) · Common side effects · When to call your doctor · Sources | output guard | `agent.run.*`, `guard.output.checked` |
-| 3 | Tap Listen (speaker icon) / change language | Tencent TTS, cached audio | `tts.played` {locale} |
+| 3 | Tap Listen (speaker icon) / change language | ElevenLabs TTS, cached audio | `tts.played` {locale} |
 | 4 | "Ask about this med" → chat pre-filled | | `chat.opened` {entry=med_detail} |
 
 ### J4 Daily dose loop (F4)

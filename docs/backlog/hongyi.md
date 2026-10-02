@@ -23,19 +23,19 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 **Blocked (24)**
 
 - E0-3 AI services: waiting for E0-2 (Hong Yi, in progress)
-- E3-1 Scan and read: waiting for E0-2 (Hong Yi, in progress), E0-3 (Hong Yi, backlog)
+- E3-1 Scan and read: waiting for E0-2 (Hong Yi, in progress), E0-3 (Hong Yi, in progress)
 - E3-2 Match, parse and save: waiting for E3-1 (Hong Yi, backlog)
 - E3-3 Accuracy report: waiting for E3-1 (Hong Yi, backlog)
-- E4-1 Medicine explainer: waiting for E0-3 (Hong Yi, backlog), E16-2 (Hong Yi, backlog)
+- E4-1 Medicine explainer: waiting for E0-3 (Hong Yi, in progress), E16-2 (Hong Yi, backlog)
 - E5-1 Doses and reminders: waiting for E0-2 (Hong Yi, in progress)
 - E5-2 Missed doses and refills: waiting for E5-1 (Hong Yi, backlog)
 - E9-1 Daily totals, baseline and flags: waiting for E1-3 (Hong Yi, backlog)
 - E9-2 Insights screen: waiting for E9-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E13-1 Brief data and charts: waiting for E9-1 (Hong Yi, backlog)
-- E13-2 Narrative and PDF: waiting for E13-1 (Hong Yi, backlog), E0-3 (Hong Yi, backlog)
+- E13-2 Narrative and PDF: waiting for E13-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
 - E13-3 Brief screens and sharing: waiting for E13-2 (Hong Yi, backlog)
-- E16-1 Chat pipeline and Memory Service: waiting for E0-3 (Hong Yi, backlog), E1-3 (Hong Yi, backlog)
-- E16-2 Safety net and JEV decisions: waiting for E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, backlog)
+- E16-1 Chat pipeline and Memory Service: waiting for E0-3 (Hong Yi, in progress), E1-3 (Hong Yi, backlog)
+- E16-2 Safety net and JEV decisions: waiting for E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
 - E16-3 Chat screen, helpers and chat memory: waiting for E16-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E17-1 Memory and nightly reflection: waiting for E1-3 (Hong Yi, backlog), E16-1 (Hong Yi, backlog)
 - E17-2 What it learned screen: waiting for E17-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
@@ -88,19 +88,19 @@ Done: 0 of 27 tasks.
 
 ### E0-3 AI services · P0
 
-- **Ask:** Choose and wire the AI: the provider for chat, photo reading and embeddings, and how the fast yes/no layer (JEV) runs (hosted, small models or the Hunyuan fallback), all behind one gateway so the rest of the app never calls AI directly.
-- **Status:** backlog
+- **Ask:** Choose and wire the AI: the provider for chat, photo reading and embeddings, and how the fast yes/no layer (JEV) runs, all behind one gateway so the rest of the app never calls AI directly. The provider and model choices are written in docs/specs/ai-models.md.
+- **Status:** in progress
 - **Needs first:** E0-2
 - **Needed later:** none
 - **Phase:** 0
 - **Spec:** architecture 2; memory 5
 - **Flag:** Missing from your pasted list; kept because chat, scanning, meal logging and the brief depend on it. Confirm it stays with Hong Yi.
-- **Note:**
+- **Note:** Provider and model decision written in docs/specs/ai-models.md (D-047). Still to confirm: the JEV deployment, Vertex model IDs and region, and Malay and Tamil on ElevenLabs. The gateway and smoke test are not built.
 - **Success criteria:**
-  - [ ] Provider decision recorded in the repo (chat, vision, embeddings)
-  - [ ] JEV option chosen (hosted OpenJev, small models, self-hosted, or Hunyuan fallback only) and the data-handling note recorded
+  - [x] Provider decision recorded in the repo (chat, vision, embeddings)
+  - [ ] JEV option chosen (the TypeSafe JEV model: hosted or self-hosted) and the data-handling note recorded
   - [ ] One gateway keeps the OpenJev request and response shape and returns probability and confidence; keys live only in settings
-  - [ ] Smoke test gets an answer from each kind of call; switching JEV off sends every call to the fallback
+  - [ ] Smoke test gets an answer from each kind of call; switching JEV off sends every decision down the conservative path
 
 ### E1-3 Gold and operations tables and views · P0
 

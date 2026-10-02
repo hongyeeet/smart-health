@@ -20,7 +20,7 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 **Blocked (7)**
 
 - E2-1 Onboarding flow: waiting for E0-2 (Hong Yi, in progress)
-- E2-2 Chat onboarding: waiting for E2-1 (Damien, backlog), E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, backlog)
+- E2-2 Chat onboarding: waiting for E2-1 (Damien, backlog), E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
 - E8-2 Food leaderboard: waiting for E8-1 (Damien, backlog)
 - E10-1 Check-ins: waiting for E9-1 (Hong Yi, backlog)
 - E12-1 Nudge messages and learning: waiting for E9-1 (Hong Yi, backlog)

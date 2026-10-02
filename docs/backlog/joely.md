@@ -19,10 +19,10 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 
 **Blocked (9)**
 
-- E1-6 Medicine knowledge index: waiting for E0-3 (Hong Yi, backlog)
+- E1-6 Medicine knowledge index: waiting for E0-3 (Hong Yi, in progress)
 - E6-1 Clash checker: waiting for E3-2 (Hong Yi, backlog)
 - E7-1 Quick logs: waiting for E0-2 (Hong Yi, in progress)
-- E7-2 Meal logging with AI macros: waiting for E0-3 (Hong Yi, backlog)
+- E7-2 Meal logging with AI macros: waiting for E0-3 (Hong Yi, in progress)
 - E7-3 Connected sources and log upkeep: waiting for E7-1 (Joely, backlog)
 - E18-1 Languages, audio and translation review: waiting for E0-2 (Hong Yi, in progress)
 - E19-1 Timeline and Day view: waiting for E1-3 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)

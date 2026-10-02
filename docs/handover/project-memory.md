@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-02 22:57: PASS (21 of 21 checks passed)
+**Last docs check:** 2026-10-02 23:10: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -75,6 +75,8 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-044 | 2026-10-02 | Simulated rows carry `entry_source = demo_dataset` and an `external_id` starting `sim:`; imported rows start `cgmacros:`, `bigideas:`, `fitbit:`; tables with no source column hold only simulated rows for the demo user; `data/demo/DISCLOSURE.md` lists them. Clock times are read as Singapore time, each person's last day is shifted to the demo end date (`data/demo/demo_config.json`), and Mr Tan's last 3 hours are held back for the replay tool | Resolves the "simulated versus imported" gap; the demo needs live-looking data | bronze-silver.md 9, e1-4-handover.md | Pending |
 | D-045 | 2026-10-02 | BIG IDEAs and Fitbit people get users but no profile (profiles allow only Type 2); GlucoBench is a test fixture only (1,000 rows, insulin removed); the NHANES persona-sampling table is not created; the medicine knowledge index was first kept inside E1-4 (superseded by D-046) | Schema limits; Joely's choice on the index | joely.md, e1-data-foundation.md | Pending |
 | D-046 | 2026-10-02 | The medicine knowledge index is split out of E1-4 into a new task E1-6 (Joely), which waits for the embedding model (E0-3). E1-4 is marked done. E1-6 is added to Joely's backlog (52 tasks in total) | E1-4 would otherwise stay open until E0-3 and keep the tasks behind it blocked | joely.md, e1-data-foundation.md, e1-4-handover.md | Pending |
+| D-047 | 2026-10-02 | AI stack: Google Cloud Vertex AI for everything except speech (ElevenLabs) and JEV (the TypeSafe JEV model). Claude Sonnet 5.5 for chat, explainer, brief narrative and photos (Gemini 3.6 Flash is the challenger in the photo accuracy test); Gemini Embedding for embeddings; Cloud Translation for fixed text; ElevenLabs for speech. No Tencent fallback; if JEV is off the conservative path applies. Replaces Hunyuan and Tencent TTS in the specs | Owner's instruction, after reviewing cost and quality options | docs/specs/ai-models.md, prd.md A2 and A11, architecture.md, memory.md, flow.md | Pending |
+| D-048 | 2026-10-02 | Embedding size is 768 dimensions (`gemini-embedding-001`). `knowledge_chunks.embedding` (currently `vector(1024)`) needs one migration to 768; `memory_episodes.embedding` is created at 768 in E1-3; `EMBED_DIM=768` in `.env`. Needs Joely told, since she owns the migration that created the column | pgvector's HNSW index handles at most 2,000 dimensions, so Gemini's default 3,072 cannot be indexed; 768 is a recommended size and is cheaper to store and search | docs/specs/ai-models.md section 7 | Pending |
 
 ## Session index
 
@@ -105,6 +107,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-01 | docs/specs/design.md | Palette, typeface, icons and motion updated for the new look; points to apps/web/design.md | D-029 |
 | 2026-10-01 | docs/handover/HANDOVER.md, docs/specs/rules.md | Build in `apps/web`, never edit `apps/mock` | D-035 |
 | 2026-10-01 | data/data-map.md (new), data/README.md | Data map: sources with links, missing data, and what the user enters in the app | none (summarises the data plan workbook) |
+| 2026-10-02 | docs/specs/ai-models.md (new), prd.md, architecture.md, memory.md, flow.md, README.md | AI provider and model decision; Hunyuan and Tencent TTS removed; embedding size 768 | D-047, D-048 |
 | 2026-10-01 | docs/specs/architecture.md, README.md | App folders `apps/mock` and `apps/web`; front-end, charts and i18n rows; status line | D-028, D-034 |
 | 2026-10-02 | data/README.md | Table of downloaded datasets with licences, the NHANES 2011-16 and openFDA additions | D-036, D-037 |
 | 2026-10-02 | data/plan/ (dataset_links.md, nhanes_files.csv, new) | Link list for all 48 manifest datasets; the 130 NHANES files with an allowed flag | D-037 |
@@ -119,7 +122,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 
 - **Demo panel (D-030):** the owner vets it, then it is removed. Also confirm D-033 (the demo interaction pair).
 - **Front end gaps:** only a few strings are wrapped for translation; Malay and Tamil are empty; the iPad layout and touch gestures are untested on a real device.
-- **E0-3:** choose the AI provider and gateway settings, and the JEV deployment (hosted OpenJev, small CPU models, self-hosted, or only the Hunyuan fallback). Not decided yet.
+- **E0-3:** the provider and models are decided (D-047, ai-models.md). Still to confirm: the JEV deployment (hosted or self-hosted), Vertex model IDs and region for Claude Sonnet 5.5, Malay and Tamil support on ElevenLabs. Tell Joely about the 768 embedding size (D-048).
 - **Confirm the assumptions in D-026:** E0-2 and E0-3 stay with Hong Yi, E1-5 owner, leads for E20 and E21 tasks.
 - **Workload:** Damien has almost nothing ready until E0-2 and E1-2 are done, and Hong Yi carries about half the effort. See the notes in `docs/backlog/SOT.md` for rebalancing options.
 - **Supabase:** the project is still named `smart-health-backlog`. The owner renames it to `smart-health` in the Supabase dashboard. Storage for photos and exports: Supabase Storage is the default unless the owner says otherwise.

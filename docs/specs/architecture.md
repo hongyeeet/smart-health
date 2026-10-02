@@ -8,8 +8,8 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 > - **Front end is a mobile-first web app shown in a phone-sized frame or WebView**, not a store-published native app (no store fees). Wherever this document says Expo / React Native / Health Connect / HealthKit, read "mobile-first web app". Device data arrives by replay of the cited datasets and file import, not live phone-health APIs.
 > - **Local app, Supabase database.** The web app and API run on each developer's machine. The database is Supabase (Postgres 16 with pgvector): every developer uses the same project through a private `.env` that is never committed. Row-level security is enabled on every table with no policies, so the public API key cannot read or write anything, and only the backend connects (direct connection string or service key, server-side only). Photos and exports go to a private Supabase Storage bucket. The only other outbound calls are the AI APIs (Hunyuan, and JEV if it is not run locally). There is no hosting for the app and no Docker requirement. Postgres is standard, so the database can move later without a redesign.
 > - **No sign-up/sign-in flows.** A "Start as demo patient" button creates a session, and every query is scoped by the session's user id. Consent records, the audit log and doctor share-link tokens stay.
-> - **LLM/AI provider is undecided.** It is chosen in backlog task E0-3. Everything calls it through the gateway in `llm/gateway.py`.
-> - **JEV** is the typed decision layer ([OpenJev](https://github.com/razorback16/openjev): yes/no, choice and score answers with calibrated confidence). It is chosen and wired in backlog task E0-3 and always called through `decision/`, with a Hunyuan fallback. See [memory.md](memory.md).
+> - **AI provider (decided 2026-10-02, D-047; see [ai-models.md](ai-models.md)).** Everything runs through Google Cloud Vertex AI (Claude Sonnet 5.5 for text and photos, Gemini Embedding, Cloud Translation) except speech (ElevenLabs) and the JEV decision model (TypeSafe). There is no Tencent fallback. Everything calls the AI through the gateway in `llm/gateway.py`.
+> - **JEV** is the typed decision layer ([OpenJev](https://github.com/razorback16/openjev): yes/no, choice and score answers with calibrated confidence). It is wired in backlog task E0-3 and always called through `decision/`. If JEV is off or unreachable, every decision takes the conservative path (no model fallback). See [memory.md](memory.md) and [ai-models.md](ai-models.md).
 > - **Security is demo-grade.** Row-level security, consent-scoped retrieval, data-classification tagging and retention workflows are deferred (memory.md section 13). The clinical safety path is never deferred.
 
 ## 1. System overview
@@ -38,9 +38,9 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 └───────┬───────────────────────┬──────────────────────┬─────────────────────┘
         │ TB-2 (outbound only)  │ TB-3                 │ TB-4
 ┌───────▼───────┐    ┌──────────▼─────────┐   ┌────────▼──────────────┐
-│ LLM gateway → │    │ Tencent Cloud TTS  │   │ Google Calendar API   │
-│ Hunyuan (chat,│    │ (speech synthesis) │   │ (user OAuth, opt-in)  │
-│ vision, embed)│    └────────────────────┘   └───────────────────────┘
+│ LLM gateway → │    │ ElevenLabs speech  │   │ Google Calendar API   │
+│ Vertex AI     │    │ (TTS and STT)      │   │ (user OAuth, opt-in)  │
+│ (text, vision)│    └────────────────────┘   └───────────────────────┘
 └───────────────┘
         ▲
 ┌───────┴────────────── Doctor (read-only) ────────────────┐
@@ -89,19 +89,19 @@ Originals are never overwritten. A better analysis is a new record that links to
 | i18n | `i18next` + `react-i18next` (en, zh, ms, ta); keys written as `t('key', 'English default')`, extracted with `i18next-parser` | Multilingual |
 | Backend | **Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0 (async), Alembic** | Typed APIs; strong data/ML ecosystem |
 | Agents | **LangGraph** (state graphs, checkpoints) + own guardrail and memory layer | Observable, controllable agent flows |
-| LLM | **Tencent Hunyuan** (chat, vision, embeddings) via an OpenAI-compatible client, wrapped by `llm/gateway.py` | Tencent ecosystem; swappable provider |
-| Decision layer (JEV) | **OpenJev** typed decisions (`noul`, `choice`, `score`) behind `decision/`; hosted, small CPU models, or self-hosted; fallback to Hunyuan structured output | Fast, bounded, calibrated classification for routing and guards. Decided in E0-12 |
+| LLM | **Claude Sonnet 5.5** (chat, explainer, brief narrative, photos) and **Gemini Embedding** (768 dimensions) on Google Cloud Vertex AI, **Google Cloud Translation** for fixed text, wrapped by `llm/gateway.py` | One cloud, one bill; model chosen per job (ai-models.md); swappable by configuration |
+| Decision layer (JEV) | **OpenJev** typed decisions (`noul`, `choice`, `score`) behind `decision/`; hosted, small CPU models, or self-hosted; if it is off or unreachable, the conservative path applies | Fast, bounded, calibrated classification for routing and guards. The TypeSafe JEV model is used (deployment to confirm, E0-3) |
 | Vector search | **pgvector** in Postgres | One DB for relational and vectors |
 | DB | Supabase (managed PostgreSQL 16 with pgvector), one shared project | JSONB, enums, pgvector; RLS on with no policies |
 | Jobs | APScheduler in a separate worker process, jobs persisted in Postgres | Simple, no Redis needed |
 | Brief rendering | Jinja2 HTML + Matplotlib (SVG charts) → WeasyPrint PDF | Deterministic, printable, no headless browser |
-| TTS | Tencent Cloud TTS (fallback: device TTS via `expo-speech`) | Multilingual speech |
+| TTS and STT | **ElevenLabs** (`eleven_multilingual_v2` for cached explainers, `eleven_flash_v2_5` for live lines, Scribe v2 for transcription) | Multilingual speech; audio is cached by text hash |
 | Calendar | Google Calendar API (OAuth, user-initiated) + `.ics` fallback | Scheduling |
 | Storage | Supabase Storage, private bucket (`STORAGE_BACKEND=supabase`) | Images, PDFs, audio, exports |
 | Runtime | Web app and API run locally on each machine; database and file storage on Supabase (Postgres 16 + pgvector, private Storage bucket); one command to start | No hosting cost for the app; one shared database with the same seeded demo data for everyone |
 | Quality | Backend: ruff, mypy (strict), pytest, pytest-asyncio. App: eslint, prettier, tsc, jest + RNTL | See rules.md |
 
-> Verify current package names and Hunyuan model IDs and endpoint in the official docs at setup time; keep them in `.env`, never hard-coded.
+> Verify current package names, model IDs, regions and prices in the vendor consoles at setup time; keep them in `.env`, never hard-coded.
 
 ---
 
@@ -191,13 +191,13 @@ smart-health/
 │     │  │  ├─ guardrails/           # input_guard.py, output_guard.py, policies.yaml, templates/
 │     │  │  ├─ memory/               # reflection.py, episodes.py (read and write only through the Memory Service)
 │     │  │  └─ prompts/              # *.md prompt files, versioned
-│     │  ├─ llm/                     # gateway.py (retry, timeout, logging), providers/hunyuan.py, meal_analysis.py (photo/text → macros)
-│     │  ├─ decision/                # jev_client.py (OpenJev wire API), fallback_hunyuan.py, questions.py (typed question sets)
+│     │  ├─ llm/                     # gateway.py (retry, timeout, logging), providers/ (vertex_claude.py, vertex_embeddings.py, translate.py, elevenlabs.py), meal_analysis.py (photo/text → macros)
+│     │  ├─ decision/                # jev_client.py (JEV wire API), conservative.py (the no-model fallback path), questions.py (typed question sets)
 │     │  ├─ memory/                  # service.py (scoped reads/writes), evidence_packet.py, lifecycle.py (propose, supersede)
 │     │  ├─ knowledge/               # ingest.py, chunk.py, retrieve.py (pgvector)
 │     │  ├─ brief/                   # builder.py (data), narrative.py (LLM+validator),
 │     │  │                           # charts.py (matplotlib SVG), templates/*.html, pdf.py
-│     │  ├─ integrations/            # tts_tencent.py, google_calendar.py, ics.py, storage.py
+│     │  ├─ integrations/            # (speech is in llm/providers/elevenlabs.py), google_calendar.py, ics.py, storage.py
 │     │  └─ workers/                 # scheduler.py, jobs/*.py
 │     └─ tests/
 │        ├─ unit/  integration/
@@ -232,7 +232,7 @@ smart-health/
 
 ### 4.1 Prescription scan (F2 → F4, F5)
 ```
-camera → POST /scans (image) → storage → extractor agent (Hunyuan vision, JSON schema output)
+camera → POST /scans (image) → storage → extractor agent (vision model, JSON schema output)
 → scan_extractions (fields + confidence) → app review screen → user confirms/edits
 → POST /scans/{id}/confirm → patient_medications + dose_schedules (adherence.py)
 → clash.check(patient) → interaction_alerts → notification if hit → event_log
@@ -315,7 +315,7 @@ brief.builder (deterministic): profile, meds, adherence matrix, glucose stats, n
 ### 4.7 Meal analysis (F6, F7)
 ```
 photo or text → storage + ingestion_events (Bronze)
-→ llm/meal_analysis.py (Hunyuan vision/text): items + estimated kcal, carbs, protein, fat, fibre, sugar, sodium, confidence per field
+→ llm/meal_analysis.py (vision or text model): items + estimated kcal, carbs, protein, fat, fibre, sugar, sodium, confidence per field
 → meal_analyses row (model_id, prompt_version, raw_output)
 → meal_items (estimated_by='llm_estimate', evidence_status='inferred') shown with an "Estimated" badge
 → user confirms or edits → estimated_by='user', evidence_status='observed'
@@ -395,7 +395,7 @@ OpenAPI is the contract; the mobile client is generated from it (`openapi-typesc
 ---
 
 ## 8. Configuration (`.env.example`)
-`DATABASE_URL` (Supabase direct connection string), `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (server only, never in the web app), `JWT_SECRET`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `EMBED_MODEL`, `EMBED_DIM`, `TENCENT_SECRET_ID`, `TENCENT_SECRET_KEY`, `TTS_REGION`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `STORAGE_BACKEND`, `STORAGE_BUCKET`, `SHARE_LINK_TTL_HOURS`, `TZ=Asia/Singapore`, `DEMO_MODE`.
+`DATABASE_URL` (Supabase direct connection string), `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (server only, never in the web app), `JWT_SECRET`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `LLM_VISION_CHALLENGER`, `EMBED_MODEL`, `EMBED_DIM`, `TRANSLATE_GLOSSARY_ID`, `ELEVENLABS_API_KEY`, `ELEVENLABS_TTS_MODEL`, `ELEVENLABS_TTS_LIVE_MODEL`, `ELEVENLABS_STT_MODEL`, `JEV_BASE_URL`, `JEV_API_KEY`, `AI_DAILY_CALL_CAP`, `AI_DAILY_BUDGET_USD`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `STORAGE_BACKEND`, `STORAGE_BUCKET`, `SHARE_LINK_TTL_HOURS`, `TZ=Asia/Singapore`, `DEMO_MODE`.
 
 ## 9. Demo mode
 `DEMO_MODE=true` → seed demo patient ("Uncle Tan", 90 days history incl. one CGM sprint), `replay.py` streams today's CGM/watch data at 1× or accelerated speed, and a hidden debug menu in the app lets you trigger: a missed dose, a hypo reading, a momentum flag, a clash, and brief generation. See flow.md §5.

@@ -16,7 +16,7 @@ One vocabulary for every document, table and prompt.
 | **Memory planes** | The four ways Gold memory is organised: **semantic** (meaning, preferences, routines), **temporal** (what happened when), **entity** (medications, foods, devices, goals, appointments), **relationship** (evidence-backed associations). Episodic recall (past chat summaries) is part of semantic |
 | **Memory Service** | Our scoped read/write API over Gold and approved Silver. Every read and write goes through it |
 | **JEV** | The typed decision layer, implemented with [OpenJev](https://github.com/razorback16/openjev), a "System One" decision server. You send it a state and typed questions (`noul` yes/no, `choice`, `score`, optionally with images). It returns a probability and a confidence for each answer, read directly from the model's probabilities, so an answer cannot go off-schema. It does not store memory, run analytics or decide safety |
-| **Decision gateway** | Our adapter (`app/decision/`) that calls JEV and falls back to a Hunyuan structured-output prompt |
+| **Decision gateway** | Our adapter (`app/decision/`) that calls JEV. If JEV is off or unreachable, the conservative path applies (no model fallback) |
 | **Evidence packet** | The structured input the LLM answers from (section 7) |
 | **Evidence status** | `observed`, `derived`, `inferred`, `reference_matched` (section 4) |
 | **Confidence** | A 0 to 1 number, separate from evidence status |
@@ -166,14 +166,14 @@ Response per question: `noul` gives the probability of yes; `choice` gives the c
 
 ### 5.4 Deployment options (decide in E0-12)
 
-The app runs locally for now, so prefer the options that run on a developer's machine: the small models or the Hunyuan fallback. The hosted option is a convenience, not a requirement.
+The owner chose the TypeSafe JEV model on 2026-10-02 (D-047); how it is deployed is still to be confirmed in E0-3. The options below remain the reference for that choice. The app runs locally for now, so prefer options that run on a developer's machine; the hosted option is a convenience, not a requirement.
 
 | Option | Good for | Watch out for |
 |---|---|---|
 | Hosted OpenJev on Codiv (`api.codiv.ai/v1/systemone`) | Fastest start, no GPU | Third-party service: send only de-identified state; check current terms and limits before relying on the free allowance |
 | Small encoder models behind OpenJev (Laya 421M, Verdict 151M) | Runs on a CPU, cheap | Text only; at most about 255 (Laya) or 24 (Verdict) options; short states (512 to 1,024 tokens) |
 | Self-hosted DiffusionGemma via OpenJev | Text plus images | Needs an NVIDIA GPU with 24 GB or Apple silicon with about 16 GB free |
-| **Fallback: Hunyuan structured output** through the same `decide()` interface | Always available, no new dependency | No calibrated confidence: treat confidence as unknown, so the conservative path applies more often |
+| **No model fallback** (decided 2026-10-02) | Nothing else to run or pay for | When JEV is off or unreachable, the conservative path applies to every decision (refusal template, "not checked", default route) |
 
 OpenJev is an independent, recent open-source project and is not affiliated with TypeSafe. Keep it behind the gateway so nothing else depends on it.
 
@@ -341,7 +341,7 @@ Log control decisions, not health content, using existing tables:
 
 ## 13. Demo scope
 
-**Build now:** Memory Service functions with user scope from the session; evidence packet; `memory_facts` lifecycle with `evidence_status`; the decision gateway with JEV and the Hunyuan fallback; meal analysis with `meal_analyses`; the layer map; four Gold views.
+**Build now:** Memory Service functions with user scope from the session; evidence packet; `memory_facts` lifecycle with `evidence_status`; the decision gateway with JEV and the conservative path; meal analysis with `meal_analyses`; the layer map; four Gold views.
 
 **Minimum now:** row-level security is enabled on every table with no policies, so the public Supabase key can do nothing, and only the backend connects with server-side credentials.
 
