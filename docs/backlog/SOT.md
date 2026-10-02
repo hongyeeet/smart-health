@@ -30,8 +30,8 @@ Points to watch:
 
 | | Tasks done | Subtasks ticked | Progress |
 |---|---|---|---|
-| **Whole project** | 3 of 52 | 17 of 257 | `[#-------------------] 7%` |
-| Hong Yi | 0 of 27 | 3 of 134 | `[--------------------] 2%` |
+| **Whole project** | 3 of 52 | 18 of 257 | `[#-------------------] 7%` |
+| Hong Yi | 0 of 27 | 4 of 134 | `[#-------------------] 3%` |
 | Joely | 3 of 15 | 14 of 74 | `[####----------------] 19%` |
 | Damien | 0 of 10 | 0 of 49 | `[--------------------] 0%` |
 
@@ -62,7 +62,7 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 |---|---|---|---|---|---|---|---|
 | E0-1 | Hardcoded mockup | Hong Yi | P0 | in progress | 1/3 | none |  |
 | E0-2 | App skeleton and design kit | Hong Yi | P0 | in progress | 1/7 | none |  |
-| E0-3 | AI services | Hong Yi | P0 | blocked | 1/4 | E0-2 |  |
+| E0-3 | AI services | Hong Yi | P0 | blocked | 2/4 | E0-2 |  |
 | E1-1 | Raw and Bronze | Joely | P0 | done | 4/4 | none |  |
 | E1-2 | Silver and reference tables | Joely | P0 | done | 5/5 | none |  |
 | E1-3 | Gold and operations tables and views | Hong Yi | P0 | ready | 0/5 | none |  |

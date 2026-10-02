@@ -6,7 +6,7 @@ Which AI model does each job, how the AI is called, what it costs, and how we ke
 
 ## 1. The decision in one paragraph
 
-Everything runs through Google Cloud's Vertex AI (one project, one bill, one sign-in) except two things: speech (ElevenLabs) and the JEV decision model (the TypeSafe JEV model). There is no Tencent fallback. Text work uses Claude Sonnet 5.5 served from Vertex AI. Embeddings use Gemini Embedding at 768 dimensions. Fixed text is translated by Google Cloud Translation. Photos (meals and medicine labels) go to Claude Sonnet 5.5, with Gemini 3.6 Flash as the challenger in the accuracy test. Every call goes through one gateway, so a model can be swapped by changing configuration.
+Everything runs through Google Cloud's Vertex AI (one project, one bill, one sign-in) except two things: speech (ElevenLabs) and the JEV decision model (the TypeSafe JEV model, hosted on OpenRouter). There is no Tencent fallback. Text work uses Claude Sonnet 5.5 served from Vertex AI. Embeddings use Gemini Embedding at 768 dimensions. Fixed text is translated by Google Cloud Translation. Photos (meals and medicine labels) go to Claude Sonnet 5.5, with Gemini 3.6 Flash as the challenger in the accuracy test. Every call goes through one gateway, so a model can be swapped by changing configuration.
 
 ## 2. Model per job
 
@@ -21,7 +21,7 @@ Everything runs through Google Cloud's Vertex AI (one project, one bill, one sig
 | Embeddings | **`gemini-embedding-001`** at **768 dimensions** | Vertex AI | E4-1, E16-3, E17-1 |
 | Text to speech | **ElevenLabs**: `eleven_multilingual_v2` for cached explainers, `eleven_flash_v2_5` for live lines | ElevenLabs API | E4-1, E18-1 |
 | Speech to text (voice questions and logging, stretch) | **ElevenLabs Scribe v2**, batch (not realtime) | ElevenLabs API | S3 |
-| JEV typed decisions | **The TypeSafe JEV model** | Its own server or API (deployment still to be confirmed, see section 7) | E16-2, E17-1, E13-2 |
+| JEV typed decisions | **`typesafe/jev-1.13`** (snapshot `typesafe/jev-1.13-20260917`) | OpenRouter: `POST https://openrouter.ai/api/alpha/decisions` (see section 9) | E16-2, E17-1, E13-2 |
 
 **Rejected, and why**
 - **Gemma 4** for images: needs our own GPU endpoint (cost while idle, one more service) and gives no proven gain on printed labels.
@@ -57,13 +57,14 @@ Everything runs through Google Cloud's Vertex AI (one project, one bill, one sig
 
 - One gateway per capability in `services/api/app/llm/` (text, vision, embedding, translation, speech) and `app/decision/` (JEV). Screens and services never call a vendor SDK directly (rules.md section 4).
 - One Google Cloud sign-in (a service account) covers Claude on Vertex, Gemini embeddings and Cloud Translation. ElevenLabs and JEV have their own keys.
-- Environment variables to add to `.env.example` in E0-3 (names are a proposal): `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `LLM_VISION_CHALLENGER`, `EMBED_MODEL`, `EMBED_DIM`, `TRANSLATE_GLOSSARY_ID`, `ELEVENLABS_API_KEY`, `ELEVENLABS_TTS_MODEL`, `ELEVENLABS_TTS_LIVE_MODEL`, `ELEVENLABS_STT_MODEL`, `JEV_BASE_URL`, `JEV_API_KEY`, `AI_DAILY_CALL_CAP`, `AI_DAILY_BUDGET_USD`.
+- Environment variables to add to `.env.example` in E0-3 (names are a proposal): `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `LLM_VISION_CHALLENGER`, `EMBED_MODEL`, `EMBED_DIM`, `TRANSLATE_GLOSSARY_ID`, `ELEVENLABS_API_KEY`, `ELEVENLABS_TTS_MODEL`, `ELEVENLABS_TTS_LIVE_MODEL`, `ELEVENLABS_STT_MODEL`, `JEV_BASE_URL`, `JEV_MODEL`, `JEV_API_KEY`, `AI_DAILY_CALL_CAP`, `AI_DAILY_BUDGET_USD`.
 - If JEV is off or unreachable, every decision takes the conservative path already defined in [memory.md](memory.md) section 5: refusal template, "not checked", default route. There is no model fallback.
 
 ## 6. Privacy and data handling
 
 - Names, NRIC, phone numbers and addresses never go to any model, translator or speech service (rules.md section 3). The evidence packet and the JEV state are de-identified.
 - Pick a Singapore or nearby Vertex region if the model is offered there, and check Google's data-use terms for Vertex before real data is sent.
+- JEV decisions are sent to OpenRouter and on to TypeSafe. The state is de-identified and kept short. Check OpenRouter's data policy for this model and turn on its no-retention setting if it has one.
 - Voice clips go to ElevenLabs only after the person agrees. Transcribed speech passes the same input guard as typed text, and only final, guarded text is sent to text to speech (trust boundary TB-3).
 
 ## 7. Embedding size (768) and what it affects
@@ -86,8 +87,26 @@ The embedding size is how many numbers describe one piece of text (a medicine fa
 | E0-3 success criterion | State |
 |---|---|
 | Provider decision recorded in the repo (chat, vision, embeddings) | **Done by this document** |
-| JEV option chosen and the data-handling note recorded | **Partly.** The model is chosen (TypeSafe JEV) and the data-handling note is in section 6. Still to confirm: how it is deployed (hosted service, or run on our own machine) |
+| JEV option chosen and the data-handling note recorded | **Done.** Hosted on OpenRouter, model `typesafe/jev-1.13`, tested live on 2026-10-02 (section 9). Data-handling note in section 6 |
 | One gateway keeps the OpenJev request and response shape and returns probability and confidence; keys only in settings | To build |
 | Smoke test gets an answer from each kind of call; switching JEV off sends every call to the fallback | To build. "Fallback" now means the conservative path (section 5), not a model |
 
-Open items: confirm the Vertex model IDs and region for Claude Sonnet 5.5, confirm Malay and Tamil on both ElevenLabs voice models, confirm the JEV deployment, and run the photo comparison.
+Open items: confirm the Vertex model IDs and region for Claude Sonnet 5.5, confirm Malay and Tamil on both ElevenLabs voice models, tune the JEV confidence floor (section 9), and run the photo comparison.
+
+## 9. JEV on OpenRouter (tested live on 2026-10-02, D-049)
+
+| Item | What was found |
+|---|---|
+| Endpoint | `POST https://openrouter.ai/api/alpha/decisions` with `Authorization: Bearer <OpenRouter key>`. The URL, model and key are `JEV_BASE_URL`, `JEV_MODEL` and `JEV_API_KEY` in the private `.env`. The key is never committed |
+| Model | `typesafe/jev-1.13`, which resolves to `typesafe/jev-1.13-20260917`. Pin the dated snapshot once tests pass |
+| Request | `{ "model", "state", "questions": { "<id>": { "type": "noul" \| "choice" \| "score", "instructions", "criteria" } } }` |
+| `noul` (yes or no) | `criteria` is an object, `{"true": "...", "false": "..."}`. The answer is `{"noul": 0.99}`: **a probability of yes only, with no confidence field** |
+| `choice` | `criteria` is an object of option to description. The answer has `choice`, `probabilities` for every option, and `confidence` (for example 0.58) |
+| `score` | `criteria` must be an **ordered array** of level descriptions (an object is rejected with HTTP 400). The answer has `score` (the chosen index), a `legend`, `probabilities` and `confidence` |
+| Limits | 32,000 tokens for state and questions together; output tokens are free |
+| Speed and cost | About 0.4 to 0.8 seconds a call; about $0.000014 a call (about $0.042 per million input tokens). Negligible |
+| Sample result | "Can I skip my metformin tonight since my sugar looks fine?" gave `med_advice` = 0.99 (correct: this is a medication-advice request) |
+
+**Confidence floor.** `memory.md` defines confidence as 1 minus the normalised entropy, with a starting floor of 0.8. For a yes or no answer that works out as: probability 0.97 or higher (or 0.03 or lower) passes; 0.04 gives 0.76 and does not. The gateway must compute confidence itself for `noul`, because the API does not return it. The 0.8 floor is a starting point: tune it on the 40-prompt safety set (rules.md section 1, rule 14) and write the final value here.
+
+**Failure handling.** A timeout, an HTTP error or an answer below the floor takes the conservative path (memory.md section 5.1). There is no model fallback.

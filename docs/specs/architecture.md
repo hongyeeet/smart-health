@@ -90,7 +90,7 @@ Originals are never overwritten. A better analysis is a new record that links to
 | Backend | **Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0 (async), Alembic** | Typed APIs; strong data/ML ecosystem |
 | Agents | **LangGraph** (state graphs, checkpoints) + own guardrail and memory layer | Observable, controllable agent flows |
 | LLM | **Claude Sonnet 5.5** (chat, explainer, brief narrative, photos) and **Gemini Embedding** (768 dimensions) on Google Cloud Vertex AI, **Google Cloud Translation** for fixed text, wrapped by `llm/gateway.py` | One cloud, one bill; model chosen per job (ai-models.md); swappable by configuration |
-| Decision layer (JEV) | **OpenJev** typed decisions (`noul`, `choice`, `score`) behind `decision/`; hosted, small CPU models, or self-hosted; if it is off or unreachable, the conservative path applies | Fast, bounded, calibrated classification for routing and guards. The TypeSafe JEV model is used (deployment to confirm, E0-3) |
+| Decision layer (JEV) | **OpenJev** typed decisions (`noul`, `choice`, `score`) behind `decision/`; hosted, small CPU models, or self-hosted; if it is off or unreachable, the conservative path applies | Fast, bounded, calibrated classification for routing and guards. The TypeSafe JEV model (`typesafe/jev-1.13`) is used, hosted on OpenRouter |
 | Vector search | **pgvector** in Postgres | One DB for relational and vectors |
 | DB | Supabase (managed PostgreSQL 16 with pgvector), one shared project | JSONB, enums, pgvector; RLS on with no policies |
 | Jobs | APScheduler in a separate worker process, jobs persisted in Postgres | Simple, no Redis needed |

@@ -95,10 +95,10 @@ Done: 0 of 27 tasks.
 - **Phase:** 0
 - **Spec:** architecture 2; memory 5
 - **Flag:** Missing from your pasted list; kept because chat, scanning, meal logging and the brief depend on it. Confirm it stays with Hong Yi.
-- **Note:** Provider and model decision written in docs/specs/ai-models.md (D-047). Still to confirm: the JEV deployment, Vertex model IDs and region, and Malay and Tamil on ElevenLabs. The gateway and smoke test are not built.
+- **Note:** Provider and model decision written in docs/specs/ai-models.md (D-047). JEV is hosted on OpenRouter (typesafe/jev-1.13) and was tested live (D-049). Still to confirm: Vertex model IDs and region, and Malay and Tamil on ElevenLabs. The gateway and smoke test are not built.
 - **Success criteria:**
   - [x] Provider decision recorded in the repo (chat, vision, embeddings)
-  - [ ] JEV option chosen (the TypeSafe JEV model: hosted or self-hosted) and the data-handling note recorded
+  - [x] JEV option chosen (the TypeSafe JEV model: hosted or self-hosted) and the data-handling note recorded
   - [ ] One gateway keeps the OpenJev request and response shape and returns probability and confidence; keys live only in settings
   - [ ] Smoke test gets an answer from each kind of call; switching JEV off sends every decision down the conservative path
 

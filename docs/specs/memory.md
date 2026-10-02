@@ -162,11 +162,11 @@ Our decision gateway keeps OpenJev's wire shape so the provider can change:
 }
 ```
 
-Response per question: `noul` gives the probability of yes; `choice` gives the chosen option, probabilities and confidence; `score` gives an expected level. The state sent to JEV never contains a name, NRIC, phone number or address.
+Response per question: `noul` gives the probability of yes; `choice` gives the chosen option, probabilities and confidence; `score` gives an expected level. On OpenRouter (`POST /api/alpha/decisions`) `noul` returns the probability of yes only, so the gateway computes its confidence; `choice` and `score` return `confidence`; and `score` criteria are an ordered array, not an object (see [ai-models.md](ai-models.md) section 9). The state sent to JEV never contains a name, NRIC, phone number or address.
 
 ### 5.4 Deployment options (decide in E0-12)
 
-The owner chose the TypeSafe JEV model on 2026-10-02 (D-047); how it is deployed is still to be confirmed in E0-3. The options below remain the reference for that choice. The app runs locally for now, so prefer options that run on a developer's machine; the hosted option is a convenience, not a requirement.
+The owner chose the TypeSafe JEV model (`typesafe/jev-1.13`), hosted on OpenRouter, on 2026-10-02 (D-047, D-049). The options below remain the reference for that choice. The app runs locally for now, so prefer options that run on a developer's machine; the hosted option is a convenience, not a requirement.
 
 | Option | Good for | Watch out for |
 |---|---|---|
