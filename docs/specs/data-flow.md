@@ -1,6 +1,6 @@
 # Data flow: Bronze, Silver, Gold and where JEV sits
 
-A one-page picture for whoever creates the database (E1) and for anyone who needs to know where a piece of data comes from and who may write it. It summarises [memory.md](memory.md) (sections 2 to 9 and 12) and [schema.md](schema.md) (the layer map in section 0b and the relationships in section 10). **If this page disagrees with those two, they win.** Fix this page.
+A one-page picture for whoever creates the database (E1) and for anyone who needs to know where a piece of data comes from and who may write it. It summarises [memory.md](memory.md) (sections 2 to 9 and 12) and [schema.md](schema.md) (the layer map in section 0b and the relationships in section 10). **If this page disagrees with those two, they win.** Fix this page. For the table-by-table detail of Bronze and Silver (existing data versus user input, every link between columns), see [bronze-silver.md](bronze-silver.md).
 
 ## 1. The whole flow
 
@@ -194,14 +194,15 @@ The dependency order of the tables (and the owner of each step):
 6. **Foreign keys that point from Silver up to Gold** (see below). (Hong Yi, end of E1-3)
 7. **Values**, in the same order: reference data, then datasets into Silver, then the demo patient and simulator. (Joely, E1-4)
 
-**The catch.** Three Silver tables point at Gold tables:
+**The catch.** Four Silver columns point at Gold or Operations tables:
 
 | Silver column | Points at |
 |---|---|
 | `symptom_checkins.triggered_by_flag_id` | `clinical_flags` |
 | `appointments.brief_id` | `briefs` |
 | `doctor_questions.brief_id` | `briefs` |
+| `prescription_scans.agent_run_id` | `agent_runs` (Operations) |
 
-Gold tables are built after Silver, so these three cannot be real foreign keys when Silver is created. **Joely creates them as plain nullable `uuid` columns in E1-2. Hong Yi adds the three foreign-key constraints in E1-3, after the Gold tables exist.** Without this the two tasks wait on each other. Inside E1-3 there is one more loop of the same kind: `conversations.summary_episode_id` and `memory_episodes.conversation_id`; create one without its constraint and add it after the other table exists.
+Gold and Operations tables are built after Silver, so these four cannot be real foreign keys when Silver is created. **Joely creates them as plain nullable `uuid` columns in E1-2 (done, migrations 0004 to 0006). Hong Yi adds the four foreign-key constraints in E1-3, after the Gold tables exist.** Without this the two tasks wait on each other. Inside E1-3 there is one more loop of the same kind: `conversations.summary_episode_id` and `memory_episodes.conversation_id`; create one without its constraint and add it after the other table exists.
 
 Everything else points the right way: Gold, Operations and views point at Silver and Reference, never the reverse.

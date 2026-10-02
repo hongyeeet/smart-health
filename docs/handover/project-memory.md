@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-01 22:10: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-02 16:12: PASS (21 of 21 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -18,7 +18,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 
 ## Current state
 
-- **Phase:** specification is written. The front end is built as a clickable app on demo data in `apps/web` (as of 2026-10-01); the backend has not started.
+- **Phase:** specification is written. The front end is built as a clickable app on demo data in `apps/mock` and `apps/web` (as of 2026-10-01). The database exists (as of 2026-10-02): Bronze, Silver and Reference tables are in the shared Supabase project; Gold and Operations tables (E1-3) and all loaded values (E1-4) are still to come; the API has not started.
 - **Branches:** `dev` is the default branch and where everyone works. The owner promotes `dev` to `uat`, then `uat` to `main`. `main` and `uat` still hold the first commit until then.
 - **Runtime:** the web app and API run locally on each machine. The database is Supabase (Postgres with pgvector). AI calls (Hunyuan, JEV) go to their services. Connection details are shared privately and never committed.
 - **Backlog:** 51 tasks split across three personal backlogs (`docs/backlog/hongyi.md`, `joely.md`, `damien.md`) plus a generated central tracker (`docs/backlog/SOT.md`); E0-1 and E0-2 are in progress, none done. Every task has a plain-language Ask, a Needs-first list and subtasks. Each person edits only their own file and runs `python scripts/update_tracker.py`. Estimates were removed.
@@ -64,6 +64,11 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-033 | 2026-10-01 | The demo scan uses Clarithromycin against the demo patient's Atorvastatin to show the interaction sheet. Demo data only; needs the owner's OK and a check against the cited reference data when E6-1 loads it | A believable demo using a well known interaction | session log hongyi_2026-10-01_1143 | Pending |
 | D-034 | 2026-10-01 | Two apps: `apps/mock` is the clickable mock version (every screen, demo data, Demo panel). `apps/web` is the production app: the same shell, design system and data layer with no screens, a `NotWired` http data layer, and placeholders for every route in the registry. Real data, models and analysis are connected in `apps/web`. Replaces the single-app part of D-028 | Owner: keep the mock as a reference and build production separately | architecture.md, README.md, apps/*/design.md | Pending |
 | D-035 | 2026-10-01 | Rule: all feature work goes in `apps/web`; `apps/mock` is frozen and is only edited when a task says "update the mock". Pushing to `dev` saves code only; it does not deploy | Owner: stop the assistant guessing which app to edit | HANDOVER.md (section 1 and Step 3 item 8), rules.md section 2 | Pending |
+| D-036 | 2026-10-02 | Drug interactions come from the openFDA drug-label `drug_interactions` text (live API), because the 250k Medicines file has no interactions column. Shown as general label information, labelled `reference_matched`; anything not found, and all supplements and TCM, is "not checked" | The cited data cannot feed the clash checker (E6-1) | session log joely_2026-10-01_1454; to move into prd.md A4/A10 and data/README.md | Pending (owner's answer reported by Joely) |
+| D-037 | 2026-10-02 | NHANES 2011-2012, 2013-2014 and 2015-2016 (70 files, without the 10 accelerometer files) may be downloaded in addition to the two manifest cycles | More cycles give better population percentiles; owner approved | data/README.md, data/plan/nhanes_files.csv | Pending (owner's answer reported by Joely) |
+| D-038 | 2026-10-02 | The five `substitute*` columns of 250k Medicines are dropped when loading (the raw file keeps them) | A substitute could surface as medication-substitution advice | data/README.md, session log; the data plan's "Use now" row still lists them | Pending |
+| D-039 | 2026-10-02 | PhysioNet datasets are fetched from PhysioNet's official S3 mirror (`physionet-open.s3.amazonaws.com`) and verified against the publisher's SHA256SUMS. BIG IDEAs data comes from v1.1.2 of the mirror (byte-identical to v1.1.3 for the files used) and is checked against the v1.1.3 checksums; participants 003, 004, 009, 010, 011 | physionet.org ran at about 46 KB/s from the developer's network | scripts/download_data.py, data/README.md | Pending |
+| D-040 | 2026-10-02 | The database is built by Alembic migrations holding the SQL of schema.md, in `services/api/alembic/` (0001 to 0007 for Bronze, Silver and Reference; Hong Yi continues from 0008 in E1-3). Four Silver columns stay plain uuids until E1-3 (adds `prescription_scans.agent_run_id` to the three in D-027). `EMBED_DIM=1024` is a placeholder until E0-3. Implementation choices beyond the spec are listed in schema.md section 12 | rules.md requires Alembic; the target tables of the four columns do not exist until E1-3; the AI provider is undecided | schema.md 12, data-flow.md 6, docs/backlog/details/e1-3-handover.md | Pending (Hong Yi agreed in chat, reported by Joely) |
 
 ## Session index
 
@@ -71,6 +76,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 |---|---|---|---|---|---|---|
 | setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-10-01 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, mockup prompt, handover, repo layout and branches; consolidated and split the backlog into three personal backlogs and a tracker | D-001 to D-027 | Pending |
 | [hongyi_2026-10-01_1143](sessions/hongyi_2026-10-01_1143.md) | Hong Yi with Claude | 2026-10-01 | E0-1, E0-2 (both in progress) | Built the whole front end in `apps/web`: design tokens, UI kit, charts, mock data layer, 40 screens and 6 sheets, A4 brief, generated screen index, design.md. Specs updated for the new look and folder | D-028 to D-035 | Pending |
+| [joely_2026-10-01_1454](sessions/joely_2026-10-01_1454.md) | Joely with Claude | 2026-10-01 to 2026-10-02 | E1-2 (done), E1-1 (3 of 4 subtasks) | Downloaded and checksum-verified 9 sources (199 files), profiled each (`data/dataset_profiles.md`); built 43 Bronze, Silver and Reference tables and 33 enums in Supabase with Alembic (RLS on, rollback tested, 10 constraint tests); private storage bucket and Bronze helper; data dictionary; E1-3 handover for Hong Yi. Found 250k Medicines has no interactions column (openFDA instead) | D-036 to D-040 | Pending |
 
 ## Spec change log
 
@@ -94,6 +100,13 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-01 | docs/handover/HANDOVER.md, docs/specs/rules.md | Build in `apps/web`, never edit `apps/mock` | D-035 |
 | 2026-10-01 | data/data-map.md (new), data/README.md | Data map: sources with links, missing data, and what the user enters in the app | none (summarises the data plan workbook) |
 | 2026-10-01 | docs/specs/architecture.md, README.md | App folders `apps/mock` and `apps/web`; front-end, charts and i18n rows; status line | D-028, D-034 |
+| 2026-10-02 | data/README.md | Table of downloaded datasets with licences, the NHANES 2011-16 and openFDA additions | D-036, D-037 |
+| 2026-10-02 | data/plan/ (dataset_links.md, nhanes_files.csv, new) | Link list for all 48 manifest datasets; the 130 NHANES files with an allowed flag | D-037 |
+| 2026-10-02 | docs/specs/schema.md | Status note; new section 12 with the implementation notes for migrations 0001 to 0007 | D-040 |
+| 2026-10-02 | docs/specs/data-flow.md, docs/backlog/details/e1-data-foundation.md | Four plain Silver columns (adds `prescription_scans.agent_run_id`); openFDA row for 250k Medicines; IBI and participants for BIG IDEAs | D-036, D-040 |
+| 2026-10-02 | docs/specs/prd.md | A4 and A10: openFDA interactions; NHANES 2011-2016 approved | D-036, D-037 |
+| 2026-10-02 | docs/backlog/details/e1-3-handover.md (new), docs/data_dictionary.md (new, generated) | Standalone start for E1-3; column-by-column dictionary of the 43 tables | D-040 |
+| 2026-10-02 | docs/specs/bronze-silver.md (new), README.md, data-flow.md, schema.md | Medallion walkthrough of Bronze and Silver: existing data versus user input, per-table writers, diagrams, all 49 foreign keys, worked examples, gaps for E1-4 | D-040 |
 
 ## Open questions and blockers
 
@@ -104,3 +117,6 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 - **Workload:** Damien has almost nothing ready until E0-2 and E1-2 are done, and Hong Yi carries about half the effort. See the notes in `docs/backlog/SOT.md` for rebalancing options.
 - **Supabase:** the project is still named `smart-health-backlog`. The owner renames it to `smart-health` in the Supabase dashboard. Storage for photos and exports: Supabase Storage is the default unless the owner says otherwise.
 - **Needs the owner's OK** (outside the cited data): clinical thresholds and screening intervals, supplement and TCM interaction data, medication label photos for testing, lifestyle guidance text, a Mi Watch export.
+- **Interactions via openFDA (D-036):** prd.md A4 and A10, the data plan's "Still missing" row and the E1-4 detail still say the 250k Medicines file may hold interactions. Update them. E6-1 should be told the clash data is label text, not a pair table.
+- **E1-3 also writes the deletion of a Bronze original to `event_log`** (E1-1 criterion 4 was reworded on 2026-10-02; see e1-3-handover.md). The data plan workbook (Excel) still lists the `substitute*` columns and an unresolved interactions row; edit it by hand.
+- **Open Food Facts is thin for Singapore:** only 75 Singapore/Malaysia products and 14 with sodium or salt (see `data/dataset_profiles.md`), so E1-4's `foods` seed relies on "unknown" flags and the LLM estimate.

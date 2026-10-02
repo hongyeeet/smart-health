@@ -2,7 +2,9 @@
 
 This file holds the detail behind the E1 tasks so the backlogs can stay short. **E1 is the only epic that creates tables or loads reference and demo data.** Every later task reads and writes rows in tables that already exist. If a later task seems to need a new table, stop and ask the owner: it means E1 or the schema missed something, and the fix goes into E1.
 
-Owners: Joely does E1-1, E1-2, E1-4 and E1-5. Hong Yi does E1-3. Layer map: [schema.md](../../specs/schema.md) section 0b.
+Owners: Joely does E1-1, E1-2, E1-4 and E1-5. Hong Yi does E1-3.
+
+**Status (2026-10-02).** E1-1 and E1-2 are built: 43 tables (Bronze, Silver, Reference) exist in the shared Supabase project as Alembic migrations 0001 to 0007 in `services/api/alembic/`, the private storage bucket exists, and the datasets are downloaded and profiled. **Hong Yi starts E1-3 from [e1-3-handover.md](e1-3-handover.md)**, which stands alone. Layer map: [schema.md](../../specs/schema.md) section 0b.
 
 ## Who creates which tables
 
@@ -14,11 +16,11 @@ Owners: Joely does E1-1, E1-2, E1-4 and E1-5. Hong Yi does E1-3. Layer map: [sch
 
 Order inside Joely's work: Reference tables first, then `ingestion_events` (E1-1), then the Silver tables (E1-2), because Silver points at both. Then Hong Yi does E1-3 (it points at Silver), then Joely does E1-4 (loads the values). The picture and the full build order are in [data-flow.md](../../specs/data-flow.md) sections 1 and 6.
 
-**Silver-to-Gold foreign keys.** Three Silver columns point at Gold tables: `symptom_checkins.triggered_by_flag_id` (to `clinical_flags`), `appointments.brief_id` and `doctor_questions.brief_id` (to `briefs`). Joely creates them in E1-2 as plain nullable `uuid` columns with no constraint. Hong Yi adds the three foreign keys at the end of E1-3. Otherwise E1-2 and E1-3 wait on each other.
+**Silver-to-Gold foreign keys.** Four Silver columns point at Gold or Operations tables: `symptom_checkins.triggered_by_flag_id` (to `clinical_flags`), `appointments.brief_id` and `doctor_questions.brief_id` (to `briefs`) and `prescription_scans.agent_run_id` (to `agent_runs`). Joely created them in E1-2 as plain nullable `uuid` columns with no constraint. Hong Yi adds the four foreign keys at the end of E1-3. Otherwise E1-2 and E1-3 wait on each other.
 
 ## E1-1 Raw and Bronze
 
-1. One script, `scripts/download_data.py`, fetches only the allowed subsets into gitignored `data/raw`: CGMacros, BIG IDEAs (3 to 5 participants: Dexcom, HR, EDA, TEMP, Food_Log, Demographics), NHANES files, Fitbit, 250k Medicines, Open Food Facts (SG/MY subset), Doctor Specialty and GlucoBench. Anything else needs the owner's OK ([data/README.md](../../../data/README.md)).
+1. One script, `scripts/download_data.py`, fetches only the allowed subsets into gitignored `data/raw`: CGMacros, BIG IDEAs (5 participants: 003, 004, 009, 010, 011; Dexcom, HR, EDA, TEMP, IBI, Food_Log, Demographics), NHANES files, Fitbit, 250k Medicines, Open Food Facts (SG/MY subset), Doctor Specialty and GlucoBench. Anything else needs the owner's OK ([data/README.md](../../../data/README.md)).
 2. Log sizes and checksums. `data/README.md` lists each licence (CGMacros is CC BY-NC-SA 4.0).
 3. A short profile per dataset: participants, rows, date span, missing values, units, sampling interval. It must answer: how many CGMacros diabetic participants have complete CGM and meals; whether 250k Medicines really has an interactions column; the BIG IDEAs HbA1c range.
 4. Create `ingestion_events` (checksum, source type, timestamps, processing status, unique per user and checksum) and the private Supabase Storage layout. Originals are never overwritten. A user-requested deletion removes the object, marks the row deleted and is logged.
@@ -28,7 +30,7 @@ Order inside Joely's work: Reference tables first, then `ingestion_events` (E1-1
 1. Turn schema.md into migrations that apply to an empty Supabase database and roll back.
 2. Constraints, enums and unique keys as specified. Row-level security on for every table, no policies.
 3. Data dictionary (`docs/data_dictionary.md`): for every user-data field, the table, column, unit and source flag (manual, imported, simulated). It covers profile, conditions, allergies, medications and ingredients, doses, glucose, meals, workouts, sleep, wearable samples, symptoms, mood, blood pressure, labs, appointments, questions and memory.
-4. Create `symptom_checkins.triggered_by_flag_id`, `appointments.brief_id` and `doctor_questions.brief_id` as plain nullable `uuid` columns without a foreign key (E1-3 adds the constraints).
+4. Create `symptom_checkins.triggered_by_flag_id`, `appointments.brief_id`, `doctor_questions.brief_id` and `prescription_scans.agent_run_id` as plain nullable `uuid` columns without a foreign key (E1-3 adds the constraints).
 5. schema.md and the layer map match the migrated tables exactly. If you must change schema.md, say so in the session log.
 
 ## E1-3 Gold and operations tables and views
@@ -50,7 +52,7 @@ Everything below is loaded once here. Imports are safe to run twice (unique on s
 | Fitbit | Samples and sleep | A second watch format |
 | NHANES | `population_priors` (percentiles by age, sex and diabetes) plus a persona-sampling table; dietary files feed foods with sodium and sugar | |
 | GlucoBench | A fixture table | Insulin columns are discarded |
-| 250k Medicines | `drug_reference`, `drug_aliases`, `drug_side_effects` (diabetes, blood pressure and lipid drugs first, at least 100 generics); interaction data loaded to `interaction_rules` with its source | Check first whether an interactions column exists and how many usable pairs. **If it does not, stop and raise it as a decision.** Searching "metformin" returns its aliases |
+| 250k Medicines | `drug_reference`, `drug_aliases`, `drug_side_effects` (diabetes, blood pressure and lipid drugs first, at least 100 generics); interaction data loaded to `interaction_rules` with its source | **Checked in E1-1: the file has no interactions column and no ingredients column.** Decision D-036 (owner, 2026-10-02): interactions come from the openFDA drug-label `drug_interactions` text (live API `api.fda.gov/drug/label.json`; store the raw JSON under `data/raw/openfda/` as the original, then match other drugs' generic names in the text deterministically and load pairs to `interaction_rules` with `severity = unknown`, `source` and `source_url`). The five `substitute*` columns are dropped at load time (D-038). Searching "metformin" must still return its aliases: there are 69 metformin brand rows in the file, mapped to a generic name via openFDA or RxNorm |
 | Open Food Facts (SG/MY) | `foods` with sodium and sugar | At least 90% of seeded foods have sodium or are flagged unknown |
 | Doctor Specialty | `routing_rules` | |
 | Reference items | Preventive-care items and `data_sources` filled | Clinical thresholds and screening intervals need the owner's OK |

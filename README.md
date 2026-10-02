@@ -38,6 +38,7 @@ services/                 created when the backend starts (planned layout: docs/
 | [docs/specs/memory.md](docs/specs/memory.md) | Standard names, data layers, memory planes, evidence model, the JEV decision layer, Memory Service, meal analysis |
 | [docs/specs/schema.md](docs/specs/schema.md) | Database tables, layer map, consistency rules |
 | [docs/specs/data-flow.md](docs/specs/data-flow.md) | One-page picture of Bronze, Silver and Gold, where JEV sits, and the order to build the tables in. Start here before creating the database |
+| [docs/specs/bronze-silver.md](docs/specs/bronze-silver.md) | The Bronze and Silver layers table by table: what is existing data and what is user input, who writes each table, and how every column links (diagrams, all 49 foreign keys, worked examples) |
 | [docs/specs/flow.md](docs/specs/flow.md) | User journeys, screens, event logging, demo script |
 | [docs/specs/design.md](docs/specs/design.md) | UI/UX system: colours, type, components, accessibility |
 | [docs/specs/rules.md](docs/specs/rules.md) | Boundaries for AI coding agents: safety rules, data source policy, definition of done |

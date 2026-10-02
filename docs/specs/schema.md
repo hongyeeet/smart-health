@@ -33,6 +33,8 @@ Every table lives in the `public` schema. The layer says what kind of data it ho
 
 **Who creates what.** Every table and view is created once, in epic E1. Joely creates the Bronze, Silver and Reference tables (E1-1 and E1-2). Hong Yi creates the Gold and Operations tables and views (E1-3), after the Silver tables exist. Joely loads every seed and demo value in E1-4. Later tasks only read and write rows. See [the E1 detail file](../backlog/details/e1-data-foundation.md).
 
+**Status (2026-10-02).** Bronze, Silver and Reference (43 tables, 33 enum types) are created by Alembic migrations 0001 to 0007 in `services/api/alembic/versions/` and match this document; `python scripts/check_schema.py` proves it. Four Silver columns point at tables that E1-3 creates, so they are plain nullable `uuid` columns until then: `symptom_checkins.triggered_by_flag_id` (to `clinical_flags`), `appointments.brief_id` and `doctor_questions.brief_id` (to `briefs`) and `prescription_scans.agent_run_id` (to `agent_runs`). Implementation notes are in section 12; a plain-language walkthrough of Bronze and Silver with diagrams is in [bronze-silver.md](bronze-silver.md).
+
 ---
 
 ## 1. Enums
@@ -569,3 +571,20 @@ users 1─* devices | health_goals
 18. **LLM estimates are labelled:** LLM-estimated meal nutrients are stored as estimates, shown as "Estimated" until confirmed, and never presented as measured. Deterministic services read the stored values; the LLM is not asked to recompute them.
 19. **No parallel tables:** one table per job. Semantic memory is `memory_facts`, associations are `pattern_candidates`, the timeline is `timeline_events`.
 20. **Reference data versioning:** `interaction_rules`, `foods`, `knowledge_documents` carry source and licence; changes go through `scripts/seed_*.py`, never ad-hoc SQL.
+
+## 12. Implementation notes (migrations 0001 to 0007, 2026-10-02)
+
+Where the migrations differ from, or add to, the text above. The generated column list is `docs/data_dictionary.md`.
+
+| Topic | What was built | Why |
+|---|---|---|
+| Extensions | `vector`, `citext` and `pg_trgm` live in the `extensions` schema; columns use `extensions.vector(n)` and `extensions.citext` | Supabase convention, keeps `public` clean |
+| `EMBED_DIM` | 1024 placeholder in `.env.example`, used by `knowledge_chunks.embedding` (and later `memory_episodes`) | The AI provider is not chosen yet (E0-3). Changing it is one small migration while the tables are empty |
+| `patient_profiles.birth_year` | `BETWEEN 1900 AND 2100` instead of "up to the current year" | A check that depends on today's date is not stable; the API enforces the real upper bound |
+| `foods` index | Trigram index on `name`; plain GIN array index on `aliases` | Trigram indexes do not work on arrays |
+| `blood_pressure_readings` | `systolic` and `diastolic` are NOT NULL | A reading without values has no meaning |
+| `ingestion_events` | NOT NULL `user_id`; `processing_status` defaults to `received`; a trigger allows only `processing_status` to change (and `object_key` to be cleared on deletion) and never lets a deleted row come back | Makes consistency rule 17 true in the database |
+| Updated-at | `set_updated_at()` trigger on every table that has `updated_at` | Schema conventions: trigger-maintained |
+| Row-level security | Enabled by migration 0007 on every table in `public`, including Alembic's own `alembic_version`, with no policies | Public API key can do nothing; any later table must do the same |
+| Storage | Private bucket `smart-health-originals`, 10 MB, jpeg, png, heic, csv, zip, xml; folders `{user_id}/meals\|medications\|documents\|exports/` | rules.md section 8; helpers in `scripts/bronze.py` |
+| PostgreSQL version | 17 (this document and architecture.md say 16) | What Supabase provides; nothing used is version-specific |

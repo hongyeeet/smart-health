@@ -30,9 +30,9 @@ Points to watch:
 
 | | Tasks done | Subtasks ticked | Progress |
 |---|---|---|---|
-| **Whole project** | 0 of 51 | 2 of 254 | `[--------------------] 1%` |
+| **Whole project** | 2 of 51 | 11 of 254 | `[#-------------------] 4%` |
 | Hong Yi | 0 of 27 | 2 of 134 | `[--------------------] 1%` |
-| Joely | 0 of 14 | 0 of 71 | `[--------------------] 0%` |
+| Joely | 2 of 14 | 9 of 71 | `[###-----------------] 13%` |
 | Damien | 0 of 10 | 0 of 49 | `[--------------------] 0%` |
 
 ## Gates
@@ -50,9 +50,9 @@ Tasks whose **Needs first** are all done. Sorted by how many other tasks they un
 
 | Person | Ready now | Blocked | In progress or review | Done |
 |---|---|---|---|---|
-| Hong Yi | none | 25 | 2 | 0 |
-| Joely | E1-2 (39), E1-1 (28), E11-1 (4), E21-2 (1) | 10 | 0 | 0 |
-| Damien | E21-1 (1) | 9 | 0 | 0 |
+| Hong Yi | E1-3 (23) | 24 | 2 | 0 |
+| Joely | E1-4 (27), E11-1 (4), E21-2 (1) | 9 | 0 | 2 |
+| Damien | E21-1 (1), E14-1 (0) | 8 | 0 | 0 |
 
 The number in brackets is how many other tasks are waiting, directly or indirectly, on that task.
 
@@ -63,24 +63,24 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E0-1 | Hardcoded mockup | Hong Yi | P0 | in progress | 1/3 | none |  |
 | E0-2 | App skeleton and design kit | Hong Yi | P0 | in progress | 1/7 | none |  |
 | E0-3 | AI services | Hong Yi | P0 | blocked | 0/4 | E0-2 |  |
-| E1-1 | Raw and Bronze | Joely | P0 | ready | 0/4 | none |  |
-| E1-2 | Silver and reference tables | Joely | P0 | ready | 0/5 | none |  |
-| E1-3 | Gold and operations tables and views | Hong Yi | P0 | blocked | 0/5 | E1-2 |  |
-| E1-4 | Ingestion | Joely | P0 | blocked | 0/6 | E1-1, E1-2 |  |
+| E1-1 | Raw and Bronze | Joely | P0 | done | 4/4 | none |  |
+| E1-2 | Silver and reference tables | Joely | P0 | done | 5/5 | none |  |
+| E1-3 | Gold and operations tables and views | Hong Yi | P0 | ready | 0/5 | none |  |
+| E1-4 | Ingestion | Joely | P0 | ready | 0/6 | none |  |
 | E1-5 | Analysis data and baseline model | Joely | P1 | blocked | 0/2 | E1-4 |  |
-| E2-1 | Onboarding flow | Damien | P0 | blocked | 0/10 | E0-2, E1-2 |  |
+| E2-1 | Onboarding flow | Damien | P0 | blocked | 0/10 | E0-2 |  |
 | E2-2 | Chat onboarding | Damien | P1 | blocked | 0/2 | E2-1, E16-1, E0-3 |  |
 | E3-1 | Scan and read | Hong Yi | P0 | blocked | 0/9 | E0-2, E0-3 |  |
-| E3-2 | Match, parse and save | Hong Yi | P0 | blocked | 0/9 | E3-1, E1-2, E1-4 |  |
+| E3-2 | Match, parse and save | Hong Yi | P0 | blocked | 0/9 | E3-1, E1-4 |  |
 | E3-3 | Accuracy report (needs OK) | Hong Yi | P1 | blocked | 0/1 | E3-1 |  |
 | E4-1 | Medicine explainer | Hong Yi | P0 | blocked | 0/5 | E0-3, E1-4, E16-2 | Damien |
-| E5-1 | Doses and reminders | Hong Yi | P0 | blocked | 0/9 | E0-2, E1-2 |  |
+| E5-1 | Doses and reminders | Hong Yi | P0 | blocked | 0/9 | E0-2 |  |
 | E5-2 | Missed doses and refills | Hong Yi | P0 | blocked | 0/5 | E5-1 |  |
 | E6-1 | Clash checker | Joely | P0 | blocked | 0/9 | E3-2, E1-4 |  |
-| E7-1 | Quick logs | Joely | P0 | blocked | 0/4 | E0-2, E1-2 |  |
-| E7-2 | Meal logging with AI macros | Joely | P0 | blocked | 0/6 | E0-3, E1-1, E1-2, E1-4 |  |
+| E7-1 | Quick logs | Joely | P0 | blocked | 0/4 | E0-2 |  |
+| E7-2 | Meal logging with AI macros | Joely | P0 | blocked | 0/6 | E0-3, E1-4 |  |
 | E7-3 | Connected sources and log upkeep | Joely | P0 | blocked | 0/4 | E7-1, E1-4 |  |
-| E8-1 | Sprint and meal response | Damien | P0 | blocked | 0/7 | E1-2, E1-4 |  |
+| E8-1 | Sprint and meal response | Damien | P0 | blocked | 0/7 | E1-4 |  |
 | E8-2 | Food leaderboard | Damien | P0 | blocked | 0/4 | E8-1 |  |
 | E9-1 | Daily totals, baseline and flags | Hong Yi | P0 | blocked | 0/6 | E1-3, E1-4 |  |
 | E9-2 | Insights screen | Hong Yi | P0 | blocked | 0/2 | E9-1, E0-2 |  |
@@ -91,9 +91,9 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E13-1 | Brief data and charts | Hong Yi | P0 | blocked | 0/5 | E1-4, E9-1 | Damien |
 | E13-2 | Narrative and PDF | Hong Yi | P0 | blocked | 0/7 | E13-1, E0-3 | Damien |
 | E13-3 | Brief screens and sharing | Hong Yi | P0 | blocked | 0/4 | E13-2 | Damien |
-| E14-1 | Recurring checks and appointments (needs OK) | Damien | P1 | blocked | 0/7 | E1-2 |  |
-| E15-1 | Doctor questions | Damien | P0 | blocked | 0/5 | E1-2, E0-2 |  |
-| E16-1 | Chat pipeline and Memory Service | Hong Yi | P0 | blocked | 0/4 | E0-3, E1-2, E1-3 |  |
+| E14-1 | Recurring checks and appointments (needs OK) | Damien | P1 | ready | 0/7 | none |  |
+| E15-1 | Doctor questions | Damien | P0 | blocked | 0/5 | E0-2 |  |
+| E16-1 | Chat pipeline and Memory Service | Hong Yi | P0 | blocked | 0/4 | E0-3, E1-3 |  |
 | E16-2 | Safety net and JEV decisions | Hong Yi | P0 | blocked | 0/7 | E16-1, E0-3 |  |
 | E16-3 | Chat screen, helpers and chat memory | Hong Yi | P0 | blocked | 0/5 | E16-1, E0-2 |  |
 | E17-1 | Memory and nightly reflection | Hong Yi | P0 | blocked | 0/10 | E1-3, E1-4, E16-1 |  |

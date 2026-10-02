@@ -11,31 +11,30 @@ If a task has a **Reviewer**, set `in review` when you finish; only the Reviewer
 <!-- BLOCKERS:START -->
 Ready means everything under **Needs first** is done, so you can start. Blocked means you must wait.
 
-**Ready now (0)**
+**Ready now (1)**
 
-- Nothing is ready right now.
+- E1-3 Gold and operations tables and views: unblocks 23 other tasks.
 
 **In progress or in review**
 
 - E0-1 Hardcoded mockup (in progress)
 - E0-2 App skeleton and design kit (in progress)
 
-**Blocked (25)**
+**Blocked (24)**
 
 - E0-3 AI services: waiting for E0-2 (Hong Yi, in progress)
-- E1-3 Gold and operations tables and views: waiting for E1-2 (Joely, backlog)
 - E3-1 Scan and read: waiting for E0-2 (Hong Yi, in progress), E0-3 (Hong Yi, backlog)
-- E3-2 Match, parse and save: waiting for E3-1 (Hong Yi, backlog), E1-2 (Joely, backlog), E1-4 (Joely, backlog)
+- E3-2 Match, parse and save: waiting for E3-1 (Hong Yi, backlog), E1-4 (Joely, backlog)
 - E3-3 Accuracy report: waiting for E3-1 (Hong Yi, backlog)
 - E4-1 Medicine explainer: waiting for E0-3 (Hong Yi, backlog), E1-4 (Joely, backlog), E16-2 (Hong Yi, backlog)
-- E5-1 Doses and reminders: waiting for E0-2 (Hong Yi, in progress), E1-2 (Joely, backlog)
+- E5-1 Doses and reminders: waiting for E0-2 (Hong Yi, in progress)
 - E5-2 Missed doses and refills: waiting for E5-1 (Hong Yi, backlog)
 - E9-1 Daily totals, baseline and flags: waiting for E1-3 (Hong Yi, backlog), E1-4 (Joely, backlog)
 - E9-2 Insights screen: waiting for E9-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E13-1 Brief data and charts: waiting for E1-4 (Joely, backlog), E9-1 (Hong Yi, backlog)
 - E13-2 Narrative and PDF: waiting for E13-1 (Hong Yi, backlog), E0-3 (Hong Yi, backlog)
 - E13-3 Brief screens and sharing: waiting for E13-2 (Hong Yi, backlog)
-- E16-1 Chat pipeline and Memory Service: waiting for E0-3 (Hong Yi, backlog), E1-2 (Joely, backlog), E1-3 (Hong Yi, backlog)
+- E16-1 Chat pipeline and Memory Service: waiting for E0-3 (Hong Yi, backlog), E1-3 (Hong Yi, backlog)
 - E16-2 Safety net and JEV decisions: waiting for E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, backlog)
 - E16-3 Chat screen, helpers and chat memory: waiting for E16-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E17-1 Memory and nightly reflection: waiting for E1-3 (Hong Yi, backlog), E1-4 (Joely, backlog), E16-1 (Hong Yi, backlog)

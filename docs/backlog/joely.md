@@ -11,27 +11,25 @@ If a task has a **Reviewer**, set `in review` when you finish; only the Reviewer
 <!-- BLOCKERS:START -->
 Ready means everything under **Needs first** is done, so you can start. Blocked means you must wait.
 
-**Ready now (4)**
+**Ready now (3)**
 
-- E1-2 Silver and reference tables: unblocks 39 other tasks.
-- E1-1 Raw and Bronze: unblocks 28 other tasks.
+- E1-4 Ingestion: unblocks 27 other tasks. Later you will need: E0-3 (Hong Yi, backlog).
 - E11-1 Urgent alerts: unblocks 4 other tasks. Later you will need: E0-2 (Hong Yi, in progress), E1-4 (Joely, backlog).
 - E21-2 Build proof and video: unblocks 1 other task. Later you will need: E20-2 (Joely, backlog).
 
-**Blocked (10)**
+**Blocked (9)**
 
-- E1-4 Ingestion: waiting for E1-1 (Joely, backlog), E1-2 (Joely, backlog)
 - E1-5 Analysis data and baseline model: waiting for E1-4 (Joely, backlog)
 - E6-1 Clash checker: waiting for E3-2 (Hong Yi, backlog), E1-4 (Joely, backlog)
-- E7-1 Quick logs: waiting for E0-2 (Hong Yi, in progress), E1-2 (Joely, backlog)
-- E7-2 Meal logging with AI macros: waiting for E0-3 (Hong Yi, backlog), E1-1 (Joely, backlog), E1-2 (Joely, backlog), E1-4 (Joely, backlog)
+- E7-1 Quick logs: waiting for E0-2 (Hong Yi, in progress)
+- E7-2 Meal logging with AI macros: waiting for E0-3 (Hong Yi, backlog), E1-4 (Joely, backlog)
 - E7-3 Connected sources and log upkeep: waiting for E7-1 (Joely, backlog), E1-4 (Joely, backlog)
 - E18-1 Languages, audio and translation review: waiting for E0-2 (Hong Yi, in progress)
 - E19-1 Timeline and Day view: waiting for E1-3 (Hong Yi, backlog), E1-4 (Joely, backlog), E0-2 (Hong Yi, in progress)
 - E19-2 Pattern finder and brief day traces: waiting for E19-1 (Joely, backlog), E8-1 (Damien, backlog)
 - E20-2 Demo and device checks: waiting for CP1 (Hong Yi, backlog)
 
-Done: 0 of 14 tasks.
+Done: 2 of 14 tasks.
 <!-- BLOCKERS:END -->
 
 ## Tasks
@@ -39,23 +37,23 @@ Done: 0 of 14 tasks.
 ### E1-1 Raw and Bronze · P0
 
 - **Ask:** Raw and Bronze: write the download script for only the allowed datasets into data/raw, profile each one (who, how many, gaps, units), and create the Bronze raw-data log and storage layout so every original file is kept untouched.
-- **Status:** backlog
+- **Status:** done
 - **Needs first:** none
 - **Needed later:** none
 - **Phase:** 0
 - **Spec:** schema 9c; data plan
 - **Detail:** [details/e1-data-foundation.md](details/e1-data-foundation.md)
-- **Note:**
+- **Note:** Done 2026-10-02: 9 sources downloaded, checksum-verified and profiled; ingestion_events table and private bucket built and tested; scripts/bronze.py helper. Criterion 4 reworded on 2026-10-02 (Joely): the event_log entry for a deletion moved to E1-3 because event_log does not exist until then.
 - **Success criteria:**
-  - [ ] One script downloads only the allowed subsets into gitignored data/raw, logs sizes and checksums, and notes each licence
-  - [ ] A short profile per dataset: people, rows, date span, gaps, units, sampling interval; it answers how many CGMacros diabetic participants have complete glucose and meals, and whether 250k Medicines really has an interactions column
-  - [ ] ingestion_events table and the storage layout exist (private Supabase Storage bucket); originals are never overwritten
-  - [ ] Every photo, image and import writes an ingestion_events row; deletion only on the user's request and logged
+  - [x] One script downloads only the allowed subsets into gitignored data/raw, logs sizes and checksums, and notes each licence
+  - [x] A short profile per dataset: people, rows, date span, gaps, units, sampling interval; it answers how many CGMacros diabetic participants have complete glucose and meals, and whether 250k Medicines really has an interactions column
+  - [x] ingestion_events table and the storage layout exist (private Supabase Storage bucket); originals are never overwritten
+  - [x] Every photo, image and import can write an ingestion_events row through the helper scripts/bronze.py (repeat-safe, never overwrites); deletion only on the user's request removes the object and marks the row deleted. Writing the deletion to event_log moves to E1-3 (details/e1-3-handover.md), and each ingest task calls the helper
 
 ### E1-2 Silver and reference tables · P0
 
 - **Ask:** Silver and reference tables: create every canonical and lookup table from schema.md with constraints and row-level security on, as migrations that apply to an empty Supabase database. Write the data dictionary. After E1, nobody creates a table.
-- **Status:** backlog
+- **Status:** done
 - **Needs first:** none
 - **Needed later:** none
 - **Phase:** 0
@@ -63,11 +61,11 @@ Done: 0 of 14 tasks.
 - **Detail:** [details/e1-data-foundation.md](details/e1-data-foundation.md)
 - **Note:**
 - **Success criteria:**
-  - [ ] Migrations create every Silver and reference table in the layer map and apply cleanly to an empty database and roll back
-  - [ ] Constraints, enums and unique keys are in; row-level security is on with no policies for every table
-  - [ ] Every user-data field has a table, column, unit and source flag, written up in a data dictionary
-  - [ ] `symptom_checkins.triggered_by_flag_id`, `appointments.brief_id` and `doctor_questions.brief_id` are plain nullable uuid columns with no foreign key (Hong Yi adds those in E1-3)
-  - [ ] schema.md and the layer map match the migrated tables exactly
+  - [x] Migrations create every Silver and reference table in the layer map and apply cleanly to an empty database and roll back
+  - [x] Constraints, enums and unique keys are in; row-level security is on with no policies for every table
+  - [x] Every user-data field has a table, column, unit and source flag, written up in a data dictionary
+  - [x] `symptom_checkins.triggered_by_flag_id`, `appointments.brief_id`, `doctor_questions.brief_id` and `prescription_scans.agent_run_id` are plain nullable uuid columns with no foreign key (Hong Yi adds those in E1-3)
+  - [x] schema.md and the layer map match the migrated tables exactly
 
 ### E1-4 Ingestion · P0
 

@@ -11,21 +11,21 @@ If a task has a **Reviewer**, set `in review` when you finish; only the Reviewer
 <!-- BLOCKERS:START -->
 Ready means everything under **Needs first** is done, so you can start. Blocked means you must wait.
 
-**Ready now (1)**
+**Ready now (2)**
 
 - E21-1 Submission text and visuals: unblocks 1 other task.
+- E14-1 Recurring checks and appointments: unblocks 0 other tasks. Later you will need: E13-2 (Hong Yi, backlog).
 
-**Blocked (9)**
+**Blocked (8)**
 
-- E2-1 Onboarding flow: waiting for E0-2 (Hong Yi, in progress), E1-2 (Joely, backlog)
+- E2-1 Onboarding flow: waiting for E0-2 (Hong Yi, in progress)
 - E2-2 Chat onboarding: waiting for E2-1 (Damien, backlog), E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, backlog)
-- E8-1 Sprint and meal response: waiting for E1-2 (Joely, backlog), E1-4 (Joely, backlog)
+- E8-1 Sprint and meal response: waiting for E1-4 (Joely, backlog)
 - E8-2 Food leaderboard: waiting for E8-1 (Damien, backlog)
 - E10-1 Check-ins: waiting for E9-1 (Hong Yi, backlog)
 - E12-1 Nudge messages and learning: waiting for E9-1 (Hong Yi, backlog)
 - E12-2 Nudge cards and food swaps: waiting for E12-1 (Damien, backlog), E0-2 (Hong Yi, in progress)
-- E14-1 Recurring checks and appointments: waiting for E1-2 (Joely, backlog)
-- E15-1 Doctor questions: waiting for E1-2 (Joely, backlog), E0-2 (Hong Yi, in progress)
+- E15-1 Doctor questions: waiting for E0-2 (Hong Yi, in progress)
 
 Done: 0 of 10 tasks.
 <!-- BLOCKERS:END -->
