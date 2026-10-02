@@ -43,7 +43,7 @@ services/                 created when the backend starts (planned layout: docs/
 | [docs/specs/design.md](docs/specs/design.md) | UI/UX system: colours, type, components, accessibility |
 | [docs/specs/rules.md](docs/specs/rules.md) | Boundaries for AI coding agents: safety rules, data source policy, definition of done |
 | [docs/backlog/SOT.md](docs/backlog/SOT.md) | The central tracker: progress, gates, who can start now, who is blocked. Generated from the three personal backlogs |
-| [docs/backlog/hongyi.md](docs/backlog/hongyi.md), [joely.md](docs/backlog/joely.md), [damien.md](docs/backlog/damien.md) | One backlog per person: 51 tasks in total (epics E0-E21, with E2-E19 matching features F1-F18, plus four gates CP0-CP3), each with an Ask, what it needs first, subtasks and status. Each person edits only their own file |
+| [docs/backlog/hongyi.md](docs/backlog/hongyi.md), [joely.md](docs/backlog/joely.md), [damien.md](docs/backlog/damien.md) | One backlog per person: 52 tasks in total (epics E0-E21, with E2-E19 matching features F1-F18, plus four gates CP0-CP3), each with an Ask, what it needs first, subtasks and status. Each person edits only their own file |
 | [docs/handover/project-memory.md](docs/handover/project-memory.md) | Team memory: current state, decisions register, session index, spec change log, open questions. Read at the start of a session, update at the end. (Not the same as `docs/specs/memory.md`, which is the app's memory design) |
 | [docs/mockup/mockup-prompt.md](docs/mockup/mockup-prompt.md) | The prompt for the interactive design mockup |
 | [docs/reference/](docs/reference/) | The two starting-template documents that `memory.md` and `schema.md` grew from |

@@ -2,7 +2,7 @@
 
 This file holds the detail behind the E1 tasks so the backlogs can stay short. **E1 is the only epic that creates tables or loads reference and demo data.** Every later task reads and writes rows in tables that already exist. If a later task seems to need a new table, stop and ask the owner: it means E1 or the schema missed something, and the fix goes into E1.
 
-Owners: Joely does E1-1, E1-2, E1-4 and E1-5. Hong Yi does E1-3.
+Owners: Joely does E1-1, E1-2, E1-4, E1-5 and E1-6. Hong Yi does E1-3.
 
 **Status (2026-10-02).** E1-1 and E1-2 are built: 43 tables (Bronze, Silver, Reference) exist in the shared Supabase project as Alembic migrations 0001 to 0007 in `services/api/alembic/`, the private storage bucket exists, and the datasets are downloaded and profiled. **Hong Yi starts E1-3 from [e1-3-handover.md](e1-3-handover.md)**, which stands alone. Layer map: [schema.md](../../specs/schema.md) section 0b.
 
@@ -43,6 +43,8 @@ Order inside Joely's work: Reference tables first, then `ingestion_events` (E1-1
 
 ## E1-4 Ingestion: what is loaded, per source
 
+**Status (2026-10-02): E1-4 is done (74 of 74 checks). The medicine knowledge index was split out into the new task E1-6, which waits for the embedding model (E0-3).** What was really loaded, with counts and every deviation from the table below, is in [e1-4-handover.md](e1-4-handover.md) and `docs/specs/bronze-silver.md` section 5.2. Differences from this plan: GlucoBench is a test fixture only (not loaded); no persona-sampling table; the drug list comes from the NHANES top-100 (2011 to 2018) because the 250k file has only brand names; non-diabetic people get no profile; the other 13 CGMacros people, BIG IDEAs and Fitbit are thinned for the free database size.
+
 Everything below is loaded once here. Imports are safe to run twice (unique on source plus external id).
 
 | Source | What goes where | Rules |
@@ -61,10 +63,20 @@ Everything below is loaded once here. Imports are safe to run twice (unique on s
 
 **Setup data.** `devices` rows for the connected watch, sensor and camera with last-synced times. `health_goals` rows for weekly moderate minutes and strength sessions, marked as defaults until a clinician sets them. The demo seed covers both. `replay.py` streams the demo data as if live, at normal and fast speed.
 
-**Medicine knowledge index.** The 250k Medicines text is chunked and embedded (needs the AI gateway from E0-3). Twenty test names must retrieve the right drug.
+**Medicine knowledge index (now task E1-6).** The 250k Medicines text is chunked and embedded (needs the AI gateway from E0-3). Twenty test names must retrieve the right drug. Chunking and the 20 test names are done (`python scripts/ingest_knowledge.py --stage`); embedding and the test run are E1-6.
 
 ## E1-5 Analysis data and baseline model (P1)
 
 1. `meal_features` (macros, context, response iAUC and peak rise) and a daily feature table, documented.
 2. Train and test split by participant with no leakage.
 3. A simple baseline model with a model card (data, split, metric). It must beat predicting the mean on held-out participants. The artefact loads in the API and is labelled as a population model.
+
+## E1-6 Medicine knowledge index
+
+Split out of E1-4 on 2026-10-02 so that the data load could be finished while the embedding model (E0-3, Hong Yi) is still undecided.
+
+1. **Already done in E1-4:** `python scripts/ingest_knowledge.py --stage` builds `data/processed/knowledge_chunks_staging.jsonl` (667 chunks for 97 drugs: uses, classes and side effects from 250k Medicines; indications and patient information from the openFDA label) and `data/demo/knowledge_test_names.csv` (20 test names: 8 generic, 7 brand or product names, 5 misspellings). The 94 openFDA label documents are already in `knowledge_documents`; `drug_reference.knowledge_doc_id` points at them.
+2. **To do when E0-3 gives `embed(texts)`** (importable as `app.llm.gateway.embed`, vectors of size `EMBED_DIM`): `python scripts/ingest_knowledge.py --embed` writes `knowledge_chunks`; `--test` embeds each test name, takes the nearest chunk by cosine distance, and every name must resolve to the expected drug.
+3. If the chosen model's vector size is not 1024, change `EMBED_DIM` in `.env` and add one migration that alters `knowledge_chunks.embedding` (the table is empty until then).
+4. Drug facts are general information, not medical advice; each chunk keeps its source document and licence.
+

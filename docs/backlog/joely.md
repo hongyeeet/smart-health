@@ -13,23 +13,23 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 
 **Ready now (3)**
 
-- E1-4 Ingestion: unblocks 27 other tasks. Later you will need: E0-3 (Hong Yi, backlog).
-- E11-1 Urgent alerts: unblocks 4 other tasks. Later you will need: E0-2 (Hong Yi, in progress), E1-4 (Joely, backlog).
+- E11-1 Urgent alerts: unblocks 4 other tasks. Later you will need: E0-2 (Hong Yi, in progress).
 - E21-2 Build proof and video: unblocks 1 other task. Later you will need: E20-2 (Joely, backlog).
+- E1-5 Analysis data and baseline model: unblocks 0 other tasks.
 
 **Blocked (9)**
 
-- E1-5 Analysis data and baseline model: waiting for E1-4 (Joely, backlog)
-- E6-1 Clash checker: waiting for E3-2 (Hong Yi, backlog), E1-4 (Joely, backlog)
+- E1-6 Medicine knowledge index: waiting for E0-3 (Hong Yi, backlog)
+- E6-1 Clash checker: waiting for E3-2 (Hong Yi, backlog)
 - E7-1 Quick logs: waiting for E0-2 (Hong Yi, in progress)
-- E7-2 Meal logging with AI macros: waiting for E0-3 (Hong Yi, backlog), E1-4 (Joely, backlog)
-- E7-3 Connected sources and log upkeep: waiting for E7-1 (Joely, backlog), E1-4 (Joely, backlog)
+- E7-2 Meal logging with AI macros: waiting for E0-3 (Hong Yi, backlog)
+- E7-3 Connected sources and log upkeep: waiting for E7-1 (Joely, backlog)
 - E18-1 Languages, audio and translation review: waiting for E0-2 (Hong Yi, in progress)
-- E19-1 Timeline and Day view: waiting for E1-3 (Hong Yi, backlog), E1-4 (Joely, backlog), E0-2 (Hong Yi, in progress)
+- E19-1 Timeline and Day view: waiting for E1-3 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E19-2 Pattern finder and brief day traces: waiting for E19-1 (Joely, backlog), E8-1 (Damien, backlog)
 - E20-2 Demo and device checks: waiting for CP1 (Hong Yi, backlog)
 
-Done: 2 of 14 tasks.
+Done: 3 of 15 tasks.
 <!-- BLOCKERS:END -->
 
 ## Tasks
@@ -69,21 +69,20 @@ Done: 2 of 14 tasks.
 
 ### E1-4 Ingestion · P0
 
-- **Ask:** Ingestion: load every value the app will ever need, once: all allowed datasets, the medicine, interaction, food, check-up and routing reference data, the demo patient with a simulated 60-day history, devices and goals, the replay tool and the medicine knowledge index. After this, later tasks add no data.
-- **Status:** backlog
+- **Ask:** Ingestion: load every value the app will ever need, once: all allowed datasets, the medicine, interaction, food, check-up and routing reference data, the demo patient with a simulated 60-day history, devices and goals and the replay tool. After this, later tasks add no data (the medicine knowledge index is task E1-6).
+- **Status:** done
 - **Needs first:** E1-1, E1-2
 - **Needed later:** E0-3
 - **Phase:** 1
 - **Spec:** data plan; schema 9b
 - **Detail:** [details/e1-data-foundation.md](details/e1-data-foundation.md)
-- **Note:**
+- **Note:** Done 2026-10-02: built and verified (74 of 74 checks; a repeat run inserts 0 rows). The medicine knowledge index was split out into E1-6 on 2026-10-02 (Joely), so it no longer holds this task open. See details/e1-4-handover.md. Not built: a date-refresh tool for demo day.
 - **Success criteria:**
-  - [ ] Datasets: CGMacros, BIG IDEAs subset, Fitbit, NHANES and GlucoBench are imported into the Silver tables with units converted, dates shifted, UTC time and row counts matching the source (per-source detail in the details file)
-  - [ ] Reference data: medicines with aliases and side effects, interaction data (checked first for an interactions column), foods with salt and sugar, preventive items, routing rules, population priors and data sources
-  - [ ] Demo patient: one real diabetic participant's profile plus a repeatable simulator filling 60 days of doses, mood, blood pressure, workouts, symptoms and a rising morning-glucose trend; every simulated row is flagged
-  - [ ] Setup data: devices and health goals seeded; the replay tool streams the demo data as if live and imports are safe to run twice
-  - [ ] Medicine knowledge index: the medicine data is chunked and embedded (needs E0-3) and 20 test names retrieve the right drug
-  - [ ] After this task no later task creates a table or loads reference data
+  - [x] Datasets: CGMacros (14 diabetic people), BIG IDEAs (5), Fitbit (5) and NHANES are imported into the Silver and Reference tables with units converted, dates shifted, UTC time and row counts matching the source (verified); GlucoBench is kept as a test fixture and not loaded (decision 2026-10-02, reworded by Joely)
+  - [x] Reference data: medicines with aliases and side effects, interaction data (the 250k file has none, so openFDA label text), foods with salt and sugar, preventive items, routing rules, population priors and data sources
+  - [x] Demo patient: one real diabetic participant's profile plus a repeatable simulator filling 60 days of doses, mood, blood pressure, workouts, symptoms and a rising morning-glucose trend; every simulated row is flagged
+  - [x] Setup data: devices and health goals seeded; the replay tool streams the demo data as if live and imports are safe to run twice
+  - [x] After this task no later task creates a table or loads reference data (the one exception is the medicine knowledge index in E1-6); verified: Alembic is still at 0007
 
 ### E1-5 Analysis data and baseline model · P1
 
@@ -98,6 +97,22 @@ Done: 2 of 14 tasks.
 - **Success criteria:**
   - [ ] Meal feature tables (macros, context and measured glucose response) split by participant with no leakage
   - [ ] Baseline model beats predicting the average on people it has not seen, with a short model card
+
+### E1-6 Medicine knowledge index · P0
+
+- **Ask:** Build the medicine search index: embed the prepared medicine text chunks with the AI gateway and prove that 20 test names (generic, brand, misspelt) find the right drug.
+- **Status:** backlog
+- **Needs first:** E1-4, E0-3
+- **Needed later:** none
+- **Phase:** 2
+- **Spec:** data plan; memory 7; schema 8
+- **Detail:** [details/e1-data-foundation.md](details/e1-data-foundation.md)
+- **Note:** Split out of E1-4 on 2026-10-02 (Joely). Ready now: 667 text chunks for 97 drugs and the 20 test names. Run `python scripts/ingest_knowledge.py --embed` and then `--test` once E0-3 provides embed(texts) with vectors of size EMBED_DIM. The medicine explainer (E4-1) uses this index, so it should list E1-6 under Needs first.
+- **Success criteria:**
+  - [ ] The prepared chunks (rebuilt with `python scripts/ingest_knowledge.py --stage`) are embedded with the gateway and stored in knowledge_chunks, each linked to its source document
+  - [ ] All 20 test names in data/demo/knowledge_test_names.csv find the right drug as the nearest chunk (`--test` passes)
+  - [ ] EMBED_DIM in .env and the knowledge_chunks vector size match the embedding model chosen in E0-3 (one migration if they differ)
+  - [ ] No table is created (rules.md section 3)
 
 ### E6-1 Clash checker · P0
 

@@ -313,22 +313,23 @@ erDiagram
 | **`knowledge_chunks`** | Text pieces of those documents with their embeddings (vectors of size `EMBED_DIM`, 1024 for now) for retrieval. | Chunked and embedded in E1-4 (needs the AI gateway from E0-3) | `document_id` (deleted with the document). One row per document and sequence number. |
 | **`data_sources`** | Where every dataset or reference list came from, with licence and URL. | `data/plan` and `data/download_log.csv` | Referred to **by name** from `foods.source`, `interaction_rules.source`, `drug_aliases.source`, `population_priors.source`. Used to print attributions. |
 
-### 5.2 How the existing datasets will land (planned in E1-4)
+### 5.2 How the existing datasets landed (E1-4, done 2026-10-02)
 
-Bronze for these is the file in `data/raw/` (logged in `data/download_log.csv`). Dates are shifted per person so streams stay aligned, stored in UTC, and rows are marked `entry_source = demo_dataset`. Imports are safe to repeat.
+Bronze for these is the file in `data/raw/` (logged in `data/download_log.csv`) plus an `ingestion_events` row per person and file (`dataset_import`, no upload). Clock times are read as Singapore local time and stored in UTC; each person's last real day is shifted to the demo end date (2026-10-02, in `data/demo/demo_config.json`); rows carry `entry_source = demo_dataset`. Loaders are safe to repeat (stable ids, `ON CONFLICT DO NOTHING`). Full detail and the mock-versus-data differences: [e1-4-handover.md](../backlog/details/e1-4-handover.md).
 
-| Dataset (manifest #) | Becomes (Silver / Reference) | Conversions and rules |
-|---|---|---|
-| **CGMacros** (#5), the chosen diabetic participants | Glucose to `glucose_readings`; meals and macros to `meals` + `meal_items` (`estimated_by = dataset`, `evidence_status = observed`); Fitbit heart rate and steps to `health_samples`; `bio.csv` to `patient_profiles` and `lab_results` | mg/dL to mmol/L; Libre and Dexcom each with their own `native_interval_min`; row counts must equal the source |
-| **BIG IDEAs** (#4), participants 003, 004, 009, 010, 011 | Dexcom to `glucose_readings`; HR (about 1 per second) to `health_samples` downsampled to 1 minute; EDA and skin temperature to `health_samples`; IBI (beat-to-beat) for HRV; food log to `meals` + `meal_items` | Insulin columns discarded. None of these people has diabetes |
-| **Fitbit** (#14) | `health_samples` and `sleep_sessions` | A second watch format; proves imports work on any device |
-| **NHANES** (#1, #2, plus 2011-16) | `population_priors`; dietary files into `foods` (sodium, sugar) | Percentiles by age, sex and diabetes status |
-| **250k Medicines** (#20) | `drug_reference`, `drug_aliases`, `drug_side_effects`, `knowledge_*` | `substitute*` columns dropped; no interactions in this file |
-| **openFDA** (live API, owner-approved) | `interaction_rules` | Raw API answers kept in `data/raw/openfda/` first (the original) |
-| **Open Food Facts** (#17) | `foods` | Only 75 Singapore/Malaysia products, 14 with sodium or salt, so unknown values are flagged unknown |
-| **Doctor Specialty** (#37) | `routing_rules` | Only the disease-to-specialty pairs |
-| **Simulated demo patient** (60 days) | `dose_events`, `mood_checkins`, `blood_pressure_readings`, `workouts`, `symptom_logs`, glucometer `glucose_readings` | Built from cited data only, every row flagged, a disclosure list generated |
-| **GlucoBench** (not in the manifest) | A test fixture only | Never evidence; insulin columns dropped |
+| Dataset (manifest #) | Landed in | Rows | What was done |
+|---|---|---|---|
+| **CGMacros** (#5), 14 people with HbA1c 6.5% or more | `users`, `patient_profiles`, `cgm_sprints`, `glucose_readings`, `meals` + `meal_items`, `health_samples`, `lab_results`, `body_measurements` | 218,355 Libre and 26,008 Dexcom glucose readings (BIG IDEAs and others included in the Dexcom total), 455 meals | mg/dL to mmol/L; the demo patient (046, "Mr Tan") in full, the other 13 thinned (Libre only, heart rate every 5th minute); last 3 hours of Mr Tan held back for replay |
+| **BIG IDEAs** (#4), participants 003, 004, 009, 010, 011 | `users` (no profile), `cgm_sprints`, `glucose_readings`, `health_samples`, `meals` + `meal_items`, `lab_results` | 11,763 glucose, 71,596 samples | Heart rate 1-minute means, EDA and skin temperature 5-minute means, HRV from beat intervals (5-minute RMSSD), food log meals |
+| **Fitbit** (#14), 5 people | `users` (no profile), `health_samples`, `sleep_sessions`, `body_measurements` | 28,751 samples, 109 nights | 5-minute heart-rate means, hourly steps, sleep sessions from minute rows |
+| **NHANES** (#1, #2, plus 2011-16) | `population_priors` | 617 | Percentiles by metric, sex, age band and diabetes status, per cycle (not survey-weighted) |
+| **250k Medicines** (#20) | `drug_aliases`, `drug_side_effects` (for the 101 drugs of NHANES) | 362 aliases, 391 side effects | Single-ingredient products only; substitute columns never read |
+| **openFDA** (live API, owner-approved) | `drug_reference`, `knowledge_documents`, `drug_aliases` (brands), `interaction_rules` | 101 drugs, 94 label documents, 238 pairs | 94 of 101 drugs had a usable label; pairs from text matching, `severity = unknown` |
+| **Open Food Facts** (#17) | `foods` | 53 | Singapore and Malaysia products; 13 with sodium, 40 flagged `sodium_unknown` |
+| **Doctor Specialty** (#37) | `routing_rules` | 4 | Disease-to-specialty pairs relevant to Type 2 care only |
+| **Team placeholders** (owner-approved) | `preventive_items`, `patient_profiles.targets` | 6 | "clinical review pending" |
+| **Simulated demo patient** | `dose_events`, `mood_checkins`, `sleep_sessions`, `workouts`, `blood_pressure_readings`, `symptom_*`, `appointments`, labs, goals, devices, simulated meals and glucometer readings | about 800 | Fixed seed; flagged `sim:` and listed in `data/demo/DISCLOSURE.md` |
+| **GlucoBench** (not in the manifest) | Not loaded: test fixture `services/api/tests/fixtures/glucobench_sample.csv` | 1,000 rows | Insulin columns removed |
 
 ---
 
@@ -428,13 +429,12 @@ The user types 5.6 and picks "fasting". One `glucose_readings` row (`source = ma
 
 ## 9. Gaps and open points
 
-These were found while writing this page. None blocks use of the tables; they need a decision in E1-4.
-
-1. **Simulated versus imported rows share one value.** `entry_source` has `demo_dataset` but no separate "simulated". E1-4 must say how the two are told apart for the disclosure list (for example an `external_id` prefix such as `sim:`).
-2. **Two tables named in the E1-4 detail file do not exist in schema.md:** the GlucoBench "fixture table" and the NHANES "persona-sampling table". Decide whether they are real tables (a migration) or files under `data/`.
-3. **Photo keys are soft links.** `prescription_scans.image_key` and `meals.photo_key` must equal the Bronze `object_key` exactly; nothing in the database enforces it.
-4. **The data plan workbook** (Excel) still lists the `substitute*` columns and an unresolved interactions row.
+1. **Simulated versus imported rows: settled.** Simulated rows use `entry_source = demo_dataset` and an `external_id` starting `sim:`; imported rows start with `cgmacros:`, `bigideas:` or `fitbit:`. Tables with no source column (doses, mood, symptoms, appointments...) hold only simulated rows for the demo user. `data/demo/DISCLOSURE.md` lists everything simulated.
+2. **The two tables named in the E1-4 detail file: settled.** GlucoBench stays a test fixture (not loaded); the NHANES "persona-sampling table" was not needed and was not created.
+3. **Photo keys are soft links.** `prescription_scans.image_key` and `meals.photo_key` must equal the Bronze `object_key` exactly; nothing in the database enforces it. (Dataset meals have no photo key: the photos stay in `data/raw`.)
+4. **The data plan workbook** (Excel) still lists the `substitute*` columns and an unresolved interactions row. Edit by hand.
 5. **Gold and Operations tables, the five views and four foreign keys** are E1-3 (Hong Yi): see [e1-3-handover.md](../backlog/details/e1-3-handover.md).
+6. **Open:** the medicine knowledge index is task E1-6 and waits for the embedding model (E0-3); a date-refresh tool for demo day is not built (see the E1-4 handover).
 
 ## 10. All 43 tables at a glance
 

@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-02 16:12: PASS (21 of 21 checks passed)
+**Last docs check:** 2026-10-02 22:57: PASS (21 of 21 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -18,12 +18,12 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 
 ## Current state
 
-- **Phase:** specification is written. The front end is built as a clickable app on demo data in `apps/mock` and `apps/web` (as of 2026-10-01). The database exists (as of 2026-10-02): Bronze, Silver and Reference tables are in the shared Supabase project; Gold and Operations tables (E1-3) and all loaded values (E1-4) are still to come; the API has not started.
+- **Phase:** specification is written. The front end is built as a clickable app on demo data in `apps/mock` and `apps/web` (as of 2026-10-01). The database exists and is loaded (as of 2026-10-02): Bronze, Silver and Reference tables hold the datasets, reference data and the demo patient (E1-1, E1-2 and E1-4 done; the medicine index is the new task E1-6); Gold and Operations tables (E1-3) are still to come; the API has not started.
 - **Branches:** `dev` is the default branch and where everyone works. The owner promotes `dev` to `uat`, then `uat` to `main`. `main` and `uat` still hold the first commit until then.
 - **Runtime:** the web app and API run locally on each machine. The database is Supabase (Postgres with pgvector). AI calls (Hunyuan, JEV) go to their services. Connection details are shared privately and never committed.
-- **Backlog:** 51 tasks split across three personal backlogs (`docs/backlog/hongyi.md`, `joely.md`, `damien.md`) plus a generated central tracker (`docs/backlog/SOT.md`); E0-1 and E0-2 are in progress, none done. Every task has a plain-language Ask, a Needs-first list and subtasks. Each person edits only their own file and runs `python scripts/update_tracker.py`. Estimates were removed.
+- **Backlog:** 52 tasks split across three personal backlogs (`docs/backlog/hongyi.md`, `joely.md`, `damien.md`) plus a generated central tracker (`docs/backlog/SOT.md`); E0-1 and E0-2 are in progress, none done. Every task has a plain-language Ask, a Needs-first list and subtasks. Each person edits only their own file and runs `python scripts/update_tracker.py`. Estimates were removed.
 - **Timeline:** two weeks to the submission on 16 October 2026.
-- **Team:** Hong Yi (hongyeeet, owner, 27 tasks), Joely (joelyhee, 14 tasks), Damien (chua-damien, 10 tasks and reviewer for E4-1 and E13-1 to E13-3), all with write access. The task-level split is in `docs/backlog/SOT.md`. All tables and values are created and loaded in epic E1 only.
+- **Team:** Hong Yi (hongyeeet, owner, 27 tasks), Joely (joelyhee, 15 tasks), Damien (chua-damien, 10 tasks and reviewer for E4-1 and E13-1 to E13-3), all with write access. The task-level split is in `docs/backlog/SOT.md`. All tables and values are created and loaded in epic E1 only.
 
 ## Decisions register
 
@@ -69,6 +69,12 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-038 | 2026-10-02 | The five `substitute*` columns of 250k Medicines are dropped when loading (the raw file keeps them) | A substitute could surface as medication-substitution advice | data/README.md, session log; the data plan's "Use now" row still lists them | Pending |
 | D-039 | 2026-10-02 | PhysioNet datasets are fetched from PhysioNet's official S3 mirror (`physionet-open.s3.amazonaws.com`) and verified against the publisher's SHA256SUMS. BIG IDEAs data comes from v1.1.2 of the mirror (byte-identical to v1.1.3 for the files used) and is checked against the v1.1.3 checksums; participants 003, 004, 009, 010, 011 | physionet.org ran at about 46 KB/s from the developer's network | scripts/download_data.py, data/README.md | Pending |
 | D-040 | 2026-10-02 | The database is built by Alembic migrations holding the SQL of schema.md, in `services/api/alembic/` (0001 to 0007 for Bronze, Silver and Reference; Hong Yi continues from 0008 in E1-3). Four Silver columns stay plain uuids until E1-3 (adds `prescription_scans.agent_run_id` to the three in D-027). `EMBED_DIM=1024` is a placeholder until E0-3. Implementation choices beyond the spec are listed in schema.md section 12 | rules.md requires Alembic; the target tables of the four columns do not exist until E1-3; the AI provider is undecided | schema.md 12, data-flow.md 6, docs/backlog/details/e1-3-handover.md | Pending (Hong Yi agreed in chat, reported by Joely) |
+| D-041 | 2026-10-02 | Hong Yi approved four E1-4 items (reported by Joely): placeholder check-up intervals (eye 12, foot 12, kidney 12, HbA1c 6, flu 12, diabetes review 6 months) and default targets on the demo profile; clarithromycin as the demo drug (D-033); only 4 routing rows (no eye, foot, kidney or lipids); demo patient CGMacros participant 046 at real age 51 | No cited source has the intervals; the demo needs an interaction hit; the routing file has no such rows | e1-4-handover.md, data/README.md | Pending (owner's answer reported by Joely) |
+| D-042 | 2026-10-02 | Free-plan size guard: the demo patient is loaded in full; the other 13 CGMacros people get Libre glucose only and heart rate every 5th minute; BIG IDEAs EDA and skin temperature and Fitbit heart rate are 5-minute means. Database 180 MB of 500 MB | Rows cost about 400 bytes with indexes | e1-4-handover.md | Pending |
+| D-043 | 2026-10-02 | The drug list is the top 100 single-ingredient generic drugs taken by NHANES diabetic participants (2011 to 2018; the 2021-23 file has no drug names; insulin and supplements excluded) plus clarithromycin. 250k Medicines products are mapped only when single-ingredient; side effects need 30% of a drug's products; interactions come from openFDA label text matching (`severity = unknown`, unreviewed) | The 250k file has only brand names | e1-4-handover.md, bronze-silver.md 5.2 | Pending |
+| D-044 | 2026-10-02 | Simulated rows carry `entry_source = demo_dataset` and an `external_id` starting `sim:`; imported rows start `cgmacros:`, `bigideas:`, `fitbit:`; tables with no source column hold only simulated rows for the demo user; `data/demo/DISCLOSURE.md` lists them. Clock times are read as Singapore time, each person's last day is shifted to the demo end date (`data/demo/demo_config.json`), and Mr Tan's last 3 hours are held back for the replay tool | Resolves the "simulated versus imported" gap; the demo needs live-looking data | bronze-silver.md 9, e1-4-handover.md | Pending |
+| D-045 | 2026-10-02 | BIG IDEAs and Fitbit people get users but no profile (profiles allow only Type 2); GlucoBench is a test fixture only (1,000 rows, insulin removed); the NHANES persona-sampling table is not created; the medicine knowledge index was first kept inside E1-4 (superseded by D-046) | Schema limits; Joely's choice on the index | joely.md, e1-data-foundation.md | Pending |
+| D-046 | 2026-10-02 | The medicine knowledge index is split out of E1-4 into a new task E1-6 (Joely), which waits for the embedding model (E0-3). E1-4 is marked done. E1-6 is added to Joely's backlog (52 tasks in total) | E1-4 would otherwise stay open until E0-3 and keep the tasks behind it blocked | joely.md, e1-data-foundation.md, e1-4-handover.md | Pending |
 
 ## Session index
 
@@ -76,7 +82,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 |---|---|---|---|---|---|---|
 | setup (no log) | hongyeeet with Claude | 2026-09-28 to 2026-10-01 | none (planning) | Wrote the PRD, architecture, flow, schema, design, rules, memory design, data plan, mockup prompt, handover, repo layout and branches; consolidated and split the backlog into three personal backlogs and a tracker | D-001 to D-027 | Pending |
 | [hongyi_2026-10-01_1143](sessions/hongyi_2026-10-01_1143.md) | Hong Yi with Claude | 2026-10-01 | E0-1, E0-2 (both in progress) | Built the whole front end in `apps/web`: design tokens, UI kit, charts, mock data layer, 40 screens and 6 sheets, A4 brief, generated screen index, design.md. Specs updated for the new look and folder | D-028 to D-035 | Pending |
-| [joely_2026-10-01_1454](sessions/joely_2026-10-01_1454.md) | Joely with Claude | 2026-10-01 to 2026-10-02 | E1-2 (done), E1-1 (3 of 4 subtasks) | Downloaded and checksum-verified 9 sources (199 files), profiled each (`data/dataset_profiles.md`); built 43 Bronze, Silver and Reference tables and 33 enums in Supabase with Alembic (RLS on, rollback tested, 10 constraint tests); private storage bucket and Bronze helper; data dictionary; E1-3 handover for Hong Yi. Found 250k Medicines has no interactions column (openFDA instead) | D-036 to D-040 | Pending |
+| [joely_2026-10-01_1454](sessions/joely_2026-10-01_1454.md) | Joely with Claude | 2026-10-01 to 2026-10-02 | E1-1, E1-2 and E1-4 (done), E1-6 added | Downloaded and checksum-verified 9 sources (199 files), profiled each (`data/dataset_profiles.md`); built 43 Bronze, Silver and Reference tables and 33 enums in Supabase with Alembic (RLS on, rollback tested, 10 constraint tests); private storage bucket and Bronze helper; data dictionary; E1-3 handover for Hong Yi. Found 250k Medicines has no interactions column (openFDA instead) | D-036 to D-046 | Pending |
 
 ## Spec change log
 
@@ -107,6 +113,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-02 | docs/specs/prd.md | A4 and A10: openFDA interactions; NHANES 2011-2016 approved | D-036, D-037 |
 | 2026-10-02 | docs/backlog/details/e1-3-handover.md (new), docs/data_dictionary.md (new, generated) | Standalone start for E1-3; column-by-column dictionary of the 43 tables | D-040 |
 | 2026-10-02 | docs/specs/bronze-silver.md (new), README.md, data-flow.md, schema.md | Medallion walkthrough of Bronze and Silver: existing data versus user input, per-table writers, diagrams, all 49 foreign keys, worked examples, gaps for E1-4 | D-040 |
+| 2026-10-02 | docs/backlog/details/e1-4-handover.md (new), docs/specs/bronze-silver.md 5.2 and 9, docs/backlog/details/e1-data-foundation.md, e1-3-handover.md, data/README.md | What E1-4 loaded, the demo patient and its differences from the mock, placeholders, gaps, how to re-run, what waits on E0-3 | D-041 to D-045 |
 
 ## Open questions and blockers
 
@@ -120,3 +127,6 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 - **Interactions via openFDA (D-036):** prd.md A4 and A10, the data plan's "Still missing" row and the E1-4 detail still say the 250k Medicines file may hold interactions. Update them. E6-1 should be told the clash data is label text, not a pair table.
 - **E1-3 also writes the deletion of a Bronze original to `event_log`** (E1-1 criterion 4 was reworded on 2026-10-02; see e1-3-handover.md). The data plan workbook (Excel) still lists the `substitute*` columns and an unresolved interactions row; edit it by hand.
 - **Open Food Facts is thin for Singapore:** only 75 Singapore/Malaysia products and 14 with sodium or salt (see `data/dataset_profiles.md`), so E1-4's `foods` seed relies on "unknown" flags and the LLM estimate.
+- **E1-6 (medicine knowledge index) waits for E0-3** (embedding model); chunks and 20 test names are ready (`python scripts/ingest_knowledge.py --embed`, then `--test`). E1-4 is done (74 of 74 checks). Hong Yi should add E1-6 to the Needs-first of E4-1 (medicine explainer).
+- **Demo-day dates:** all demo data ends on 2026-10-02 and no date-refresh tool exists yet; decide before the demo on 3 Nov.
+- **The mock differs from the real data** (demo patient age 51 not 58, time in range 64%, HbA1c date, missed-dose weekdays): see e1-4-handover.md section 3; Hong Yi updates the mock or reads the database.

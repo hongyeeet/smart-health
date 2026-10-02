@@ -104,10 +104,11 @@ def bigideas():
         g = dx[dx["Event Type"] == "EGV"]
         ts = pd.to_datetime(g["Timestamp (YYYY-MM-DDThh:mm:ss)"])
         a = demo.loc[demo.ID == int(n), "HbA1c"].iloc[0]
-        food = line_count(p / f"Food_Log_{n}.csv") + 1  # no header row in this file
+        first = open(p / f"Food_Log_{n}.csv", encoding="utf-8").readline()
+        food = line_count(p / f"Food_Log_{n}.csv") + (0 if first.startswith("date") else 1)  # only participant 003 has no header row
         w(f"| {n} | {a} | {len(g):,} | {ts.min().date()} | {ts.max().date()} | {line_count(p / f'HR_{n}.csv'):,} | "
           f"{line_count(p / f'IBI_{n}.csv'):,} | {line_count(p / f'EDA_{n}.csv'):,} | {line_count(p / f'TEMP_{n}.csv'):,} | {food} |")
-    w("\nWatch out: heart rate is about one reading per second (to be downsampled to 1 minute); `Food_Log` files have no header row; "
+    w("\nWatch out: heart rate is about one reading per second (to be downsampled to 1 minute); `Food_Log` of participant 003 has no header row and 11 columns (the others have a header and 14); "
       "the Dexcom file starts with device metadata rows; EDA and temperature are 4 readings per second. "
       "Data came from the S3 mirror at version 1.1.2 and was verified against the 1.1.3 checksums.\n")
 

@@ -139,6 +139,8 @@ E1-4 loads every value: datasets (CGMacros, BIG IDEAs, Fitbit, NHANES, GlucoBenc
 
 ## 8. What Hong Yi agreed (2026-10-02)
 
+**Update:** E1-4 (the data load) has since run: see [e1-4-handover.md](e1-4-handover.md) for what is in every table, the demo patient, and what is placeholder or missing. The tables you build in E1-3 (Gold, Operations) read from that data.
+
 1. Migrations live in `services/api/alembic/`; the API skeleton is built around that folder.
 2. Hong Yi adds the four foreign keys at the end of E1-3 (section 3).
 3. `EMBED_DIM=1024` is a placeholder until E0-3 chooses the embedding model.

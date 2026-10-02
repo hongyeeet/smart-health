@@ -41,3 +41,19 @@ Fetched by `scripts/download_data.py` into the gitignored `raw/`; every file's s
 | (policy) | GlucoBench | `glucobench-.../` | Apache 2.0 | Not in the manifest. Fixture only; insulin columns discarded |
 
 **Drug interactions.** 250k Medicines has no interactions column. The owner decided (2026-10-02, reported by Joely) to use the openFDA drug-label `drug_interactions` text (`api.fda.gov/drug/label.json`, a live API, not in the manifest) as general information labelled `reference_matched`. Anything not found is "not checked". Supplements and TCM stay "not checked". This is loaded in E1-4.
+
+## What is loaded into the database (E1-4)
+
+Loaded by the scripts in `scripts/` (order and details: `docs/backlog/details/e1-4-handover.md`; run `python scripts/load_all.py`, a repeat run inserts nothing; `python scripts/verify_loaded.py` proves it against the raw files). The database holds **no raw files**: those stay in git-ignored `raw/`.
+
+| Folder or file | What it is | Committed? |
+|---|---|---|
+| `demo/demo_config.json` | The demo end date (2026-10-02) shared by every loader and teammate | Yes |
+| `demo/DISCLOSURE.md` | Generated list of everything simulated for the demo patient (table, rows, dates, rule, seed) | Yes |
+| `demo/replay_feed.jsonl` | The last 3 hours of the demo patient's sensor data, held back for `scripts/replay.py` | Yes |
+| `demo/knowledge_test_names.csv` | The 20 test names for the medicine search index (waits for E0-3) | Yes |
+| `processed/` (git-ignored) | Working copies: unzipped CGMacros, `nhanes_top_drugs.csv`, staged medicine chunks | No |
+| `raw/openfda/` (git-ignored) | The 101 raw openFDA label answers (public domain, CC0 1.0), logged in `download_log.csv` | No |
+
+**Rules that held:** only cited or owner-approved sources; simulated rows are flagged (`entry_source = demo_dataset`, `external_id` starting `sim:`) and disclosed; GlucoBench is a test fixture only (`services/api/tests/fixtures/`, insulin removed); the five `substitute*` columns are never loaded; AI estimates are not stored yet (dataset meals keep their measured macros); nothing is called validated; the check-up intervals and default targets are placeholders pending clinical review.
+
