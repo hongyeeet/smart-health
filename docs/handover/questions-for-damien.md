@@ -68,8 +68,18 @@ A report we were sent says logging in an app like this should take 60 to 90 seco
 |---|---|---|
 | F1 | What is the minimum a symptom entry must contain to be clinically useful? Anything we ask that you would drop? | Symptom, strength, time, and the sensor glucose filled in automatically |
 
+## G. Workout tracker (workout-tracker.md)
+
+| # | Question | Our placeholder now |
+|---|---|---|
+| G1 | The tracker judges effort from heart rate: maximum heart rate 208 minus 0.7 times age, then bands of percent of maximum (below 57 light, 57 to 63 light, 64 to 76 moderate, 77 to 95 vigorous, 96 and above near maximal). Is this an acceptable method for adults 45 to 65 with type 2 diabetes? | As listed, placeholders from common exercise conventions, not cited data |
+| G2 | Heart rate is unreliable on beta-blockers (and some other medicines). We switch the effort label off for people on them. Which medicines should switch it off? | Beta-blockers only |
+| G3 | For strength training, should the app say anything about blood pressure or glucose around a session (for example check glucose before and after), or stay silent unless the person asks? | Silent. It only shows the glucose change that followed, worded "associated with" |
+| G4 | Is a 90-second rest timer a sensible default, or should the app not suggest a rest length? | 90 seconds, skippable |
+
 ## Decisions we still need from the team, not from Damien
 
 - Which service sends the text messages, emails and calls (and who holds the keys).
 - Who builds E1-7 (the database changes) and how E11-2 and E7-4 split with Joely's E11-1 and E7-1.
 - Migration numbering, because Hong Yi's E1-3 and Joely's follow-up both start at 0008.
+- Whether to approve the workout tracker tables (schema.md section 14), which are new tables outside E1 and so need the owner's OK.

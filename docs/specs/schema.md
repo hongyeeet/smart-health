@@ -604,3 +604,13 @@ From the owner's clinical feedback (D-052, D-051). **These are not in the databa
 | `urgent_events` (Gold) | ADD `contact_notified_at timestamptz NULL`, `contact_channels text[] NULL`, `contact_called_at timestamptz NULL`, `escalated_from urgent_tier NULL`. Tier 1 is `hypo_selfcare` and tier 2 is `urgent_now`; no enum change |
 | `symptom_checkins` | No change: the awareness question is stored with `question_key = 'hypo_awareness'` and the answer in `answer jsonb` |
 | `health_samples` | No change: `spo2` is already a `sample_metric`. A real SpO2 source is not in the cited data (prd.md A15) |
+
+## 14. Planned additions for the workout tracker (2026-10-03, not yet migrated)
+
+For the strength-session tracker ([workout-tracker.md](workout-tracker.md), D-055). **Not in the database.** New tables and columns belong to epic E1 (rules.md section 3), so this needs the owner's OK and a migration numbered after those already applied. Until then it is specified here only.
+
+| Table | Change |
+|---|---|
+| `workouts` | ADD `workout_type text NULL CHECK IN ('aerobic','strength','mixed','flexibility')`, `ended_at timestamptz NULL CHECK (ended_at IS NULL OR ended_at > started_at)`, `perceived_effort smallint NULL CHECK 1..10`, `felt text NULL CHECK IN ('energised','fine','tired','unwell')`, `note text NULL`. This also gives the weekly strength-session goal something to count |
+| `workout_sets` (new, Silver) | `id uuid PK, workout_id uuid NOT NULL FK workouts ON DELETE CASCADE, user_id uuid NOT NULL FK users ON DELETE CASCADE, exercise text NOT NULL, exercise_order smallint NOT NULL, set_no smallint NOT NULL, reps smallint NOT NULL CHECK 1..200, weight_kg numeric(5,1) NULL CHECK 0..500 (NULL means bodyweight), rest_s smallint NULL, rpe smallint NULL CHECK 1..10, performed_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE (workout_id, exercise_order, set_no)`. Index `(user_id, performed_at DESC)`. Row-level security on, no policies |
+| Gold (no new table) | Effort per workout is stored as `event_windows` rows with `anchor_kind = 'workout'` and `outcome_metric` such as `hr_avg`, `hr_max` and `glucose_delta_120m`. The resting heart rate baseline is `daily_aggregates.resting_hr` and `baselines` |

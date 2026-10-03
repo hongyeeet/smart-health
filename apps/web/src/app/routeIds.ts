@@ -54,6 +54,8 @@ export const ROUTES = {
 
   F1: { path: '/log/workout', title: 'Log a workout', kind: 'screen', group: 'Log workout', from: 'B1, E1, C4', links: [l('Log a symptom', 'E4'), l('Save', 'E6')] },
 
+  F2: { path: '/log/workout/live', title: 'Workout tracker', kind: 'screen', group: 'Log workout', from: 'F1, E1', links: [l('Back to log', 'E1')], note: 'Live strength session: timer, exercises, sets with reps and weight, rest timer, finish and summary. Heart-rate effort is computed by the server (services/api/app/services/workout_effort.py).' },
+
   H1: { path: '/meds', title: 'Medications', kind: 'tab', group: 'Medications', from: 'Bottom bar, C6', links: [l('Scan a label', 'H2'), l('Add by hand', 'H8'), l('A medicine', 'H6'), l('A badge', 'H5')] },
   H2: { path: '/meds/scan', title: 'Scan a label', kind: 'screen', group: 'Medications', from: 'H1, A3', links: [l('Take photo', 'H3')] },
   H3: { path: '/meds/scan/review', title: 'Check what we read', kind: 'screen', group: 'Medications', from: 'H2', links: [l('Confirm', 'H4'), l('Retake photo', 'H2')] },

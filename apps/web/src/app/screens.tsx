@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { NotBuilt } from './NotBuilt'
+import { WorkoutTracker } from '@/features/workout/WorkoutTracker'
 import { ROUTES, routeIds, type RouteId } from './routeIds'
 
 /**
@@ -9,7 +10,9 @@ import { ROUTES, routeIds, type RouteId } from './routeIds'
  *   import { Home } from '@/features/home/Home'
  *   export const built: Partial<Record<RouteId, ComponentType>> = { B1: Home }
  */
-export const built: Partial<Record<RouteId, ComponentType>> = {}
+export const built: Partial<Record<RouteId, ComponentType>> = {
+  F2: WorkoutTracker,
+}
 
 export function screenFor(id: RouteId): ComponentType {
   return built[id] ?? (() => <NotBuilt id={id} />)

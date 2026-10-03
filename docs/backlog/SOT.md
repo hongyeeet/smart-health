@@ -30,8 +30,8 @@ Points to watch:
 
 | | Tasks done | Subtasks ticked | Progress |
 |---|---|---|---|
-| **Whole project** | 3 of 56 | 18 of 277 | `[#-------------------] 6%` |
-| Hong Yi | 0 of 31 | 4 of 154 | `[#-------------------] 3%` |
+| **Whole project** | 3 of 57 | 20 of 284 | `[#-------------------] 7%` |
+| Hong Yi | 0 of 32 | 6 of 161 | `[#-------------------] 4%` |
 | Joely | 3 of 15 | 14 of 74 | `[####----------------] 19%` |
 | Damien | 0 of 10 | 0 of 49 | `[--------------------] 0%` |
 
@@ -50,7 +50,7 @@ Tasks whose **Needs first** are all done. Sorted by how many other tasks they un
 
 | Person | Ready now | Blocked | In progress or review | Done |
 |---|---|---|---|---|
-| Hong Yi | E1-3 (27) | 28 | 2 | 0 |
+| Hong Yi | E1-3 (27) | 29 | 2 | 0 |
 | Joely | E11-1 (4), E21-2 (1), E1-5 (0) | 9 | 0 | 3 |
 | Damien | E8-1 (7), E21-1 (1), E14-1 (0) | 7 | 0 | 0 |
 
@@ -83,6 +83,7 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E7-2 | Meal logging with AI macros | Joely | P0 | blocked | 0/6 | E0-3 |  |
 | E7-3 | Connected sources and log upkeep | Joely | P0 | blocked | 0/4 | E7-1 |  |
 | E7-4 | Faster symptom logging with detail | Hong Yi | P1 | blocked | 0/5 | E0-2, E1-7 |  |
+| E7-5 | Workout tracker: sets, weights and heart-rate effort | Hong Yi | P1 | blocked | 2/7 | E0-2 |  |
 | E8-1 | Sprint and meal response | Damien | P0 | ready | 0/7 | none |  |
 | E8-2 | Food leaderboard | Damien | P0 | blocked | 0/4 | E8-1 |  |
 | E9-1 | Daily totals, baseline and flags | Hong Yi | P0 | blocked | 0/6 | E1-3 |  |
@@ -124,6 +125,7 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 - **E1-5** (Joely): Owner was 'to decide' in your list. Provisionally Joely (data work); change if you prefer.
 - **E1-7** (Hong Yi): Silver tables are Joely's. This is in your file because new tasks go in the file of whoever raised them. Reassign the Silver half to Joely if you prefer.
 - **E7-4** (Hong Yi): E7-1 (Joely) is quick logs. This extends the symptom form; agree the split.
+- **E7-5** (Hong Yi): The tables `workout_sets` and the new `workouts` columns are new tables outside E1 and need the owner's OK (schema.md 14). The effort cut-offs need a clinician (questions-for-damien.md, section G). The Gold inputs wait for E1-3 and E9-1.
 - **E11-2** (Hong Yi): E11-1 (Joely) already covers the urgent rules and screen. This task adds the tiers, the contact and the awareness question; agree who builds what so the two do not overlap. The messaging and calling service is not chosen.
 - **E13-4** (Hong Yi): No cited dataset holds SpO2 (prd A15). It is simulated and labelled until a real source is approved.
 - **E20-1** (Hong Yi): Your list said Hong Yi and Joely for E20. Hong Yi leads this one; Joely leads E20-2.

@@ -37,6 +37,7 @@ services/                 created when the backend starts (planned layout: docs/
 | [docs/specs/architecture.md](docs/specs/architecture.md) | Tech stack, trust boundaries, folder structure, data flows, agent harness |
 | [docs/specs/memory.md](docs/specs/memory.md) | Standard names, data layers, memory planes, evidence model, the JEV decision layer, Memory Service, meal analysis |
 | [docs/specs/ai-models.md](docs/specs/ai-models.md) | Which AI model does each job, how it is wired, cost control, and what the embedding size affects |
+| [docs/specs/workout-tracker.md](docs/specs/workout-tracker.md) | The strength workout tracker: what it records, what code computes from heart rate, how it will use the Gold tables, and what is still to build |
 | [docs/specs/schema.md](docs/specs/schema.md) | Database tables, layer map, consistency rules |
 | [docs/specs/data-flow.md](docs/specs/data-flow.md) | One-page picture of Bronze, Silver and Gold, where JEV sits, and the order to build the tables in. Start here before creating the database |
 | [docs/specs/bronze-silver.md](docs/specs/bronze-silver.md) | The Bronze and Silver layers table by table: what is existing data and what is user input, who writes each table, and how every column links (diagrams, all 49 foreign keys, worked examples) |

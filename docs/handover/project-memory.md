@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-03 14:03: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-03 14:16: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -83,6 +83,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-052 | 2026-10-03 | Symptom logging gains: sensor glucose and trend at the time, when it happened (just now, earlier today, last night, set time), duration, side, meal or exercise relation, what dizziness felt like, and new symptoms (vomiting, night sweats, breathlessness at rest, sudden vision loss). Core path targets about 30 seconds. New columns and one table are planned (schema.md 13, task E1-7) | Owner: add the new symptoms; feedback that logging should take 60 to 90 seconds | prd.md F6, schema.md 13 | On hold: clinical review |
 | D-053 | 2026-10-03 | The brief trends glucose with resting heart rate and SpO2 (SpO2 simulated, prd A15). After a low, one awareness question is asked and shown in the brief. Appointment booking stays a calendar entry and `.ics` file; no HealthHub (prd A16) | Owner: HealthHub is too much now | prd.md F12, A15, A16, flow.md J8 | On hold: clinical review |
 | D-054 | 2026-10-03 | Everything from the 2026-10-03 clinical feedback (D-050 to D-053) is on hold until Damien, the team's doctor, answers the questions in docs/handover/questions-for-damien.md. Tasks E1-7, E11-2, E7-4 and E13-4 are set to blocked. The mock keeps the prototype screens so he can see them; nothing is built in apps/web or the database | Owner: keep all of this on hold and ask Damien | docs/handover/questions-for-damien.md | Pending |
+| D-055 | 2026-10-03 | A strength workout tracker is scaffolded: screen F2 in apps/web, an on-device session store, a data contract, and an effort and volume calculation in services/api with tests. Effort comes from code (heart rate against age-based maximum, later the person's resting baseline from Gold); the model only writes one validated sentence. New tables (`workout_sets`, new `workouts` columns) are specified, not migrated, and need the owner's OK | Owner asked for a simple tracker whose effort uses heart rate and the Gold tables | docs/specs/workout-tracker.md, schema.md 14 | Pending |
 
 ## Session index
 
@@ -116,6 +117,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-02 | docs/specs/ai-models.md (new), prd.md, architecture.md, memory.md, flow.md, README.md | AI provider and model decision; Hunyuan and Tencent TTS removed; embedding size 768 | D-047, D-048, D-049 |
 | 2026-10-03 | docs/specs/prd.md, flow.md, schema.md, data/data-map.md, docs/backlog/hongyi.md | Low-glucose tiers, emergency contact, symptom detail, brief wearable trends, new tasks E1-7, E11-2, E7-4, E13-4 | D-050, D-051, D-052, D-053 |
 | 2026-10-03 | docs/handover/questions-for-damien.md (new), prd.md, flow.md, schema.md, hongyi.md | Clinical questions for Damien; on-hold banners; E1-7, E11-2, E7-4, E13-4 set to blocked | D-054 |
+| 2026-10-03 | docs/specs/workout-tracker.md (new), schema.md section 14, questions-for-damien.md section G, hongyi.md | Workout tracker scaffold, planned tables, clinical questions, task E7-5 | D-055 |
 | 2026-10-01 | docs/specs/architecture.md, README.md | App folders `apps/mock` and `apps/web`; front-end, charts and i18n rows; status line | D-028, D-034 |
 | 2026-10-02 | data/README.md | Table of downloaded datasets with licences, the NHANES 2011-16 and openFDA additions | D-036, D-037 |
 | 2026-10-02 | data/plan/ (dataset_links.md, nhanes_files.csv, new) | Link list for all 48 manifest datasets; the 130 NHANES files with an allowed flag | D-037 |
@@ -128,6 +130,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 
 ## Open questions and blockers
 
+- **Workout tracker:** the owner must approve the new tables (schema.md 14) before an E1 migration is written; the effort cut-offs need Damien (G1 to G4); effort from Gold needs E1-3 and E9-1.
 - **On hold (D-054):** the 2026-10-03 feedback items wait for Damien's answers (docs/handover/questions-for-damien.md).
 - **Feedback follow-ups (D-050 to D-053):** the glucose tier values need a clinician's validation; the messaging and calling service for the emergency contact, the delay before a call, the exact alert wording and consent, and what to do at night are not decided; Joely must add the symptom columns and the contact table (E1-7) and tell Hong Yi the migration numbers; E11-1 (Joely) still shows "needs OK" for thresholds, which the owner has now given.
 - **Demo panel (D-030):** the owner vets it, then it is removed. Also confirm D-033 (the demo interaction pair).

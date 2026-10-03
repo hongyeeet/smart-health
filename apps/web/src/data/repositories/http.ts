@@ -60,4 +60,6 @@ export const httpApi: Api = {
   getEmergencyContact: todo('getEmergencyContact'),
   saveEmergencyContact: todo('saveEmergencyContact'),
   recordAwareness: todo('recordAwareness'),
+  saveWorkoutSession: todo('saveWorkoutSession'),
+  getWorkoutSummary: todo('getWorkoutSummary'),
 }

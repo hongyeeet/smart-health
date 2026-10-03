@@ -331,3 +331,47 @@ export interface LogResult {
   urgent?: boolean
   urgentTier?: 1 | 2
 }
+
+/* ---------------- workout tracker (sets, weights, heart-rate effort) ---------------- */
+export type Felt = 'energised' | 'fine' | 'tired' | 'unwell'
+export interface WorkoutSet {
+  id: string
+  reps: number
+  /** null means bodyweight */
+  weightKg: number | null
+  /** when the set was logged (ISO), used to line it up with heart rate */
+  doneAt: string
+}
+export interface WorkoutExercise {
+  id: string
+  name: string
+  sets: WorkoutSet[]
+}
+export interface WorkoutSession {
+  id: string
+  startedAt: string
+  endedAt?: string
+  exercises: WorkoutExercise[]
+  felt?: Felt
+  note?: string
+}
+/** Returned by the server after a session is saved. Every number is computed in code (rules.md 1). */
+export interface WorkoutSummary {
+  id: string
+  durationS: number
+  setsN: number
+  volumeKg: number
+  exercises: { name: string; sets: number; volumeKg: number; avgHr: number | null }[]
+  effort: {
+    avgHr: number | null
+    maxHr: number | null
+    intensity: Intensity | null
+    minutesInBand: Record<string, number>
+    quality: 'ok' | 'insufficient'
+    note?: string
+  }
+  /** change in glucose over the next 2 hours, from event_windows, when a sensor was worn */
+  glucoseChange2h: number | null
+  /** plain-language sentence written by the model from the numbers above; validated, may be absent */
+  narrative?: string
+}

@@ -14,6 +14,8 @@ import type {
   Medication,
   EmergencyContact,
   SymptomDetail,
+  WorkoutSession,
+  WorkoutSummary,
   Notice,
   Patient,
   Period,
@@ -86,4 +88,8 @@ export interface Api {
   getEmergencyContact(): Promise<EmergencyContact>
   saveEmergencyContact(c: EmergencyContact): Promise<void>
   recordAwareness(answer: 'felt_first' | 'sensor_first' | 'not_sure'): Promise<void>
+
+  /** saves a finished strength session and returns its computed summary (duration, volume, heart-rate effort) */
+  saveWorkoutSession(s: WorkoutSession): Promise<WorkoutSummary>
+  getWorkoutSummary(id: string): Promise<WorkoutSummary>
 }

@@ -20,7 +20,7 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 - E0-1 Hardcoded mockup (in progress)
 - E0-2 App skeleton and design kit (in progress)
 
-**Blocked (28)**
+**Blocked (29)**
 
 - E0-3 AI services: waiting for E0-2 (Hong Yi, in progress)
 - E1-7 Schema additions for symptoms and the emergency contact: waiting for E1-3 (Hong Yi, backlog)
@@ -31,6 +31,7 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 - E5-1 Doses and reminders: waiting for E0-2 (Hong Yi, in progress)
 - E5-2 Missed doses and refills: waiting for E5-1 (Hong Yi, backlog)
 - E7-4 Faster symptom logging with detail: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, blocked)
+- E7-5 Workout tracker: sets, weights and heart-rate effort: waiting for E0-2 (Hong Yi, in progress)
 - E9-1 Daily totals, baseline and flags: waiting for E1-3 (Hong Yi, backlog)
 - E9-2 Insights screen: waiting for E9-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E11-2 Tiered low-glucose alerts and emergency contact: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, blocked)
@@ -51,7 +52,7 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 - CP2 Gate 2: all features and the brief: waiting for CP1 (Hong Yi, backlog), E13-3 (Hong Yi, backlog), E17-3 (Hong Yi, backlog), E19-2 (Joely, backlog)
 - CP3 Gate 3: submission ready: waiting for CP2 (Hong Yi, backlog), E21-1 (Damien, backlog), E21-2 (Joely, backlog), E21-3 (Hong Yi, backlog)
 
-Done: 0 of 31 tasks.
+Done: 0 of 32 tasks.
 <!-- BLOCKERS:END -->
 
 ## Tasks
@@ -508,6 +509,25 @@ Done: 0 of 31 tasks.
   - [ ] Wording is "associated with" and the section is marked unverified
   - [ ] Simulated values are labelled as simulated; gaps stay gaps
   - [ ] Appears in the in-app brief and the A4 PDF
+
+### E7-5 Workout tracker: sets, weights and heart-rate effort · P1
+
+- **Ask:** Build the strength workout tracker: time, exercises, sets with reps and weight, a rest timer, and a summary that works out how hard the session was from heart rate (by code, not by the AI), using the Gold tables once they exist.
+- **Status:** in progress
+- **Needs first:** E0-2
+- **Needed later:** none
+- **Phase:** 2
+- **Spec:** workout-tracker; schema 14; prd F6
+- **Flag:** The tables `workout_sets` and the new `workouts` columns are new tables outside E1 and need the owner's OK (schema.md 14). The effort cut-offs need a clinician (questions-for-damien.md, section G). The Gold inputs wait for E1-3 and E9-1.
+- **Note:** Scaffold built in apps/web (screen, on-device store, data contract) and services/api (effort and volume calculation, 9 tests). No database, API endpoint or model sentence yet.
+- **Success criteria:**
+  - [x] Tracker screen with timer, exercises, sets (reps and weight or bodyweight), rest timer, finish and summary
+  - [x] Effort calculation by code with tests: unknown stays unknown, sparse data is insufficient, beta-blockers switch intensity off
+  - [ ] Tables `workout_sets` and the new `workouts` columns migrated (needs the owner's OK)
+  - [ ] Save endpoint stores the session, reads heart rate, calls the calculation and returns the summary
+  - [ ] Effort judged against the person's resting heart rate from `daily_aggregates` and `baselines`
+  - [ ] Glucose change after a session from `event_windows`, worded "associated with"
+  - [ ] One plain sentence from the model, validated against the numbers
 
 ### CP0 Gate 0: mockup and data ready · P0
 
