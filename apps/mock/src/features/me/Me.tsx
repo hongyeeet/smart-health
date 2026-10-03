@@ -4,7 +4,7 @@ import { useGo } from '@/app/navigation'
 import type { RouteId } from '@/app/routeIds'
 import { Header, Screen } from '@/ui/layout'
 import { Card } from '@/ui/primitives'
-import { Brain, CalendarCheck, CaretRight, FilePdf, Globe, Lock, ShieldCheck, SignOut, Watch, ArrowCounterClockwise, type IconType } from '@/ui/icons'
+import { Phone, Brain, CalendarCheck, CaretRight, FilePdf, Globe, Lock, ShieldCheck, SignOut, Watch, ArrowCounterClockwise, type IconType } from '@/ui/icons'
 
 const rows: { id: RouteId; title: string; sub: string; icon: IconType }[] = [
   { id: 'K2', title: 'What Smart Health has learned about you', sub: 'Your routines, preferences and food responses', icon: Brain },
@@ -13,6 +13,7 @@ const rows: { id: RouteId; title: string; sub: string; icon: IconType }[] = [
   { id: 'K4', title: 'Connected sources', sub: 'Watch, glucose sensor, camera', icon: Watch },
   { id: 'K5', title: 'Language and display', sub: 'Language, dark mode, text size', icon: Globe },
   { id: 'K6', title: 'Privacy and consent', sub: 'What you share, and who can see it', icon: Lock },
+  { id: 'K9', title: 'Emergency contact', sub: 'Who we alert on a very low reading', icon: Phone },
   { id: 'K8', title: 'Data and account', sub: 'Export your data or delete your account', icon: ShieldCheck },
 ]
 

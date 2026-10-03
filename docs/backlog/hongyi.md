@@ -13,27 +13,31 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 
 **Ready now (1)**
 
-- E1-3 Gold and operations tables and views: unblocks 23 other tasks.
+- E1-3 Gold and operations tables and views: unblocks 27 other tasks.
 
 **In progress or in review**
 
 - E0-1 Hardcoded mockup (in progress)
 - E0-2 App skeleton and design kit (in progress)
 
-**Blocked (24)**
+**Blocked (28)**
 
 - E0-3 AI services: waiting for E0-2 (Hong Yi, in progress)
+- E1-7 Schema additions for symptoms and the emergency contact: waiting for E1-3 (Hong Yi, backlog)
 - E3-1 Scan and read: waiting for E0-2 (Hong Yi, in progress), E0-3 (Hong Yi, in progress)
 - E3-2 Match, parse and save: waiting for E3-1 (Hong Yi, backlog)
 - E3-3 Accuracy report: waiting for E3-1 (Hong Yi, backlog)
 - E4-1 Medicine explainer: waiting for E0-3 (Hong Yi, in progress), E16-2 (Hong Yi, backlog)
 - E5-1 Doses and reminders: waiting for E0-2 (Hong Yi, in progress)
 - E5-2 Missed doses and refills: waiting for E5-1 (Hong Yi, backlog)
+- E7-4 Faster symptom logging with detail: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, backlog)
 - E9-1 Daily totals, baseline and flags: waiting for E1-3 (Hong Yi, backlog)
 - E9-2 Insights screen: waiting for E9-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
+- E11-2 Tiered low-glucose alerts and emergency contact: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, backlog)
 - E13-1 Brief data and charts: waiting for E9-1 (Hong Yi, backlog)
 - E13-2 Narrative and PDF: waiting for E13-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
 - E13-3 Brief screens and sharing: waiting for E13-2 (Hong Yi, backlog)
+- E13-4 Brief: glucose with heart rate and SpO2: waiting for E13-1 (Hong Yi, backlog)
 - E16-1 Chat pipeline and Memory Service: waiting for E0-3 (Hong Yi, in progress), E1-3 (Hong Yi, backlog)
 - E16-2 Safety net and JEV decisions: waiting for E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
 - E16-3 Chat screen, helpers and chat memory: waiting for E16-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
@@ -47,7 +51,7 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 - CP2 Gate 2: all features and the brief: waiting for CP1 (Hong Yi, backlog), E13-3 (Hong Yi, backlog), E17-3 (Hong Yi, backlog), E19-2 (Joely, backlog)
 - CP3 Gate 3: submission ready: waiting for CP2 (Hong Yi, backlog), E21-1 (Damien, backlog), E21-2 (Joely, backlog), E21-3 (Hong Yi, backlog)
 
-Done: 0 of 27 tasks.
+Done: 0 of 31 tasks.
 <!-- BLOCKERS:END -->
 
 ## Tasks
@@ -434,6 +438,76 @@ Done: 0 of 27 tasks.
   - [ ] README runs the demo in 5 commands on a fresh machine
   - [ ] A live URL is optional and not planned: the demo runs locally
   - [ ] Two clean run-throughs by different presenters
+
+### E1-7 Schema additions for symptoms and the emergency contact · P0
+
+- **Ask:** Add the database columns and table the new symptom detail and the emergency contact need, as described in schema.md section 13, so the screens and alerts have somewhere to write. The Silver part is Joely's work and the urgent-events part is yours.
+- **Status:** backlog
+- **Needs first:** E1-3
+- **Needed later:** E11-2, E7-4
+- **Phase:** 0
+- **Spec:** schema 13
+- **Flag:** Silver tables are Joely's. This is in your file because new tasks go in the file of whoever raised them. Reassign the Silver half to Joely if you prefer.
+- **Note:**
+- **Success criteria:**
+  - [ ] Migration adds the new `symptom_logs` columns with their checks
+  - [ ] `emergency_contacts` table created with consent required, row-level security on, and the new `consent_kind` and `notification_kind` values
+  - [ ] `urgent_events` gains the contact and escalation columns
+  - [ ] schema.md section 13 moved into the main sections, the data dictionary and `check_schema.py` updated, and tests added for the checks
+
+### E11-2 Tiered low-glucose alerts and emergency contact · P0
+
+- **Ask:** Build the two-tier low-glucose alerts and the emergency contact: tier 1 (low) treat and recheck in 15 minutes with a check-in, tier 2 (very low) call 995 and alert the emergency contact, and ask once afterwards whether the person felt the low before the sensor alerted.
+- **Status:** backlog
+- **Reviewer:** Damien
+- **Needs first:** E0-2, E1-7
+- **Needed later:** none
+- **Phase:** 1
+- **Spec:** prd F10; flow J8
+- **Flag:** E11-1 (Joely) already covers the urgent rules and screen. This task adds the tiers, the contact and the awareness question; agree who builds what so the two do not overlap. The messaging and calling service is not chosen.
+- **Note:**
+- **Success criteria:**
+  - [ ] Tier 1 (below 4.0) and tier 2 (below 3.0) computed in code from config, tested at the boundaries 3.0, 3.9 and 4.0
+  - [ ] 15-minute recheck and check-in; same, worse or no reply moves to tier 2 or alerts the contact
+  - [ ] Emergency contact screen saves one contact with consent; nothing is ever sent without consent
+  - [ ] Tier 2 sends a message and email at once and calls after 5 minutes with no reply, through one service wrapper with keys in settings
+  - [ ] The message carries only the fixed wording and no other health data; events are logged without the message content
+  - [ ] The awareness answer is saved and appears in the brief
+  - [ ] Tests for tiers, escalation timing, and no alert without consent
+
+### E7-4 Faster symptom logging with detail · P1
+
+- **Ask:** Rebuild symptom logging so the core path takes about 30 seconds: the sensor glucose and time are filled in, the person can say when it happened, extra detail is optional, and the new red-flag symptoms go straight to the urgent screen.
+- **Status:** backlog
+- **Needs first:** E0-2, E1-7
+- **Needed later:** none
+- **Phase:** 1
+- **Spec:** prd F6, F10
+- **Flag:** E7-1 (Joely) is quick logs. This extends the symptom form; agree the split.
+- **Note:**
+- **Success criteria:**
+  - [ ] Sensor glucose and trend are pulled at the moment of logging and saved with the entry
+  - [ ] Time choices: just now, earlier today, last night, a set time; the time is stored as the event time
+  - [ ] Optional detail: duration, side for numbness and pain, meal or exercise relation, what dizziness felt like
+  - [ ] New symptoms: vomiting, night sweats, breathlessness at rest, sudden vision loss; red flags open the urgent screen; vomiting with high glucose says to get care today
+  - [ ] The core path (pick, strength, save) is timed at about 30 seconds or less; the detail section never blocks saving
+
+### E13-4 Brief: glucose with heart rate and SpO2 · P1
+
+- **Ask:** Add to the doctor brief a section that trends fasting glucose, resting heart rate and SpO2 on the same dates, so the clinician can see whether they move together.
+- **Status:** backlog
+- **Reviewer:** Damien
+- **Needs first:** E13-1
+- **Needed later:** none
+- **Phase:** 2
+- **Spec:** prd F12 section 4
+- **Flag:** No cited dataset holds SpO2 (prd A15). It is simulated and labelled until a real source is approved.
+- **Note:**
+- **Success criteria:**
+  - [ ] Three aligned trends on the same dates, each with the person's own baseline band
+  - [ ] Wording is "associated with" and the section is marked unverified
+  - [ ] Simulated values are labelled as simulated; gaps stay gaps
+  - [ ] Appears in the in-app brief and the A4 PDF
 
 ### CP0 Gate 0: mockup and data ready · P0
 

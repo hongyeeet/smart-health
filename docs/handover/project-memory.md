@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-02 23:20: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-03 13:59: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -78,6 +78,10 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-047 | 2026-10-02 | AI stack: Google Cloud Vertex AI for everything except speech (ElevenLabs) and JEV (the TypeSafe JEV model). Claude Sonnet 5.5 for chat, explainer, brief narrative and photos (Gemini 3.6 Flash is the challenger in the photo accuracy test); Gemini Embedding for embeddings; Cloud Translation for fixed text; ElevenLabs for speech. No Tencent fallback; if JEV is off the conservative path applies. Replaces Hunyuan and Tencent TTS in the specs | Owner's instruction, after reviewing cost and quality options | docs/specs/ai-models.md, prd.md A2 and A11, architecture.md, memory.md, flow.md | Pending |
 | D-048 | 2026-10-02 | Embedding size is 768 dimensions (`gemini-embedding-001`). `knowledge_chunks.embedding` (currently `vector(1024)`) needs one migration to 768; `memory_episodes.embedding` is created at 768 in E1-3; `EMBED_DIM=768` in `.env`. Needs Joely told, since she owns the migration that created the column | pgvector's HNSW index handles at most 2,000 dimensions, so Gemini's default 3,072 cannot be indexed; 768 is a recommended size and is cheaper to store and search | docs/specs/ai-models.md section 7 | Pending |
 | D-049 | 2026-10-02 | JEV is hosted on OpenRouter and used as `typesafe/jev-1.13` through `POST https://openrouter.ai/api/alpha/decisions`. The key is in the private `.env` (`JEV_API_KEY`), never committed. `noul` returns a probability only, so the gateway computes its confidence; `score` criteria are an ordered array. The 0.8 confidence floor is to be tuned on the safety set | Owner supplied the endpoint, model and key; assistant tested it live | docs/specs/ai-models.md section 9, memory.md 5.3 | Pending |
+| D-050 | 2026-10-03 | Low-glucose tiers from the owner's clinical feedback: tier 1 low (below 4.0 mmol/L, 3.0 or above: treat per the doctor's plan, 15-minute recheck, check-in, escalate if no better) and tier 2 very low (below 3.0, around 2.8 may faint: call 995 and alert the emergency contact). Placeholders, marked clinical validation pending. Time in range keeps 3.9 to 10.0 | Owner confirmed using the values in the feedback. A clinician has not validated them | prd.md F10 and A3, flow.md J8, config in the mock | Pending |
+| D-051 | 2026-10-03 | An emergency contact is in scope: one contact per patient, alerted by message, email and/or call with the patient's consent. Tier 2 alerts at once and calls after 5 minutes with no reply; tier 1 alerts only if the check-in is unanswered and the glucose is still low. The message carries only a fixed sentence. The messaging and calling service is not chosen | Owner: add it now. The caregiver view stays a stretch goal | prd.md F10 and A14, schema.md 13 | Pending |
+| D-052 | 2026-10-03 | Symptom logging gains: sensor glucose and trend at the time, when it happened (just now, earlier today, last night, set time), duration, side, meal or exercise relation, what dizziness felt like, and new symptoms (vomiting, night sweats, breathlessness at rest, sudden vision loss). Core path targets about 30 seconds. New columns and one table are planned (schema.md 13, task E1-7) | Owner: add the new symptoms; feedback that logging should take 60 to 90 seconds | prd.md F6, schema.md 13 | Pending |
+| D-053 | 2026-10-03 | The brief trends glucose with resting heart rate and SpO2 (SpO2 simulated, prd A15). After a low, one awareness question is asked and shown in the brief. Appointment booking stays a calendar entry and `.ics` file; no HealthHub (prd A16) | Owner: HealthHub is too much now | prd.md F12, A15, A16, flow.md J8 | Pending |
 
 ## Session index
 
@@ -109,6 +113,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-01 | docs/handover/HANDOVER.md, docs/specs/rules.md | Build in `apps/web`, never edit `apps/mock` | D-035 |
 | 2026-10-01 | data/data-map.md (new), data/README.md | Data map: sources with links, missing data, and what the user enters in the app | none (summarises the data plan workbook) |
 | 2026-10-02 | docs/specs/ai-models.md (new), prd.md, architecture.md, memory.md, flow.md, README.md | AI provider and model decision; Hunyuan and Tencent TTS removed; embedding size 768 | D-047, D-048, D-049 |
+| 2026-10-03 | docs/specs/prd.md, flow.md, schema.md, data/data-map.md, docs/backlog/hongyi.md | Low-glucose tiers, emergency contact, symptom detail, brief wearable trends, new tasks E1-7, E11-2, E7-4, E13-4 | D-050, D-051, D-052, D-053 |
 | 2026-10-01 | docs/specs/architecture.md, README.md | App folders `apps/mock` and `apps/web`; front-end, charts and i18n rows; status line | D-028, D-034 |
 | 2026-10-02 | data/README.md | Table of downloaded datasets with licences, the NHANES 2011-16 and openFDA additions | D-036, D-037 |
 | 2026-10-02 | data/plan/ (dataset_links.md, nhanes_files.csv, new) | Link list for all 48 manifest datasets; the 130 NHANES files with an allowed flag | D-037 |
@@ -121,6 +126,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 
 ## Open questions and blockers
 
+- **Feedback follow-ups (D-050 to D-053):** the glucose tier values need a clinician's validation; the messaging and calling service for the emergency contact, the delay before a call, the exact alert wording and consent, and what to do at night are not decided; Joely must add the symptom columns and the contact table (E1-7) and tell Hong Yi the migration numbers; E11-1 (Joely) still shows "needs OK" for thresholds, which the owner has now given.
 - **Demo panel (D-030):** the owner vets it, then it is removed. Also confirm D-033 (the demo interaction pair).
 - **Front end gaps:** only a few strings are wrapped for translation; Malay and Tamil are empty; the iPad layout and touch gestures are untested on a real device.
 - **E0-3:** the provider and models are decided (D-047, ai-models.md). JEV is hosted on OpenRouter (D-049). Still to confirm: Vertex model IDs and region for Claude Sonnet 5.5, Malay and Tamil support on ElevenLabs. Tell Joely about the 768 embedding size (D-048).

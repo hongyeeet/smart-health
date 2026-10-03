@@ -12,6 +12,8 @@ import type {
   MemoryFact,
   MissReason,
   Medication,
+  EmergencyContact,
+  SymptomDetail,
   Notice,
   Patient,
   Period,
@@ -25,7 +27,7 @@ export type LogInput =
   | { kind: 'meal'; name: string; portion: number; viaPhoto: boolean }
   | { kind: 'glucose'; value: number; context: string }
   | { kind: 'workout'; type: WorkoutType; activity: string; intensity: Intensity; minutes: number; start: string; feel: string }
-  | { kind: 'symptom'; label: string; severity: number; note?: string }
+  | { kind: 'symptom'; label: string; severity: number; note?: string; detail?: SymptomDetail }
   | { kind: 'checkin'; mood: number; stress: number; sleep: number; energy: number }
 
 export interface NewMedication {
@@ -80,4 +82,8 @@ export interface Api {
   syncSources(): Promise<void>
 
   sendChat(text: string): Promise<ChatReply>
+
+  getEmergencyContact(): Promise<EmergencyContact>
+  saveEmergencyContact(c: EmergencyContact): Promise<void>
+  recordAwareness(answer: 'felt_first' | 'sensor_first' | 'not_sure'): Promise<void>
 }

@@ -44,6 +44,8 @@ const db = {
   shared: false,
   glucoseToday: [] as { t: number; v: number }[],
   seq: 100,
+  contact: clone(fx.emergencyContact),
+  awareness: null as string | null,
 }
 
 const today = appConfig.demo.today
@@ -199,6 +201,10 @@ export const mockApi: Api = {
         ],
         fastingOverlay: [7.1, 7.3, 7.2, 7.6, 7.8, 7.5, 7.9],
       },
+      wearables: {
+        restingHr: { label: 'Resting heart rate', unit: 'bpm', points: slice(fx.restingHrSeries, period), baseline: [62, 67], summary: 'Resting heart rate has crept up to about 70 beats a minute over the same weeks fasting glucose rose.' },
+        spo2: { label: 'Blood oxygen (SpO2)', unit: '%', points: slice(fx.spo2Series, period), baseline: [96, 98], summary: 'Overnight blood oxygen has stayed between 95% and 97% (simulated for the demo).' },
+      },
       patterns: [
         { id: 'p1', text: 'On mornings after an evening walk (7 nights), fasting glucose was 0.6 mmol/L lower.', n: 7 },
         { id: 'p2', text: 'On nights with under 6 hours of sleep (6 nights), fasting glucose was 0.5 mmol/L higher.', n: 6 },
@@ -244,7 +250,8 @@ export const mockApi: Api = {
           kind: 'glucose', title: 'Reading saved', landedIn: 'Your day and Glucose insights', detail: `${input.value.toFixed(1)} mmol/L, ${input.context.toLowerCase()}.`,
           lines: [], related: 'C2', day,
           flag: { text: level === 'in_range' ? 'In your range of 3.9 to 10.0 mmol/L.' : level === 'high' ? 'Above your range of 3.9 to 10.0 mmol/L.' : level === 'very_high' ? 'Much higher than your range.' : 'Below your range of 3.9 to 10.0 mmol/L.', level },
-          urgent: input.value < appConfig.glucoseRanges.veryLow,
+          urgent: input.value < appConfig.hypoTiers.low,
+          urgentTier: input.value < appConfig.hypoTiers.veryLow ? 2 : input.value < appConfig.hypoTiers.low ? 1 : undefined,
         }
         break
       }
@@ -261,9 +268,9 @@ export const mockApi: Api = {
         break
       }
       case 'symptom': {
-        ;(extra.symptoms ??= []).push({ id: id('s'), t: now, label: input.label, severity: input.severity })
+        ;(extra.symptoms ??= []).push({ id: id('s'), t: now, label: input.label, severity: input.severity, detail: input.detail })
         addRecent({ kind: 'symptom', title: input.label, detail: `Strength ${input.severity} of 5`, when: clock(now) })
-        res = { kind: 'symptom', title: 'Symptom saved', landedIn: 'Your day and your doctor brief', detail: `${input.label}, strength ${input.severity} of 5.`, lines: ['This will appear in your doctor brief. You can see everything the doctor sees.'], related: 'C2', day }
+        res = { kind: 'symptom', title: 'Symptom saved', landedIn: 'Your day and your doctor brief', detail: `${input.label}, strength ${input.severity} of 5.`, lines: [input.detail?.glucose ? `Your glucose at the time (${input.detail.glucose.v.toFixed(1)} mmol/L, ${input.detail.glucose.trend}) was saved with it.` : 'Saved with the time you gave.', 'This will appear in your doctor brief. You can see everything the doctor sees.'], related: 'C2', day }
         break
       }
       default: {
@@ -353,7 +360,8 @@ export const mockApi: Api = {
         { id: 't3', text: 'Two missed evening doses of Metformin (reasons: forgot, away from home) and two unconfirmed.', evidence: 'Dose log, 7 days' },
       ],
       patterns: (await mockApi.getInsights(30)).patterns,
-      symptoms: [{ date: '27 Sep', label: 'More thirsty than usual', severity: 2 }],
+      symptoms: [{ date: '27 Sep', label: 'More thirsty than usual', severity: 2, detail: 'most of the day, after a meal, glucose 9.4 mmol/L and rising at the time' }],
+      awareness: db.awareness,
       preventive: clone(fx.preventive),
       questions: db.questions.map((q) => q.text),
       dayTraces: [{ kind: 'best', date: '2026-09-28' }, { kind: 'worst', date: '2026-09-27' }, { kind: 'typical', date: '2026-09-29' }],
@@ -381,6 +389,18 @@ export const mockApi: Api = {
   },
   async syncSources() {
     return wait(undefined, 400)
+  },
+
+  async getEmergencyContact() {
+    return wait(clone(db.contact))
+  },
+  async saveEmergencyContact(c) {
+    db.contact = clone(c)
+    return wait(undefined, 30)
+  },
+  async recordAwareness(answer) {
+    db.awareness = { felt_first: 'Felt the low before the sensor alerted', sensor_first: 'Did not feel the low; the sensor alerted first', not_sure: 'Not sure whether the low was felt before the alert' }[answer]
+    return wait(undefined, 30)
   },
 
   async sendChat(text): Promise<ChatReply> {

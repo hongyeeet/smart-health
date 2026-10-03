@@ -30,8 +30,8 @@ Points to watch:
 
 | | Tasks done | Subtasks ticked | Progress |
 |---|---|---|---|
-| **Whole project** | 3 of 52 | 18 of 257 | `[#-------------------] 7%` |
-| Hong Yi | 0 of 27 | 4 of 134 | `[#-------------------] 3%` |
+| **Whole project** | 3 of 56 | 18 of 277 | `[#-------------------] 6%` |
+| Hong Yi | 0 of 31 | 4 of 154 | `[#-------------------] 3%` |
 | Joely | 3 of 15 | 14 of 74 | `[####----------------] 19%` |
 | Damien | 0 of 10 | 0 of 49 | `[--------------------] 0%` |
 
@@ -50,7 +50,7 @@ Tasks whose **Needs first** are all done. Sorted by how many other tasks they un
 
 | Person | Ready now | Blocked | In progress or review | Done |
 |---|---|---|---|---|
-| Hong Yi | E1-3 (23) | 24 | 2 | 0 |
+| Hong Yi | E1-3 (27) | 28 | 2 | 0 |
 | Joely | E11-1 (4), E21-2 (1), E1-5 (0) | 9 | 0 | 3 |
 | Damien | E8-1 (7), E21-1 (1), E14-1 (0) | 7 | 0 | 0 |
 
@@ -69,6 +69,7 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E1-4 | Ingestion | Joely | P0 | done | 5/5 | none |  |
 | E1-5 | Analysis data and baseline model | Joely | P1 | ready | 0/2 | none |  |
 | E1-6 | Medicine knowledge index | Joely | P0 | blocked | 0/4 | E0-3 |  |
+| E1-7 | Schema additions for symptoms and the emergency contact | Hong Yi | P0 | blocked | 0/4 | E1-3 |  |
 | E2-1 | Onboarding flow | Damien | P0 | blocked | 0/10 | E0-2 |  |
 | E2-2 | Chat onboarding | Damien | P1 | blocked | 0/2 | E2-1, E16-1, E0-3 |  |
 | E3-1 | Scan and read | Hong Yi | P0 | blocked | 0/9 | E0-2, E0-3 |  |
@@ -81,17 +82,20 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E7-1 | Quick logs | Joely | P0 | blocked | 0/4 | E0-2 |  |
 | E7-2 | Meal logging with AI macros | Joely | P0 | blocked | 0/6 | E0-3 |  |
 | E7-3 | Connected sources and log upkeep | Joely | P0 | blocked | 0/4 | E7-1 |  |
+| E7-4 | Faster symptom logging with detail | Hong Yi | P1 | blocked | 0/5 | E0-2, E1-7 |  |
 | E8-1 | Sprint and meal response | Damien | P0 | ready | 0/7 | none |  |
 | E8-2 | Food leaderboard | Damien | P0 | blocked | 0/4 | E8-1 |  |
 | E9-1 | Daily totals, baseline and flags | Hong Yi | P0 | blocked | 0/6 | E1-3 |  |
 | E9-2 | Insights screen | Hong Yi | P0 | blocked | 0/2 | E9-1, E0-2 |  |
 | E10-1 | Check-ins (needs OK) | Damien | P0 | blocked | 0/5 | E9-1 |  |
 | E11-1 | Urgent alerts (needs OK) | Joely | P0 | ready | 0/9 | none |  |
+| E11-2 | Tiered low-glucose alerts and emergency contact | Hong Yi | P0 | blocked | 0/7 | E0-2, E1-7 | Damien |
 | E12-1 | Nudge messages and learning (needs OK) | Damien | P0 | blocked | 0/4 | E9-1 |  |
 | E12-2 | Nudge cards and food swaps | Damien | P0 | blocked | 0/2 | E12-1, E0-2 |  |
 | E13-1 | Brief data and charts | Hong Yi | P0 | blocked | 0/5 | E9-1 | Damien |
 | E13-2 | Narrative and PDF | Hong Yi | P0 | blocked | 0/7 | E13-1, E0-3 | Damien |
 | E13-3 | Brief screens and sharing | Hong Yi | P0 | blocked | 0/4 | E13-2 | Damien |
+| E13-4 | Brief: glucose with heart rate and SpO2 | Hong Yi | P1 | blocked | 0/4 | E13-1 | Damien |
 | E14-1 | Recurring checks and appointments (needs OK) | Damien | P1 | ready | 0/7 | none |  |
 | E15-1 | Doctor questions | Damien | P0 | blocked | 0/5 | E0-2 |  |
 | E16-1 | Chat pipeline and Memory Service | Hong Yi | P0 | blocked | 0/4 | E0-3, E1-3 |  |
@@ -118,6 +122,10 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 - **E0-2** (Hong Yi): Missing from your pasted list; kept because most tasks depend on it. Confirm it stays with Hong Yi.
 - **E0-3** (Hong Yi): Missing from your pasted list; kept because chat, scanning, meal logging and the brief depend on it. Confirm it stays with Hong Yi.
 - **E1-5** (Joely): Owner was 'to decide' in your list. Provisionally Joely (data work); change if you prefer.
+- **E1-7** (Hong Yi): Silver tables are Joely's. This is in your file because new tasks go in the file of whoever raised them. Reassign the Silver half to Joely if you prefer.
+- **E7-4** (Hong Yi): E7-1 (Joely) is quick logs. This extends the symptom form; agree the split.
+- **E11-2** (Hong Yi): E11-1 (Joely) already covers the urgent rules and screen. This task adds the tiers, the contact and the awareness question; agree who builds what so the two do not overlap. The messaging and calling service is not chosen.
+- **E13-4** (Hong Yi): No cited dataset holds SpO2 (prd A15). It is simulated and labelled until a real source is approved.
 - **E20-1** (Hong Yi): Your list said Hong Yi and Joely for E20. Hong Yi leads this one; Joely leads E20-2.
 - **E21-1** (Damien): Your list said the team. Damien is the lead here; everyone contributes. Change the lead if you prefer.
 - **E21-2** (Joely): Team task. Joely is the lead here; everyone contributes. Change the lead if you prefer.

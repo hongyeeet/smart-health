@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useBrief, useDay, useInsights } from '@/data/hooks'
 import { AdherenceTimeline, FoodBars, IntensityBars, MoodStress, TirBar } from '@/charts/small'
 import { TrendChart } from '@/charts/TrendChart'
+import { WearableTrends } from '@/charts/WearableTrends'
 import { DayChart } from '@/charts/DayChart'
 import { applyPalette, palettes } from '@/theme/palettes'
 import { thousands } from '@/lib/format'
@@ -101,6 +102,12 @@ export function BriefA4() {
           </section>
         </div>
 
+        <section>
+          <h2>3b. Glucose with heart rate and SpO2</h2>
+          <p style={{ margin: '0 0 4px' }}>Same 30 days, one above the other. Resting heart rate rose to about 70 beats a minute over the weeks fasting glucose rose; overnight SpO2 stayed between 95% and 97%. Associated with, not proven. Heart rate and SpO2 are simulated in this demo.</p>
+          <WearableTrends fasting={ins.fasting} restingHr={ins.wearables.restingHr} spo2={ins.wearables.spo2} compact keyPrefix="a4w" />
+        </section>
+
         <div className="grid2">
           <section>
             <h2>5. Exercise</h2>
@@ -142,10 +149,15 @@ export function BriefA4() {
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {b.symptoms.map((s) => (
                 <li key={s.date + s.label}>
-                  {s.date}: {s.label} (strength {s.severity} of 5)
+                  {s.date}: {s.label} (strength {s.severity} of 5){s.detail ? `, ${s.detail}` : ''}
                 </li>
               ))}
             </ul>
+            {b.awareness && (
+              <p style={{ margin: '6px 0 0' }}>
+                <b>Awareness of lows (self-report):</b> {b.awareness}.
+              </p>
+            )}
           </section>
           <section>
             <h2>10. Preventive care</h2>

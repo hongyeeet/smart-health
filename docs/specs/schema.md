@@ -588,3 +588,17 @@ Where the migrations differ from, or add to, the text above. The generated colum
 | Row-level security | Enabled by migration 0007 on every table in `public`, including Alembic's own `alembic_version`, with no policies | Public API key can do nothing; any later table must do the same |
 | Storage | Private bucket `smart-health-originals`, 10 MB, jpeg, png, heic, csv, zip, xml; folders `{user_id}/meals\|medications\|documents\|exports/` | rules.md section 8; helpers in `scripts/bronze.py` |
 | PostgreSQL version | 17 (this document and architecture.md say 16) | What Supabase provides; nothing used is version-specific |
+
+## 13. Planned additions (2026-10-03, not yet migrated)
+
+From the owner's clinical feedback (D-052, D-051). **These are not in the database yet.** Joely adds the Silver parts and Hong Yi the Gold part as a follow-up to E1 (backlog task E1-7), in migrations numbered after the ones already applied. Until then they are specified here only.
+
+| Table | Change |
+|---|---|
+| `symptom_logs` | ADD `time_precision text CHECK IN ('now','earlier','last_night','set')` (how the time was given; `occurred_at` stays the event time and `created_at` the entry time), `duration_band text NULL CHECK IN ('minutes','about_hour','most_of_day')`, `body_side text NULL CHECK IN ('left_foot','right_foot','both_feet','hands','other')`, `meal_relation text NULL CHECK IN ('before_meal','after_meal','after_exercise','at_rest','asleep')`, `feel text NULL` (what dizziness felt like), `glucose_mmol numeric(4,1) NULL`, `glucose_trend text NULL CHECK IN ('rising','steady','falling')`, `glucose_reading_id uuid NULL FK glucose_readings` (the sensor reading pulled at the time of logging) |
+| `emergency_contacts` (new, Silver) | `id, user_id (unique), name text NOT NULL, relation text NULL, phone text NULL, email text NULL, channels text[] NOT NULL CHECK each IN ('message','email','call'), consent_id uuid NOT NULL FK consents, created_at, updated_at`. Never sent to an AI model |
+| `consent_kind` (enum) | ADD VALUE `'emergency_contact'` |
+| `notification_kind` (enum) | ADD VALUE `'contact_alert'` |
+| `urgent_events` (Gold) | ADD `contact_notified_at timestamptz NULL`, `contact_channels text[] NULL`, `contact_called_at timestamptz NULL`, `escalated_from urgent_tier NULL`. Tier 1 is `hypo_selfcare` and tier 2 is `urgent_now`; no enum change |
+| `symptom_checkins` | No change: the awareness question is stored with `question_key = 'hypo_awareness'` and the answer in `answer jsonb` |
+| `health_samples` | No change: `spo2` is already a `sample_metric`. A real SpO2 source is not in the cited data (prd.md A15) |

@@ -42,6 +42,7 @@ What data Smart Health needs, what it is used for, where it comes from, and what
 | Missed-dose patterns and reasons | Drug Reviews (side-effect wording only) | [Drug Reviews](https://archive.ics.uci.edu/dataset/461) | Missing. Simulated |
 | 60-day continuous history | CGMacros (about 10 days), Fitbit (about 31 days) | [CGMacros](https://physionet.org/content/cgmacros/), [Fitbit](https://www.kaggle.com/datasets/arashnic/fitbit) | Missing. Simulated |
 | Mood and stress ratings | GlucoBench stress (unverified), BIG IDEAs signals | [GlucoBench](https://www.kaggle.com/datasets/omenkj/glucobench-glucose-monitoring-and-lifestyle-data), [BIG IDEAs](https://physionet.org/content/big-ideas-glycemic-wearable/) | Missing. Simulated |
+| Blood oxygen (SpO2) | Brief trend beside glucose and heart rate | No cited dataset is known to hold it | none | Missing. Simulated and labelled in the demo; a real watch source needs your OK |
 | Blood pressure over time | NHANES (one visit only) | [NHANES 2017-18](https://wwwn.cdc.gov/nchs/nhanes/continuousnhanes/default.aspx?BeginYear=2017) | Missing. Simulated |
 | Logged workouts | Derive from step and heart-rate bursts | [CGMacros](https://physionet.org/content/cgmacros/), [Fitbit](https://www.kaggle.com/datasets/arashnic/fitbit) | Missing. Simulated |
 | Lab history (HbA1c, lipids, kidney) | Single time points only | [CGMacros](https://physionet.org/content/cgmacros/), [NHANES 2017-18](https://wwwn.cdc.gov/nchs/nhanes/continuousnhanes/default.aspx?BeginYear=2017) | Missing. Simulated |
@@ -58,7 +59,9 @@ What data Smart Health needs, what it is used for, where it comes from, and what
 | Glucose readings | Typed from a glucometer | Sensor readings come from a device, not typed |
 | Doses taken and miss reasons | Tap Taken, pick a reason | Feeds adherence and the brief |
 | Workouts | Typed, or accepted from a watch suggestion | |
-| Symptoms, mood and sleep check-ins | Picker and 1 to 5 ratings | |
+| Symptoms, mood and sleep check-ins | Picker and 1 to 5 ratings. A symptom also stores the sensor glucose and trend at that moment, when it happened, and optional detail (duration, side, meal relation) | See prd.md F6 |
+| Emergency contact | Typed once, with consent | Name, phone, email and how to alert them. Never sent to an AI model |
+| Awareness of lows | One question after a low | "Did you feel it before your sensor alerted you?" |
 | Medicine labels | Photo, then reviewed and confirmed | Nothing saves until confirmed |
 | Profile, conditions, allergies, medicines | Onboarding form or chat | |
 | Appointments and questions for the doctor | Typed | |

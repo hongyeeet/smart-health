@@ -4,6 +4,7 @@ import { useUi } from '@/state/store'
 import { appConfig } from '@/config/app'
 import { AdherenceTimeline, FoodBars, IntensityBars, MoodStress, Ring, TirBar, WeekGridView } from '@/charts/small'
 import { TrendChart } from '@/charts/TrendChart'
+import { WearableTrends } from '@/charts/WearableTrends'
 import { clock, hm, signed, thousands } from '@/lib/format'
 import { Header, Screen, Reveal } from '@/ui/layout'
 import { Alert, Button, Card, EstimateBadge, SectionTitle, Skeleton, StatusPill, TextLink, UnverifiedTag } from '@/ui/primitives'
@@ -83,6 +84,13 @@ export function GlucoseInsights() {
           Last 24 hours: <b>{data.timeInRange.last24h}%</b>. This week: <b>{data.timeInRange.week}%</b>. Your range is 3.9 to 10.0 mmol/L.
         </Summary>
         <TirBar segments={data.timeInRange.segments} />
+      </Card>
+      <Card className="flex flex-col gap-3">
+        <SectionTitle>With your watch</SectionTitle>
+        <Summary>{data.wearables.restingHr.summary}</Summary>
+        <WearableTrends fasting={data.fasting} restingHr={data.wearables.restingHr} spo2={data.wearables.spo2} keyPrefix={`ins-${period}`} />
+        <p className="text-sub text-ink3">Shown side by side so patterns are easy to see. Associated with, not proven. Heart rate and blood oxygen are simulated in this demo.</p>
+        <WhyLink topic="pattern" />
       </Card>
       <Card onClick={() => go('C8')} className="flex items-center justify-between gap-3">
         <span>

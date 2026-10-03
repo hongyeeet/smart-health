@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { appConfig } from '@/config/app'
 import { useAddQuestion, useCarePlan, usePlanAppointment, useRemoveQuestion, useSources, useSync } from '@/data/hooks'
-import type { Locale, PreventiveItem } from '@/data/types'
+import type { EmergencyContact, Locale, PreventiveItem } from '@/data/types'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { api } from '@/data/repositories'
 import { useGo } from '@/app/navigation'
 import { href } from '@/app/routeIds'
 import { useUi } from '@/state/store'
@@ -289,6 +291,77 @@ export function DataAccount() {
         )}
       </Card>
       <p className="text-sub text-ink3">Edits and deletions are written to an activity log that cannot be changed.</p>
+    </Screen>
+  )
+}
+
+/* ------------------------------------ K9 emergency contact ------------------------------------ */
+export function EmergencyContactScreen() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['contact'], queryFn: () => api.getEmergencyContact() })
+  const toast = useUi((s) => s.showToast)
+  const [c, setC] = useState<EmergencyContact | null>(null)
+  const cur = c ?? data ?? null
+  if (!cur)
+    return (
+      <Screen>
+        <Header title="Emergency contact" back backTo="K1" />
+        <Skeleton className="h-60" />
+      </Screen>
+    )
+  const set = (p: Partial<EmergencyContact>) => setC({ ...cur, ...p })
+  const toggle = (ch: EmergencyContact['channels'][number]) => set({ channels: cur.channels.includes(ch) ? cur.channels.filter((x) => x !== ch) : [...cur.channels, ch] })
+  const call = appConfig.hypoTiers.contactCallAfterMinutes
+  return (
+    <Screen>
+      <Header title="Emergency contact" back backTo="K1" sub="Someone who can check on you if your glucose is very low." />
+      <Field label="Name" value={cur.name} onChange={(v) => set({ name: v })} />
+      <Field label="Relationship" value={cur.relation} onChange={(v) => set({ relation: v })} />
+      <Field label="Mobile number" inputMode="numeric" value={cur.phone} onChange={(v) => set({ phone: v })} />
+      <Field label="Email" value={cur.email} onChange={(v) => set({ email: v })} />
+      <section className="flex flex-col gap-2">
+        <p className="text-sub font-bold">How should we alert them?</p>
+        <div className="flex flex-wrap gap-2">
+          {([['message', 'Text message'], ['email', 'Email'], ['call', 'Phone call']] as const).map(([k, l]) => (
+            <Chip key={k} on={cur.channels.includes(k)} onClick={() => toggle(k)}>
+              {l}
+            </Chip>
+          ))}
+        </div>
+      </section>
+      <Card tone="soft" className="flex flex-col gap-2">
+        <p className="text-sub font-bold text-ink2">When we alert them</p>
+        <ul className="flex flex-col gap-1.5 text-body">
+          <li>Very low reading (below {appConfig.hypoTiers.veryLow.toFixed(1)}): a message and email straight away, and a call if no reply in {call} minutes.</li>
+          <li>Low reading (below {appConfig.hypoTiers.low.toFixed(1)}): only if you do not answer the {appConfig.hypoTiers.recheckMinutes}-minute check-in and it is still low.</li>
+        </ul>
+        <p className="text-sub text-ink3">Placeholder rules, pending review by a clinician.</p>
+      </Card>
+      <Card className="flex flex-col gap-1">
+        <p className="text-sub font-bold text-ink2">What we send</p>
+        <p className="text-body">"Mr Tan's glucose reading is very low. Please check on him now, or call 995."</p>
+        <p className="text-sub text-ink3">Nothing else about your health is shared.</p>
+      </Card>
+      <div className="flex items-center justify-between gap-4 rounded-card border border-line bg-card p-3.5">
+        <span className="text-body">I agree to this person being alerted.</span>
+        <Toggle on={cur.consent} onChange={(v) => set({ consent: v })} label="Agree to alert my emergency contact" />
+      </div>
+      <Footer>
+        <Button
+          disabled={!cur.name.trim() || cur.channels.length === 0}
+          onClick={() =>
+            void api.saveEmergencyContact(cur).then(() => {
+              void qc.invalidateQueries({ queryKey: ['contact'] })
+              toast('Emergency contact saved')
+            })
+          }
+        >
+          Save
+        </Button>
+        <Button variant="secondary" onClick={() => toast('A test alert would be sent to ' + cur.name + ' (prototype)')}>
+          Send a test alert
+        </Button>
+      </Footer>
     </Screen>
   )
 }

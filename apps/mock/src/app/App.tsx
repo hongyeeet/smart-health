@@ -14,7 +14,7 @@ import { Chat } from '@/features/chat/Chat'
 import { Urgent } from '@/features/urgent/Urgent'
 import { Me } from '@/features/me/Me'
 import { Learned } from '@/features/me/Learned'
-import { CarePlan, DataAccount, LanguageDisplay, PlanAppointment, Privacy, Sources } from '@/features/me/MeScreens'
+import { CarePlan, DataAccount, EmergencyContactScreen, LanguageDisplay, PlanAppointment, Privacy, Sources } from '@/features/me/MeScreens'
 import { BriefPreview } from '@/features/brief/BriefPreview'
 import { BriefA4 } from '@/features/brief/BriefA4'
 import { AboutYou, ChatSetup, ConnectData, Eligibility, Welcome } from '@/features/onboarding/Onboarding'
@@ -73,6 +73,7 @@ export function App() {
             <Route path="me/privacy" element={<Privacy />} />
             <Route path="me/appointment" element={<PlanAppointment />} />
             <Route path="me/data" element={<DataAccount />} />
+            <Route path="me/contact" element={<EmergencyContactScreen />} />
             <Route path="brief" element={<BriefPreview />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

@@ -54,8 +54,11 @@ export function DemoPanel({ onClose }: { onClose?: () => void }) {
 
       <Card className="flex flex-col gap-2">
         <p className="text-sub font-bold">Simulate</p>
-        <Button variant="secondary" size="md" onClick={() => jump('J1')}>
-          A very low reading (2.8 mmol/L)
+        <Button variant="secondary" size="md" onClick={() => { navigate('/urgent?tier=1'); onClose?.() }}>
+          A low reading (3.6 mmol/L, tier 1)
+        </Button>
+        <Button variant="secondary" size="md" onClick={() => { navigate('/urgent?tier=2'); onClose?.() }}>
+          A very low reading (2.8 mmol/L, tier 2)
         </Button>
         <Button
           variant="secondary"

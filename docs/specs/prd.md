@@ -107,7 +107,7 @@ Deterministic lookup against an interaction reference table. The LLM only rephra
 - **Workouts:** manual entry (type, duration, intensity) plus wearable import.
 - **Wearables:** steps, heart rate, sleep, HRV/stress (where available) via Health Connect (Android) / HealthKit (iOS), or file import plus demo replay.
 - **Mood / stress / sleep check-in:** a 30-second evening check-in (1–5 scales and an optional note).
-- **Symptoms:** free text or picker, with severity.
+- **Symptoms (D-052):** a picker with severity, built to take about 30 seconds. The sensor glucose and trend at that moment and the time are filled in automatically. The person can say when it happened (just now, earlier today, last night, or a set time), so night symptoms logged at breakfast get the right time. Optional detail: how long it lasted; left, right or both sides for numbness and pain; relation to a meal or exercise; and for dizziness what it felt like (standing up, shaky or sweaty, spinning). Extra symptoms: vomiting, night sweats, breathlessness at rest, sudden vision loss. Red-flag symptoms go straight to the urgent path. The app records and asks; it never labels a cause.
 - AC: every log is timestamped, has a source, and is idempotent (re-syncs don't duplicate).
 - AC: the user can edit or delete their own logs; edits are versioned in the event log.
 
@@ -130,10 +130,15 @@ When a pattern suggests something the doctor should know about, the agent asks a
 - AC: answers appear in the brief's symptom section, linked to the triggering pattern.
 
 ### F10 Urgent escalation (safety tier)
-Rule-based, not LLM: e.g. glucose < 3.0 mmol/L, glucose < 3.9 mmol/L with symptoms, repeated readings above the configured high threshold, or red-flag symptoms (chest pain, confusion, fainting).
-- AC: shows a full-screen, plain-language instruction to seek care now (995 / A&E / call doctor, depending on tier), plus hypo self-help steps from the approved corpus.
+Rule-based, not LLM. Low glucose has two tiers. The values come from the owner's clinical feedback (2026-10-03, D-050) and are placeholders pending clinical validation.
+- **Tier 1, low (below 4.0 mmol/L, 3.0 or above):** the person can usually still treat it. A plain screen says to take the fast-acting sugar listed in their doctor's low-sugar plan, shows a 15-minute recheck countdown, then asks how they feel (better, about the same, worse). Same or worse, or still low at the recheck, moves to tier 2.
+- **Tier 2, very low (below 3.0 mmol/L):** the person may be unable to function, and around 2.8 may faint or lose consciousness. A full-screen instruction to get help now (call 995 or the clinic), and the emergency contact is alerted.
+- **Other triggers:** repeated readings above the configured high threshold; red-flag symptoms (chest pain, confusion, fainting, breathlessness at rest, sudden vision loss or a curtain across the vision); vomiting together with high glucose (get care today).
+- AC: tier 1 and tier 2 screens are fixed text written by people, with no LLM and no network call. The hypo steps come from the approved corpus; until a source is approved the screen points to the doctor's own low-sugar plan.
+- AC: **emergency contact (D-051).** The patient adds one contact, chooses message, email and/or call, and consents. On tier 2 a message and email go straight away and a call follows if there is no reply in 5 minutes (placeholder). On tier 1 the contact is alerted only if the 15-minute check-in is unanswered and the glucose is still low. The message says only that the reading is very low and asks the contact to check on the person or call 995. No other health data is sent. No alert is sent without consent.
+- AC: after a low, one question is asked and recorded: "Did you feel it before your sensor alerted you?" It appears in the brief as a self-report.
 - AC: never delayed until the next brief; logged as an urgent event.
-- AC: thresholds live in config and are marked "to be validated by clinical advisor".
+- AC: thresholds, tiers and timings live in config and are marked "clinical validation pending".
 
 ### F11 Lifestyle coach
 Short, practical nudges personalised by the user's data and learned preferences (e.g. prefers evening walks). Nudge content must come from an approved corpus: **no guideline corpus (e.g. Health Promotion Board) is in the cited data sources**, so until you approve one, nudges are fixed team-written templates driven by the user's own data (e.g. "you walked after dinner 3 times this week and your evening readings were lower").
@@ -148,7 +153,7 @@ Sections:
 1. Profile snapshot (age, diagnosis and duration, comorbidities, allergies, family history, current meds with start dates, last HbA1c, period covered)
 2. Top 3 to discuss (ranked, each linked to evidence)
 3. Medication and adherence: **prescription timeline chart** (row per medication, day cells taken / late / unconfirmed / missed, glucose overlay), adherence %, miss-reason breakdown, side effects, clash flags
-4. Glucose: fasting and post-meal trend, time-in-range (CGM sprints), out-of-range counts, momentum vs baseline
+4. Glucose: fasting and post-meal trend, time-in-range (CGM sprints), out-of-range counts, momentum vs baseline, and resting heart rate and SpO2 trended beside it on the same dates (D-053; wording "associated with", unverified)
 5. Nutrition: carbs / sugar / sodium vs guideline, high-salt / high-GI frequency, meal timing, personal food-response leaderboard
 6. Exercise: minutes/week vs 150-min guideline, steps, trend
 7. Sleep: duration and regularity
@@ -231,7 +236,7 @@ The system improves for each user through four concrete mechanisms (details in a
 |---|---|---|---|
 | A1 | Front end | Mobile-first web app in a phone frame / WebView (no store fees). No live Health Connect/HealthKit: device data is replayed from the cited datasets | Team |
 | A2 | AI models | Google Cloud Vertex AI for everything except speech (ElevenLabs) and JEV (TypeSafe): Claude Sonnet 5.5 for text and photos, Gemini Embedding at 768 dimensions, Cloud Translation for fixed text. No Tencent fallback. Behind a provider gateway. Details and cost control in [ai-models.md](ai-models.md) (owner decision D-047) | Team |
-| A3 | Clinical thresholds | Rules, not data: hypo levels (3.9 / 3.0 mmol/L) and configurable highs are team-written config. No cited source contains them, so this is under "Needs your OK". **Validate with a clinical advisor** | Team |
+| A3 | Clinical thresholds | Rules, not data: low-glucose tiers (below 4.0 and below 3.0 mmol/L, owner values 2026-10-03, D-050) and configurable highs are team-written config. No cited source contains them, so this is under "Needs your OK". **Validate with a clinical advisor** | Team |
 | A4 | Drug corpus and interactions | Drug facts (uses, side effects, classes, aliases) come from the 250k Medicines dataset only. **It has no interactions column** (checked 2026-10-02), so interactions come from the openFDA drug-label `drug_interactions` text, shown as general label information and labelled `reference_matched` (owner decision D-036). No supplement/TCM interaction data exists in the cited sources, so those items show "not checked" | Team |
 | A5 | Food nutrients | Meal photos and text are analysed by the LLM for macros (kcal, carbs, protein, fat, fibre, sugar, sodium), stored as estimates with confidence and confirmed by the user. Open Food Facts and NHANES dietary files are sanity-check references only. Dataset meals keep measured macros. Glucose response is always measured | Team |
 | A6 | Mock CGM | CGMacros (T2D participants) and BIG IDEAs, both on PhysioNet. Only CGMacros has T2D (14 people); BIG IDEAs participants are HbA1c 5.2-6.4% | Team |
@@ -242,6 +247,9 @@ The system improves for each user through four concrete mechanisms (details in a
 | A11 | Decision layer (JEV) | JEV typed decisions behind `decision/` using the TypeSafe JEV model; if JEV is off or unreachable the conservative path applies (no model fallback). It is hosted on OpenRouter as `typesafe/jev-1.13` (D-049). Rules always override JEV | Team |
 | A12 | Security scope | Demo-grade. Deferred until after the demo: row-level security, consent-scoped retrieval, data-classification tagging, retention workflows. Never deferred: the clinical safety path and keeping names and identifiers out of prompts | Team |
 | A13 | Runtime | The web app and API run locally on each developer's machine. The database and file storage are Supabase (Postgres with pgvector), one shared project. Row-level security is on with no policies and only the backend connects. The other outbound calls are the AI APIs. There is no hosting for the app, so a live URL (an optional submission bonus) is not planned | Team |
+| A14 | Emergency contact delivery | One emergency contact per patient, alerted by message, email and/or call with the patient's consent (D-051). The messaging and calling service is not chosen yet and needs keys in settings. The contact's phone and email are never sent to an AI model. This is not the caregiver view, which stays a stretch goal | Team |
+| A15 | SpO2 | No cited dataset is known to hold blood oxygen. The schema has an `spo2` metric. The demo simulates it from cited data and says so; a real watch source needs the owner's OK | Team |
+| A16 | Appointment booking | Calendar entry and `.ics` file only. No HealthHub or clinic-system booking (owner, 2026-10-03) | Team |
 
 ## 11. Submission deliverables checklist
 - [ ] Project title and ≤10-word blurb

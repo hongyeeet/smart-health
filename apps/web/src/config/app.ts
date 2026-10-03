@@ -8,6 +8,8 @@ export const appConfig = {
   frame: 'column' as 'column' | 'device',
   /** clinical review pending: these are placeholders, never presented as advice */
   glucoseRanges: { veryLow: 3.0, low: 3.9, high: 10.0, veryHigh: 13.9, unit: 'mmol/L' },
+  /** alert tiers for low glucose. Placeholders from the owner (2026-10-03); clinical validation pending, never shown as advice */
+  hypoTiers: { low: 4.0, veryLow: 3.0, recheckMinutes: 15, contactCallAfterMinutes: 5 },
   goals: { moderateMinutes: 150, strengthSessions: 2, source: 'Default. Set with your doctor.' },
   shareLinkHours: 72,
   reminderRecheckMinutes: 15,

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLog } from '@/data/hooks'
 import type { LogInput } from '@/data/repositories/types'
+import type { SymptomWhen } from '@/data/types'
 import { useGo } from '@/app/navigation'
 import { href } from '@/app/routeIds'
 import { useUi } from '@/state/store'
@@ -24,7 +25,7 @@ export function useFinishLog() {
       log.mutate(input, {
         onSuccess: (res) => {
           setLast(res)
-          navigate(res.urgent ? href('J1') : href('E6'), { replace: true })
+          navigate(res.urgent ? `${href('J1')}?tier=${res.urgentTier ?? 2}` : href('E6'), { replace: true })
         },
       }),
   }
@@ -186,6 +187,9 @@ export function LogGlucose() {
           </Chip>
         ))}
       </div>
+      <Button variant="secondary" onClick={() => setV('7.8')}>
+        Use my sensor reading (7.8)
+      </Button>
       <NumberPad value={v} onChange={setV} max={4} />
       <Footer>
         <Button disabled={!valid || pending} onClick={() => save({ kind: 'glucose', value: Math.round(n * 10) / 10, context: ctx })}>
@@ -197,21 +201,52 @@ export function LogGlucose() {
 }
 
 /* ------------------------------------ E4 symptom ------------------------------------ */
-const symptoms = ['More thirsty than usual', 'Passing more urine', 'Tingling or numbness in my feet', 'Blurry vision', 'Tired more than usual', 'Dizzy', 'Headache', 'Upset stomach', 'Something else']
-const redFlags = ['Chest pain', 'Confusion', 'Fainting']
+/**
+ * Built to take about 30 seconds: the sensor reading and the time are filled in for you, and the detail
+ * section is optional and only asks what fits the symptom you chose.
+ */
+const symptoms = ['More thirsty than usual', 'Passing more urine', 'Tingling or numbness', 'Pain', 'Blurry vision', 'Tired more than usual', 'Dizzy', 'Headache', 'Upset stomach', 'Vomiting', 'Night sweats', 'Something else']
+const redFlags = ['Chest pain', 'Confusion', 'Fainting', 'Breathlessness at rest', 'Sudden vision loss or a curtain across my vision']
+const sideSymptoms = ['Tingling or numbness', 'Pain']
+const durations = ['A few minutes', 'About an hour', 'Most of the day']
+const sides = ['Left foot', 'Right foot', 'Both feet', 'Hands', 'Somewhere else']
+const relations = ['Before a meal', 'After a meal', 'After exercise', 'At rest', 'While asleep']
+const dizzyFeels = ['When I stand up', 'Shaky or sweaty', 'Spinning']
+const whens: { id: SymptomWhen; label: string }[] = [
+  { id: 'now', label: 'Just now' },
+  { id: 'earlier', label: 'Earlier today' },
+  { id: 'last_night', label: 'Last night' },
+  { id: 'at', label: 'Pick a time' },
+]
+
 export function LogSymptom() {
   const [label, setLabel] = useState<string | null>(null)
   const [sev, setSev] = useState(2)
+  const [when, setWhen] = useState<SymptomWhen>('now')
+  const [at, setAt] = useState('')
+  const [more, setMore] = useState(false)
+  const [duration, setDuration] = useState<string | null>(null)
+  const [side, setSide] = useState<string | null>(null)
+  const [relation, setRelation] = useState<string | null>(null)
+  const [feel, setFeel] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const navigate = useNavigate()
   const { save, pending } = useFinishLog()
   const red = label ? redFlags.includes(label) : false
+  const pick = (l: string) => {
+    setLabel(l)
+    setSide(null)
+    setFeel(null)
+  }
   return (
     <Screen>
-      <Header title="Log a symptom" back backTo="E1" />
+      <Header title="Log a symptom" back backTo="E1" sub="About 30 seconds. Details are optional." />
+      <Alert tone="info" icon={Info} title="Filled in for you">
+        Glucose now: <b>7.8 mmol/L</b>, steady (from your sensor). It is saved with this entry.
+      </Alert>
       <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Symptom">
         {symptoms.map((s) => (
-          <Chip key={s} on={label === s} onClick={() => setLabel(s)}>
+          <Chip key={s} on={label === s} onClick={() => pick(s)}>
             {s}
           </Chip>
         ))}
@@ -220,21 +255,93 @@ export function LogSymptom() {
         <p className="text-sub font-bold text-ink2">Need help right now?</p>
         <div className="flex flex-wrap gap-2">
           {redFlags.map((s) => (
-            <Chip key={s} on={label === s} onClick={() => setLabel(s)}>
+            <Chip key={s} on={label === s} onClick={() => pick(s)}>
               {s}
             </Chip>
           ))}
         </div>
       </Card>
-      <div className="flex flex-col gap-2">
-        <Rating label="How strong" value={sev} onChange={setSev} lowLabel="Mild" highLabel="Very strong" />
-      </div>
-      <Field label="Add a note (optional)" value={note} onChange={setNote} multiline />
+      {label === 'Vomiting' && <Alert tone="warn">If you are vomiting and your glucose is high, get care today. Tell your clinic.</Alert>}
+
+      {!red && label && (
+        <>
+          <Rating label="How strong" value={sev} onChange={setSev} lowLabel="Mild" highLabel="Very strong" />
+          <section className="flex flex-col gap-2">
+            <p className="text-body font-bold">When did it happen?</p>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="When it happened">
+              {whens.map((w) => (
+                <Chip key={w.id} on={when === w.id} onClick={() => setWhen(w.id)}>
+                  {w.label}
+                </Chip>
+              ))}
+            </div>
+            {when === 'at' && <Field label="Time" value={at} onChange={setAt} placeholder="For example, 3:00 am" />}
+          </section>
+          <TextLink onClick={() => setMore((m) => !m)} className="self-start">
+            {more ? 'Hide detail' : 'Add detail (optional)'}
+          </TextLink>
+          {more && (
+            <Card className="flex flex-col gap-4">
+              <section className="flex flex-col gap-2">
+                <p className="text-sub font-bold">How long did it last?</p>
+                <div className="flex flex-wrap gap-2">
+                  {durations.map((d) => (
+                    <Chip key={d} on={duration === d} onClick={() => setDuration(duration === d ? null : d)}>
+                      {d}
+                    </Chip>
+                  ))}
+                </div>
+              </section>
+              {sideSymptoms.includes(label) && (
+                <section className="flex flex-col gap-2">
+                  <p className="text-sub font-bold">Where?</p>
+                  <div className="flex flex-wrap gap-2">
+                    {sides.map((d) => (
+                      <Chip key={d} on={side === d} onClick={() => setSide(side === d ? null : d)}>
+                        {d}
+                      </Chip>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {label === 'Dizzy' && (
+                <section className="flex flex-col gap-2">
+                  <p className="text-sub font-bold">It felt like</p>
+                  <div className="flex flex-wrap gap-2">
+                    {dizzyFeels.map((d) => (
+                      <Chip key={d} on={feel === d} onClick={() => setFeel(feel === d ? null : d)}>
+                        {d}
+                      </Chip>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <section className="flex flex-col gap-2">
+                <p className="text-sub font-bold">Around a meal or exercise?</p>
+                <div className="flex flex-wrap gap-2">
+                  {relations.map((d) => (
+                    <Chip key={d} on={relation === d} onClick={() => setRelation(relation === d ? null : d)}>
+                      {d}
+                    </Chip>
+                  ))}
+                </div>
+              </section>
+              <Field label="Add a note (optional)" value={note} onChange={setNote} multiline />
+            </Card>
+          )}
+        </>
+      )}
+
       <Footer>
         <Button
           variant={red ? 'danger' : 'primary'}
           disabled={!label || pending}
-          onClick={() => (red ? navigate(href('J1')) : label && save({ kind: 'symptom', label, severity: sev, note }))}
+          onClick={() => {
+            if (red) return navigate(href('J1') + '?tier=2')
+            if (!label) return
+            const whenLabel = when === 'at' ? at || 'a set time' : whens.find((w) => w.id === when)!.label
+            save({ kind: 'symptom', label, severity: sev, note, detail: { when, whenLabel, duration: duration ?? undefined, side: side ?? undefined, relation: relation ?? undefined, feel: feel ?? undefined, glucose: { v: 7.8, trend: 'steady' } } })
+          }}
         >
           {red ? 'Get help now' : 'Save symptom'}
         </Button>

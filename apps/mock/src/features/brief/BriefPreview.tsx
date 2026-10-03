@@ -6,7 +6,7 @@ import { Header, Footer, Screen } from '@/ui/layout'
 import { Alert, Button, Card, SectionTitle, Skeleton, StatusPill } from '@/ui/primitives'
 import { Download, FilePdf, ShareNetwork, ShieldCheck } from '@/ui/icons'
 
-const sections = ['Top 3 to discuss', 'Medication and adherence', 'Glucose', 'Nutrition', 'Exercise', 'Sleep and stress', 'Three day traces', 'Patterns for clinician review', 'Symptoms', 'Preventive care', 'Your own questions', 'Data completeness']
+const sections = ['Top 3 to discuss', 'Medication and adherence', 'Glucose', 'Glucose with heart rate and SpO2', 'Nutrition', 'Exercise', 'Sleep and stress', 'Three day traces', 'Patterns for clinician review', 'Symptoms', 'Preventive care', 'Your own questions', 'Data completeness']
 
 export function BriefPreview() {
   const { data } = useBrief()

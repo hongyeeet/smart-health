@@ -7,6 +7,7 @@ import type {
   Appointment,
   CarePlan,
   ConnectedSource,
+  EmergencyContact,
   DayTimeline,
   FoodResponse,
   GlucosePoint,
@@ -230,6 +231,14 @@ export const sleepSeries = series(90, (i, rnd) => {
   if (i >= 62) return Math.round(410 - (i - 62) * 1.4 + (rnd() - 0.5) * 30)
   return Math.round(410 + (rnd() - 0.5) * 36)
 }, 31)
+export const restingHrSeries = series(90, (i, rnd) => {
+  if (i >= 62) return Math.round(65 + (i - 62) * 0.2 + (rnd() - 0.5) * 2.4)
+  return Math.round(64 + (rnd() - 0.5) * 3)
+}, 51)
+export const spo2Series = series(90, (i, rnd) => {
+  if (i >= 70) return r1(96.4 - (i - 70) * 0.02 + (rnd() - 0.5) * 0.7)
+  return r1(96.8 + (rnd() - 0.5) * 0.7)
+}, 61)
 export const moodSeries = Array.from({ length: 14 }, (_, i) => {
   const rnd = rng(41 + i)
   return { date: iso(13 - i), mood: i > 10 ? 3 : Math.round(3 + rnd() * 1.4), stress: i > 9 ? 4 : Math.round(2 + rnd() * 1.6) }
@@ -345,3 +354,12 @@ export const recentEntries: RecentEntry[] = [
   { id: 're4', kind: 'checkin', title: 'Evening check-in', detail: 'Mood 3, stress 4', when: 'Yesterday', date: '2026-09-30' },
   { id: 're5', kind: 'workout', title: 'Brisk walk, 25 min', detail: 'Moderate', when: 'Yesterday', date: '2026-09-30' },
 ]
+
+export const emergencyContact: EmergencyContact = {
+  name: 'Mei Ling Tan',
+  relation: 'Daughter',
+  phone: '+65 9123 4567',
+  email: 'meiling@example.com',
+  channels: ['message', 'email', 'call'],
+  consent: true,
+}

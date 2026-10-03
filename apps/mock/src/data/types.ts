@@ -78,11 +78,32 @@ export interface DayWorkout {
   intensity: Intensity
   glucoseChange2h?: number
 }
+export type SymptomWhen = 'now' | 'earlier' | 'last_night' | 'at'
+export interface SymptomDetail {
+  when: SymptomWhen
+  whenLabel?: string
+  duration?: string
+  side?: string
+  relation?: string
+  feel?: string
+  /** pulled from the sensor at the moment of logging */
+  glucose?: { v: number; trend: 'rising' | 'steady' | 'falling' }
+}
+export interface EmergencyContact {
+  name: string
+  relation: string
+  phone: string
+  email: string
+  channels: ('message' | 'email' | 'call')[]
+  consent: boolean
+}
+
 export interface DaySymptom {
   id: string
   t: number
   label: string
   severity: number
+  detail?: SymptomDetail
 }
 export interface DayTimeline {
   date: string
@@ -176,6 +197,8 @@ export interface Insights {
     days: string[]
   }
   patterns: { id: string; text: string; n: number }[]
+  /** heart rate and SpO2 trended beside glucose (simulated in the demo) */
+  wearables: { restingHr: Trend; spo2: Trend }
 }
 
 export interface MemoryFact {
@@ -284,7 +307,9 @@ export interface BriefData {
   completeness: { stream: string; pct: number }[]
   top3: { id: string; text: string; evidence: string }[]
   patterns: { id: string; text: string; n: number }[]
-  symptoms: { date: string; label: string; severity: number }[]
+  symptoms: { date: string; label: string; severity: number; detail?: string }[]
+  /** self-reported awareness of lows, from the post-low question */
+  awareness: string | null
   preventive: PreventiveItem[]
   questions: string[]
   dayTraces: { kind: 'best' | 'worst' | 'typical'; date: string }[]
@@ -304,4 +329,5 @@ export interface LogResult {
   flag?: { text: string; level: GlucoseLevel | 'info' }
   swap?: { text: string; source: string }
   urgent?: boolean
+  urgentTier?: 1 | 2
 }

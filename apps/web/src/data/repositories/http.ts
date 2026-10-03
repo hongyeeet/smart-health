@@ -57,4 +57,7 @@ export const httpApi: Api = {
   listSources: todo('listSources'),
   syncSources: todo('syncSources'),
   sendChat: todo('sendChat'),
+  getEmergencyContact: todo('getEmergencyContact'),
+  saveEmergencyContact: todo('saveEmergencyContact'),
+  recordAwareness: todo('recordAwareness'),
 }

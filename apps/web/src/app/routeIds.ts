@@ -47,7 +47,7 @@ export const ROUTES = {
   E1: { path: '/log', title: 'Log', kind: 'tab', group: 'Log', from: 'Centre Log button', links: [l('Workout', 'F1'), l('Meal', 'E2'), l('Glucose', 'E3'), l('Symptom', 'E4'), l('Mood and sleep check-in', 'E5'), l('A recent entry', 'E7')] },
   E2: { path: '/log/meal', title: 'Log a meal', kind: 'screen', group: 'Log', from: 'E1', links: [l('Save', 'E6')] },
   E3: { path: '/log/glucose', title: 'Log glucose', kind: 'screen', group: 'Log', from: 'E1', links: [l('Save', 'E6'), l('Very low reading', 'J1')] },
-  E4: { path: '/log/symptom', title: 'Log a symptom', kind: 'screen', group: 'Log', from: 'E1, F1, H7', links: [l('Save', 'E6')] },
+  E4: { path: '/log/symptom', title: 'Log a symptom', kind: 'screen', group: 'Log', from: 'E1, F1, H7', links: [l('Save', 'E6'), l('Red-flag symptom', 'J1')], note: 'Fills in the sensor reading and the time; detail is optional.' },
   E5: { path: '/log/checkin', title: 'Mood and sleep check-in', kind: 'screen', group: 'Log', from: 'E1', links: [l('Save', 'E6')] },
   E6: { path: '/log/done', title: 'Saved', kind: 'screen', group: 'Log', from: 'E2 to E5, F1', links: [l('See your day', 'D1'), l('The related insight', 'C2'), l('Get help now', 'J1'), l('Done', 'B1')] },
   E7: { path: '#entry', title: 'Edit or delete an entry', kind: 'sheet', group: 'Log', from: 'E1 (Recent entries)', links: [l('See it in your day', 'D1')] },
@@ -64,9 +64,9 @@ export const ROUTES = {
   H8: { path: '/meds/add', title: 'Add a medicine by hand', kind: 'screen', group: 'Medications', from: 'H1, A3', links: [l('Save', 'H1')] },
 
   I1: { path: '/chat', title: 'Ask Smart Health', kind: 'screen', group: 'Chat', from: 'Ask button on B1 and C1', links: [l('Add to my doctor questions', 'K3'), l('See your week', 'C1'), l('Open the Metformin page', 'H6')] },
-  J1: { path: '/urgent', title: 'Urgent', kind: 'screen', group: 'Urgent', from: 'B1 (demo), E3, E6', links: [l("I'm okay now", 'B1')], note: 'No AI is involved on this screen.' },
+  J1: { path: '/urgent', title: 'Low glucose alert', kind: 'screen', group: 'Urgent', from: 'E3, E4 (red-flag symptom), demo panel', links: [l('Add an emergency contact', 'K9'), l('Log a reading', 'E3'), l("I'm okay now", 'B1')], note: 'Two tiers: low (below 4.0, treat and recheck in 15 minutes) and very low (below 3.0, call 995 and the emergency contact is alerted). No AI is involved.' },
 
-  K1: { path: '/me', title: 'Me', kind: 'tab', group: 'Me', from: 'Bottom bar', links: [l('What Smart Health has learned', 'K2'), l('Doctor brief', 'L1'), l('Care plan', 'K3'), l('Connected sources', 'K4'), l('Language and display', 'K5'), l('Privacy and consent', 'K6'), l('Data and account', 'K8'), l('Replay onboarding', 'A1')] },
+  K1: { path: '/me', title: 'Me', kind: 'tab', group: 'Me', from: 'Bottom bar', links: [l('What Smart Health has learned', 'K2'), l('Doctor brief', 'L1'), l('Care plan', 'K3'), l('Connected sources', 'K4'), l('Language and display', 'K5'), l('Privacy and consent', 'K6'), l('Emergency contact', 'K9'), l('Data and account', 'K8'), l('Replay onboarding', 'A1')] },
   K2: { path: '/me/learned', title: 'What Smart Health has learned', kind: 'screen', group: 'Me', from: 'K1', links: [l('A fact\'s evidence', 'C4')] },
   K3: { path: '/me/care', title: 'Care plan', kind: 'screen', group: 'Me', from: 'K1, B1, H5, I1, H6', links: [l('Plan an appointment', 'K7'), l('Generate my doctor brief', 'L1')] },
   K4: { path: '/me/sources', title: 'Connected sources', kind: 'screen', group: 'Me', from: 'K1, B1', links: [l('Sensor sprint', 'C8')] },
@@ -74,6 +74,8 @@ export const ROUTES = {
   K6: { path: '/me/privacy', title: 'Privacy and consent', kind: 'screen', group: 'Me', from: 'K1', links: [l('Revoke access', 'K6')] },
   K7: { path: '/me/appointment', title: 'Plan an appointment', kind: 'screen', group: 'Me', from: 'K3', links: [l('Add to calendar', 'K3')] },
   K8: { path: '/me/data', title: 'Data and account', kind: 'screen', group: 'Me', from: 'K1', links: [] },
+
+  K9: { path: '/me/contact', title: 'Emergency contact', kind: 'screen', group: 'Me', from: 'K1, J1', links: [], note: 'Who is alerted on a very low reading, and how. Needs the patient\'s consent.' },
 
   L1: { path: '/brief', title: 'Doctor brief', kind: 'screen', group: 'Doctor brief', from: 'K3, K1', links: [l('Share with my doctor', 'L2'), l('Open the A4 page', 'L3')] },
   L2: { path: '#share', title: 'Share with my doctor', kind: 'sheet', group: 'Doctor brief', from: 'L1', links: [l('Create link', 'L2')] },
