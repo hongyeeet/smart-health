@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-03 14:38: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-03 15:42: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -17,6 +17,8 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 5. Run the docs check (`python scripts/verify_docs.py --stamp`) and commit this file with your work. Never mark anything as owner confirmed or verified.
 
 ## Current state
+
+- **Next session:** E3-1 (scan and read). Handover notes are at the end of `docs/handover/sessions/hongyi_2026-10-01_1143.md`.
 
 - **Phase:** specification is written; the database is complete (E1-3 done 2026-10-03: 67 tables, 6 views). The front end is built as a clickable app on demo data in `apps/mock` and `apps/web` (as of 2026-10-01). The database exists and is loaded (as of 2026-10-02): Bronze, Silver and Reference tables hold the datasets, reference data and the demo patient (E1-1, E1-2 and E1-4 done; the medicine index is the new task E1-6); Gold and Operations tables (E1-3) are still to come; the API has not started.
 - **Branches:** `dev` is the default branch and where everyone works. The owner promotes `dev` to `uat`, then `uat` to `main`. `main` and `uat` still hold the first commit until then.
