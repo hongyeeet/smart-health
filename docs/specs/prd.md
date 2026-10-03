@@ -107,7 +107,7 @@ Deterministic lookup against an interaction reference table. The LLM only rephra
 - **Workouts:** manual entry (type, duration, intensity) plus wearable import.
 - **Wearables:** steps, heart rate, sleep, HRV/stress (where available) via Health Connect (Android) / HealthKit (iOS), or file import plus demo replay.
 - **Mood / stress / sleep check-in:** a 30-second evening check-in (1–5 scales and an optional note).
-- **Symptoms (D-052):** a picker with severity, built to take about 30 seconds. The sensor glucose and trend at that moment and the time are filled in automatically. The person can say when it happened (just now, earlier today, last night, or a set time), so night symptoms logged at breakfast get the right time. Optional detail: how long it lasted; left, right or both sides for numbness and pain; relation to a meal or exercise; and for dizziness what it felt like (standing up, shaky or sweaty, spinning). Extra symptoms: vomiting, night sweats, breathlessness at rest, sudden vision loss. Red-flag symptoms go straight to the urgent path. The app records and asks; it never labels a cause.
+- **Symptoms (on hold, D-054: pending clinical review; D-052):** a picker with severity, built to take about 30 seconds. The sensor glucose and trend at that moment and the time are filled in automatically. The person can say when it happened (just now, earlier today, last night, or a set time), so night symptoms logged at breakfast get the right time. Optional detail: how long it lasted; left, right or both sides for numbness and pain; relation to a meal or exercise; and for dizziness what it felt like (standing up, shaky or sweaty, spinning). Extra symptoms: vomiting, night sweats, breathlessness at rest, sudden vision loss. Red-flag symptoms go straight to the urgent path. The app records and asks; it never labels a cause.
 - AC: every log is timestamped, has a source, and is idempotent (re-syncs don't duplicate).
 - AC: the user can edit or delete their own logs; edits are versioned in the event log.
 
@@ -130,6 +130,8 @@ When a pattern suggests something the doctor should know about, the agent asks a
 - AC: answers appear in the brief's symptom section, linked to the triggering pattern.
 
 ### F10 Urgent escalation (safety tier)
+> **On hold (2026-10-03, D-054):** pending clinical review by Damien (`docs/handover/questions-for-damien.md`). The values and fields below are placeholders. Do not build E1-7, E11-2, E7-4 or E13-4 until it is cleared.
+
 Rule-based, not LLM. Low glucose has two tiers. The values come from the owner's clinical feedback (2026-10-03, D-050) and are placeholders pending clinical validation.
 - **Tier 1, low (below 4.0 mmol/L, 3.0 or above):** the person can usually still treat it. A plain screen says to take the fast-acting sugar listed in their doctor's low-sugar plan, shows a 15-minute recheck countdown, then asks how they feel (better, about the same, worse). Same or worse, or still low at the recheck, moves to tier 2.
 - **Tier 2, very low (below 3.0 mmol/L):** the person may be unable to function, and around 2.8 may faint or lose consciousness. A full-screen instruction to get help now (call 995 or the clinic), and the emergency contact is alerted.

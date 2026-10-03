@@ -114,6 +114,8 @@ Each journey lists: **Trigger → Steps (screen · system action · events)**.
 | 5 | Flag + answer land in the next brief (§10 and §9) | | `flag.added_to_brief` |
 
 ### J8 Urgent escalation (F10), no LLM in this path
+> **On hold (2026-10-03, D-054):** pending clinical review by Damien (`docs/handover/questions-for-damien.md`). The tiers, contact alerts and awareness question in steps 2 to 4 are placeholders. Do not build E1-7, E11-2, E7-4 or E13-4 until it is cleared.
+
 | # | Step | System | Events |
 |---|---|---|---|
 | 1 | Reading < 4.0 (tier 1) or < 3.0 (tier 2), or repeated high, or a red-flag symptom (chest pain, confusion, fainting, breathlessness at rest, sudden vision loss) or chat keyword | `thresholds.py` / input guard | `threshold.breached` {tier, rule_id} |

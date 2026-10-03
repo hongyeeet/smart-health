@@ -591,6 +591,8 @@ Where the migrations differ from, or add to, the text above. The generated colum
 
 ## 13. Planned additions (2026-10-03, not yet migrated)
 
+> **On hold (2026-10-03, D-054):** pending clinical review by Damien (`docs/handover/questions-for-damien.md`). The values and fields below are placeholders. Do not build E1-7, E11-2, E7-4 or E13-4 until it is cleared.
+
 From the owner's clinical feedback (D-052, D-051). **These are not in the database yet.** Joely adds the Silver parts and Hong Yi the Gold part as a follow-up to E1 (backlog task E1-7), in migrations numbered after the ones already applied. Until then they are specified here only.
 
 | Table | Change |

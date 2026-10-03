@@ -30,10 +30,10 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 - E4-1 Medicine explainer: waiting for E0-3 (Hong Yi, in progress), E16-2 (Hong Yi, backlog)
 - E5-1 Doses and reminders: waiting for E0-2 (Hong Yi, in progress)
 - E5-2 Missed doses and refills: waiting for E5-1 (Hong Yi, backlog)
-- E7-4 Faster symptom logging with detail: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, backlog)
+- E7-4 Faster symptom logging with detail: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, blocked)
 - E9-1 Daily totals, baseline and flags: waiting for E1-3 (Hong Yi, backlog)
 - E9-2 Insights screen: waiting for E9-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
-- E11-2 Tiered low-glucose alerts and emergency contact: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, backlog)
+- E11-2 Tiered low-glucose alerts and emergency contact: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, blocked)
 - E13-1 Brief data and charts: waiting for E9-1 (Hong Yi, backlog)
 - E13-2 Narrative and PDF: waiting for E13-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
 - E13-3 Brief screens and sharing: waiting for E13-2 (Hong Yi, backlog)
@@ -442,13 +442,13 @@ Done: 0 of 31 tasks.
 ### E1-7 Schema additions for symptoms and the emergency contact · P0
 
 - **Ask:** Add the database columns and table the new symptom detail and the emergency contact need, as described in schema.md section 13, so the screens and alerts have somewhere to write. The Silver part is Joely's work and the urgent-events part is yours.
-- **Status:** backlog
+- **Status:** blocked
 - **Needs first:** E1-3
 - **Needed later:** E11-2, E7-4
 - **Phase:** 0
 - **Spec:** schema 13
 - **Flag:** Silver tables are Joely's. This is in your file because new tasks go in the file of whoever raised them. Reassign the Silver half to Joely if you prefer.
-- **Note:**
+- **Note:** On hold (2026-10-03, D-054): waiting for Damien's clinical review. See docs/handover/questions-for-damien.md.
 - **Success criteria:**
   - [ ] Migration adds the new `symptom_logs` columns with their checks
   - [ ] `emergency_contacts` table created with consent required, row-level security on, and the new `consent_kind` and `notification_kind` values
@@ -458,14 +458,14 @@ Done: 0 of 31 tasks.
 ### E11-2 Tiered low-glucose alerts and emergency contact · P0
 
 - **Ask:** Build the two-tier low-glucose alerts and the emergency contact: tier 1 (low) treat and recheck in 15 minutes with a check-in, tier 2 (very low) call 995 and alert the emergency contact, and ask once afterwards whether the person felt the low before the sensor alerted.
-- **Status:** backlog
+- **Status:** blocked
 - **Reviewer:** Damien
 - **Needs first:** E0-2, E1-7
 - **Needed later:** none
 - **Phase:** 1
 - **Spec:** prd F10; flow J8
 - **Flag:** E11-1 (Joely) already covers the urgent rules and screen. This task adds the tiers, the contact and the awareness question; agree who builds what so the two do not overlap. The messaging and calling service is not chosen.
-- **Note:**
+- **Note:** On hold (2026-10-03, D-054): waiting for Damien's clinical review. See docs/handover/questions-for-damien.md.
 - **Success criteria:**
   - [ ] Tier 1 (below 4.0) and tier 2 (below 3.0) computed in code from config, tested at the boundaries 3.0, 3.9 and 4.0
   - [ ] 15-minute recheck and check-in; same, worse or no reply moves to tier 2 or alerts the contact
@@ -478,13 +478,13 @@ Done: 0 of 31 tasks.
 ### E7-4 Faster symptom logging with detail · P1
 
 - **Ask:** Rebuild symptom logging so the core path takes about 30 seconds: the sensor glucose and time are filled in, the person can say when it happened, extra detail is optional, and the new red-flag symptoms go straight to the urgent screen.
-- **Status:** backlog
+- **Status:** blocked
 - **Needs first:** E0-2, E1-7
 - **Needed later:** none
 - **Phase:** 1
 - **Spec:** prd F6, F10
 - **Flag:** E7-1 (Joely) is quick logs. This extends the symptom form; agree the split.
-- **Note:**
+- **Note:** On hold (2026-10-03, D-054): waiting for Damien's clinical review. See docs/handover/questions-for-damien.md.
 - **Success criteria:**
   - [ ] Sensor glucose and trend are pulled at the moment of logging and saved with the entry
   - [ ] Time choices: just now, earlier today, last night, a set time; the time is stored as the event time
@@ -495,14 +495,14 @@ Done: 0 of 31 tasks.
 ### E13-4 Brief: glucose with heart rate and SpO2 · P1
 
 - **Ask:** Add to the doctor brief a section that trends fasting glucose, resting heart rate and SpO2 on the same dates, so the clinician can see whether they move together.
-- **Status:** backlog
+- **Status:** blocked
 - **Reviewer:** Damien
 - **Needs first:** E13-1
 - **Needed later:** none
 - **Phase:** 2
 - **Spec:** prd F12 section 4
 - **Flag:** No cited dataset holds SpO2 (prd A15). It is simulated and labelled until a real source is approved.
-- **Note:**
+- **Note:** On hold (2026-10-03, D-054): waiting for Damien's clinical review. See docs/handover/questions-for-damien.md.
 - **Success criteria:**
   - [ ] Three aligned trends on the same dates, each with the person's own baseline band
   - [ ] Wording is "associated with" and the section is marked unverified
