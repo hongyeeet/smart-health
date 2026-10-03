@@ -82,4 +82,3 @@ A report we were sent says logging in an app like this should take 60 to 90 seco
 - Which service sends the text messages, emails and calls (and who holds the keys).
 - Who builds E1-7 (the database changes) and how E11-2 and E7-4 split with Joely's E11-1 and E7-1.
 - Migration numbering, because Hong Yi's E1-3 and Joely's follow-up both start at 0008.
-- Whether to approve the workout tracker tables (schema.md section 14), which are new tables outside E1 and so need the owner's OK.

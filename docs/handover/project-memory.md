@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-03 14:16: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-03 14:21: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -84,6 +84,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-053 | 2026-10-03 | The brief trends glucose with resting heart rate and SpO2 (SpO2 simulated, prd A15). After a low, one awareness question is asked and shown in the brief. Appointment booking stays a calendar entry and `.ics` file; no HealthHub (prd A16) | Owner: HealthHub is too much now | prd.md F12, A15, A16, flow.md J8 | On hold: clinical review |
 | D-054 | 2026-10-03 | Everything from the 2026-10-03 clinical feedback (D-050 to D-053) is on hold until Damien, the team's doctor, answers the questions in docs/handover/questions-for-damien.md. Tasks E1-7, E11-2, E7-4 and E13-4 are set to blocked. The mock keeps the prototype screens so he can see them; nothing is built in apps/web or the database | Owner: keep all of this on hold and ask Damien | docs/handover/questions-for-damien.md | Pending |
 | D-055 | 2026-10-03 | A strength workout tracker is scaffolded: screen F2 in apps/web, an on-device session store, a data contract, and an effort and volume calculation in services/api with tests. Effort comes from code (heart rate against age-based maximum, later the person's resting baseline from Gold); the model only writes one validated sentence. New tables (`workout_sets`, new `workouts` columns) are specified, not migrated, and need the owner's OK | Owner asked for a simple tracker whose effort uses heart rate and the Gold tables | docs/specs/workout-tracker.md, schema.md 14 | Pending |
+| D-056 | 2026-10-03 | The owner approved the workout tracker tables: new `workout_sets` table and the new `workouts` columns (schema.md section 14). Hong Yi creates them in a migration after the Gold and Operations tables (E1-3). The owner also said the food reference data is not needed: meals are logged by the AI model, so `foods` stays only as a small sanity-check list | Owner: workout tables are okay; food is logged by the AI, not looked up | schema.md 14 | Pending |
 
 ## Session index
 
@@ -130,7 +131,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 
 ## Open questions and blockers
 
-- **Workout tracker:** the owner must approve the new tables (schema.md 14) before an E1 migration is written; the effort cut-offs need Damien (G1 to G4); effort from Gold needs E1-3 and E9-1.
+- **Workout tracker:** the tables are approved (D-056); the migration follows E1-3; the effort cut-offs need Damien (G1 to G4); effort from Gold needs E1-3 and E9-1.
 - **On hold (D-054):** the 2026-10-03 feedback items wait for Damien's answers (docs/handover/questions-for-damien.md).
 - **Feedback follow-ups (D-050 to D-053):** the glucose tier values need a clinician's validation; the messaging and calling service for the emergency contact, the delay before a call, the exact alert wording and consent, and what to do at night are not decided; Joely must add the symptom columns and the contact table (E1-7) and tell Hong Yi the migration numbers; E11-1 (Joely) still shows "needs OK" for thresholds, which the owner has now given.
 - **Demo panel (D-030):** the owner vets it, then it is removed. Also confirm D-033 (the demo interaction pair).

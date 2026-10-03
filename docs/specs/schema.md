@@ -607,7 +607,7 @@ From the owner's clinical feedback (D-052, D-051). **These are not in the databa
 
 ## 14. Planned additions for the workout tracker (2026-10-03, not yet migrated)
 
-For the strength-session tracker ([workout-tracker.md](workout-tracker.md), D-055). **Not in the database.** New tables and columns belong to epic E1 (rules.md section 3), so this needs the owner's OK and a migration numbered after those already applied. Until then it is specified here only.
+For the strength-session tracker ([workout-tracker.md](workout-tracker.md), D-055). **Not in the database yet.** The owner approved these tables and columns on 2026-10-03 (D-056). They belong to epic E1 (rules.md section 3) and will be created by a migration numbered after the Gold and Operations ones (E1-3). Until then they are specified here only.
 
 | Table | Change |
 |---|---|

@@ -518,12 +518,12 @@ Done: 0 of 32 tasks.
 - **Needed later:** none
 - **Phase:** 2
 - **Spec:** workout-tracker; schema 14; prd F6
-- **Flag:** The tables `workout_sets` and the new `workouts` columns are new tables outside E1 and need the owner's OK (schema.md 14). The effort cut-offs need a clinician (questions-for-damien.md, section G). The Gold inputs wait for E1-3 and E9-1.
+- **Flag:** The tables `workout_sets` and the new `workouts` columns were approved by the owner on 2026-10-03 (D-056); the migration follows E1-3 (schema.md 14). The effort cut-offs need a clinician (questions-for-damien.md, section G). The Gold inputs wait for E1-3 and E9-1.
 - **Note:** Scaffold built in apps/web (screen, on-device store, data contract) and services/api (effort and volume calculation, 9 tests). No database, API endpoint or model sentence yet.
 - **Success criteria:**
   - [x] Tracker screen with timer, exercises, sets (reps and weight or bodyweight), rest timer, finish and summary
   - [x] Effort calculation by code with tests: unknown stays unknown, sparse data is insufficient, beta-blockers switch intensity off
-  - [ ] Tables `workout_sets` and the new `workouts` columns migrated (needs the owner's OK)
+  - [ ] Tables `workout_sets` and the new `workouts` columns migrated (approved; follows E1-3)
   - [ ] Save endpoint stores the session, reads heart rate, calls the calculation and returns the summary
   - [ ] Effort judged against the person's resting heart rate from `daily_aggregates` and `baselines`
   - [ ] Glucose change after a session from `event_windows`, worded "associated with"

@@ -125,7 +125,7 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 - **E1-5** (Joely): Owner was 'to decide' in your list. Provisionally Joely (data work); change if you prefer.
 - **E1-7** (Hong Yi): Silver tables are Joely's. This is in your file because new tasks go in the file of whoever raised them. Reassign the Silver half to Joely if you prefer.
 - **E7-4** (Hong Yi): E7-1 (Joely) is quick logs. This extends the symptom form; agree the split.
-- **E7-5** (Hong Yi): The tables `workout_sets` and the new `workouts` columns are new tables outside E1 and need the owner's OK (schema.md 14). The effort cut-offs need a clinician (questions-for-damien.md, section G). The Gold inputs wait for E1-3 and E9-1.
+- **E7-5** (Hong Yi): The tables `workout_sets` and the new `workouts` columns were approved by the owner on 2026-10-03 (D-056); the migration follows E1-3 (schema.md 14). The effort cut-offs need a clinician (questions-for-damien.md, section G). The Gold inputs wait for E1-3 and E9-1.
 - **E11-2** (Hong Yi): E11-1 (Joely) already covers the urgent rules and screen. This task adds the tiers, the contact and the awareness question; agree who builds what so the two do not overlap. The messaging and calling service is not chosen.
 - **E13-4** (Hong Yi): No cited dataset holds SpO2 (prd A15). It is simulated and labelled until a real source is approved.
 - **E20-1** (Hong Yi): Your list said Hong Yi and Joely for E20. Hong Yi leads this one; Joely leads E20-2.

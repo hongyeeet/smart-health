@@ -2,7 +2,7 @@
 
 A live strength-session tracker: how long the person trains, what they do, every set with reps and weight, and a rest timer. When the session is saved, the server works out how hard it was from the watch heart rate and the person's own resting-heart-rate baseline, and the doctor brief and Insights can use the result. Read it with [prd.md](prd.md) (F6 workouts, F18 timeline), [schema.md](schema.md) section 14 and [memory.md](memory.md) (evidence statuses).
 
-**Status (2026-10-03): scaffold.** The screen, the on-device session store, the effort calculation with tests, and the data contract exist. Nothing is saved to the database yet, because the tables for sets do not exist (schema.md section 14, needs the owner's OK) and the Gold tables are not built (task E1-3). Decision D-055.
+**Status (2026-10-03): scaffold.** The screen, the on-device session store, the effort calculation with tests, and the data contract exist. Nothing is saved to the database yet, because the tables for sets do not exist (schema.md section 14, approved by the owner on 2026-10-03) and the Gold tables are not built (task E1-3). Decision D-055.
 
 ## 1. What the person does
 
@@ -56,7 +56,7 @@ Gold tables are derived values built from Silver (data-flow.md). They are not bu
 | On-device session store (`useWorkoutSession`) with a pending-upload list | Built |
 | Data contract: `WorkoutSession`, `WorkoutSummary`, `saveWorkoutSession`, `getWorkoutSummary` | In the types and the `Api` interface; the HTTP client throws `NotWired` |
 | Effort and volume calculation with 9 tests | Built, no database |
-| Tables `workout_sets` and the new `workouts` columns | Specified only (schema.md section 14). Needs the owner's OK and an E1 migration |
+| Tables `workout_sets` and the new `workouts` columns | Specified and approved (schema.md section 14). Created by a migration after E1-3 |
 | Save endpoint that reads heart rate, calls the calculation and stores the summary | Not built (needs E0-2, the API skeleton) |
 | Gold inputs (resting heart rate, glucose after sessions) | Waits for E1-3 and E9-1 |
 | Model sentence | Waits for E0-3, the gateway |
