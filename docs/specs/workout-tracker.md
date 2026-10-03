@@ -56,7 +56,7 @@ Gold tables are derived values built from Silver (data-flow.md). They are not bu
 | On-device session store (`useWorkoutSession`) with a pending-upload list | Built |
 | Data contract: `WorkoutSession`, `WorkoutSummary`, `saveWorkoutSession`, `getWorkoutSummary` | In the types and the `Api` interface; the HTTP client throws `NotWired` |
 | Effort and volume calculation with 9 tests | Built, no database |
-| Tables `workout_sets` and the new `workouts` columns | Specified and approved (schema.md section 14). Created by a migration after E1-3 |
+| Tables `workout_sets` and the new `workouts` columns | Created by migration 0015 on 2026-10-03 (schema.md section 14) |
 | Save endpoint that reads heart rate, calls the calculation and stores the summary | Not built (needs E0-2, the API skeleton) |
 | Gold inputs (resting heart rate, glucose after sessions) | Waits for E1-3 and E9-1 |
 | Model sentence | Waits for E0-3, the gateway |

@@ -25,7 +25,7 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 - E7-2 Meal logging with AI macros: waiting for E0-3 (Hong Yi, in progress)
 - E7-3 Connected sources and log upkeep: waiting for E7-1 (Joely, backlog)
 - E18-1 Languages, audio and translation review: waiting for E0-2 (Hong Yi, in progress)
-- E19-1 Timeline and Day view: waiting for E1-3 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
+- E19-1 Timeline and Day view: waiting for E0-2 (Hong Yi, in progress)
 - E19-2 Pattern finder and brief day traces: waiting for E19-1 (Joely, backlog), E8-1 (Damien, backlog)
 - E20-2 Demo and device checks: waiting for CP1 (Hong Yi, backlog)
 

@@ -15,6 +15,7 @@ the user asked for: delete_original() removes the object and marks the row delet
 The caller owns the database transaction (commit or roll back).
 """
 import argparse
+import json
 import hashlib
 import os
 import sys
@@ -114,19 +115,25 @@ def store_original(conn, user_id, source_type, entry_source, data, filename=None
 
 
 def delete_original(conn, event_id):
-    """Only for a deletion the user asked for: remove the object and mark the row deleted.
+    """Only for a deletion the user asked for: remove the object, mark the row deleted and log it.
 
-    TODO(decision): write the deletion to event_log (schema.md rule 17). event_log is created in E1-3.
+    The deletion is written to event_log in the same transaction (schema.md consistency rule 17). The payload
+    holds only the source type: ids and enums, never the file name or contents.
     """
-    row = conn.execute("select object_key, processing_status from ingestion_events where id = %s", (event_id,)).fetchone()
+    row = conn.execute("select object_key, processing_status, user_id, source_type from ingestion_events where id = %s", (event_id,)).fetchone()
     if row is None:
         raise LookupError("no such ingestion event")
-    key_path, status = row
+    key_path, status, user_id, source_type = row
     if status == "deleted":
         return
     if key_path:
         _remove(key_path)
     conn.execute("update ingestion_events set processing_status = 'deleted', object_key = null where id = %s", (event_id,))
+    conn.execute(
+        "insert into event_log (user_id, actor, event, entity_table, entity_id, payload) "
+        "values (%s, 'user', 'ingestion.original.deleted', 'ingestion_events', %s, %s::jsonb)",
+        (user_id, event_id, json.dumps({"source_type": source_type})),
+    )
 
 
 def selftest():
@@ -149,10 +156,12 @@ def selftest():
         delete_original(conn, ev)
         status = conn.execute("select processing_status, object_key from ingestion_events where id = %s", (ev,)).fetchone()
         assert status == ("deleted", None), status
+        logged = conn.execute("select count(*) from event_log where user_id = %s and event = 'ingestion.original.deleted' and entity_id = %s", (user_id, ev)).fetchone()[0]
+        assert logged == 1, "the deletion must be written to event_log"
         gone = requests.get(f"{url}/storage/v1/object/{bucket}/{object_key}", headers=headers(key), timeout=30)
         assert gone.status_code in (400, 404), "the object must be removed"
         conn.rollback()  # leaves no test rows behind
-    print("selftest OK: stored once, repeat created nothing, overwrite refused, bad type refused, bucket private, deletion removed the object")
+    print("selftest OK: stored once, repeat created nothing, overwrite refused, bad type refused, bucket private, deletion removed the object and was logged")
 
 
 def main():

@@ -11,19 +11,19 @@ If a task has a **Reviewer**, set `in review` when you finish; only the Reviewer
 <!-- BLOCKERS:START -->
 Ready means everything under **Needs first** is done, so you can start. Blocked means you must wait.
 
-**Ready now (1)**
+**Ready now (2)**
 
-- E1-3 Gold and operations tables and views: unblocks 27 other tasks.
+- E9-1 Daily totals, baseline and flags: unblocks 12 other tasks.
+- E1-7 Schema additions for symptoms and the emergency contact: unblocks 2 other tasks. Later you will need: E11-2 (Hong Yi, blocked), E7-4 (Hong Yi, blocked).
 
 **In progress or in review**
 
 - E0-1 Hardcoded mockup (in progress)
 - E0-2 App skeleton and design kit (in progress)
 
-**Blocked (29)**
+**Blocked (27)**
 
 - E0-3 AI services: waiting for E0-2 (Hong Yi, in progress)
-- E1-7 Schema additions for symptoms and the emergency contact: waiting for E1-3 (Hong Yi, backlog)
 - E3-1 Scan and read: waiting for E0-2 (Hong Yi, in progress), E0-3 (Hong Yi, in progress)
 - E3-2 Match, parse and save: waiting for E3-1 (Hong Yi, backlog)
 - E3-3 Accuracy report: waiting for E3-1 (Hong Yi, backlog)
@@ -32,17 +32,16 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 - E5-2 Missed doses and refills: waiting for E5-1 (Hong Yi, backlog)
 - E7-4 Faster symptom logging with detail: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, blocked)
 - E7-5 Workout tracker: sets, weights and heart-rate effort: waiting for E0-2 (Hong Yi, in progress)
-- E9-1 Daily totals, baseline and flags: waiting for E1-3 (Hong Yi, backlog)
 - E9-2 Insights screen: waiting for E9-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E11-2 Tiered low-glucose alerts and emergency contact: waiting for E0-2 (Hong Yi, in progress), E1-7 (Hong Yi, blocked)
 - E13-1 Brief data and charts: waiting for E9-1 (Hong Yi, backlog)
 - E13-2 Narrative and PDF: waiting for E13-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
 - E13-3 Brief screens and sharing: waiting for E13-2 (Hong Yi, backlog)
 - E13-4 Brief: glucose with heart rate and SpO2: waiting for E13-1 (Hong Yi, backlog)
-- E16-1 Chat pipeline and Memory Service: waiting for E0-3 (Hong Yi, in progress), E1-3 (Hong Yi, backlog)
+- E16-1 Chat pipeline and Memory Service: waiting for E0-3 (Hong Yi, in progress)
 - E16-2 Safety net and JEV decisions: waiting for E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
 - E16-3 Chat screen, helpers and chat memory: waiting for E16-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
-- E17-1 Memory and nightly reflection: waiting for E1-3 (Hong Yi, backlog), E16-1 (Hong Yi, backlog)
+- E17-1 Memory and nightly reflection: waiting for E16-1 (Hong Yi, backlog)
 - E17-2 What it learned screen: waiting for E17-1 (Hong Yi, backlog), E0-2 (Hong Yi, in progress)
 - E17-3 Week 1 versus week 8: waiting for E17-1 (Hong Yi, backlog), E9-1 (Hong Yi, backlog)
 - E20-1 Safety and engine tests: waiting for E16-2 (Hong Yi, backlog), E9-1 (Hong Yi, backlog), E8-1 (Damien, backlog)
@@ -52,7 +51,7 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 - CP2 Gate 2: all features and the brief: waiting for CP1 (Hong Yi, backlog), E13-3 (Hong Yi, backlog), E17-3 (Hong Yi, backlog), E19-2 (Joely, backlog)
 - CP3 Gate 3: submission ready: waiting for CP2 (Hong Yi, backlog), E21-1 (Damien, backlog), E21-2 (Joely, backlog), E21-3 (Hong Yi, backlog)
 
-Done: 0 of 32 tasks.
+Done: 1 of 32 tasks.
 <!-- BLOCKERS:END -->
 
 ## Tasks
@@ -110,19 +109,19 @@ Done: 0 of 32 tasks.
 ### E1-3 Gold and operations tables and views · P0
 
 - **Ask:** Gold and operations tables and views: create all derived and memory tables (aggregates, baselines, flags, patterns, memory facts, briefs and so on), the four views, and the agent, guard, chat and event-log tables, so later tasks only read and write rows. It needs the Silver tables first because they link to them.
-- **Status:** backlog
+- **Status:** done
 - **Needs first:** E1-2
 - **Needed later:** none
 - **Phase:** 0
 - **Spec:** schema 5, 7, 8, 9, 9c
 - **Detail:** [details/e1-data-foundation.md](details/e1-data-foundation.md)
-- **Note:**
+- **Note:** Done 2026-10-03 (D-057). Migrations 0008 to 0016, 67 of 67 tables and 6 of 6 views match the layer map, 27 new constraint tests pass. The Supabase advisor itself was not run (the connector in this session is linked to a different account); the equivalent checks (RLS on and no policies for every table, every view security_invoker) pass. Also created: the workout tables (D-056), the jev_decisions view and the 768 embedding size (D-048).
 - **Success criteria:**
-  - [ ] Migrations create every Gold and operations table in the layer map and apply cleanly on top of the Silver tables
-  - [ ] Views health_state, trends, adherence_summary, insight_context and timeline_events exist with calculation version, evidence window, freshness and quality status
-  - [ ] event_log is append-only for the app role
-  - [ ] The three foreign keys from Silver up to Gold (symptom_checkins to clinical_flags, appointments and doctor_questions to briefs) are added once the Gold tables exist
-  - [ ] Row-level security is on with no policies for every table; no table or view uses a gold., silver. or bronze. prefix
+  - [x] Migrations create every Gold and operations table in the layer map and apply cleanly on top of the Silver tables
+  - [x] Views health_state, trends, adherence_summary, insight_context and timeline_events exist with calculation version, evidence window, freshness and quality status
+  - [x] event_log is append-only for the app role
+  - [x] The three foreign keys from Silver up to Gold (symptom_checkins to clinical_flags, appointments and doctor_questions to briefs) are added once the Gold tables exist
+  - [x] Row-level security is on with no policies for every table; no table or view uses a gold., silver. or bronze. prefix
 
 ### E3-1 Scan and read · P0
 
@@ -523,7 +522,7 @@ Done: 0 of 32 tasks.
 - **Success criteria:**
   - [x] Tracker screen with timer, exercises, sets (reps and weight or bodyweight), rest timer, finish and summary
   - [x] Effort calculation by code with tests: unknown stays unknown, sparse data is insufficient, beta-blockers switch intensity off
-  - [ ] Tables `workout_sets` and the new `workouts` columns migrated (approved; follows E1-3)
+  - [x] Tables `workout_sets` and the new `workouts` columns migrated (migration 0015, 2026-10-03)
   - [ ] Save endpoint stores the session, reads heart rate, calls the calculation and returns the summary
   - [ ] Effort judged against the person's resting heart rate from `daily_aggregates` and `baselines`
   - [ ] Glucose change after a session from `event_windows`, worded "associated with"

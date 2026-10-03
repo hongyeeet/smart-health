@@ -1,5 +1,7 @@
 # E1-3 handover: Bronze, Silver and Reference are built, start here
 
+> **Status (2026-10-03): E1-3 is done.** Migrations 0008 to 0016 are applied (see schema.md section 15). This file is kept as the record of what was handed over.
+
 Written by Joely (with Claude) on 2026-10-02 for **Hong Yi**, who builds E1-3 (the Gold and Operations tables and views). It stands alone: you do not need the chat history. Hong Yi agreed to the plan in this document on 2026-10-02 (the three points in section 8).
 
 ## 1. What exists now

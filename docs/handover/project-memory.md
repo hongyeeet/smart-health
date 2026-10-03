@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-03 14:21: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-03 14:38: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -18,7 +18,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 
 ## Current state
 
-- **Phase:** specification is written. The front end is built as a clickable app on demo data in `apps/mock` and `apps/web` (as of 2026-10-01). The database exists and is loaded (as of 2026-10-02): Bronze, Silver and Reference tables hold the datasets, reference data and the demo patient (E1-1, E1-2 and E1-4 done; the medicine index is the new task E1-6); Gold and Operations tables (E1-3) are still to come; the API has not started.
+- **Phase:** specification is written; the database is complete (E1-3 done 2026-10-03: 67 tables, 6 views). The front end is built as a clickable app on demo data in `apps/mock` and `apps/web` (as of 2026-10-01). The database exists and is loaded (as of 2026-10-02): Bronze, Silver and Reference tables hold the datasets, reference data and the demo patient (E1-1, E1-2 and E1-4 done; the medicine index is the new task E1-6); Gold and Operations tables (E1-3) are still to come; the API has not started.
 - **Branches:** `dev` is the default branch and where everyone works. The owner promotes `dev` to `uat`, then `uat` to `main`. `main` and `uat` still hold the first commit until then.
 - **Runtime:** the web app and API run locally on each machine. The database is Supabase (Postgres with pgvector). AI calls (Hunyuan, JEV) go to their services. Connection details are shared privately and never committed.
 - **Backlog:** 52 tasks split across three personal backlogs (`docs/backlog/hongyi.md`, `joely.md`, `damien.md`) plus a generated central tracker (`docs/backlog/SOT.md`); E0-1 and E0-2 are in progress, none done. Every task has a plain-language Ask, a Needs-first list and subtasks. Each person edits only their own file and runs `python scripts/update_tracker.py`. Estimates were removed.
@@ -85,6 +85,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-054 | 2026-10-03 | Everything from the 2026-10-03 clinical feedback (D-050 to D-053) is on hold until Damien, the team's doctor, answers the questions in docs/handover/questions-for-damien.md. Tasks E1-7, E11-2, E7-4 and E13-4 are set to blocked. The mock keeps the prototype screens so he can see them; nothing is built in apps/web or the database | Owner: keep all of this on hold and ask Damien | docs/handover/questions-for-damien.md | Pending |
 | D-055 | 2026-10-03 | A strength workout tracker is scaffolded: screen F2 in apps/web, an on-device session store, a data contract, and an effort and volume calculation in services/api with tests. Effort comes from code (heart rate against age-based maximum, later the person's resting baseline from Gold); the model only writes one validated sentence. New tables (`workout_sets`, new `workouts` columns) are specified, not migrated, and need the owner's OK | Owner asked for a simple tracker whose effort uses heart rate and the Gold tables | docs/specs/workout-tracker.md, schema.md 14 | Pending |
 | D-056 | 2026-10-03 | The owner approved the workout tracker tables: new `workout_sets` table and the new `workouts` columns (schema.md section 14). Hong Yi creates them in a migration after the Gold and Operations tables (E1-3). The owner also said the food reference data is not needed: meals are logged by the AI model, so `foods` stays only as a small sanity-check list | Owner: workout tables are okay; food is logged by the AI, not looked up | schema.md 14 | Pending |
+| D-057 | 2026-10-03 | E1-3 built: Operations, Gold and workout tables, six views, the five foreign keys up to Gold, and the append-only hash-chained `event_log` (migrations 0008 to 0016). Choices beyond the spec are listed in schema.md section 15: the extra view `jev_decisions` (owner's yes), `event_log` with no foreign keys and a `pseudonymised_at` column, views created security_invoker, `knowledge_chunks` changed to 768 dimensions (D-048 applied), and `timeline_events` showing only lows and highs of glucose | Hong Yi's task E1-3, with the owner's go-ahead | docs/specs/schema.md sections 14 and 15 | Pending |
 
 ## Session index
 
@@ -119,6 +120,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-03 | docs/specs/prd.md, flow.md, schema.md, data/data-map.md, docs/backlog/hongyi.md | Low-glucose tiers, emergency contact, symptom detail, brief wearable trends, new tasks E1-7, E11-2, E7-4, E13-4 | D-050, D-051, D-052, D-053 |
 | 2026-10-03 | docs/handover/questions-for-damien.md (new), prd.md, flow.md, schema.md, hongyi.md | Clinical questions for Damien; on-hold banners; E1-7, E11-2, E7-4, E13-4 set to blocked | D-054 |
 | 2026-10-03 | docs/specs/workout-tracker.md (new), schema.md section 14, questions-for-damien.md section G, hongyi.md | Workout tracker scaffold, planned tables, clinical questions, task E7-5 | D-055 |
+| 2026-10-03 | docs/specs/schema.md (status note, layer map, sections 14 and 15), flow.md (event name), data_dictionary.md, check_schema.py, make_data_dictionary.py, bronze.py, e1-3-handover.md, hongyi.md | E1-3 done: 67 tables and 6 views in the database | D-057 |
 | 2026-10-01 | docs/specs/architecture.md, README.md | App folders `apps/mock` and `apps/web`; front-end, charts and i18n rows; status line | D-028, D-034 |
 | 2026-10-02 | data/README.md | Table of downloaded datasets with licences, the NHANES 2011-16 and openFDA additions | D-036, D-037 |
 | 2026-10-02 | data/plan/ (dataset_links.md, nhanes_files.csv, new) | Link list for all 48 manifest datasets; the 130 NHANES files with an allowed flag | D-037 |
@@ -131,6 +133,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 
 ## Open questions and blockers
 
+- **After E1-3:** tell Joely that `knowledge_chunks.embedding` is now 768 dimensions (migration 0016, D-048) before she builds the medicine index (E1-6), and that migrations 0008 to 0016 are applied. The JEV gateway (E0-3) must write the keys `jev_decisions` reads from `agent_steps.output`. The held emergency-contact and symptom columns (E1-7) are still not built.
 - **Workout tracker:** the tables are approved (D-056); the migration follows E1-3; the effort cut-offs need Damien (G1 to G4); effort from Gold needs E1-3 and E9-1.
 - **On hold (D-054):** the 2026-10-03 feedback items wait for Damien's answers (docs/handover/questions-for-damien.md).
 - **Feedback follow-ups (D-050 to D-053):** the glucose tier values need a clinician's validation; the messaging and calling service for the emergency contact, the delay before a call, the exact alert wording and consent, and what to do at night are not decided; Joely must add the symptom columns and the contact table (E1-7) and tell Hong Yi the migration numbers; E11-1 (Joely) still shows "needs OK" for thresholds, which the owner has now given.

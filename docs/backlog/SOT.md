@@ -30,8 +30,8 @@ Points to watch:
 
 | | Tasks done | Subtasks ticked | Progress |
 |---|---|---|---|
-| **Whole project** | 3 of 57 | 20 of 284 | `[#-------------------] 7%` |
-| Hong Yi | 0 of 32 | 6 of 161 | `[#-------------------] 4%` |
+| **Whole project** | 4 of 57 | 26 of 284 | `[##------------------] 9%` |
+| Hong Yi | 1 of 32 | 12 of 161 | `[#-------------------] 7%` |
 | Joely | 3 of 15 | 14 of 74 | `[####----------------] 19%` |
 | Damien | 0 of 10 | 0 of 49 | `[--------------------] 0%` |
 
@@ -50,7 +50,7 @@ Tasks whose **Needs first** are all done. Sorted by how many other tasks they un
 
 | Person | Ready now | Blocked | In progress or review | Done |
 |---|---|---|---|---|
-| Hong Yi | E1-3 (27) | 29 | 2 | 0 |
+| Hong Yi | E9-1 (12), E1-7 (2) | 27 | 2 | 1 |
 | Joely | E11-1 (4), E21-2 (1), E1-5 (0) | 9 | 0 | 3 |
 | Damien | E8-1 (7), E21-1 (1), E14-1 (0) | 7 | 0 | 0 |
 
@@ -65,11 +65,11 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E0-3 | AI services | Hong Yi | P0 | blocked | 2/4 | E0-2 |  |
 | E1-1 | Raw and Bronze | Joely | P0 | done | 4/4 | none |  |
 | E1-2 | Silver and reference tables | Joely | P0 | done | 5/5 | none |  |
-| E1-3 | Gold and operations tables and views | Hong Yi | P0 | ready | 0/5 | none |  |
+| E1-3 | Gold and operations tables and views | Hong Yi | P0 | done | 5/5 | none |  |
 | E1-4 | Ingestion | Joely | P0 | done | 5/5 | none |  |
 | E1-5 | Analysis data and baseline model | Joely | P1 | ready | 0/2 | none |  |
 | E1-6 | Medicine knowledge index | Joely | P0 | blocked | 0/4 | E0-3 |  |
-| E1-7 | Schema additions for symptoms and the emergency contact | Hong Yi | P0 | blocked | 0/4 | E1-3 |  |
+| E1-7 | Schema additions for symptoms and the emergency contact | Hong Yi | P0 | ready | 0/4 | none |  |
 | E2-1 | Onboarding flow | Damien | P0 | blocked | 0/10 | E0-2 |  |
 | E2-2 | Chat onboarding | Damien | P1 | blocked | 0/2 | E2-1, E16-1, E0-3 |  |
 | E3-1 | Scan and read | Hong Yi | P0 | blocked | 0/9 | E0-2, E0-3 |  |
@@ -83,10 +83,10 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E7-2 | Meal logging with AI macros | Joely | P0 | blocked | 0/6 | E0-3 |  |
 | E7-3 | Connected sources and log upkeep | Joely | P0 | blocked | 0/4 | E7-1 |  |
 | E7-4 | Faster symptom logging with detail | Hong Yi | P1 | blocked | 0/5 | E0-2, E1-7 |  |
-| E7-5 | Workout tracker: sets, weights and heart-rate effort | Hong Yi | P1 | blocked | 2/7 | E0-2 |  |
+| E7-5 | Workout tracker: sets, weights and heart-rate effort | Hong Yi | P1 | blocked | 3/7 | E0-2 |  |
 | E8-1 | Sprint and meal response | Damien | P0 | ready | 0/7 | none |  |
 | E8-2 | Food leaderboard | Damien | P0 | blocked | 0/4 | E8-1 |  |
-| E9-1 | Daily totals, baseline and flags | Hong Yi | P0 | blocked | 0/6 | E1-3 |  |
+| E9-1 | Daily totals, baseline and flags | Hong Yi | P0 | ready | 0/6 | none |  |
 | E9-2 | Insights screen | Hong Yi | P0 | blocked | 0/2 | E9-1, E0-2 |  |
 | E10-1 | Check-ins (needs OK) | Damien | P0 | blocked | 0/5 | E9-1 |  |
 | E11-1 | Urgent alerts (needs OK) | Joely | P0 | ready | 0/9 | none |  |
@@ -99,14 +99,14 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E13-4 | Brief: glucose with heart rate and SpO2 | Hong Yi | P1 | blocked | 0/4 | E13-1 | Damien |
 | E14-1 | Recurring checks and appointments (needs OK) | Damien | P1 | ready | 0/7 | none |  |
 | E15-1 | Doctor questions | Damien | P0 | blocked | 0/5 | E0-2 |  |
-| E16-1 | Chat pipeline and Memory Service | Hong Yi | P0 | blocked | 0/4 | E0-3, E1-3 |  |
+| E16-1 | Chat pipeline and Memory Service | Hong Yi | P0 | blocked | 0/4 | E0-3 |  |
 | E16-2 | Safety net and JEV decisions | Hong Yi | P0 | blocked | 0/7 | E16-1, E0-3 |  |
 | E16-3 | Chat screen, helpers and chat memory | Hong Yi | P0 | blocked | 0/5 | E16-1, E0-2 |  |
-| E17-1 | Memory and nightly reflection | Hong Yi | P0 | blocked | 0/10 | E1-3, E16-1 |  |
+| E17-1 | Memory and nightly reflection | Hong Yi | P0 | blocked | 0/10 | E16-1 |  |
 | E17-2 | What it learned screen | Hong Yi | P0 | blocked | 0/2 | E17-1, E0-2 |  |
 | E17-3 | Week 1 versus week 8 | Hong Yi | P0 | blocked | 0/1 | E17-1, E9-1 |  |
 | E18-1 | Languages, audio and translation review | Joely | P0 | blocked | 0/7 | E0-2 |  |
-| E19-1 | Timeline and Day view | Joely | P0 | blocked | 0/5 | E1-3, E0-2 |  |
+| E19-1 | Timeline and Day view | Joely | P0 | blocked | 0/5 | E0-2 |  |
 | E19-2 | Pattern finder and brief day traces | Joely | P0 | blocked | 0/4 | E19-1, E8-1 |  |
 | E20-1 | Safety and engine tests | Hong Yi + Joely | P1 | blocked | 0/4 | E16-2, E9-1, E8-1 |  |
 | E20-2 | Demo and device checks | Joely + Hong Yi | P1 | blocked | 0/4 | CP1 |  |
