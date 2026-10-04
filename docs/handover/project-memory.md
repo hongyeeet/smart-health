@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-03 15:42: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-04 16:15: PASS (21 of 21 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -88,6 +88,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | D-055 | 2026-10-03 | A strength workout tracker is scaffolded: screen F2 in apps/web, an on-device session store, a data contract, and an effort and volume calculation in services/api with tests. Effort comes from code (heart rate against age-based maximum, later the person's resting baseline from Gold); the model only writes one validated sentence. New tables (`workout_sets`, new `workouts` columns) are specified, not migrated, and need the owner's OK | Owner asked for a simple tracker whose effort uses heart rate and the Gold tables | docs/specs/workout-tracker.md, schema.md 14 | Pending |
 | D-056 | 2026-10-03 | The owner approved the workout tracker tables: new `workout_sets` table and the new `workouts` columns (schema.md section 14). Hong Yi creates them in a migration after the Gold and Operations tables (E1-3). The owner also said the food reference data is not needed: meals are logged by the AI model, so `foods` stays only as a small sanity-check list | Owner: workout tables are okay; food is logged by the AI, not looked up | schema.md 14 | Pending |
 | D-057 | 2026-10-03 | E1-3 built: Operations, Gold and workout tables, six views, the five foreign keys up to Gold, and the append-only hash-chained `event_log` (migrations 0008 to 0016). Choices beyond the spec are listed in schema.md section 15: the extra view `jev_decisions` (owner's yes), `event_log` with no foreign keys and a `pseudonymised_at` column, views created security_invoker, `knowledge_chunks` changed to 768 dimensions (D-048 applied), and `timeline_events` showing only lows and highs of glucose | Hong Yi's task E1-3, with the owner's go-ahead | docs/specs/schema.md sections 14 and 15 | Pending |
+| D-058 | 2026-10-04 | Joely revised the v2 data model (`docs/specs/data-model-v2.md`, Hong Yi's proposal): lab results keep only HbA1c (in %), fasting glucose (mg/dL or mmol/L) and fasting insulin (mcU/mL); `watch_readings` gains HRV, blood pressure and body temperature, keeps the watch activity score and drops the watch stress score; `food_logs` gains fibre and sodium; `user_profile` gains gender and ethnicity; blood pressure and SpO2 have no cited source and will be simulated (`demo_dataset`); the document is ordered Bronze, Silver, Gold with every Gold table written out and sections 6 to 8 updated | Joely's scope for the data dictionary before regenerating the datasets | docs/specs/data-model-v2.md | Pending (owner confirmation of the revision) |
 
 ## Session index
 
@@ -132,6 +133,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-02 | docs/backlog/details/e1-3-handover.md (new), docs/data_dictionary.md (new, generated) | Standalone start for E1-3; column-by-column dictionary of the 43 tables | D-040 |
 | 2026-10-02 | docs/specs/bronze-silver.md (new), README.md, data-flow.md, schema.md | Medallion walkthrough of Bronze and Silver: existing data versus user input, per-table writers, diagrams, all 49 foreign keys, worked examples, gaps for E1-4 | D-040 |
 | 2026-10-02 | docs/backlog/details/e1-4-handover.md (new), docs/specs/bronze-silver.md 5.2 and 9, docs/backlog/details/e1-data-foundation.md, e1-3-handover.md, data/README.md | What E1-4 loaded, the demo patient and its differences from the mock, placeholders, gaps, how to re-run, what waits on E0-3 | D-041 to D-045 |
+| 2026-10-04 | docs/specs/data-model-v2.md | Revised by Joely: three lab tests only (HbA1c in %), watch HRV, BP and body temperature added, activity score kept, stress score dropped, fibre and sodium added to nutrition, gender and ethnicity added to the profile, Bronze-Silver-Gold order, Gold tables written out column by column, mapping and decisions updated | D-058 |
 
 ## Open questions and blockers
 
@@ -152,3 +154,4 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 - **E1-6 (medicine knowledge index) waits for E0-3** (embedding model); chunks and 20 test names are ready (`python scripts/ingest_knowledge.py --embed`, then `--test`). E1-4 is done (74 of 74 checks). Hong Yi should add E1-6 to the Needs-first of E4-1 (medicine explainer).
 - **Demo-day dates:** all demo data ends on 2026-10-02 and no date-refresh tool exists yet; decide before the demo on 3 Nov.
 - **The mock differs from the real data** (demo patient age 51 not 58, time in range 64%, HbA1c date, missed-dose weekdays): see e1-4-handover.md section 3; Hong Yi updates the mock or reads the database.
+- **Data model v2 revision (D-058) needs the owner's confirmation** before the migration and the regeneration of the loaded datasets. The live database still has the old 67-table schema.
