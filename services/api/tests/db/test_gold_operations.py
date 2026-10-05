@@ -19,10 +19,9 @@ from check_supabase import clean_url  # noqa: E402
 from download_data import load_env  # noqa: E402
 
 GOLD_AND_OPS = [
-    "clinical_flags", "urgent_events", "daily_aggregates", "baselines", "momentum_snapshots", "meal_responses", "food_responses",
-    "sprint_summaries", "event_windows", "pattern_candidates", "interaction_alerts", "memory_facts", "memory_episodes", "nudge_stats",
+    "timeline_5min", "baselines", "daily_summary", "care_summary", "meal_response", "exercise_response", "glucose_events",
+    "clinical_flags", "pattern_candidates", "interaction_alerts", "memory_facts", "memory_episodes",
     "briefs", "brief_shares", "brief_share_access", "agent_runs", "agent_steps", "guardrail_events", "conversations", "messages", "event_log",
-    "workout_sets",
 ]
 VIEWS = ["timeline_events", "health_state", "trends", "adherence_summary", "insight_context", "jev_decisions"]
 
@@ -77,8 +76,9 @@ def test_views_exist_and_use_security_invoker(conn):
 
 def test_foreign_keys_from_silver_up_to_gold_exist(conn):
     names = {
-        "symptom_checkins_triggered_by_flag_id_fkey", "appointments_brief_id_fkey", "doctor_questions_brief_id_fkey",
-        "prescription_scans_agent_run_id_fkey", "conversations_summary_episode_id_fkey",
+        "appointments_brief_id_fkey", "doctor_questions_brief_id_fkey", "prescription_scans_agent_run_id_fkey",
+        "conversations_summary_episode_id_fkey", "refill_forecasts_medication_id_fkey", "interaction_alerts_med_a_id_fkey",
+        "interaction_alerts_med_b_id_fkey",
     }
     have = {r[0] for r in conn.execute("select conname from pg_constraint where contype = 'f' and conname = any(%s)", (list(names),)).fetchall()}
     assert have == names
@@ -197,16 +197,6 @@ def test_there_is_no_validated_evidence_status(conn):
     assert "validated" not in labels and set(labels) == {"observed", "derived", "inferred", "reference_matched"}
 
 
-def test_an_event_window_must_end_after_it_starts_and_be_unique(conn):
-    u = user(conn)
-    a = str(uuid.uuid4())
-    sql = ("insert into event_windows (user_id, anchor_kind, anchor_table, anchor_id, window_start, window_end, outcome_metric, n_points, quality_ok) "
-           "values (%s, 'workout', 'workouts', %s, %s, %s, 'hr_avg', 20, true)")
-    assert rejected(conn, errors.CheckViolation, sql, (u, a, "2026-10-01T10:00Z", "2026-10-01T09:00Z"))
-    conn.execute(sql, (u, a, "2026-10-01T10:00Z", "2026-10-01T12:00Z"))
-    assert rejected(conn, errors.UniqueViolation, sql, (u, a, "2026-10-01T10:00Z", "2026-10-01T12:00Z"))
-
-
 def test_updated_at_is_kept_by_the_trigger(conn):
     u = user(conn)
     f = one(conn, "insert into clinical_flags (user_id, kind, severity, evidence, first_seen_on, last_seen_on) values (%s, 'momentum_drift', 'review', '{}'::jsonb, '2026-10-01', '2026-10-01') returning id", (u,))
@@ -215,11 +205,9 @@ def test_updated_at_is_kept_by_the_trigger(conn):
     assert one(conn, "select updated_at > '2020-01-01' from clinical_flags where id = %s", (f,))
 
 
-def test_baseline_status_and_aggregate_nulls(conn):
+def test_a_flag_needs_a_severity_and_evidence(conn):
     u = user(conn)
-    assert rejected(conn, errors.CheckViolation, "insert into baselines (user_id, metric, computed_on, status) values (%s, 'fasting', '2026-10-01', 'valid')", (u,))
-    conn.execute("insert into daily_aggregates (user_id, day) values (%s, '2026-10-01')", (u,))
-    assert one(conn, "select steps is null from daily_aggregates where user_id = %s", (u,))  # no data stays null, never zero
+    assert rejected(conn, errors.NotNullViolation, "insert into clinical_flags (user_id, kind, severity, first_seen_on, last_seen_on) values (%s, 'outside_usual_range', 'review', '2026-10-01', '2026-10-01')", (u,))
 
 
 # ---------------------------------------------------------------- Operations
@@ -258,56 +246,35 @@ def test_jev_decisions_view_reads_jev_steps_only(conn):
 
 
 # ---------------------------------------------------------------- views over Silver
-def test_adherence_summary_counts_closed_doses_only(conn):
+def bronze(conn, table, u):
+    return one(conn, f"insert into {table} (user_id, source, payload, checksum) values (%s, 'manual', '{{}}'::jsonb, %s) returning id", (u, str(uuid.uuid4())))
+
+
+def test_adherence_summary_counts_closed_prescription_doses_only(conn):
     u = user(conn)
-    med = one(conn, "insert into patient_medications (user_id, display_name, kind, schedule_times, times_per_day, start_on, source, confirmed_by_user_at) "
-                    "values (%s, 'Test', 'prescription', '{08:00}', 1, '2026-01-01', 'manual', now()) returning id", (u,))
-    rows = [("taken", 1), ("taken_late_logged", 2), ("unconfirmed", 3), ("missed", 4), ("scheduled", -2)]
-    for status, days_ago in rows:
-        extra = ", confirmed_at" if status in ("taken", "taken_late_logged") else (", miss_reason" if status == "missed" else "")
-        val = ", now()" if status in ("taken", "taken_late_logged") else (", 'forgot'" if status == "missed" else "")
-        conn.execute(f"insert into dose_events (user_id, patient_medication_id, scheduled_at, window_end_at, status{extra}) "
-                     f"values (%s, %s, now() - make_interval(days => %s), now() - make_interval(days => %s) + interval '2 hours', %s{val})", (u, med, days_ago, days_ago, status))
-    r = conn.execute("select scheduled, taken, unconfirmed, missed, adherence_pct, quality_status from adherence_summary where user_id = %s and period = '7d'", (u,)).fetchone()
-    assert r[:4] == (4, 2, 1, 1) and float(r[4]) == 50.0 and r[5] == "insufficient"  # the future dose is not counted; 4 closed doses is too few
+    b = bronze(conn, "bronze_medication", u)
+    rx = one(conn, "insert into medications (user_id, name, kind, frequency, source, bronze_id) values (%s, 'Test', 'prescription', 1, 'manual', %s) returning id", (u, b))
+    sup = one(conn, "insert into medications (user_id, name, kind, frequency, source, bronze_id) values (%s, 'Fish oil', 'supplement', 1, 'manual', %s) returning id", (u, b))
+    rows = [(rx, "taken", 1), (rx, "taken", 2), (rx, "missed", 3), (rx, "skipped", 4), (rx, "pending", -2), (sup, "missed", 1)]
+    for med, status, days_ago in rows:
+        taken = "now()" if status == "taken" else "NULL"
+        conn.execute(f"insert into medication_log (user_id, medication_id, scheduled_at, taken_at, status, source) "
+                     f"values (%s, %s, now() - make_interval(days => %s), {taken}, %s, 'manual')", (u, med, days_ago, status))
+    r = conn.execute("select scheduled, taken, missed, skipped, adherence_pct, quality_status from adherence_summary where user_id = %s and period = '7d'", (u,)).fetchone()
+    assert r[:4] == (4, 2, 1, 1) and float(r[4]) == 50.0 and r[5] == "insufficient"   # the future and the supplement doses are not counted
 
 
 def test_timeline_events_combines_streams_and_hides_soft_deleted_rows(conn):
     u = user(conn)
-    m = one(conn, "insert into meals (user_id, eaten_at, meal_type, source) values (%s, now(), 'lunch', 'manual') returning id", (u,))
-    conn.execute("insert into meal_items (meal_id, custom_name, carbs_g, estimated_by) values (%s, 'rice', 60, 'user')", (m,))
-    conn.execute("insert into symptom_logs (user_id, occurred_at, symptom, severity, source, deleted_at) values (%s, now(), 'thirsty', 2, 'user', now())", (u,))
+    bf, bs = bronze(conn, "bronze_food", u), bronze(conn, "bronze_symptom", u)
+    conn.execute("insert into food_logs (user_id, start_at, end_at, food, carbs_g, estimated_by, source, bronze_id) values (%s, now(), now() + interval '20 minutes', 'rice', 60, 'user', 'manual', %s)", (u, bf))
+    conn.execute("insert into symptom_logs (user_id, occurred_at, symptom_type, severity, source, bronze_id, deleted_at) values (%s, now(), 'fatigue', 2, 'manual', %s, now())", (u, bs))
     rows = conn.execute("select stream::text, magnitude from timeline_events where user_id = %s", (u,)).fetchall()
     assert rows == [("meal", 60)]
 
 
-# ---------------------------------------------------------------- workout tracker tables (D-056)
-def new_workout(conn, u):
-    return one(conn, "insert into workouts (user_id, started_at, duration_s, activity, intensity, source) values (%s, '2026-10-02T18:00Z', 3600, 'Strength', 'moderate', 'manual') returning id", (u,))
-
-
-def test_workout_columns_and_checks(conn):
+def test_trends_flags_a_declining_metric(conn):
     u = user(conn)
-    assert rejected(conn, errors.CheckViolation, "insert into workouts (user_id, started_at, duration_s, activity, intensity, source, workout_type) values (%s, now(), 60, 'x', 'light', 'manual', 'dancing')", (u,))
-    assert rejected(conn, errors.CheckViolation, "insert into workouts (user_id, started_at, duration_s, activity, intensity, source, ended_at) values (%s, now(), 60, 'x', 'light', 'manual', now() - interval '1 hour')", (u,))
-    assert rejected(conn, errors.CheckViolation, "insert into workouts (user_id, started_at, duration_s, activity, intensity, source, felt) values (%s, now(), 60, 'x', 'light', 'manual', 'ecstatic')", (u,))
-    assert rejected(conn, errors.CheckViolation, "insert into workouts (user_id, started_at, duration_s, activity, intensity, source, perceived_effort) values (%s, now(), 60, 'x', 'light', 'manual', 11)", (u,))
-
-
-def test_workout_sets_accept_bodyweight_and_reject_bad_values(conn):
-    u = user(conn)
-    w = new_workout(conn, u)
-    sql = "insert into workout_sets (workout_id, user_id, exercise, exercise_order, set_no, reps, weight_kg, performed_at) values (%s, %s, 'Squat', 1, %s, %s, %s, now())"
-    conn.execute(sql, (w, u, 1, 10, 40.0))
-    conn.execute(sql, (w, u, 2, 12, None))  # bodyweight: no weight
-    assert rejected(conn, errors.UniqueViolation, sql, (w, u, 1, 10, 40.0))
-    assert rejected(conn, errors.CheckViolation, sql, (w, u, 3, 0, 40.0))
-    assert rejected(conn, errors.CheckViolation, sql, (w, u, 3, 10, 501.0))
-
-
-def test_deleting_a_workout_removes_its_sets(conn):
-    u = user(conn)
-    w = new_workout(conn, u)
-    conn.execute("insert into workout_sets (workout_id, user_id, exercise, exercise_order, set_no, reps, performed_at) values (%s, %s, 'Plank', 1, 1, 1, now())", (w, u))
-    conn.execute("delete from workouts where id = %s", (w,))
-    assert one(conn, "select count(*) from workout_sets where user_id = %s", (u,)) == 0
+    conn.execute("insert into daily_summary (user_id, local_date, glucose_mean_mmol, glucose_worse_pct, declining_metrics) values (%s, '2026-10-01', 10.2, 40, ARRAY['glucose'])", (u,))
+    r = conn.execute("select metric, value, worse_pct, declining from trends where user_id = %s and metric = 'glucose'", (u,)).fetchone()
+    assert r[0] == "glucose" and float(r[1]) == 10.2 and float(r[2]) == 40 and r[3] is True

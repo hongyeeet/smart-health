@@ -19,9 +19,29 @@ from check_supabase import clean_url  # noqa: E402
 from download_data import load_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-LAYERS = ["bronze", "silver", "reference", "gold", "operations"]
+LAYERS = ["bronze", "silver", "gold", "app", "reference", "operations"]
 
 PURPOSE = {
+    # data model v2 (docs/specs/data-model-v2.md)
+    "user_profile": "Who the person is: age, gender, race, body size, work schedule, emergency contact, devices, timezone and glucose targets. One row per person.",
+    "medications": "Each medicine, supplement or TCM the person takes: name, strength, how many doses a day, dates and the matched reference drug.",
+    "medication_schedule": "One row per dose time of a medicine: the time, the quantity and whether it is taken before a meal, after a meal or n/a.",
+    "medication_log": "One row per scheduled or extra dose and what happened to it (pending, taken, missed, skipped) with the reason for a miss.",
+    "lab_results": "Lab values: HbA1c (%), fasting glucose and fasting insulin, with date and unit.",
+    "watch_readings": "Everything the watch senses, one row per 5-minute bucket, delivered in batches: heart rate, HRV, SpO2, steps, minutes asleep.",
+    "cgm_readings": "Continuous glucose readings in mmol/L (a finger-prick can also be stored here as source = manual).",
+    "blood_pressure_readings": "Blood pressure readings (systolic and diastolic), a few a week.",
+    "exercise_logs": "Logged or detected exercise: start, end, type, intensity (1-5) and how it felt.",
+    "exercise_sets": "One row per set of a strength session: exercise, reps, weight (empty means bodyweight) and when it was done.",
+    "food_logs": "What was eaten and when, with protein, carbohydrate, fat, sugar, fibre and sodium, and who estimated them.",
+    "symptom_logs": "Symptoms the person reported: type, strength (1-5), how long and a note (for example which part of the body).",
+    "wellbeing_logs": "Mood, self-reported stress, sleep quality and energy (1-5), logged in the evening and the morning.",
+    "timeline_5min": "The master timeline: one row per person per 5 minutes with watch, glucose, blood pressure, food, exercise, medication, mood, symptoms and work hours on one clock. Feeds the four report charts.",
+    "daily_summary": "One row per person per day: glucose, watch, food, exercise, doses, symptoms, mood, and the share of readings on the worse side of the usual range.",
+    "care_summary": "One row per person per day for adherence, preventive health and visit preparation (reads the care tables) plus open flags.",
+    "meal_response": "How glucose responded to one meal: before, peak, rise, time to peak, area above baseline and recovery.",
+    "exercise_response": "What one exercise session did to heart rate and glucose, now and hours later.",
+    "glucose_events": "Every spike, sustained high and low of the glucose trace, with what was going on at the time.",
     "workout_sets": "One row per set of a strength session: exercise, reps, weight (empty means bodyweight) and when it was done.",
     "agent_runs": "One row per AI run (a chat turn, a scan, the nightly job): which agent, which model and prompt version, tokens, time, outcome.",
     "agent_steps": "One row per step inside a run (guard, JEV decision, memory read, tool call). JEV answers are logged here with node = jev.",
@@ -32,7 +52,7 @@ PURPOSE = {
     "clinical_flags": "Patterns worth a clinician's attention (a drift, a hypo event, an adherence drop), with the numbers that caused them.",
     "urgent_events": "Every time the urgent screen was shown: the tier, what triggered it and what the person did.",
     "daily_aggregates": "One row per person per day: glucose, activity, sleep, food, doses and mood totals. Empty means no data, never zero.",
-    "baselines": "The person's own normal for a metric (28-day median and spread), or 'learning' while there is too little data.",
+    "baselines": "The person's fixed usual range by hour of day (p05 to p95), built once from their first 14 days (blood pressure: first 5 readings) and reset only on purpose.",
     "momentum_snapshots": "Daily trend numbers per metric: value, z-score, smoothed value, slope and change of slope.",
     "meal_responses": "How glucose responded to one meal during a sensor sprint: baseline, peak rise and area under the curve.",
     "food_responses": "A food's glucose response summarised for one person across meals (shown only from 2 observations).",
@@ -46,7 +66,7 @@ PURPOSE = {
     "briefs": "The doctor brief: its numbers, narrative, files and validator report. Fixed once ready; a new version replaces it.",
     "brief_shares": "A time-limited, revocable share link for a brief (the token is stored hashed) and the consent behind it.",
     "brief_share_access": "Each time a share link was opened.",
-    "ingestion_events": "Log of every raw input kept exactly as received (photo, text, export, document). Never edited.",
+    "ingestion_events": "Retired in data model v2 (replaced by the ten bronze_* tables).",
     "users": "One row per person (the demo patient, for now). No sign-in screens.",
     "patient_profiles": "Who the patient is: age, sex, body size, diagnosis year, last HbA1c, doctor-set targets.",
     "conditions": "Other conditions the patient has (for example high blood pressure).",
@@ -99,6 +119,9 @@ UNITS = {
     "photo_count": "photos", "birth_year": "year", "diagnosed_year": "year", "since_year": "year",
     "serving_g": "g", "last_hba1c_pct": "% HbA1c", "efficiency_pct": "%", "estimate_confidence": "0 to 1",
     "times_per_day": "doses/day", "quantity_dispensed": "units", "remaining_units": "units",
+    "frequency": "doses/day", "quantity": "units per dose", "glucose_mmol": "mmol/L", "heart_rate_bpm": "beats/min", "hrv_rmssd_ms": "ms",
+    "systolic_mmhg": "mmHg", "diastolic_mmhg": "mmHg", "body_temp_c": "degrees C", "steps": "steps", "sleep_minutes": "minutes",
+    "intensity": "1 to 5", "feeling": "1 to 5", "severity": "1 to 5", "mood": "1 to 5", "stress_self": "1 to 5", "sleep_quality": "1 to 5", "energy": "1 to 5",
 }
 SPECIAL = {
     ("lab_results", "value"): "unit in the `unit` column (% HbA1c, mmol/L, umol/L creatinine, mg/g UACR, mL/min/1.73m2 eGFR)",
@@ -118,6 +141,12 @@ def unit_of(table, col, typ):
         return "g"
     if col.endswith("_pct"):
         return "%"
+    if col.endswith("_mmol") or col.endswith("_mmol_min"):
+        return "mmol/L" if col.endswith("_mmol") else "mmol/L x minutes"
+    if col.endswith("_bpm"):
+        return "beats/min"
+    if col.endswith("_mmhg"):
+        return "mmHg"
     if col.endswith("_min"):
         return "minutes"
     if typ.startswith("timestamp"):
@@ -132,7 +161,7 @@ def unit_of(table, col, typ):
 def main():
     load_env()
     lm = layer_map()
-    layer_of = {t: l for l in LAYERS for t in lm[l]}
+    layer_of = {t: l for l in LAYERS for t in lm.get(l, set())}
     with psycopg.connect(clean_url(os.environ["DATABASE_URL"]), connect_timeout=20) as c:
         cols = c.execute("""select cl.relname, a.attname, format_type(a.atttypid, a.atttypmod), a.attnotnull,
                                    exists (select 1 from pg_constraint k where k.conrelid = cl.oid and k.contype = 'p' and a.attnum = any (k.conkey))
@@ -144,14 +173,18 @@ def main():
                            join pg_attribute a on a.attrelid = k.conrelid and a.attnum = k.conkey[1]
                            where k.contype = 'f' and cl.relnamespace = 'public'::regnamespace and cardinality(k.conkey) = 1""").fetchall()
     fk = {(t, col): ref for t, col, ref in fks}
+    comments = {}
+    with psycopg.connect(clean_url(os.environ["DATABASE_URL"]), connect_timeout=20) as c2:
+        for name, cm in c2.execute("select c.relname, obj_description(c.oid) from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'").fetchall():
+            comments[name] = (cm or "").replace("Layer: ", "").split(". ", 1)[-1]
     by_table = {}
     for t, col, typ, notnull, pk in cols:
         by_table.setdefault(t, []).append((col, typ, notnull, pk))
     out = ["# Data dictionary", "",
            f"Generated by `scripts/make_data_dictionary.py` from the live database on {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC. "
            "Do not edit by hand: change the migration, then re-run the script.", "",
-           "Covers every table: Bronze, Silver, Reference, Gold (including application memory, `memory_facts`) and Operations "
-           "(epics E1-1, E1-2 and E1-3). The views are listed in docs/specs/schema.md section 0b.", "",
+           "Covers every table of data model v2 (docs/specs/data-model-v2.md): Bronze, Silver, Gold, App, Reference and Operations. "
+           "The six views are listed in section 1b of that document.", "",
            "**How to read it.** *Required* means the column cannot be empty. `NULL` always means \"no data\", never zero. "
            "*Unit* is the canonical unit stored (conversion to other units happens only in the API). "
            "*Source flag* names the column that says where a row came from: `source` / `entry_source` hold "
@@ -160,9 +193,10 @@ def main():
     total = 0
     for layer in LAYERS:
         out += [f"## {layer.capitalize()}", ""]
-        for t in sorted(lm[layer]):
+        for t in sorted(lm.get(layer, set())):
             flag = ", ".join(f"`{col}`" for col, *_ in by_table[t] if col in SOURCE_COLS) or "none"
-            out += [f"### `{t}`", "", PURPOSE[t], "", f"Source flag: {flag}", "",
+            purpose = PURPOSE.get(t) or comments.get(t, "")
+            out += [f"### `{t}`", "", purpose, "", f"Source flag: {flag}", "",
                     "| Column | Type | Required | Unit | Notes |", "|---|---|---|---|---|"]
             for col, typ, notnull, pk in by_table[t]:
                 notes = []
@@ -176,7 +210,7 @@ def main():
                 total += 1
             out.append("")
     (ROOT / "docs" / "data_dictionary.md").write_text("\n".join(out) + "\n", encoding="utf-8")
-    print(f"wrote docs/data_dictionary.md: {sum(len(lm[l]) for l in LAYERS)} tables, {total} columns")
+    print(f"wrote docs/data_dictionary.md: {sum(len(lm.get(l, ())) for l in LAYERS)} tables, {total} columns")
 
 
 if __name__ == "__main__":

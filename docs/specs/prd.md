@@ -42,7 +42,7 @@ The data exists, spread across a watch, a glucometer, a pill box and memory, but
 | Logs data for the patient to look at | **Turns logs into a clinician-grade pre-visit brief**: the doctor is a first-class user |
 | Generic reminders ("take your pill") | **Captures *why* a dose was missed** (side effects, cost, ran out, felt fine) and reports the barrier pattern to the doctor |
 | Generic diet advice | **Personal food-response learning**: 14-day CGM "sprints" learn which local foods spike *this* patient (e.g. chicken rice vs yong tau foo), and that knowledge keeps working after the sensor is removed |
-| Alerts on fixed thresholds | **Momentum engine**: tracks each metric against the patient's *own* baseline, including direction and acceleration, so drift is caught before it becomes a crisis |
+| Alerts on fixed thresholds | **Momentum engine**: tracks each metric against the patient's *own* fixed baseline, so drift is caught before it becomes a crisis |
 | Chatbot that "answers anything" | **Bounded by design**: a deterministic safety gate. The AI explains and organises but never advises on medication; interaction checks are a database lookup, not LLM guesses |
 | "AI memory" hidden from the user | **Visible learning ("What Smart Health has learned about you")**: every learned fact has evidence, confidence and version history, and the patient can confirm, correct or delete it |
 | English only | Explanations in **English, Mandarin, Malay, Tamil**, with text-to-speech |
@@ -118,7 +118,7 @@ A 14-day CGM "sprint" mode (the target group doesn't need a permanent CGM; sprin
 - AC: a food-response leaderboard ("your gentlest / your spikiest foods") appears in Insights and the brief.
 
 ### F8 Momentum engine
-For each tracked metric: personal baseline (rolling 28-day median and MAD), momentum (7-day EWMA slope, normalised), and change-of-momentum (slope now vs previous 7 days). Flags when drift is persistent (≥3 days beyond threshold) or accelerating.
+For each tracked metric (heart rate, HRV, SpO2, glucose, blood pressure): a **fixed personal baseline**, the person's usual range by hour of day (median with the 5th, 25th, 75th and 95th percentiles). It is built once from their first 14 days with enough data (blood pressure: the first 5 readings) and changes only when it is reset on purpose (doctor review, medication change, or the user), so a slow decline cannot become the new normal. Each day, the share of a metric's readings on the worse side of that range (above the 95th percentile for heart rate and glucose, below the 5th for HRV and SpO2) is computed; a day is flagged when more than 20% are on the worse side, and a metric is flagged as declining when 3 of the last 5 days are flagged. Getting better (for example lower glucose) is not flagged. These are starting values, not clinically validated. The 7-day momentum slope and the "accelerating" flag are no longer part of the engine (data-model-v2.md sections 5.2 and 5.3).
 - AC: deterministic and explainable. Each flag stores the numbers that caused it.
 - AC: flags go to the **brief** as "patterns for clinician review". The patient sees a neutral framing ("your fasting readings have been trending higher this week, worth mentioning to your doctor") plus a targeted symptom check-in (F9).
 - AC: fixed clinical safety thresholds bypass the momentum logic (see F10).
@@ -211,7 +211,7 @@ The system improves for each user through four concrete mechanisms (details in a
 
 1. **User model memory:** a nightly reflection agent reviews the day's data and chat, and proposes evidence-backed facts ("usually walks after dinner", "misses evening dose on weekends", "chicken rice → high response, n=3"). Facts carry confidence, evidence links and versions, and are visible and editable in F16.
 2. **Adaptive nudging:** tracks which nudge types and times this user acts on and shifts toward them (epsilon-greedy over time slots and nudge types).
-3. **Personal baselines:** every alert and trend is relative to *this* user's recent normal, recomputed daily.
+3. **Personal baselines:** every alert and trend is relative to *this* user's own usual range: a fixed baseline built from their first 14 days that changes only when it is reset on purpose, so a decline is not absorbed into it.
 4. **Typed decisions (JEV):** a fast decision layer answers small yes/no and choice questions with a calibrated confidence: which memory a question needs, whether a message asks for medication advice or a diagnosis, what kind of fact a candidate is. Rules always win and low confidence takes the conservative path (memory.md).
 5. **Episodic recall:** past conversations are summarised and embedded so the companion remembers context ("last week you mentioned stomach upset after metformin, is that still happening?"), and reported side effects flow into the brief.
 

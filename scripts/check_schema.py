@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare the tables in the database with the layer map in docs/specs/schema.md (section 0b).
+"""Compare the tables in the database with the table index by layer in docs/specs/data-model-v2.md (section 1b).
 
 Usage:
   python scripts/check_schema.py                          every layer (after E1-3)
@@ -21,35 +21,31 @@ from check_supabase import clean_url  # noqa: E402
 from download_data import load_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-LAYERS = ["bronze", "silver", "reference", "gold", "operations"]
-DEFAULT = LAYERS  # every layer: E1-3 added Gold and Operations
+LAYERS = ["bronze", "silver", "gold", "app", "reference", "operations"]
+DEFAULT = LAYERS
 TOOL_TABLES = {"alembic_version"}  # the migration tool's own table: not part of the layer map
+INDEX = ROOT / "docs" / "specs" / "data-model-v2.md"
+
+
+def _index_rows():
+    """The rows of the 'Table index by layer' table in data-model-v2.md (section 1b)."""
+    text = INDEX.read_text(encoding="utf-8")
+    section = text.split("## 1b. Table index by layer", 1)[1].split("\n## ", 1)[0]
+    rows = {}
+    for line in section.splitlines():
+        m = re.match(r"\|\s*\*\*(\w+)\*\*[^|]*\|([^|]+)\|", line)
+        if m:
+            rows[m.group(1).lower()] = set(re.findall(r"`([a-z_0-9]+)`", m.group(2)))
+    return rows
 
 
 def layer_map():
-    text = (ROOT / "docs" / "specs" / "schema.md").read_text(encoding="utf-8")
-    section = text.split("## 0b. Layer map", 1)[1].split("\n---", 1)[0]
-    out = {}
-    for line in section.splitlines():
-        m = re.match(r"\|\s*\*\*(\w+)\*\*[^|]*\|(.+)\|\s*$", line)
-        if not m:
-            continue
-        layer = m.group(1).lower()
-        cell = m.group(2)
-        # views are listed after a "; views" marker and are not tables
-        cell = cell.split("views", 1)[0]
-        out[layer] = set(re.findall(r"`([a-z_]+)`", cell))
-    return out
+    """Tables per layer (data-model-v2.md section 1b)."""
+    return {k: v for k, v in _index_rows().items() if k != "views"}
 
 
 def layer_views():
-    """View names are listed after the word 'views' in the Gold row of the layer map."""
-    text = (ROOT / "docs" / "specs" / "schema.md").read_text(encoding="utf-8")
-    section = text.split("## 0b. Layer map", 1)[1].split("\n---", 1)[0]
-    for line in section.splitlines():
-        if line.startswith("| **Gold**"):
-            return set(re.findall(r"`([a-z_]+)`", line.split("views", 1)[1]))
-    return set()
+    return _index_rows().get("views", set())
 
 
 def main():
