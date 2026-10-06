@@ -13,7 +13,7 @@ One vocabulary for every document, table and prompt.
 | Term | Meaning |
 |---|---|
 | **Bronze / Silver / Gold** | Data layers. Bronze = raw source as received. Silver = canonical, cleaned, user-confirmed records. Gold = derived values, views and application memory |
-| **Memory planes** | The four ways Gold memory is organised: **semantic** (meaning, preferences, routines), **temporal** (what happened when), **entity** (medications, foods, devices, goals, appointments), **relationship** (evidence-backed associations). Episodic recall (past chat summaries) is part of semantic |
+| **Memory planes** | The four ways Gold memory is organised: **semantic** (meaning, preferences, routines), **temporal** (what happened when), **entity** (medications and their schedule, foods, appointments, the care summary), **relationship** (evidence-backed associations). Episodic recall (past chat summaries) is part of semantic |
 | **Memory Service** | Our scoped read/write API over Gold and approved Silver. Every read and write goes through it |
 | **JEV** | The typed decision layer, implemented with [OpenJev](https://github.com/razorback16/openjev), a "System One" decision server. You send it a state and typed questions (`noul` yes/no, `choice`, `score`, optionally with images). It returns a probability and a confidence for each answer, read directly from the model's probabilities, so an answer cannot go off-schema. It does not store memory, run analytics or decide safety |
 | **Decision gateway** | Our adapter (`app/decision/`) that calls JEV. If JEV is off or unreachable, the conservative path applies (no model fallback) |
@@ -35,13 +35,13 @@ One vocabulary for every document, table and prompt.
 |---|---|
 | `gold.health_facts`, `gold.user_preferences`, `gold.health_context`, `gold.ai_memories`, `memory_facts` | `memory_facts` (one table) |
 | `gold.health_timeline`, `gold.health_events` | `timeline_events` (view) |
-| `gold.daily_snapshots` | `daily_aggregates` |
+| `gold.daily_snapshots` | `daily_summary` |
 | `gold.health_state`, `gold.trends`, `gold.adherence_summary`, `gold.insight_context` | views `health_state`, `trends`, `adherence_summary`, `insight_context` |
 | `gold.anomalies` | `clinical_flags` |
-| `gold.food_response` | `food_responses` |
+| `gold.food_response` | `meal_response` (one row per meal; group by food for the per-food view) |
 | `gold.doctor_brief_context` | `briefs.data` (BriefData snapshot) |
 | `gold.entities`, `gold.entity_relationships` | ordinary foreign keys plus `pattern_candidates` for associations |
-| `bronze.ingestion_events` | `ingestion_events` |
+| `bronze.ingestion_events` | the ten `bronze_*` tables (one per source) |
 | `supersedes_memory_id` | `supersedes_id` |
 | evidence status `VALIDATED`; relationship types `clinically_validated`, `causal_evidence` | removed |
 
@@ -54,7 +54,7 @@ SOURCES  wearable / CGM files, glucometer, manual entry, meal photos and text,
          medication and supplement photos, demo datasets
             |
             v
-BRONZE   original object + ingestion_events row (checksum, source, time, schema version)
+BRONZE   one bronze_* table per source: the input as received (payload, optional original file, checksum, source, time)
             |
             v
 SILVER   canonical records: units, UTC time, deduplicated, validated, confirmed by the user
@@ -74,7 +74,7 @@ GOLD     derived tables and views + application memory
 
 **Gold** is built only from Silver and always keeps: the calculation or model version, the evidence window, a freshness timestamp, source references, a quality status, and what invalidates it. Gold views are derived, never a second source of truth.
 
-**Demo scope:** Bronze is the stored original (photo, export file) plus a slim `ingestion_events` row. Silver is the existing canonical tables. Gold is the derived tables plus four views.
+**Demo scope:** Bronze is the input as received (photo or file as the stored original, everything else as the submitted payload) in one `bronze_*` table per source. Silver is the typed tables, each row pointing at its Bronze row. Gold is the derived tables plus six views (data model v2, `data-model-v2.md`).
 
 ---
 
@@ -82,10 +82,10 @@ GOLD     derived tables and views + application memory
 
 | Plane | Question it answers | Stored in | Built by |
 |---|---|---|---|
-| Semantic | What does this mean for this person? | `memory_facts`, `memory_episodes`, `health_goals`, `patient_profiles` | User onboarding, nightly reflection (proposes), user (confirms) |
-| Temporal | What happened, when, and around what? | `timeline_events` (view), `event_windows`, `daily_aggregates`, `meal_responses` | Deterministic services |
-| Entity | What exists in this person's health world? | `patient_medications`, `medication_ingredients`, `foods`, `meals`, `devices`, `health_goals`, `appointments` | User confirmation, importers |
-| Relationship | What is linked to what, and how well supported is it? | `pattern_candidates`, `interaction_alerts`, `food_responses` | Deterministic services (associations), lookups (interactions) |
+| Semantic | What does this mean for this person? | `memory_facts`, `memory_episodes`, `user_profile` | User onboarding, nightly reflection (proposes), user (confirms) |
+| Temporal | What happened, when, and around what? | `timeline_events` (view), `timeline_5min`, `daily_summary`, `meal_response`, `exercise_response`, `glucose_events` | Deterministic services |
+| Entity | What exists in this person's health world? | `medications`, `medication_schedule`, `foods`, `food_logs`, `appointments`, `care_summary` | User confirmation, importers |
+| Relationship | What is linked to what, and how well supported is it? | `pattern_candidates`, `clinical_flags`, `interaction_alerts` | Deterministic services (associations), lookups (interactions) |
 
 Relationships use these types, never anything causal:
 
@@ -187,8 +187,8 @@ Our own code, not JEV. It is the only path to memory for agents, the LLM, JEV an
 |---|---|
 | `get_context(purpose)` | Profile summary, active facts, recent aggregates, open flags |
 | `get_timeline(window)` | `timeline_events` for a window plus quality flags |
-| `get_entities(ids)` | Medications, foods, devices, goals, appointments with confirmed fields |
-| `get_relationships(filters)` | `pattern_candidates`, `food_responses`, `interaction_alerts` with evidence status |
+| `get_entities(ids)` | Medications and schedules, foods, appointments, care summary with confirmed fields |
+| `get_relationships(filters)` | `pattern_candidates`, `clinical_flags`, `interaction_alerts` with evidence status |
 | `search_memories(query, types)` | Facts and episodes by relevance (vector plus filters) |
 | `propose_memory(candidate)` | Validates and inserts a `proposed` fact |
 | `supersede_memory(old_id, new_id, reason)` | Creates the new version and links `supersedes_id` |
@@ -264,17 +264,17 @@ new observation or conversation
 Food is stored as the original photo or text, then analysed by the LLM for macros.
 
 ```
-photo or text -> Bronze: original + ingestion_events row
-   -> LLM analysis: items + estimated kcal, carbs, protein, fat, fibre, sugar, sodium,
-      confidence per field (meal_analyses row with model_id and prompt_version)
-   -> Silver: meal_items (estimated_by = 'llm_estimate', evidence_status = 'inferred')
+photo or text -> Bronze: bronze_food row (the original as object_key, the raw answer in payload)
+   -> LLM analysis: estimated kcal, carbs, protein, fat, fibre, sugar, sodium,
+      confidence per field (model_id and prompt_version kept in the Bronze payload)
+   -> Silver: food_logs (estimated_by = 'llm_photo' or 'llm_text', source = 'llm_estimate')
    -> user confirms or edits (estimated_by becomes 'user')
-   -> deterministic services use the stored values: flags, aggregates, food response
+   -> deterministic services use the stored values: flags, daily summary, meal response
 ```
 
 - The UI shows **Estimated** until the user confirms. An estimate is never presented as measured.
 - Local dish names are allowed. The LLM estimates macros for any described food; Open Food Facts and NHANES dietary values are only a sanity check that can add a "check this" flag.
-- Re-running with a newer model or prompt creates a new `meal_analyses` row; the original is untouched.
+- Re-running with a newer model or prompt writes a new `bronze_food` row; the original is untouched and the log keeps its `bronze_id` unless the user accepts the new estimate.
 - Glucose response is always measured (CGM or glucometer). Only the macros are estimated, so the food-response leaderboard says so and still needs at least 2 observations with `n` and range.
 - Dataset meals (CGMacros, BIG IDEAs) keep their measured macros and are labelled `demo_dataset`.
 
@@ -290,10 +290,10 @@ photo or text -> Bronze: original + ingestion_events row
 | F4 Adherence | Silver doses; temporal | None | Schedule engine and status machine |
 | F5 Clash checker | Reference; relationship (`reference_matched`) | None | Interaction lookup, "not checked" for unknowns |
 | F6 Tracking | Bronze; Silver; temporal; entity | Meal analysis is LLM, not JEV | Validation, units, quality flags |
-| F7 CGM sprint | Silver; temporal; relationship | None | Windowing, sample thresholds |
-| F8 Momentum | Gold; temporal | None | Baseline, slope, thresholds |
+| F7 CGM and food response | Silver; temporal; relationship | None | Windowing, sample thresholds |
+| F8 Fixed baseline and decline flag | Gold; temporal | None | Baseline, worse-side share, thresholds |
 | F9 Check-ins | Silver; semantic | Pick question type (optional) | Anti-nag caps, neutral wording |
-| F10 Urgent | Silver; Gold `urgent_events` | None, cannot override | Rule engine |
+| F10 Urgent | Silver; `glucose_events`, `clinical_flags`, `event_log` | None, cannot override | Rule engine |
 | F11 Lifestyle coach | Semantic | Route, relevance | Reviewed templates, caps, quiet hours |
 | F12 Doctor brief | All planes | Relevance of statements | Numbers by code, evidence-id validator |
 | F13 Preventive care | Silver; entity | None | Due/overdue from configured intervals; no booking without confirmation |
@@ -335,13 +335,13 @@ Log control decisions, not health content, using existing tables:
 | Memory Service calls (function, counts, source ids) | `agent_steps` (`node` = `memory`) |
 | Guard outcomes | `guardrail_events` |
 | Candidate created, rejected, superseded | `event_log` (`memory.fact.*`) |
-| Model, prompt and rule versions | `agent_runs.model_id`, `agent_runs.prompt_version`, `meal_analyses`, `prescription_scans` |
+| Model, prompt and rule versions | `agent_runs.model_id`, `agent_runs.prompt_version`, the `bronze_food` payload, `prescription_scans` |
 
 ---
 
 ## 13. Demo scope
 
-**Build now:** Memory Service functions with user scope from the session; evidence packet; `memory_facts` lifecycle with `evidence_status`; the decision gateway with JEV and the conservative path; meal analysis with `meal_analyses`; the layer map; four Gold views.
+**Build now:** Memory Service functions with user scope from the session; evidence packet; `memory_facts` lifecycle with `evidence_status`; the decision gateway with JEV and the conservative path; meal analysis (raw answer kept in `bronze_food`); the table index by layer; six views.
 
 **Minimum now:** row-level security is enabled on every table with no policies, so the public Supabase key can do nothing, and only the backend connects with server-side credentials.
 

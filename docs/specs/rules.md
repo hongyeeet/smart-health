@@ -10,7 +10,7 @@ Related: [prd.md](prd.md) (what/why) · [architecture.md](architecture.md) (wher
 
 These protect patients and are what the judges score under Responsible AI. **Breaking one is a failed build.**
 
-1. **No medication advice, ever.** No code path may produce text recommending starting, stopping, skipping, changing, doubling or substituting a medication or dose. Dose text shown to users comes **only** from `patient_medications` fields the user confirmed.
+1. **No medication advice, ever.** No code path may produce text recommending starting, stopping, skipping, changing, doubling or substituting a medication or dose. Dose text shown to users comes **only** from `medications` and `medication_schedule` fields the user confirmed.
 2. **LLM generates language, code generates facts.** Interactions (`services/clash.py`), thresholds (`services/thresholds.py`), adherence, momentum, food response and every number in the brief are computed deterministically. Never ask an LLM to compute, infer or "estimate" these. (The only allowed estimate is meal nutrients, see rule 13.)
 3. **`app/services/` must not import from `app/agents/`, `app/llm/`, `app/decision/` or `app/memory/`.** (Enforced by an import-linter test.)
 4. **Every patient-facing AI output passes `guardrails/output_guard.py`.** No direct `llm.generate()` → UI path. On guard failure, return the approved template, never the raw draft.

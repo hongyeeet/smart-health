@@ -1,5 +1,7 @@
 # Schema — Smart Health (PostgreSQL 16 + pgvector)
 
+> **Superseded in part (2026-10-05).** The Bronze, Silver and Gold tables described below were replaced by data model v2 ([data-model-v2.md](data-model-v2.md), Alembic 0017 to 0020; the column list is in [../data_dictionary.md](../data_dictionary.md)). Still valid here: the conventions in section 0, the Reference tables, the Operations tables (`agent_runs`, `agent_steps`, `guardrail_events`, `conversations`, `messages`, `event_log`), the App tables (`users`, `consents`, `prescription_scans`, `appointments`, `doctor_questions`, `notifications`, `refill_forecasts`, `patient_preventive_status`) and the Gold tables `clinical_flags`, `pattern_candidates`, `interaction_alerts`, `memory_facts`, `memory_episodes`, `briefs`, `brief_shares`, `brief_share_access`. Gone: `ingestion_events`, `patient_profiles`, `patient_medications`, `dose_events`, `glucose_readings`, `health_samples`, `meals`, `workouts` and the other v1 Silver tables, and the v1 Gold tables `daily_aggregates`, `baselines` (old), `momentum_snapshots`, `event_windows`, `meal_responses`, `food_responses`. Where this page and data-model-v2.md disagree, data-model-v2.md wins.
+
 Source of truth for the database. Any change here must ship with an Alembic migration, and any migration must be reflected here (see [rules.md](rules.md)). Feature IDs (F#) refer to [prd.md](prd.md).
 
 ## 0. Conventions

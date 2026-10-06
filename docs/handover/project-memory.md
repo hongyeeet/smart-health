@@ -4,7 +4,7 @@ The one place that consolidates the state of the project: what is decided, what 
 
 > Not to be confused with `docs/specs/memory.md`, which describes how the *app* stores what it learns about a patient.
 
-**Last docs check:** 2026-10-05 15:40: PASS (22 of 22 checks passed)
+**Last docs check:** 2026-10-05 16:02: PASS (22 of 22 checks passed)
 
 The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks links, stale names, secrets, backlog integrity, the schema layer map, that every session log is listed here, and the dev-only hooks. Fix any FAIL before you push. **It is not a sign-off.** Only the owner verifies, and only the owner sets the "Owner confirmed" and "Owner verified" columns below. Developers and AI assistants always add new rows as `Pending`.
 
@@ -140,6 +140,7 @@ The docs check is automatic: `python scripts/verify_docs.py --stamp`. It checks 
 | 2026-10-02 | docs/backlog/details/e1-4-handover.md (new), docs/specs/bronze-silver.md 5.2 and 9, docs/backlog/details/e1-data-foundation.md, e1-3-handover.md, data/README.md | What E1-4 loaded, the demo patient and its differences from the mock, placeholders, gaps, how to re-run, what waits on E0-3 | D-041 to D-045 |
 | 2026-10-04 | docs/specs/data-model-v2.md | Revised by Joely: three lab tests only (HbA1c in %), watch HRV, BP and body temperature added, activity score kept, stress score dropped, fibre and sodium added to nutrition, gender and ethnicity added to the profile, Bronze-Silver-Gold order, Gold tables written out column by column, mapping and decisions updated | D-058 |
 | 2026-10-05 | docs/specs/data-model-v2.md (rewritten as the final design), docs/specs/demo-data-plan.md (new), docs/specs/prd.md (F8, section 7 baseline wording, momentum row) | Final v2 design, 91-day demo plan, and the PRD baseline changed to a fixed baseline; open conflict: the PRD still describes 14-day CGM sprints (F7) | D-060, D-061 |
+| 2026-10-05 | docs/specs/data-flow.md (rewritten for v2, with a feature-to-table routing table), flow.md (journeys J1 to J15, event names and demo script), prd.md (a data line under each of F1 to F18, F1, F4, F6, F7, F10, F12, F18 and A8 wording), architecture.md (layers, pipelines, formulas, API and demo mode), memory.md, workout-tracker.md, rules.md; banners on schema.md and bronze-silver.md | The feature and flow documents now route to the v2 tables. Product changes the data model forced, to confirm: family history is no longer a separate onboarding question; finger-prick glucose no longer stores fasting / pre / post context; CGM "sprints" became continuous CGM wear periods; `urgent_events`, `nudge_stats` and `symptom_checkins` moved to `event_log` + `clinical_flags` + `glucose_events`, to `notifications` + `memory_facts`, and to `notifications` respectively | D-060, D-061 |
 
 ## Open questions and blockers
 

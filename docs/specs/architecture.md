@@ -63,7 +63,7 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 **Core rule:** *The LLM generates language; code generates facts.* Interactions, thresholds, adherence stats, trends and brief numbers are computed by deterministic services. The one allowed model estimate is meal nutrients: stored as `inferred`, shown as "Estimated" until the user confirms, then used by code like any other value.
 
 ### Data layers
-Bronze (originals plus `ingestion_events`) → Silver (canonical, user-confirmed records) → Gold (derived tables, four views, application memory). Every table is in the `public` schema; the layer of each table is in the layer map in [schema.md](schema.md). Full rules, memory planes and evidence statuses are in [memory.md](memory.md).
+Bronze (one `bronze_*` table per source: the input as received) → Silver (typed facts, each with a `bronze_id`) → Gold (the master timeline, fixed baselines, summaries and responses, application memory, six views). App, Reference and Operations tables sit beside the pipeline. Every table is in the `public` schema; the layer of each table is a comment on the table and in the table index in [data-model-v2.md](data-model-v2.md) (data model v2, built 2026-10-05; the older [schema.md](schema.md) describes v1). Feature-to-table routing is in [data-flow.md](data-flow.md) section 6. Full rules, memory planes and evidence statuses are in [memory.md](memory.md).
 
 ```
 storage/{user_id}/
@@ -169,15 +169,15 @@ smart-health/
 │     │  │  ├─ adherence.py          # schedules, windows, statuses, refill prediction
 │     │  │  ├─ clash.py              # interaction lookup
 │     │  │  ├─ thresholds.py         # urgent tiers (config-driven)
-│     │  │  ├─ momentum.py           # baselines, EWMA slope, acceleration, flags
-│     │  │  ├─ food_response.py      # iAUC, peak rise per meal/food
+│     │  │  ├─ baselines.py          # fixed baselines (first 14 days), worse-side check, decline flags
+│     │  │  ├─ meal_response.py      # level before, peak rise, iAUC, recovery per meal; per-food grouping
 │     │  │  ├─ nutrition.py          # food DB lookup, flags
 │     │  │  ├─ preventive.py         # due/overdue
 │     │  │  ├─ nudge_policy.py       # adaptive timing (epsilon-greedy)
-│     │  │  ├─ aggregates.py         # daily rollups for charts/brief
-│     │  │  ├─ timeline.py           # timeline_events queries, day-trace assembly, best/worst/typical day
-│     │  │  ├─ event_windows.py      # meal/workout/dose/sleep anchors → outcomes; pattern_candidates (n>=5, quality gates)
-│     │  │  ├─ labs.py               # lab_results, eGFR (CKD-EPI 2021), population_priors lookup
+│     │  │  ├─ aggregates.py         # daily_summary and care_summary
+│     │  │  ├─ timeline.py           # builds timeline_5min (44 features), day-trace assembly, best/worst/typical day
+│     │  │  ├─ responses.py          # meal_response, exercise_response, glucose_events; pattern_candidates (n>=5, quality gates)
+│     │  │  ├─ labs.py               # lab_results (HbA1c, fasting glucose, fasting insulin), population_priors lookup
 │     │  │  └─ events.py             # append-only event log writer
 │     │  ├─ agents/
 │     │  │  ├─ graph.py              # main LangGraph (chat + tasks)
@@ -215,14 +215,14 @@ smart-health/
 └─ scripts/
    ├─ seed_reference.py              # load interactions, foods, preventive items
    ├─ ingest_knowledge.py            # chunk + embed corpus
-   ├─ import_watch_export.py         # Xiaomi/Apple export → health_samples, sleep_sessions
-   ├─ import_cgmacros.py             # CGMacros → glucose_readings, meals, health_samples, lab_results (time-shift, mg/dL→mmol/L)
-   ├─ import_bigideas.py             # BIG IDEAs subset → glucose_readings, meals, health_samples
+   ├─ import_watch_export.py         # Xiaomi/Apple export → bronze_watch → watch_readings (5-minute buckets)
+   ├─ import_cgmacros.py             # LEGACY (v1 tables, no longer run). Mr Tan comes from generate_mr_tan.py + load_mr_tan_v2.py + build_gold_v2.py
+   ├─ import_bigideas.py             # LEGACY (v1 tables, no longer run)
    ├─ import_nhanes_priors.py        # NHANES → population_priors + persona sampling
    ├─ import_fitbit_kaggle.py        # second wearable format (parser test / fallback stream)
-   ├─ simulate_persona.py            # 60-day synthetic history: doses, mood, BP, symptoms, glucometer (params documented)
+   ├─ simulate_persona.py            # LEGACY (60-day v1 history); replaced by generate_mr_tan.py (91 days, planted cause-and-effect links)
    ├─ seed_data_sources.py           # data source catalogue (manifest #, licence, url) → data_sources (attribution)
-   ├─ seed_demo.py                   # demo patient with 90 days of history
+   ├─ seed_demo.py                   # LEGACY; see load_mr_tan_v2.py and build_gold_v2.py
    └─ replay.py                      # stream mock CGM/watch data in "real time" for demo
 ```
 
@@ -232,47 +232,48 @@ smart-health/
 
 ### 4.1 Prescription scan (F2 → F4, F5)
 ```
-camera → POST /scans (image) → storage → extractor agent (vision model, JSON schema output)
+camera → POST /scans (image) → storage + bronze_medication → extractor agent (vision model, JSON schema output)
 → scan_extractions (fields + confidence) → app review screen → user confirms/edits
-→ POST /scans/{id}/confirm → patient_medications + dose_schedules (adherence.py)
+→ POST /scans/{id}/confirm → medications + medication_schedule + medication_log (adherence.py)
 → clash.check(patient) → interaction_alerts → notification if hit → event_log
 ```
 Extraction uses a strict JSON schema; unknown or low-confidence fields become `null` with confidence 0, never guessed.
 
 ### 4.2 Dose loop (F4)
 ```
-worker: every minute → due dose_events → push reminder (T), re-nudge (T+60m)
-app: "Taken" → PATCH /doses/{id} status=taken → event_log
-worker: window_end passed & no confirm → status=unconfirmed
-app open → pending reasons → user taps reason → status=missed|taken_late_logged + miss_reason
-nightly → adherence aggregates → momentum + brief
+worker: every minute → due medication_log rows (status pending) → push reminder (T), re-nudge (T+60m)
+app: "Taken" → PATCH /doses/{id} status=taken, taken_at → bronze_medication + event_log
+worker: window_end passed & no confirm → the row stays pending and is shown as unconfirmed
+app open → pending reasons → user taps reason → status=missed + miss_reason, or taken (late if > 60 min after the time, computed)
+nightly → care_summary (adherence over prescription medicines, main barrier, refill) → decline flags + brief
 ```
 
 ### 4.3 Wearables and CGM ingest (F6, F7)
 ```
 Health Connect/HealthKit (on app foreground + background fetch) ─┐
 file import (Xiaomi/Apple export) ───────────────────────────────┼→ POST /health/import (batch, idempotent by source+external_id)
-replay.py (demo: mock CGM + watch) ──────────────────────────────┘      → health_samples / glucose_readings
+replay.py (demo: mock CGM + watch) ──────────────────────────────┘      → bronze_watch / bronze_cgm → watch_readings / cgm_readings
                                                                         → thresholds.check() (sync, per glucose reading) → urgent?
-                                                                        → food_response.update() when post-meal window completes
+                                                                        → meal_response when 3 hours of CGM exist after a meal
 ```
 
 ### 4.4 Nightly pipeline (worker, 02:00 local)
 ```
-aggregates.rollup(day) → momentum.compute(all metrics) → momentum_snapshots + clinical_flags
+timeline.build(day) → timeline_5min → baselines (built once, reset only on purpose) → daily_summary (worse-side share, declining_metrics) → clinical_flags
 → checkin planner (pick ≤1 targeted question for tomorrow)
 → reflection agent (propose/update memory_facts from the day) → nudge_policy.update()
-→ preventive.recompute() → if appointment in 48h: brief.generate()
+→ care_summary (adherence, preventive, questions, flags) → preventive.recompute() → if appointment in 48h: brief.generate()
 ```
 
 ### 4.4b Lifestyle timeline (F18), part of the nightly job
 ```
-for each new meal / workout / dose / sleep session (anchors):
-  window = anchor_time .. +N (meal 0–120 min, workout 0–120, dose +2h/+4h, sleep → next fasting)
-  outcome = glucose delta vs pre-anchor baseline (quality_ok readings only; need ≥ 70% expected points)
-  → event_windows (quality_ok=false rows kept but excluded from stats)
-group windows by pattern_key → if n_pairs ≥ 5: median delta + IQR → pattern_candidates (open)
-brief.builder picks best/worst/typical day → day_traces (glucose + markers + HR/steps + sleep)
+timeline_5min: every Silver stream on one 5-minute clock (watch, CGM, blood pressure, food, exercise, medication, mood, symptoms, work hours)
+for each meal / exercise session (anchors):
+  window = anchor_time .. +N (meal 0–180 min, exercise 0–12 h)
+  outcome = glucose and heart-rate change vs the level before (valid CGM readings only; need enough points)
+  → meal_response / exercise_response; excursions → glucose_events with their context
+group events by pattern_key → if n_pairs ≥ 5: median delta + IQR → pattern_candidates (open)
+brief.builder picks best/worst/typical day → day_traces (the four charts + overlay for those days)
 ```
 No LLM is involved; the brief narrative may only cite these results by evidence id. Event-window catalogue (each needs ≥ 5 matched pairs unless stated; results are associations, never causes):
 
@@ -288,7 +289,7 @@ No LLM is involved; the brief narrative may only cite these results by evidence 
 | High-sodium meals | Next-day BP (only if BP logged) | 24 h |
 | Alcohol logged (needs ≥ 3 nights) | Overnight minimum glucose | overnight |
 | Symptom entry | Context card of prior 24 h: glucose, meals, doses, sleep (retrieval only, no inference) | prior 24 h |
-| Time of day (needs ≥ 10 valid days) | Median and IQR glucose by clock hour | sprint or 14+ days |
+| Time of day (needs ≥ 10 valid days) | Median and IQR glucose by clock hour (this is the fixed `baselines` table) | 14+ days |
 | Weekday vs weekend (needs ≥ 3 weekends) | Adherence, steps, glucose | weekly |
 
 ### 4.5 Chat turn (F15), the agent harness path
@@ -306,7 +307,7 @@ user msg → input_guard (rules first, then JEV yes/no questions; rules always w
 ```
 brief.builder (deterministic): profile, meds, adherence matrix, glucose stats, nutrition,
   exercise, sleep, mood, symptoms, flags, preventive, questions, completeness → BriefData (Pydantic)
-→ charts.py → SVGs (prescription timeline, glucose trend, TIR bar, food leaderboard, activity, sleep)
+→ charts.py → SVGs (the four report charts from timeline_5min: heart rate, SpO2 and glucose with the usual range, blood pressure scatter; prescription timeline, TIR bar, food leaderboard, activity, sleep)
 → narrative.py: LLM writes "Top 3" + section summaries + suggested questions,
   each sentence tagged [ev:<evidence_id>]; validator rejects untagged or unknown ids or numbers not in BriefData
 → Jinja2 HTML → WeasyPrint PDF → storage → briefs row → share link (optional, consented)
@@ -314,14 +315,14 @@ brief.builder (deterministic): profile, meds, adherence matrix, glucose stats, n
 
 ### 4.7 Meal analysis (F6, F7)
 ```
-photo or text → storage + ingestion_events (Bronze)
+photo or text → storage + bronze_food (Bronze)
 → llm/meal_analysis.py (vision or text model): items + estimated kcal, carbs, protein, fat, fibre, sugar, sodium, confidence per field
-→ meal_analyses row (model_id, prompt_version, raw_output)
-→ meal_items (estimated_by='llm_estimate', evidence_status='inferred') shown with an "Estimated" badge
-→ user confirms or edits → estimated_by='user', evidence_status='observed'
-→ nutrition flags (code) · food_response (needs measured CGM glucose, n ≥ 2) · daily_aggregates
+→ the raw answer (model_id, prompt_version) stays in the bronze_food payload
+→ food_logs (estimated_by = llm_photo or llm_text, source llm_estimate) shown with an "Estimated" badge
+→ user confirms or edits → estimated_by='user'
+→ nutrition flags (code) · meal_response (needs measured CGM glucose; per food n ≥ 2) · daily_summary
 ```
-Open Food Facts and NHANES dietary values are only a sanity check that can add a "check this" flag. Re-running with a newer model or prompt adds a new `meal_analyses` row.
+Open Food Facts and NHANES dietary values are only a sanity check that can add a "check this" flag. Re-running with a newer model or prompt writes a new `bronze_food` row; the log keeps its original `bronze_id` unless the user accepts the new estimate.
 
 ---
 
@@ -345,7 +346,7 @@ START → guard_input (rules + JEV) ─┬─ urgent → END (template)
 | extractor | Vision → JSON medication fields | none (pure function) |
 | med_explainer | Explain a med from corpus | R `get_patient_meds`, R `search_knowledge(type=drug)` |
 | adherence_coach | Supportive talk about routines/barriers | R `get_adherence_summary`, W `add_doctor_question` |
-| lifestyle_coach | Nudges from reviewed templates (approved corpus if added) | R `get_aggregates`, R `get_food_responses`, R `search_knowledge(type=lifestyle)` |
+| lifestyle_coach | Nudges from reviewed templates (approved corpus if added) | R `get_daily_summary`, R `get_meal_responses`, R `search_knowledge(type=lifestyle)` |
 | checkin | Ask targeted symptom question, record answer | R `get_flags`, W `log_symptom` |
 | scheduler | Suggest visit/screening, create event after confirmation | R `get_preventive_status`, W `create_calendar_event` (requires `user_confirmed=true`) |
 | question_helper | Rephrase patient questions | W `add_doctor_question` |
@@ -359,36 +360,34 @@ Full design in [memory.md](memory.md). Summary:
 
 | Plane | Stored in | Written by |
 |---|---|---|
-| Semantic | `memory_facts`, `memory_episodes`, `health_goals`, `patient_profiles` | User, nightly reflection (proposes), user confirms |
-| Temporal | `timeline_events` (view), `event_windows`, `daily_aggregates`, `meal_responses` | Deterministic services |
-| Entity | `patient_medications`, `medication_ingredients`, `foods`, `meals`, `devices`, `health_goals`, `appointments` | User confirmation, importers |
-| Relationship | `pattern_candidates`, `interaction_alerts`, `food_responses` | Deterministic services and lookups |
+| Semantic | `memory_facts`, `memory_episodes`, `user_profile` | User, nightly reflection (proposes), user confirms |
+| Temporal | `timeline_events` (view), `timeline_5min`, `daily_summary`, `meal_response`, `exercise_response`, `glucose_events` | Deterministic services |
+| Entity | `medications`, `medication_schedule`, `foods`, `food_logs`, `appointments`, `care_summary` | User confirmation, importers |
+| Relationship | `pattern_candidates`, `clinical_flags`, `interaction_alerts` | Deterministic services and lookups |
 
 **Fact lifecycle:** `proposed` (confidence < 0.7) → `active` (confidence ≥ 0.7 or user-confirmed) → `superseded` (linked by `supersedes_id`) / `rejected` (never re-proposed with the same key and value). Confidence rises with repeated evidence and decays after 30 days without support. Every fact carries `evidence_status` (`inferred` when proposed by reflection, `observed` when the user confirms). Nothing is `validated`.
 
 **Evidence packet** replaces the old context builder (budget about 3k tokens): profile summary, active facts (top 20), top 5 episodes by similarity, last 7 days of aggregates, open flags, and the evidence for the question, each with source ids, status and confidence. It never includes a name, NRIC, phone or email. The LLM answers from the packet only.
 
 ### 5.4 Adaptive nudging (nudge_policy.py)
-State per user: (nudge_type × time_slot) → {sent, acted}. Choose slot = argmax Beta-smoothed act-rate with ε = 0.15 exploration. Hard caps: ≤ 3 nudges/day, quiet hours 22:00–07:00. Updated nightly.
+State per user: (nudge_type × time_slot) → {sent, acted}, counted from `notifications` (kind `nudge`: sent, opened, acted). Choose slot = argmax Beta-smoothed act-rate with ε = 0.15 exploration. Hard caps: ≤ 3 nudges/day, quiet hours 22:00–07:00. Updated nightly.
 
 ---
 
 ## 6. Deterministic engines (formulas)
 
-- **Baseline** (per metric): rolling 28-day median `m` and MAD `d` (require ≥ 10 data days; else "learning").
-- **z-score:** `z = (x_today − m) / (1.4826·d)`.
-- **Momentum:** slope of 7-day EWMA (α = 0.3) via least squares over the last 7 days, normalised by `1.4826·d`.
-- **Change of momentum:** `accel = slope_last7 − slope_prev7`.
-- **Flag rule:** `|z| ≥ 2` on ≥ 3 of last 5 days **or** `|accel| ≥ 1.0` (normalised) with ≥ 14 days of data. Severity: `review` (brief only + neutral patient note) or `watch` (brief only).
-- **Metrics:** fasting glucose, post-meal glucose, daily steps, workout minutes, sleep duration, sleep midpoint variability, resting HR, HRV (if any), mood, stress, adherence %.
-- **Food response:** for a meal at t0 during a CGM sprint, baseline g0 = mean CGM over [t0−15m, t0]; `iAUC` = trapezoid area above g0 over [t0, t0+120m]; `peak_rise = max − g0`. Per food: mean, min–max, n. Surface when n ≥ 2. Multi-item meals attribute to the dominant-carb item and mark as `mixed`.
+- **Baseline** (per metric, `baselines`): the person's usual range by hour of day (p05, p25, p50, p75, p95) from the **first 14 days** with data (at least 5 days); blood pressure: one range from the first 5 readings. Heart-rate and HRV buckets inside logged exercise are left out. It applies from the day after its window and never moves; a new one is built only on a reset (doctor review, medication change, user).
+- **Worse-side share:** per day and metric, the share of readings above p95 (heart rate, glucose) or below p05 (HRV, SpO2) for that hour → `daily_summary.*_worse_pct`.
+- **Decline flag:** a day is flagged when more than 20% are on the worse side; a metric is declining when 3 of the last 5 days are flagged (`declining_metrics`). Severity: `review` (brief only + neutral patient note) or `watch` (brief only). Getting better is not flagged. Starting values, not clinically validated.
+- **Metrics:** heart rate, HRV, SpO2, glucose, blood pressure (systolic and diastolic). Steps, sleep, exercise minutes, mood, stress and adherence are summarised in `daily_summary` and `care_summary` but not flagged.
+- **Meal response** (`meal_response`): for a meal at t0 with CGM data, baseline g0 = mean CGM over [t0−30m, t0]; `iauc_2h` = area above g0 over [t0, t0+120m]; `rise = max over 3 h − g0` (never below zero); time to peak; time to recover. Per food: group by food, mean, min–max, n. Surface when n ≥ 2.
 - **Urgent thresholds** (config `thresholds.yaml`, clinical validation pending): `glucose < 3.0` → urgent_now; `glucose < 3.9` → hypo_selfcare (+ urgent if symptoms); `glucose ≥ HIGH_URGENT` twice within 6h → seek_care_today; red-flag symptoms → urgent_now.
-- **Adherence %:** taken + taken_late_logged ÷ scheduled (excluding doses whose window hasn't closed).
+- **Adherence %:** `taken` ÷ (`taken` + `missed` + `skipped`) over scheduled doses of prescription medicines whose window has closed (`pending` doses and extra doses are not counted).
 
 ---
 
 ## 7. API surface (REST, JSON, `/api/v1`)
-`auth/*` · `onboarding/{profile,consents,complete}` · `meds` CRUD · `scans` (POST image, GET, POST confirm) · `doses` (GET today, PATCH status/reason) · `logs/{glucose,meals,workouts,symptoms,checkins}` CRUD · `health/import` (batch) · `insights/{trends,momentum,food-responses}` · `memory/facts` (GET, PATCH confirm/edit, DELETE) · `chat` (POST message, SSE stream) · `briefs` (POST generate, GET, GET pdf, POST share, DELETE share) · `appointments` CRUD · `preventive` GET · `questions` CRUD · `events` (POST client events batch) · `share/brief/{token}` (public, read-only).
+`auth/*` · `onboarding/{profile,consents,complete}` · `meds` CRUD · `scans` (POST image, GET, POST confirm) · `doses` (GET today, PATCH status/reason) · `logs/{glucose,meals,exercise,symptoms,wellbeing,blood-pressure,labs}` CRUD · `health/import` (batch) · `insights/{trends,timeline,food-responses}` · `memory/facts` (GET, PATCH confirm/edit, DELETE) · `chat` (POST message, SSE stream) · `briefs` (POST generate, GET, GET pdf, POST share, DELETE share) · `appointments` CRUD · `preventive` GET · `questions` CRUD · `events` (POST client events batch) · `share/brief/{token}` (public, read-only).
 
 OpenAPI is the contract; the mobile client is generated from it (`openapi-typescript`).
 
@@ -398,16 +397,16 @@ OpenAPI is the contract; the mobile client is generated from it (`openapi-typesc
 `DATABASE_URL` (Supabase direct connection string), `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (server only, never in the web app), `JWT_SECRET`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `LLM_VISION_CHALLENGER`, `EMBED_MODEL`, `EMBED_DIM`, `TRANSLATE_GLOSSARY_ID`, `ELEVENLABS_API_KEY`, `ELEVENLABS_TTS_MODEL`, `ELEVENLABS_TTS_LIVE_MODEL`, `ELEVENLABS_STT_MODEL`, `JEV_BASE_URL`, `JEV_API_KEY`, `AI_DAILY_CALL_CAP`, `AI_DAILY_BUDGET_USD`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `STORAGE_BACKEND`, `STORAGE_BUCKET`, `SHARE_LINK_TTL_HOURS`, `TZ=Asia/Singapore`, `DEMO_MODE`.
 
 ## 9. Demo mode
-`DEMO_MODE=true` → seed demo patient ("Uncle Tan", 90 days history incl. one CGM sprint), `replay.py` streams today's CGM/watch data at 1× or accelerated speed, and a hidden debug menu in the app lets you trigger: a missed dose, a hypo reading, a momentum flag, a clash, and brief generation. See flow.md §5.
+`DEMO_MODE=true` → seed demo patient (Mr Tan, 91 days of history with continuous CGM: `scripts/load_mr_tan_v2.py` then `scripts/build_gold_v2.py`), `replay.py` streams today's CGM/watch data at 1× or accelerated speed, and a hidden debug menu in the app lets you trigger: a missed dose, a hypo reading, a momentum flag, a clash, and brief generation. See flow.md §5.
 
 ## 10. Build order (critical path)
 1. Repo, Supabase connection and migrations baseline, demo session, event log
 2. Reference data + knowledge ingest + LLM gateway + guardrails + red-team tests (safety first)
 3. Onboarding (form) → meds (manual) → dose loop → notifications
 4. Scan + extractor → clash checker → explainer (+TTS, i18n)
-5. Logging (glucose, meals, workouts, check-ins, symptoms) → health import + replay
-6. Aggregates → momentum → thresholds/urgent → check-ins
-7. Food response (CGM sprint) → lifestyle coach → nudge policy
+5. Logging (glucose, meals, exercise, check-ins, symptoms, blood pressure, labs) → health import + replay
+6. Timeline → baselines → daily summary and flags → thresholds/urgent → check-ins
+7. Meal response (CGM) → lifestyle coach → nudge policy
 8. Brief (data → charts → narrative + validator → PDF → share)
 9. Memory (episodes, reflection, memory screen) → chat
 10. Preventive + calendar → onboarding chat → polish, demo script, video

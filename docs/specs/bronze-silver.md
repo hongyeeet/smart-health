@@ -1,5 +1,7 @@
 # Bronze and Silver: how the data layers work, table by table
 
+> **History only (2026-10-05).** This walkthrough describes the v1 Bronze and Silver tables (one `ingestion_events` table and 31 Silver tables). They were replaced by data model v2 (one Bronze and one Silver table per source): see [data-model-v2.md](data-model-v2.md) and [data-flow.md](data-flow.md).
+
 A guide to the two lower layers of the Smart Health database (the **medallion** layers): what each table is for, who or what writes into it, and exactly how the columns link to each other. It covers the **43 tables** built in E1-1 and E1-2 (1 Bronze, 31 Silver, 11 Reference). Gold (derived values, memory, briefs) is built in E1-3 and is only mentioned where Silver feeds it.
 
 **Which document wins.** The migrations in `services/api/alembic/versions/` and [schema.md](schema.md) are the source of truth; [data-flow.md](data-flow.md) is the one-page picture; [memory.md](memory.md) explains the layer rules. This page was written from the live database (every foreign key below was read from it). If it disagrees with them, they win: fix this page. Every column, with its type and unit, is in [../data_dictionary.md](../data_dictionary.md).

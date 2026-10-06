@@ -41,7 +41,7 @@ The data exists, spread across a watch, a glucometer, a pill box and memory, but
 |---|---|
 | Logs data for the patient to look at | **Turns logs into a clinician-grade pre-visit brief**: the doctor is a first-class user |
 | Generic reminders ("take your pill") | **Captures *why* a dose was missed** (side effects, cost, ran out, felt fine) and reports the barrier pattern to the doctor |
-| Generic diet advice | **Personal food-response learning**: 14-day CGM "sprints" learn which local foods spike *this* patient (e.g. chicken rice vs yong tau foo), and that knowledge keeps working after the sensor is removed |
+| Generic diet advice | **Personal food-response learning**: the days a CGM is worn (for example a 14-day sensor before a review) learn which local foods spike *this* patient (e.g. chicken rice vs yong tau foo), and that knowledge keeps working after the sensor is removed |
 | Alerts on fixed thresholds | **Momentum engine**: tracks each metric against the patient's *own* fixed baseline, so drift is caught before it becomes a crisis |
 | Chatbot that "answers anything" | **Bounded by design**: a deterministic safety gate. The AI explains and organises but never advises on medication; interaction checks are a database lookup, not LLM guesses |
 | "AI memory" hidden from the user | **Visible learning ("What Smart Health has learned about you")**: every learned fact has evidence, confidence and version history, and the patient can confirm, correct or delete it |
@@ -70,31 +70,41 @@ The data exists, spread across a watch, a glucometer, a pill box and memory, but
 Each feature lists its **acceptance criteria (AC)**. IDs are used in flow.md and schema.md.
 
 ### F1 Onboarding (form or chat)
-Collects demographics, diagnosis and year, comorbidities, allergies, family history, current meds/supplements/TCM, last HbA1c, targets set by their doctor (if known), preferred language, reminder times, devices.
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `bronze_profile` then `user_profile`, and `consents`; creates the first pending `medication_log` rows.*
+
+Collects demographics (birth year, gender, race, height, weight), diagnosis and year, conditions and allergies (two free-text notes; family history is no longer a separate question), the typical work week (days, hours, type of job), an emergency contact (name, phone and relationship, all required), current meds/supplements/TCM with the time, quantity and before / after meal setting of each dose, last HbA1c, targets set by their doctor (if known), preferred language, reminder times, and the watch and CGM model.
 - AC: user can finish via **either** a step-by-step form **or** a conversational onboarding agent; both write the same records.
 - AC: out-of-scope users (T1D, pregnancy, <18) get a clear message and are not enrolled.
 - AC: user must accept consent screens (data use; optional brief sharing) before any data is stored.
 
 ### F2 Prescription & medication capture
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): photo to `bronze_medication` and `prescription_scans`; after confirmation `medications`, `medication_schedule`, `medication_log`; then `interaction_alerts`.*
+
 Photo of a prescription label, medication box, supplement or TCM packaging → vision model extracts name, strength, dose, frequency, timing, prescriber, date → **user confirms/edits** → saved.
 - AC: every extracted field shows a confidence score; low-confidence fields are highlighted and must be confirmed.
 - AC: unrecognised items get "I'm not able to identify this medication, please check with your pharmacist" plus a manual-entry option. The app never guesses.
 - AC: saving a medication builds its dose schedule (F4) and triggers the clash check (F5).
 
 ### F3 Medication explainer
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): reads `medications`, `drug_reference`, `drug_side_effects`, `knowledge_chunks`; writes nothing.*
+
 Plain-language "what this is for, how to take it, common side effects, what to tell your doctor", retrieved from the 250k Medicines dataset (uses, side effects, classes; RAG), with citations to that dataset and a note that it is not an authoritative label. Available in 4 languages with TTS playback.
 - AC: every explanation cites its source(s).
 - AC: dose information shown is **only** what's on the user's own confirmed prescription, never generated.
 - AC: questions like "can I stop/double/skip…" get a refusal template and an offer to add the question to the doctor brief (F12).
 
 ### F4 Adherence engine
-Dose windows (scheduled time ±2h, configurable per med), with a reminder at T and a re-nudge at T+1h. Unconfirmed at window close → status `unconfirmed`. On the next app open, a one-tap reason prompt: *took it, forgot to log / forgot / side effects / ran out / felt fine, skipped / cost / other*.
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `medication_log` (taken, missed with reason, skipped), `notifications`, `refill_forecasts`; reads `medication_schedule`, the `adherence_summary` view (prescription medicines only) and `care_summary`.*
+
+Dose windows (scheduled time ±2h, configurable per med), with a reminder at T and a re-nudge at T+1h. Unconfirmed at window close → the dose stays `pending` and is shown as unconfirmed. On the next app open, a one-tap reason prompt: *took it, forgot to log / forgot / side effects / ran out / felt fine, skipped / cost / other*.
 - AC: "with food" medications can be triggered by logging a meal.
-- AC: a reason turns `unconfirmed` into `taken_late_logged` or `missed`, with the reason stored.
-- AC: running out is predicted from pill count and dose rate, with a refill reminder 7 days ahead.
+- AC: a reason turns an unconfirmed dose into `taken` (shown as late if more than 60 minutes after the scheduled time) or `missed`, with the reason stored.
+- AC: running out is predicted from pill count and dose rate (`refill_forecasts`), with a refill reminder 7 days ahead.
 - AC: the adherence timeline and reason breakdown appear in the brief.
 
 ### F5 Clash checker (drug–drug, drug–supplement, drug–TCM)
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `interaction_alerts`; reads `medications`, `interaction_rules`.*
+
 Deterministic lookup against an interaction reference table. The LLM only rephrases a confirmed hit into plain language.
 - AC: runs whenever a medication, supplement or TCM item is added or changed.
 - AC: patient message is always of the form "Possible interaction between X and Y. Please check with your pharmacist or doctor before continuing." It never says "stop X".
@@ -102,34 +112,45 @@ Deterministic lookup against an interaction reference table. The LLM only rephra
 - AC: every hit appears in the brief.
 
 ### F6 Health tracking and logging
-- **Glucose:** glucometer entry (fasting / pre-meal / post-meal / random), and CGM stream during sprints. Unit: mmol/L.
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): each entry goes to a `bronze_*` table then `cgm_readings`, `food_logs`, `exercise_logs` / `exercise_sets`, `symptom_logs`, `wellbeing_logs`, `blood_pressure_readings` or `lab_results`; watch syncs go to `watch_readings`; reads `timeline_5min`.*
+
+- **Glucose:** a continuous CGM stream, and finger-prick entry (stored with the CGM readings, source manual; whether it was fasting or after a meal is worked out from the time and the last meal, not asked). Unit: mmol/L.
 - **Meals:** a photo or a text description is analysed by the LLM, which returns the items and estimated kcal, carbs, protein, fat, fibre, sugar and sodium with a confidence per field. Estimates are tagged "Estimated" until the user confirms or edits them, then behave like any other logged value. Flags for high salt, high sugar or high GI are computed in code from the stored values. Local dish names are fine; Open Food Facts and NHANES values are only a sanity check that can add a "check this" flag. Meals from the demo datasets keep their measured macros.
-- **Workouts:** manual entry (type, duration, intensity) plus wearable import.
+- **Exercise:** manual entry (type, start and end, intensity 1 to 5, how it felt; strength sessions can add sets) plus wearable import.
 - **Wearables:** steps, heart rate, sleep, HRV/stress (where available) via Health Connect (Android) / HealthKit (iOS), or file import plus demo replay.
-- **Mood / stress / sleep check-in:** a 30-second evening check-in (1–5 scales and an optional note).
+- **Mood / stress / sleep check-in:** a 30-second evening check-in (mood, stress, energy) and a morning question on sleep quality, all on 1–5 scales.
+- **Blood pressure and labs:** blood pressure (systolic and diastolic, a few times a week) and three lab values (HbA1c in %, fasting glucose, fasting insulin). The watch also records heart rate, HRV, SpO2, steps and minutes asleep in 5-minute buckets.
 - **Symptoms (on hold, D-054: pending clinical review; D-052):** a picker with severity, built to take about 30 seconds. The sensor glucose and trend at that moment and the time are filled in automatically. The person can say when it happened (just now, earlier today, last night, or a set time), so night symptoms logged at breakfast get the right time. Optional detail: how long it lasted; left, right or both sides for numbness and pain; relation to a meal or exercise; and for dizziness what it felt like (standing up, shaky or sweaty, spinning). Extra symptoms: vomiting, night sweats, breathlessness at rest, sudden vision loss. Red-flag symptoms go straight to the urgent path. The app records and asks; it never labels a cause.
 - AC: every log is timestamped, has a source, and is idempotent (re-syncs don't duplicate).
 - AC: the user can edit or delete their own logs; edits are versioned in the event log.
 
-### F7 CGM sprint and personal food response
-A 14-day CGM "sprint" mode (the target group doesn't need a permanent CGM; sprints before a review or after a medication change make it useful and affordable). For each meal during a sprint, compute the 2-hour glucose response (incremental AUC and peak rise). Aggregate per food.
+### F7 CGM and personal food response
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): computed into `meal_response`; the per-food view groups it by food.*
+
+Whenever a CGM is worn (continuously, or for example a 14-day sensor before a review or after a medication change; the target group doesn't need a permanent CGM) each meal gets a glucose response: the level before, the peak rise, the time to peak, the area above the pre-meal level over 2 hours and the time to recover (`meal_response`). Aggregate per food. Wear periods are just stretches of data; there is no separate sprint record.
 - AC: a food's response is only surfaced after ≥2 observations, and shown with n and a range.
-- AC: after the sprint, logging a known high-response food shows a gentle, factual note: "Last time you had this, your glucose rose more than after most of your meals."
+- AC: after the sensor is removed, logging a known high-response food shows a gentle, factual note: "Last time you had this, your glucose rose more than after most of your meals."
 - AC: a food-response leaderboard ("your gentlest / your spikiest foods") appears in Insights and the brief.
 
 ### F8 Momentum engine
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): computed into `baselines`, `daily_summary` (the `*_worse_pct` columns and `declining_metrics`) and `clinical_flags`.*
+
 For each tracked metric (heart rate, HRV, SpO2, glucose, blood pressure): a **fixed personal baseline**, the person's usual range by hour of day (median with the 5th, 25th, 75th and 95th percentiles). It is built once from their first 14 days with enough data (blood pressure: the first 5 readings) and changes only when it is reset on purpose (doctor review, medication change, or the user), so a slow decline cannot become the new normal. Each day, the share of a metric's readings on the worse side of that range (above the 95th percentile for heart rate and glucose, below the 5th for HRV and SpO2) is computed; a day is flagged when more than 20% are on the worse side, and a metric is flagged as declining when 3 of the last 5 days are flagged. Getting better (for example lower glucose) is not flagged. These are starting values, not clinically validated. The 7-day momentum slope and the "accelerating" flag are no longer part of the engine (data-model-v2.md sections 5.2 and 5.3).
 - AC: deterministic and explainable. Each flag stores the numbers that caused it.
 - AC: flags go to the **brief** as "patterns for clinician review". The patient sees a neutral framing ("your fasting readings have been trending higher this week, worth mentioning to your doctor") plus a targeted symptom check-in (F9).
 - AC: fixed clinical safety thresholds bypass the momentum logic (see F10).
 
 ### F9 Targeted symptom check-ins
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): the question is a `notifications` row (kind `checkin`); the answer goes `bronze_symptom` then `symptom_logs`.*
+
 When a pattern suggests something the doctor should know about, the agent asks a specific, neutral question ("Any tingling or numbness in your feet this week?", "More thirsty or more trips to the toilet than usual?") and logs the answer.
 - AC: check-ins **ask, never diagnose**. No condition names shown to the patient in a diagnostic sense.
 - AC: at most 1 check-in per day and 3 per week (anti-nag), adapted to the patient's response rate.
 - AC: answers appear in the brief's symptom section, linked to the triggering pattern.
 
 ### F10 Urgent escalation (safety tier)
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes the event log, a `glucose_events` row and a `clinical_flags` row for a low; reads `cgm_readings` (rules only).*
+
 > **On hold (2026-10-03, D-054):** pending clinical review by Damien (`docs/handover/questions-for-damien.md`). The values and fields below are placeholders. Do not build E1-7, E11-2, E7-4 or E13-4 until it is cleared.
 
 Rule-based, not LLM. Low glucose has two tiers. The values come from the owner's clinical feedback (2026-10-03, D-050) and are placeholders pending clinical validation.
@@ -139,23 +160,27 @@ Rule-based, not LLM. Low glucose has two tiers. The values come from the owner's
 - AC: tier 1 and tier 2 screens are fixed text written by people, with no LLM and no network call. The hypo steps come from the approved corpus; until a source is approved the screen points to the doctor's own low-sugar plan.
 - AC: **emergency contact (D-051).** The patient adds one contact, chooses message, email and/or call, and consents. On tier 2 a message and email go straight away and a call follows if there is no reply in 5 minutes (placeholder). On tier 1 the contact is alerted only if the 15-minute check-in is unanswered and the glucose is still low. The message says only that the reading is very low and asks the contact to check on the person or call 995. No other health data is sent. No alert is sent without consent.
 - AC: after a low, one question is asked and recorded: "Did you feel it before your sensor alerted you?" It appears in the brief as a self-report.
-- AC: never delayed until the next brief; logged as an urgent event.
+- AC: never delayed until the next brief; written to the event log, and a low also becomes a `glucose_events` row and a `clinical_flags` row.
 - AC: thresholds, tiers and timings live in config and are marked "clinical validation pending".
 
 ### F11 Lifestyle coach
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `notifications` (kind `nudge`); reads `memory_facts`, `pattern_candidates`, `daily_summary`, `meal_response`.*
+
 Short, practical nudges personalised by the user's data and learned preferences (e.g. prefers evening walks). Nudge content must come from an approved corpus: **no guideline corpus (e.g. Health Promotion Board) is in the cited data sources**, so until you approve one, nudges are fixed team-written templates driven by the user's own data (e.g. "you walked after dinner 3 times this week and your evening readings were lower").
 - AC: every nudge is a reviewed template or cites its approved source; no free-generated health claims.
 - AC: nudge timing and type adapt to what this user actually responds to (see §7).
 - AC: high-salt / high-sugar food flags link to a swap suggestion from the corpus.
 
 ### F12 Doctor brief (headline feature)
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `briefs`, `brief_shares`, `brief_share_access`; reads the timeline, baselines, summaries, responses, glucose events, labs, flags, patterns, interaction alerts and doctor questions.*
+
 Auto-generated before each appointment (and on demand) for a chosen period. Rendered as an in-app view, printable PDF, and time-limited share link (with consent).
 
 Sections:
 1. Profile snapshot (age, diagnosis and duration, comorbidities, allergies, family history, current meds with start dates, last HbA1c, period covered)
 2. Top 3 to discuss (ranked, each linked to evidence)
 3. Medication and adherence: **prescription timeline chart** (row per medication, day cells taken / late / unconfirmed / missed, glucose overlay), adherence %, miss-reason breakdown, side effects, clash flags
-4. Glucose: fasting and post-meal trend, time-in-range (CGM sprints), out-of-range counts, momentum vs baseline, and resting heart rate and SpO2 trended beside it on the same dates (D-053; wording "associated with", unverified)
+4. Glucose: fasting and post-meal trend, time-in-range, out-of-range counts, whether readings are outside the person's usual range, and heart rate, HRV, SpO2 and blood pressure beside it on the same dates (D-053; wording "associated with", unverified). The four charts (heart rate, SpO2 and glucose as lines with the usual range, blood pressure as a scatter) sit on one time axis with the day's overlay of meals, doses, exercise, symptoms, mood, steps and work hours
 5. Nutrition: carbs / sugar / sodium vs guideline, high-salt / high-GI frequency, meal timing, personal food-response leaderboard
 6. Exercise: minutes/week vs 150-min guideline, steps, trend
 7. Sleep: duration and regularity
@@ -170,31 +195,44 @@ Sections:
 - AC: every number in the brief is computed deterministically; the LLM only writes narrative summaries and suggested questions, and each sentence must reference an evidence ID (validator rejects any that don't).
 - AC: the patient can view their own brief (no hidden findings) and add their own questions.
 - AC: generation completes in < 30 s for 90 days of data.
+- AC: the four charts are drawn from the Gold timeline (`timeline_5min`) and the person's fixed baseline (`baselines`); readings on the worse side of the usual range are marked, and simulated points are marked from `source`.
 
 ### F13 Preventive care and scheduler
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `appointments` and `patient_preventive_status`; reads `preventive_items`, `care_summary`, `clinical_flags`, `lab_results`.*
+
 Tracks recommended diabetes care items (eye screening, foot screening, kidney function / urine test, HbA1c review, flu vaccination, etc.) with last-done and interval → due/overdue. Momentum flags or due items suggest booking a visit; the user can add it to Google Calendar (or an .ics file).
 - AC: the app never books on the user's behalf without explicit confirmation.
 - AC: an appointment created in-app automatically schedules a brief 48h before.
 
 ### F14 Healthcare preparation (questions for my doctor)
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `doctor_questions`; reads `care_summary` and `briefs`.*
+
 Patient collects questions anytime (typed, voice, or "add to doctor questions" from a refused chat). The agent helps phrase them clearly. Included in the brief.
 
 ### F15 Companion chat
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `conversations`, `messages`, `agent_runs`, `agent_steps`; a refused request adds a `doctor_questions` row.*
+
 In-app assistant for "what is this med for", "how was my week", "what does this reading mean in general". Grounded in the user's data and the corpus, passes the safety gate, and uses memory.
 - AC: the chat supplements the app; every feature is reachable without chat.
 
 ### F16 "What Smart Health has learned about you" (transparent memory)
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): reads and writes `memory_facts` (versioned).*
+
 A screen listing learned facts (preferences, routines, barriers, food responses) with evidence, confidence and date. The user can confirm, correct or delete; changes are versioned.
 - AC: each fact shows how it is supported: *observed* (you told us or we measured it), *derived* (calculated from your data) or *inferred* (proposed by the app, waiting for you). Nothing is labelled "validated": no part of this project is clinically validated yet.
 - AC: proposed facts never drive nudges or briefs until confirmed or until confidence reaches 0.7 with at least the minimum evidence for that feature.
 
 ### F17 Multilingual and TTS
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): reads `user_profile.language`.*
+
 EN / 中文 / BM / தமிழ் UI strings and explanations; TTS playback for explanations and reminders.
 
 ### F18 Lifestyle timeline and day traces
-Puts every stream on one clock (meals, doses taken/missed, workouts, glucose, watch heart rate and steps, sleep, symptoms) so the patient and the doctor can see *what happened around what*. The doctor brief adds **day traces**: a best, a worst and a typical day drawn as one chart, plus event-window findings (meal → glucose, workout → glucose, dose → glucose, sleep → next fasting glucose).
-- AC: the Insights tab has a day view: glucose line (CGM sprint or glucometer points) with meal, dose (taken / unconfirmed / missed), workout and symptom markers, and heart-rate/steps and sleep bands underneath.
-- AC: event-window results are computed deterministically (services, no LLM) from `event_windows`; a finding needs ≥ 5 matched pairs and quality-checked data, otherwise it is not shown.
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6): reads `timeline_5min`, `meal_response`, `exercise_response`, `glucose_events`, `baselines`.*
+
+Puts every stream on one clock (meals, doses taken/missed, exercise, glucose, watch heart rate and steps, sleep, symptoms, mood, blood pressure and work hours) so the patient and the doctor can see *what happened around what*. The doctor brief adds **day traces**: a best, a worst and a typical day drawn as one chart, plus event-window findings (meal → glucose, workout → glucose, dose → glucose, sleep → next fasting glucose).
+- AC: the Insights tab has a day view drawn from `timeline_5min`: glucose line (continuous CGM, with finger-prick points) with meal, dose (taken / late / missed), exercise and symptom markers (the symptom note shows on tap), mood dots, scheduled work hours, and heart-rate, SpO2, blood-pressure, steps and sleep underneath.
+- AC: results are computed deterministically (services, no LLM) from `meal_response`, `exercise_response`, `glucose_events` and the timeline; a finding needs ≥ 5 matched events and quality-checked data, otherwise it is not shown.
 - AC: findings are worded "associated with", never "caused by", labelled unverified in the brief, and shown to the patient too (no hidden findings).
 - AC: the three representative days in the brief are chosen by fixed rules (lowest time-in-range, highest, closest to median) and each links to its underlying logs.
 - AC: gaps are visible. A day with missing CGM, watch or meal data shows "no data" for that stream instead of an interpolated line.
@@ -243,7 +281,7 @@ The system improves for each user through four concrete mechanisms (details in a
 | A5 | Food nutrients | Meal photos and text are analysed by the LLM for macros (kcal, carbs, protein, fat, fibre, sugar, sodium), stored as estimates with confidence and confirmed by the user. Open Food Facts and NHANES dietary files are sanity-check references only. Dataset meals keep measured macros. Glucose response is always measured | Team |
 | A6 | Mock CGM | CGMacros (T2D participants) and BIG IDEAs, both on PhysioNet. Only CGMacros has T2D (14 people); BIG IDEAs participants are HbA1c 5.2-6.4% | Team |
 | A7 | Healthier SG integration | Dropped for now | — |
-| A8 | Demo data | **Only data from the cited sources** (see A10). Real data covers the CGM/meal/watch streams and the patient profile; the 60-day history, adherence, mood, BP and workouts are simulated from cited data and disclosed as simulated. Summary: `data/plan/smart_health_data_plan.xlsx` (Use now / Still missing / Domain knowledge). | Team |
+| A8 | Demo data | **Only data from the cited sources** (see A10). The demo patient is Mr Tan (CGMacros participant 046) for 91 days: his real Dexcom glucose, heart rate, 29 meals and two labs cover the last ~10 days; the rest, including SpO2, blood pressure, adherence, mood, exercise and symptoms, is simulated from his own data and disclosed as simulated (`demo-data-plan.md`). Summary: `data/plan/smart_health_data_plan.xlsx` (Use now / Still missing / Domain knowledge). | Team |
 | A10 | Data source policy | The app may ingest data only from the datasets in `download_manifest.csv` (48) and the GlucoBench Kaggle link. Owner-approved additions (2026-10-02): NHANES 2011-2012, 2013-2014 and 2015-2016 without the accelerometer files, and the openFDA drug-label API for interactions. Anything else (guideline text, drug labels, own watch export or label photos) needs explicit approval first and is listed under "Needs your OK" in the workbook | Team |
 | A9 | Insulin | Out of scope: no dose tracking or advice. Datasets with insulin columns are imported with those columns discarded | — |
 | A11 | Decision layer (JEV) | JEV typed decisions behind `decision/` using the TypeSafe JEV model; if JEV is off or unreachable the conservative path applies (no model fallback). It is hosted on OpenRouter as `typesafe/jev-1.13` (D-049). Rules always override JEV | Team |

@@ -1,6 +1,6 @@
 # Workout tracker
 
-A live strength-session tracker: how long the person trains, what they do, every set with reps and weight, and a rest timer. When the session is saved, the server works out how hard it was from the watch heart rate and the person's own resting-heart-rate baseline, and the doctor brief and Insights can use the result. Read it with [prd.md](prd.md) (F6 workouts, F18 timeline), [schema.md](schema.md) section 14 and [memory.md](memory.md) (evidence statuses).
+A live strength-session tracker: how long the person trains, what they do, every set with reps and weight, and a rest timer. When the session is saved, the server works out how hard it was from the watch heart rate and the person's own resting-heart-rate baseline, and the doctor brief and Insights can use the result. Read it with [prd.md](prd.md) (F6 exercise, F18 timeline), [data-model-v2.md](data-model-v2.md) (the tables `exercise_logs` and `exercise_sets`) and [memory.md](memory.md) (evidence statuses). Since data model v2 (2026-10-05) the session is saved as a `bronze_exercise` row, then `exercise_logs` with its `exercise_sets`; the older `workouts` and `workout_sets` tables no longer exist.
 
 **Status (2026-10-03): scaffold.** The screen, the on-device session store, the effort calculation with tests, and the data contract exist. Nothing is saved to the database yet, because the tables for sets do not exist (schema.md section 14, approved by the owner on 2026-10-03) and the Gold tables are not built (task E1-3). Decision D-055.
 
@@ -26,17 +26,17 @@ The rule is the same as everywhere else in the project: **the model writes langu
 | Whether the heart-rate data is good enough | **Code** | Under 70% of the expected 1-minute samples gives "insufficient" and no intensity. Unknown stays unknown |
 | People on beta-blockers | **Code** | Heart rate is not a reliable effort signal there, so no intensity label is shown |
 | One plain-language sentence about the session | **The model (Claude Sonnet 5.5)**, from the finished numbers only | Validated like the brief narrative: every number in the sentence must come from the computed summary. Optional; the screen works without it |
-| Glucose change after the session | **Code**, from `event_windows` (Gold) | Worded "associated with", never "caused by". Needs at least 5 comparable sessions before it is shown as a pattern |
+| Glucose change after the session | **Code**, from `exercise_response` (Gold) | Worded "associated with", never "caused by". Needs at least 5 comparable sessions before it is shown as a pattern |
 
 ## 3. How it uses the Gold tables
 
-Gold tables are derived values built from Silver (data-flow.md). They are not built yet (E1-3). Until then the effort is computed from Silver only (`health_samples` heart rate, and the profile's birth year for the age).
+Gold tables are derived values built from Silver (data-flow.md). They are built today by `scripts/build_gold_v2.py` for the demo patient. The effort is computed from Silver (`watch_readings` heart rate, and `user_profile.birth_year` for the age) and can use the Gold inputs below.
 
 | Need | Source now | Source once Gold exists |
 |---|---|---|
-| Heart rate during the session | `health_samples` (heart_rate, 1-minute) | same |
-| The person's own resting heart rate, to judge effort against | Not used yet (age-based maximum only) | `daily_aggregates.resting_hr` and `baselines` |
-| Glucose change after a session | Not available | `event_windows` (anchor kind `workout`) |
+| Heart rate during the session | `watch_readings.heart_rate_bpm` (5-minute buckets) | same |
+| The person's own resting heart rate, to judge effort against | Not used yet (age-based maximum only) | `daily_summary.resting_hr_bpm` and the heart-rate rows of `baselines` |
+| Glucose change after a session | Not available | `exercise_response` (`glucose_pre_mmol`, `glucose_change_at_end`, `glucose_1h_mmol`, `glucose_2h_mmol`) |
 | Pattern across many sessions ("on days you lift, evening readings are lower") | Not available | `pattern_candidates`, after 5 or more matched pairs, worded "associated with" and marked unverified |
 | Session summary in the doctor brief | Not available | `briefs.data` (E13-1) |
 
@@ -56,9 +56,9 @@ Gold tables are derived values built from Silver (data-flow.md). They are not bu
 | On-device session store (`useWorkoutSession`) with a pending-upload list | Built |
 | Data contract: `WorkoutSession`, `WorkoutSummary`, `saveWorkoutSession`, `getWorkoutSummary` | In the types and the `Api` interface; the HTTP client throws `NotWired` |
 | Effort and volume calculation with 9 tests | Built, no database |
-| Tables `workout_sets` and the new `workouts` columns | Created by migration 0015 on 2026-10-03 (schema.md section 14) |
+| Tables for the sets | `workout_sets` (migration 0015) became `exercise_sets` under `exercise_logs` in migration 0018 (2026-10-05); same columns |
 | Save endpoint that reads heart rate, calls the calculation and stores the summary | Not built (needs E0-2, the API skeleton) |
-| Gold inputs (resting heart rate, glucose after sessions) | Waits for E1-3 and E9-1 |
+| Gold inputs (resting heart rate, glucose after sessions) | Built for the demo patient (`daily_summary`, `exercise_response`); the nightly job that fills them is not built |
 | Model sentence | Waits for E0-3, the gateway |
 | Link from the Log hub (E1) and the cardio workout form (F1) | Not built; open `/log/workout/live` directly |
 
