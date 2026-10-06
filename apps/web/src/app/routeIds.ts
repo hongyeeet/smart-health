@@ -44,15 +44,15 @@ export const ROUTES = {
   D1: { path: '/day/:date', title: 'Your day', kind: 'screen', group: 'Day', from: 'C1, C3, C4, E6, E7, B1', links: [l('Any marker', 'D2'), l('Back to your week', 'C1'), l('Glucose insights', 'C2')] },
   D2: { path: '#marker', title: 'Marker detail', kind: 'sheet', group: 'Day', from: 'D1', links: [l('Close', 'D1')] },
 
-  E1: { path: '/log', title: 'Log', kind: 'tab', group: 'Log', from: 'Centre Log button', links: [l('Workout', 'F1'), l('Meal', 'E2'), l('Glucose', 'E3'), l('Symptom', 'E4'), l('Mood and sleep check-in', 'E5'), l('A recent entry', 'E7')] },
+  E1: { path: '/log', title: 'Log', kind: 'tab', group: 'Log', from: 'Centre Log button', links: [l('Workout', 'F1'), l('Meal', 'E2'), l('Symptom', 'E4'), l('Mood and sleep check-in', 'E5'), l('A recent entry', 'E7')] },
   E2: { path: '/log/meal', title: 'Log a meal', kind: 'screen', group: 'Log', from: 'E1', links: [l('Save', 'E6')] },
-  E3: { path: '/log/glucose', title: 'Log glucose', kind: 'screen', group: 'Log', from: 'E1', links: [l('Save', 'E6'), l('Very low reading', 'J1')] },
   E4: { path: '/log/symptom', title: 'Log a symptom', kind: 'screen', group: 'Log', from: 'E1, F1, H7', links: [l('Save', 'E6'), l('Red-flag symptom', 'J1')], note: 'Fills in the sensor reading and the time; detail is optional.' },
   E5: { path: '/log/checkin', title: 'Mood and sleep check-in', kind: 'screen', group: 'Log', from: 'E1', links: [l('Save', 'E6')] },
-  E6: { path: '/log/done', title: 'Saved', kind: 'screen', group: 'Log', from: 'E2 to E5, F1', links: [l('See your day', 'D1'), l('The related insight', 'C2'), l('Get help now', 'J1'), l('Done', 'B1')] },
+  E6: { path: '/log/done', title: 'Saved', kind: 'screen', group: 'Log', from: 'E2, E4, E5, F1', links: [l('See your day', 'D1'), l('The related insight', 'C2'), l('Get help now', 'J1'), l('Done', 'B1')] },
+  E8: { path: '/log/ideas', title: 'Lunch ideas', kind: 'screen', group: 'Log', from: 'B1, B2 (lunch reminder)', links: [l('Log my meal', 'E2')], note: 'Up to 3 options from your own history or the Singapore food database, each with the reason.' },
   E7: { path: '#entry', title: 'Edit or delete an entry', kind: 'sheet', group: 'Log', from: 'E1 (Recent entries)', links: [l('See it in your day', 'D1')] },
 
-  F1: { path: '/log/workout', title: 'Log a workout', kind: 'screen', group: 'Log workout', from: 'B1, E1, C4', links: [l('Log a symptom', 'E4'), l('Save', 'E6')] },
+  F1: { path: '/log/workout', title: 'Log a workout', kind: 'screen', group: 'Log workout', from: 'B1, E1, C4', links: [l('Live strength tracker', 'F2'), l('Log a symptom', 'E4'), l('Save', 'E6')] },
 
   F2: { path: '/log/workout/live', title: 'Workout tracker', kind: 'screen', group: 'Log workout', from: 'F1, E1', links: [l('Back to log', 'E1')], note: 'Live strength session: timer, exercises, sets with reps and weight, rest timer, finish and summary. Heart-rate effort is computed by the server (services/api/app/services/workout_effort.py).' },
 
@@ -66,9 +66,10 @@ export const ROUTES = {
   H8: { path: '/meds/add', title: 'Add a medicine by hand', kind: 'screen', group: 'Medications', from: 'H1, A3', links: [l('Save', 'H1')] },
 
   I1: { path: '/chat', title: 'Ask Smart Health', kind: 'screen', group: 'Chat', from: 'Ask button on B1 and C1', links: [l('Add to my doctor questions', 'K3'), l('See your week', 'C1'), l('Open the Metformin page', 'H6')] },
-  J1: { path: '/urgent', title: 'Low glucose alert', kind: 'screen', group: 'Urgent', from: 'E3, E4 (red-flag symptom), demo panel', links: [l('Add an emergency contact', 'K9'), l('Log a reading', 'E3'), l("I'm okay now", 'B1')], note: 'Two tiers: low (below 4.0, treat and recheck in 15 minutes) and very low (below 3.0, call 995 and the emergency contact is alerted). No AI is involved.' },
+  J1: { path: '/urgent', title: 'Low glucose alert', kind: 'screen', group: 'Urgent', from: 'E4 (red-flag symptom), the sensor alert, demo panel', links: [l('Add an emergency contact', 'K9'), l('Log a symptom', 'E4'), l("I'm okay now", 'B1')], note: 'Two tiers: low (below 4.0, treat and recheck in 15 minutes) and very low (below 3.0, call 995 and the emergency contact is alerted). No AI is involved.' },
 
   K1: { path: '/me', title: 'Me', kind: 'tab', group: 'Me', from: 'Bottom bar', links: [l('What Smart Health has learned', 'K2'), l('Doctor brief', 'L1'), l('Care plan', 'K3'), l('Connected sources', 'K4'), l('Language and display', 'K5'), l('Privacy and consent', 'K6'), l('Emergency contact', 'K9'), l('Data and account', 'K8'), l('Replay onboarding', 'A1')] },
+  K10: { path: '/me/progress', title: 'How it is going', kind: 'screen', group: 'Me', from: 'K1', links: [l('What Smart Health has learned', 'K2')], note: 'Week by week, what the person logged and did. Not proof that the app caused a change.' },
   K2: { path: '/me/learned', title: 'What Smart Health has learned', kind: 'screen', group: 'Me', from: 'K1', links: [l('A fact\'s evidence', 'C4')] },
   K3: { path: '/me/care', title: 'Care plan', kind: 'screen', group: 'Me', from: 'K1, B1, H5, I1, H6', links: [l('Plan an appointment', 'K7'), l('Generate my doctor brief', 'L1')] },
   K4: { path: '/me/sources', title: 'Connected sources', kind: 'screen', group: 'Me', from: 'K1, B1', links: [l('Sensor sprint', 'C8')] },

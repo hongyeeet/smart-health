@@ -10,6 +10,8 @@ export type MissReason = 'forgot' | 'side_effects' | 'ran_out' | 'felt_fine' | '
 export type GlucoseLevel = 'very_low' | 'low' | 'in_range' | 'high' | 'very_high'
 export type Intensity = 'light' | 'moderate' | 'vigorous'
 export type WorkoutType = 'aerobic' | 'strength' | 'mixed' | 'flexibility'
+/** the exercise types stored in `exercise_logs.type` (data model v2) */
+export type ExerciseKind = 'strength' | 'walking' | 'running' | 'cycling' | 'swimming' | 'hiit' | 'sports' | 'yoga_pilates' | 'stretching_mobility' | 'dance' | 'household_gardening' | 'other'
 export type Period = 7 | 30 | 90
 export type Locale = 'en' | 'zh' | 'ms' | 'ta'
 
@@ -78,7 +80,7 @@ export interface DayWorkout {
   intensity: Intensity
   glucoseChange2h?: number
 }
-export type SymptomWhen = 'now' | 'earlier' | 'last_night' | 'at'
+export type SymptomWhen = 'now' | 'at'
 export interface SymptomDetail {
   when: SymptomWhen
   whenLabel?: string
@@ -257,7 +259,7 @@ export interface ConnectedSource {
 
 export interface RecentEntry {
   id: string
-  kind: 'meal' | 'glucose' | 'workout' | 'symptom' | 'checkin'
+  kind: LogKind
   title: string
   detail: string
   when: string
@@ -281,17 +283,44 @@ export interface HomeData {
   sprintOf: number
 }
 
+/** Confidence level derived from the numeric score: >= 0.85 high, > 0 check, 0/null unreadable. */
+export type ScanConfidenceLevel = 'high' | 'check' | 'unreadable'
+
 export interface ScanField {
   key: string
   label: string
+  /** null means the model could not read this field — never 0 or empty string (rules.md 3) */
   value: string | null
-  confidence: 'high' | 'check' | 'unreadable'
+  /** raw model confidence, 0–1 */
+  confidence: number
+  /** the text the model found on the label, so the user can verify (null if none) */
+  sourceText: string | null
+  /** derived for the UI from confidence */
+  level: ScanConfidenceLevel
 }
+
+export interface ScanScheduleItem {
+  time: string
+  label: string
+}
+
 export interface ScanResult {
+  scanId: string
+  /** what kind of product the model thinks this is */
+  itemType: 'prescription_label' | 'blister_or_box' | 'supplement' | 'tcm' | 'otc' | 'unknown'
+  status: 'uploaded' | 'extracting' | 'extracted' | 'failed'
+  /** the medicine name, pulled from the name field for convenience */
   drug: string
   fields: ScanField[]
-  schedule: { time: string; label: string }[]
+  /** parsed dose schedule (times + meal context), may be empty until parsed */
+  schedule: ScanScheduleItem[]
+  /** short plain-language description of what the medicine is for, from drug_reference or the model */
+  description: string | null
+  /** interaction hint, if the clash checker found one (E3-2/E6-1 populates this) */
   interaction: { a: string; b: string } | null
+  /** model that produced the extraction, for audit */
+  modelId: string | null
+  error: string | null
 }
 
 export interface ChatReply {
@@ -315,9 +344,10 @@ export interface BriefData {
   dayTraces: { kind: 'best' | 'worst' | 'typical'; date: string }[]
 }
 
-export type LogKind = 'meal' | 'glucose' | 'workout' | 'symptom' | 'checkin'
+export type LogKind = 'meal' | 'workout' | 'symptom' | 'checkin'
 
 export interface LogResult {
+  id: string
   kind: LogKind
   title: string
   landedIn: string
@@ -326,7 +356,7 @@ export interface LogResult {
   lines: string[]
   related: RouteId
   day: string
-  flag?: { text: string; level: GlucoseLevel | 'info' }
+  flag?: { text: string; level: 'info' | 'in_range' | 'high' }
   swap?: { text: string; source: string }
   urgent?: boolean
   urgentTier?: 1 | 2
@@ -354,6 +384,8 @@ export interface WorkoutSession {
   exercises: WorkoutExercise[]
   felt?: Felt
   note?: string
+  /** how hard it felt, 1 (very light) to 5 (all-out) */
+  intensity?: number
 }
 /** Returned by the server after a session is saved. Every number is computed in code (rules.md 1). */
 export interface WorkoutSummary {
@@ -374,4 +406,206 @@ export interface WorkoutSummary {
   glucoseChange2h: number | null
   /** plain-language sentence written by the model from the numbers above; validated, may be absent */
   narrative?: string
+}
+
+/* ---------------- logging: meal photo analysis, daily progress, workouts this week ---------------- */
+export interface Macros {
+  kcal: number | null
+  carbsG: number | null
+  proteinG: number | null
+  fatG: number | null
+  fibreG: number | null
+  sugarG: number | null
+  sodiumMg: number | null
+}
+/** What the vision model read from a meal photo. Every number is an estimate until the person confirms it. */
+export interface MealAnalysis {
+  /** the Bronze row that holds the photo checksum and the model's raw answer; sent back when the meal is saved */
+  analysisId: string
+  name: string
+  items: string[]
+  macros: Macros
+  confidence: 'high' | 'check'
+  flags: ('high_salt' | 'high_sugar')[]
+  portionNote: string
+  modelId: string
+}
+export interface FoodNote {
+  kind: 'higher' | 'lower' | 'similar' | 'learning'
+  text: string
+  n: number
+  range: [number, number] | null
+}
+export interface ProgressItem {
+  key: 'meals' | 'checkin' | 'workout' | 'symptom'
+  label: string
+  hint: string
+  done: boolean
+  /** due = inside its time window right now and not logged yet; later = not now (before or after its window) */
+  status: 'done' | 'due' | 'later'
+  count: number
+  target: number | null
+  to: RouteId
+  /** when this log is worth doing, for example '7 to 10:30 am' */
+  window?: string | null
+  /** a short sentence that asks for it, present only while it is due */
+  prompt?: string | null
+}
+
+export interface AppUser {
+  key: string
+  label: string
+  sub: string
+}
+export interface UserList {
+  current: string
+  users: AppUser[]
+}
+export interface LogProgress {
+  date: string
+  items: ProgressItem[]
+  done: number
+  total: number
+  streakDays: number
+  weekActivityMin: number
+  weekActivityGoal: number
+  weekStrengthSessions: number
+  weekStrengthGoal: number
+  nextUp: ProgressItem | null
+}
+export interface WeekWorkouts {
+  activeMin: number
+  goalMin: number
+  strengthSessions: number
+  goalStrength: number
+  sessions: number
+  recent: RecentEntry[]
+}
+export interface LogContext {
+  glucose: { v: number; trend: 'rising' | 'steady' | 'falling'; at: string } | null
+}
+
+/* ---------------- nutrition: food flags and lunch ideas ---------------- */
+/** One nutrient compared between the person's usual dish (their own logged numbers) and a lighter dish from the food database. */
+export interface SavingLine {
+  nutrient: 'kcal' | 'protein_g' | 'carbs_g' | 'fat_g' | 'sugar_g' | 'sodium_mg' | 'fibre_g'
+  from: number
+  to: number
+  change: number
+}
+/** A lighter, similar dish to have next time. The food database is only a shelf of options: it never sets what a meal is logged as. */
+export interface Alternative {
+  foodId: string
+  name: string
+  serving: string | null
+  sourceGrade: string | null
+  /** how sure JEV is that this is a reasonable substitute, 0 to 1 */
+  fit: number
+  improves: string[]
+  changes: SavingLine[]
+  for: string
+}
+/** A food habit the memory loop noticed: a type of food eaten often, high in what the person logged, with lighter dishes to try. */
+export interface FoodHabit {
+  type: string
+  label: string
+  n: number
+  dishes: string[]
+  topDish: string
+  topDishN: number
+  avg: Record<string, number | null>
+  meanRise: number | null
+  medianRise: number | null
+  alternatives: Alternative[]
+  /** the lighter dish was eaten since, and how it compared with the usual one (the person's own numbers) */
+  outcomeText: string | null
+  text: string
+}
+export interface LunchOption {
+  key: string
+  name: string
+  source: 'swap' | 'own' | 'general'
+  why: string
+  serving?: string | null
+  grade?: string | null
+  carbs: number | null
+  sodium: number | null
+}
+export interface LunchIdeas {
+  windowStart: string
+  windowEnd: string
+  options: LunchOption[]
+}
+
+/* ---------------- what Smart Health has learned: facts, weekly digest, audit, progress ---------------- */
+export interface LearnedFact {
+  id: string
+  key: string
+  statement: string
+  confidence: number
+  status: 'proposed' | 'active'
+  version: number
+  why: string
+  confirmed: boolean
+  source: string | null
+  updatedAt: string
+}
+export interface LearnedGroup {
+  category: string
+  label: string
+  facts: LearnedFact[]
+}
+export interface Learned {
+  groups: LearnedGroup[]
+  total: number
+  toConfirm: number
+}
+export interface WeekDigest {
+  days: number
+  newFacts: number
+  lines: { kind: 'fact'; id: string; text: string; status: 'proposed' | 'active' | 'superseded' | 'rejected' }[]
+  reminders: { sent: number; opened: number; acted: number }
+  suggestions: { shown: number; chosen: number }
+  topSuggestions: { name: string; kind: string; shown: number; chosen: number }[]
+  guard: { checked: number; passed: number; blocked: number }
+  agentRuns: Record<string, number>
+}
+export interface AuditRun {
+  id: string
+  trigger: string
+  status: string
+  ms: number | null
+  at: string
+  steps: { seq: number; node: string; tool: string | null; ms: number | null; output: unknown }[]
+}
+export interface ProgressWeek {
+  weekStart: string
+  meals: number
+  avgKcal: number | null
+  avgSodium: number | null
+  doses: number | null
+  onTimePct: number | null
+}
+export interface Progress {
+  weeks: ProgressWeek[]
+  compare: {
+    avgKcal: { first: number | null; latest: number | null }
+    avgSodium: { first: number | null; latest: number | null }
+    onTimePct: { first: number | null; latest: number | null }
+    firstWeeks: string[]
+    latestWeeks: string[]
+  } | null
+  note: string
+}
+
+export interface AiUsage {
+  day: string
+  calls: number
+  callCap: number
+  costUsd: number
+  budgetUsd: number
+  blocked: number
+  overCap: boolean
+  providers: { provider: string; calls: number; inputTokens: number; outputTokens: number; costUsd: number | null }[]
+  note: string
 }

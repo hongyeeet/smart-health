@@ -7,13 +7,24 @@ import type {
   Dose,
   HomeData,
   Insights,
-  Intensity,
+  ExerciseKind,
+  AiUsage,
+  AuditRun,
+  FoodHabit,
+  Learned,
+  Progress,
+  WeekDigest,
+  FoodNote,
+  LunchIdeas,
+  LogContext,
+  LogProgress,
+  MealAnalysis,
+  WeekWorkouts,
   LogResult,
   MemoryFact,
   MissReason,
   Medication,
   EmergencyContact,
-  SymptomDetail,
   WorkoutSession,
   WorkoutSummary,
   Notice,
@@ -22,14 +33,41 @@ import type {
   RecentEntry,
   ScanResult,
   WeekCompare,
-  WorkoutType,
 } from '../types'
 
 export type LogInput =
-  | { kind: 'meal'; name: string; portion: number; viaPhoto: boolean }
-  | { kind: 'glucose'; value: number; context: string }
-  | { kind: 'workout'; type: WorkoutType; activity: string; intensity: Intensity; minutes: number; start: string; feel: string }
-  | { kind: 'symptom'; label: string; severity: number; note?: string; detail?: SymptomDetail }
+  | {
+      kind: 'meal'
+      name: string
+      description?: string
+      startAt: string
+      endAt: string
+      portion: number
+      kcal: number | null
+      carbsG: number | null
+      proteinG: number | null
+      fatG: number | null
+      sugarG: number | null
+      fibreG: number | null
+      sodiumMg: number | null
+      analysisId?: string
+      edited: boolean
+      /** which numbers were saved */
+      valuesFrom: 'ai' | 'user'
+    }
+  | { kind: 'workout'; type: ExerciseKind; activity: string; intensity: number; startAt: string; minutes: number; feeling?: number }
+  | {
+      kind: 'symptom'
+      label: string
+      severity: number
+      occurredAt: string
+      /** how long the person felt it, in minutes; omitted when it is still going or unknown */
+      durationMin?: number
+      side?: string
+      relation?: string
+      feel?: string
+      note?: string
+    }
   | { kind: 'checkin'; mood: number; stress: number; sleep: number; energy: number }
 
 export interface NewMedication {
@@ -57,13 +95,33 @@ export interface Api {
 
   logEntry(input: LogInput): Promise<LogResult>
   listRecent(): Promise<RecentEntry[]>
+  /** Photo (and an optional description) to estimated nutrients, read by the vision model */
+  analyzeMeal(file: File, description?: string): Promise<MealAnalysis>
+  getFoodNote(food: string): Promise<FoodNote>
+  getFoodFlags(): Promise<FoodHabit[]>
+  getLunchIdeas(): Promise<LunchIdeas>
+  acceptSuggestion(key: string): Promise<void>
+  dismissSuggestion(key: string): Promise<void>
+  getAiUsage(): Promise<AiUsage>
+  getLogProgress(): Promise<LogProgress>
+  getLogContext(): Promise<LogContext>
+  getLearned(): Promise<Learned>
+  learnedAction(id: string, action: 'confirm' | 'edit' | 'delete', text?: string): Promise<void>
+  getDigest(): Promise<WeekDigest>
+  getAudit(): Promise<AuditRun[]>
+  getProgress(): Promise<Progress>
+  getWeekWorkouts(): Promise<WeekWorkouts>
   deleteEntry(id: string): Promise<void>
 
   listMedications(): Promise<Medication[]>
   getMedication(id: string): Promise<Medication | undefined>
   addMedication(m: NewMedication): Promise<Medication>
-  getScanResult(): Promise<ScanResult>
-  confirmScan(): Promise<Medication>
+  /** Upload a label photo and start AI extraction. Returns the scan with extracted fields. */
+  uploadScan(file: File): Promise<ScanResult>
+  /** Re-fetch a scan by id (for polling while extracting, or re-reviewing). */
+  getScanResult(scanId: string): Promise<ScanResult>
+  /** User confirms the reviewed/edited fields → saves the medication (E3-2 does the full save). */
+  confirmScan(scanId: string, editedFields: Record<string, string | null>): Promise<Medication>
   listDosesToday(): Promise<Dose[]>
 
   getFacts(): Promise<{ facts: MemoryFact[]; compare: WeekCompare }>
@@ -79,7 +137,7 @@ export interface Api {
   revokeShareLink(): Promise<void>
 
   listNotices(): Promise<Notice[]>
-  markNoticesRead(): Promise<void>
+  openNotice(id: string): Promise<void>
   listSources(): Promise<ConnectedSource[]>
   syncSources(): Promise<void>
 

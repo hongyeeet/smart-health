@@ -1,5 +1,6 @@
 import { appConfig } from '@/config/app'
-import type { Api } from './types'
+import type { Api, LogInput } from './types'
+import { useUi } from '@/state/store'
 
 /**
  * The production data layer. Every method of `Api` goes through here, so screens never know whether
@@ -17,8 +18,11 @@ const todo = (name: string) => async (): Promise<never> => {
   throw new NotWired(name)
 }
 
+/** Every call says who it is for. Uploads (FormData) leave Content-Type alone so the browser can set the boundary. */
+const asUser = (extra?: Record<string, string>): Record<string, string> => ({ 'X-User': useUi.getState().userKey, ...extra })
+
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${appConfig.apiBaseUrl}${path}`, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...init })
+  const res = await fetch(`${appConfig.apiBaseUrl}${path}`, { credentials: 'include', ...init, headers: asUser({ 'Content-Type': 'application/json', ...(init?.headers as Record<string, string> | undefined) }) })
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
   return (await res.json()) as T
 }
@@ -34,14 +38,47 @@ export const httpApi: Api = {
   getInsights: todo('getInsights'),
   getDay: todo('getDay'),
   getDayList: todo('getDayList'),
-  logEntry: todo('logEntry'),
-  listRecent: todo('listRecent'),
-  deleteEntry: todo('deleteEntry'),
+  logEntry: (input: LogInput) => request('/logs', { method: 'POST', body: JSON.stringify(input) }),
+  listRecent: () => request('/logs/recent'),
+  analyzeMeal: async (file: File, description?: string) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    if (description?.trim()) fd.append('description', description.trim())
+    const res = await fetch(`${appConfig.apiBaseUrl}/meals/analyze`, { method: 'POST', body: fd, credentials: 'include', headers: asUser() })
+    if (!res.ok) throw new Error(((await res.json().catch(() => null)) as { detail?: string } | null)?.detail ?? `${res.status} ${res.statusText}`)
+    return res.json()
+  },
+  getFoodNote: (food: string) => request(`/meals/response?food=${encodeURIComponent(food)}`),
+  getFoodFlags: () => request('/nutrition/flags'),
+  getLunchIdeas: () => request('/nutrition/lunch'),
+  acceptSuggestion: (key: string) => request<void>('/nutrition/suggestions/accept', { method: 'POST', body: JSON.stringify({ key, kind: 'suggestion' }) }).then(() => undefined),
+  dismissSuggestion: (key: string) => request<void>('/nutrition/suggestions/dismiss', { method: 'POST', body: JSON.stringify({ key, kind: 'suggestion' }) }).then(() => undefined),
+  getAiUsage: () => request('/memory/usage'),
+  getLogProgress: () => request('/logs/today'),
+  getLogContext: () => request('/logs/context'),
+  getLearned: () => request('/memory/facts'),
+  learnedAction: (id: string, action: 'confirm' | 'edit' | 'delete', text?: string) =>
+    request<void>(`/memory/facts/${id}/action`, { method: 'POST', body: JSON.stringify({ action, text }) }).then(() => undefined),
+  getDigest: () => request('/memory/digest'),
+  getAudit: () => request('/memory/audit'),
+  getProgress: () => request('/memory/progress'),
+  getWeekWorkouts: () => request('/workouts/week'),
+  deleteEntry: (id: string) => request<void>(`/logs/${id}`, { method: 'DELETE' }).then(() => undefined),
   listMedications: todo('listMedications'),
   getMedication: todo('getMedication'),
   addMedication: todo('addMedication'),
-  getScanResult: todo('getScanResult'),
-  confirmScan: todo('confirmScan'),
+  uploadScan: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return fetch(`${appConfig.apiBaseUrl}/scans`, { method: 'POST', body: fd, credentials: 'include', headers: asUser() })
+      .then((res) => {
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+        return res.json()
+      })
+  },
+  getScanResult: (scanId: string) => request(`/scans/${scanId}`),
+  confirmScan: (scanId: string, editedFields: Record<string, string | null>) =>
+    request(`/scans/${scanId}/confirm`, { method: 'POST', body: JSON.stringify({ fields: editedFields }) }),
   listDosesToday: todo('listDosesToday'),
   getFacts: todo('getFacts'),
   factAction: todo('factAction'),
@@ -52,14 +89,14 @@ export const httpApi: Api = {
   getBrief: todo('getBrief'),
   createShareLink: todo('createShareLink'),
   revokeShareLink: todo('revokeShareLink'),
-  listNotices: todo('listNotices'),
-  markNoticesRead: todo('markNoticesRead'),
+  listNotices: () => request('/notifications'),
+  openNotice: (id: string) => request<void>(`/notifications/${id}/open`, { method: 'POST' }).then(() => undefined),
   listSources: todo('listSources'),
   syncSources: todo('syncSources'),
   sendChat: todo('sendChat'),
   getEmergencyContact: todo('getEmergencyContact'),
   saveEmergencyContact: todo('saveEmergencyContact'),
   recordAwareness: todo('recordAwareness'),
-  saveWorkoutSession: todo('saveWorkoutSession'),
+  saveWorkoutSession: (s) => request('/workouts', { method: 'POST', body: JSON.stringify(s) }),
   getWorkoutSummary: todo('getWorkoutSummary'),
 }

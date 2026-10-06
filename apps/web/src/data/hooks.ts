@@ -1,20 +1,50 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './repositories'
 import type { LogInput, NewMedication } from './repositories/types'
-import type { MissReason, Period } from './types'
+import type { MissReason, Period, UserList } from './types'
+import { request } from './repositories/http'
+import { useUi } from '@/state/store'
 
 export const useHome = () => useQuery({ queryKey: ['home'], queryFn: () => api.getHome() })
 export const useInsights = (period: Period) => useQuery({ queryKey: ['insights', period], queryFn: () => api.getInsights(period) })
 export const useDay = (date: string) => useQuery({ queryKey: ['day', date], queryFn: () => api.getDay(date) })
 export const useDayList = () => useQuery({ queryKey: ['dayList'], queryFn: () => api.getDayList() })
+export const useLogProgress = () => useQuery({ queryKey: ['logProgress'], queryFn: () => api.getLogProgress(), refetchInterval: 60_000 })
+export const useFoodFlags = () => useQuery({ queryKey: ['foodFlags'], queryFn: () => api.getFoodFlags() })
+export const useLunchIdeas = () => useQuery({ queryKey: ['lunchIdeas'], queryFn: () => api.getLunchIdeas() })
+export const useAcceptSuggestion = () => useWrite((key: string) => api.acceptSuggestion(key))
+export const useLearned = () => useQuery({ queryKey: ['learned'], queryFn: () => api.getLearned() })
+export const useDigest = () => useQuery({ queryKey: ['digest'], queryFn: () => api.getDigest() })
+export const useAudit = (enabled: boolean) => useQuery({ queryKey: ['audit'], queryFn: () => api.getAudit(), enabled })
+export const useProgress = () => useQuery({ queryKey: ['progress'], queryFn: () => api.getProgress() })
+export const useLearnedAction = () => useWrite((a: { id: string; action: 'confirm' | 'edit' | 'delete'; text?: string }) => api.learnedAction(a.id, a.action, a.text))
+export const useDismissSuggestion = () => useWrite((key: string) => api.dismissSuggestion(key))
+export const useAiUsage = () => useQuery({ queryKey: ['aiUsage'], queryFn: () => api.getAiUsage() })
+export const useLogContext = () => useQuery({ queryKey: ['logContext'], queryFn: () => api.getLogContext() })
+export const useWeekWorkouts = () => useQuery({ queryKey: ['weekWorkouts'], queryFn: () => api.getWeekWorkouts() })
+export const useAnalyzeMeal = () => useMutation({ mutationFn: (a: { file: File; description?: string }) => api.analyzeMeal(a.file, a.description) })
 export const useRecent = () => useQuery({ queryKey: ['recent'], queryFn: () => api.listRecent() })
 export const useMeds = () => useQuery({ queryKey: ['meds'], queryFn: () => api.listMedications() })
 export const useMed = (id: string) => useQuery({ queryKey: ['med', id], queryFn: () => api.getMedication(id) })
-export const useScan = () => useQuery({ queryKey: ['scan'], queryFn: () => api.getScanResult() })
+export const useScan = (scanId: string | undefined) =>
+  useQuery({ queryKey: ['scan', scanId], queryFn: () => api.getScanResult(scanId!), enabled: !!scanId })
+export const useUploadScan = () =>
+  useMutation({ mutationFn: (file: File) => api.uploadScan(file) })
 export const useFacts = () => useQuery({ queryKey: ['facts'], queryFn: () => api.getFacts() })
 export const useCarePlan = () => useQuery({ queryKey: ['care'], queryFn: () => api.getCarePlan() })
 export const useBrief = () => useQuery({ queryKey: ['brief'], queryFn: () => api.getBrief() })
 export const useNotices = () => useQuery({ queryKey: ['notices'], queryFn: () => api.listNotices() })
+export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => request<UserList>('/users'), staleTime: Infinity })
+
+/** Switch between the demo user and Mr Tan. Everything cached belongs to the previous person, so it is reset and reloaded. */
+export function useSwitchUser() {
+  const qc = useQueryClient()
+  const setUserKey = useUi((s) => s.setUserKey)
+  return (key: string) => {
+    setUserKey(key)
+    void qc.resetQueries()
+  }
+}
 export const useSources = () => useQuery({ queryKey: ['sources'], queryFn: () => api.listSources() })
 
 /** Every write refreshes every read: simple and correct for a mock, and easy to narrow later. */
@@ -30,13 +60,13 @@ export const useSnooze = () => useWrite(() => api.snoozePrompt())
 export const useLog = () => useWrite((i: LogInput) => api.logEntry(i))
 export const useDeleteEntry = () => useWrite((id: string) => api.deleteEntry(id))
 export const useAddMed = () => useWrite((m: NewMedication) => api.addMedication(m))
-export const useConfirmScan = () => useWrite(() => api.confirmScan())
+export const useConfirmScan = () => useWrite((a: { scanId: string; fields: Record<string, string | null> }) => api.confirmScan(a.scanId, a.fields))
 export const useFactAction = () => useWrite((a: { id: string; action: 'confirm' | 'delete' | 'edit'; text?: string }) => api.factAction(a.id, a.action, a.text))
 export const useAddQuestion = () => useWrite((a: { text: string; origin: 'user' | 'refused_chat' | 'clash' | 'side_effect' }) => api.addQuestion(a.text, a.origin))
 export const useRemoveQuestion = () => useWrite((id: string) => api.removeQuestion(id))
 export const usePlanAppointment = () => useWrite((a: { label: string; when: string }) => api.planAppointment(a.label, a.when))
 export const useShare = () => useWrite(() => api.createShareLink())
 export const useRevoke = () => useWrite(() => api.revokeShareLink())
-export const useMarkRead = () => useWrite(() => api.markNoticesRead())
+export const useOpenNotice = () => useWrite((id: string) => api.openNotice(id))
 export const useSync = () => useWrite(() => api.syncSources())
 export const useChat = () => useMutation({ mutationFn: (t: string) => api.sendChat(t) })

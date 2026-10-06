@@ -66,7 +66,7 @@ export function Sheet({ title, onClose, children, label }: { title: ReactNode; o
             </button>
           </div>
         </div>
-        <div className="hide-scroll flex-1 overflow-y-auto px-5 pb-8 pt-2">{children}</div>
+        <div className="hide-scroll scroll-area flex-1 overflow-y-auto px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2">{children}</div>
       </motion.div>
     </div>
   )

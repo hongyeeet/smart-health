@@ -87,16 +87,36 @@ export function ChoiceCards<T extends string>({ options, value, onChange, label 
 }
 
 /** 1 to 5 rating row. */
+/**
+ * One colour ramp for every 1 to 5 scale (mood, stress, sleep, energy, how strong, how hard), so the same step is the
+ * same colour in every row. It runs from a light tint at 1 to the full brand colour at 5. It is deliberately not
+ * red-to-green: for stress, a high number is not "good", so the colour shows the amount, not a verdict.
+ */
+export const RAMP = [14, 32, 52, 76, 100] as const
+const rampBg = (n: number) => `color-mix(in oklab, var(--c-brand) ${RAMP[n - 1]}%, var(--c-card))`
+
 export function Rating({ value, onChange, label, lowLabel, highLabel }: { value: number; onChange: (n: number) => void; label: string; lowLabel: string; highLabel: string }) {
   return (
     <div className="flex flex-col gap-2" role="radiogroup" aria-label={label}>
       <p className="text-body font-bold">{label}</p>
       <div className="flex gap-2">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${label} ${n} of 5`} onClick={() => onChange(n)} className={cn('press flex min-h-14 flex-1 items-center justify-center rounded-card border-[1.5px] font-serif text-h2 font-medium', value === n ? 'border-brand bg-brand text-on-brand' : 'border-line bg-card text-ink')}>
-            {n}
-          </button>
-        ))}
+        {[1, 2, 3, 4, 5].map((n) => {
+          const on = value === n
+          return (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              aria-label={`${label} ${n} of 5`}
+              onClick={() => onChange(n)}
+              style={{ background: rampBg(n) }}
+              className={cn('press flex min-h-14 flex-1 items-center justify-center rounded-card border-[1.5px] font-serif text-h2 font-medium transition-[box-shadow,transform]', RAMP[n - 1]! >= 52 ? 'text-on-brand' : 'text-ink', on ? 'scale-[1.04] border-ink shadow-[0_0_0_3px_var(--c-card),0_0_0_5px_var(--c-ink)]' : 'border-transparent opacity-80')}
+            >
+              {n}
+            </button>
+          )
+        })}
       </div>
       <div className="flex justify-between text-sub text-ink3">
         <span>{lowLabel}</span>

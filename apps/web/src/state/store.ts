@@ -14,6 +14,9 @@ interface UiState {
   theme: ThemeName
   textScale: 1 | 2
   locale: Locale
+  /** who the app acts as: sent to the API as the X-User header */
+  userKey: string
+  setUserKey: (k: string) => void
   setTheme: (t: ThemeName) => void
   setTextScale: (s: 1 | 2) => void
   setLocale: (l: Locale) => void
@@ -43,6 +46,8 @@ export const useUi = create<UiState>()(
       theme: 'light',
       textScale: 1,
       locale: 'en',
+      userKey: 'demo',
+      setUserKey: (userKey) => set({ userKey }),
       setTheme: (theme) => set({ theme }),
       setTextScale: (textScale) => set({ textScale }),
       setLocale: (locale) => set({ locale }),
@@ -66,7 +71,7 @@ export const useUi = create<UiState>()(
     }),
     {
       name: 'smart-health-ui',
-      partialize: (s) => ({ theme: s.theme, textScale: s.textScale, locale: s.locale }),
+      partialize: (s) => ({ theme: s.theme, textScale: s.textScale, locale: s.locale, userKey: s.userKey }),
     },
   ),
 )

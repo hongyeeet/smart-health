@@ -2,11 +2,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/data/repositories'
 import type { Felt, WorkoutExercise, WorkoutSession, WorkoutSummary } from '@/data/types'
 import { Footer, Header, Screen } from '@/ui/layout'
+import { Rating } from '@/ui/controls'
 import { Alert, Button, Card, Chip, Field, SectionTitle, StatusPill, Stepper } from '@/ui/primitives'
 import { Barbell, CheckCircle, Heartbeat, Timer, Trash } from '@/ui/icons'
 import { useWorkoutSession } from './useWorkoutSession'
 
-const COMMON = ['Squat', 'Bench press', 'Deadlift', 'Shoulder press', 'Barbell row', 'Lat pulldown', 'Leg press', 'Biceps curl', 'Triceps pushdown', 'Plank', 'Treadmill', 'Cycling']
+const LIBRARY: { group: string; items: string[] }[] = [
+  { group: 'Legs', items: ['Squat', 'Leg press', 'Lunge', 'Deadlift', 'Romanian deadlift', 'Calf raise', 'Leg curl', 'Leg extension'] },
+  { group: 'Chest', items: ['Bench press', 'Incline press', 'Push-up', 'Chest fly', 'Machine chest press'] },
+  { group: 'Back', items: ['Lat pulldown', 'Barbell row', 'Seated row', 'Pull-up', 'Back extension'] },
+  { group: 'Shoulders', items: ['Shoulder press', 'Lateral raise', 'Face pull', 'Shrug'] },
+  { group: 'Arms', items: ['Biceps curl', 'Hammer curl', 'Triceps pushdown', 'Triceps dip'] },
+  { group: 'Core', items: ['Plank', 'Crunch', 'Dead bug', 'Leg raise', 'Russian twist'] },
+  { group: 'Cardio', items: ['Treadmill', 'Cycling', 'Rowing machine', 'Cross-trainer'] },
+]
 const REST_SECONDS = 90
 const FEELS: { id: Felt; label: string }[] = [
   { id: 'energised', label: 'Energised' },
@@ -17,7 +26,7 @@ const FEELS: { id: Felt; label: string }[] = [
 
 const mmss = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 const hhmmss = (total: number) => (total >= 3600 ? `${Math.floor(total / 3600)}:${mmss(total % 3600)}` : mmss(total))
-const clockOf = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()
+const clockOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
 
 /** Reps times weight, summed. Plain arithmetic on what the person typed; bodyweight sets add nothing. */
 const volumeOf = (e: WorkoutExercise) => e.sets.reduce((a, s) => a + (s.weightKg ? s.reps * s.weightKg : 0), 0)
@@ -35,6 +44,7 @@ export function WorkoutTracker() {
   const [now, setNow] = useState(Date.now())
   const [finishing, setFinishing] = useState(false)
   const [felt, setFelt] = useState<Felt | null>(null)
+  const [intensity, setIntensity] = useState(3)
   const [note, setNote] = useState('')
   const [custom, setCustom] = useState('')
   const [result, setResult] = useState<{ session: WorkoutSession; summary: WorkoutSummary | null; error: string | null } | null>(null)
@@ -49,7 +59,7 @@ export function WorkoutTracker() {
   if (!session)
     return (
       <Screen>
-        <Header title="Workout tracker" back backTo="E1" sub="Track how long you train, what you do and every set." />
+        <Header title="Workout tracker" back backTo="F1" sub="Track how long you train, what you do and every set." />
         <Card className="flex flex-col gap-3">
           <p className="text-body">Log each exercise with its reps and weight. A rest timer starts after every set. When you finish, your heart rate from the watch is used to work out how hard the session was.</p>
           <Button icon={Barbell} onClick={start}>
@@ -69,7 +79,7 @@ export function WorkoutTracker() {
                 </Button>
               </div>
             ))}
-            <p className="text-sub text-ink3">Saved on this device until the server is connected.</p>
+            <p className="text-sub text-ink3">Saved on this device until it can be uploaded.</p>
           </Card>
         )}
       </Screen>
@@ -81,20 +91,21 @@ export function WorkoutTracker() {
   const used = new Set(session.exercises.map((e) => e.name.toLowerCase()))
 
   const save = async () => {
-    const done = finish(felt ?? undefined, note || undefined)
-    if (!done) return
+    const finished = finish(felt ?? undefined, note || undefined)
+    if (!finished) return
+    const done = { ...finished, intensity }
     try {
       const summary = await api.saveWorkoutSession(done)
       clearPending(done.id)
       setResult({ session: done, summary, error: null })
     } catch (e) {
-      setResult({ session: done, summary: null, error: e instanceof Error && e.name === 'NotWired' ? 'The server is not connected yet.' : 'It could not be saved just now.' })
+      setResult({ session: done, summary: null, error: 'It could not be saved just now.' })
     }
   }
 
   return (
     <Screen>
-      <Header title="Workout" back backTo="E1" />
+      <Header title="Workout" back backTo="F1" />
       <Card tone="hero" className="flex flex-col gap-3">
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -129,11 +140,18 @@ export function WorkoutTracker() {
 
       <section className="flex flex-col gap-3">
         <SectionTitle>Add an exercise</SectionTitle>
-        <div className="flex flex-wrap gap-2">
-          {COMMON.filter((n) => !used.has(n.toLowerCase())).map((n) => (
-            <Chip key={n} onClick={() => addExercise(n)}>
-              {n}
-            </Chip>
+        <div className="flex flex-col gap-3">
+          {LIBRARY.map((g) => (
+            <div key={g.group} className="flex flex-col gap-1.5">
+              <p className="text-sub font-bold text-ink3">{g.group}</p>
+              <div className="flex flex-wrap gap-2">
+                {g.items.filter((n) => !used.has(n.toLowerCase())).map((n) => (
+                  <Chip key={n} onClick={() => addExercise(n)}>
+                    {n}
+                  </Chip>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
         <Field label="Something else" value={custom} onChange={setCustom} placeholder="Name the exercise" />
@@ -144,6 +162,7 @@ export function WorkoutTracker() {
 
       {finishing && (
         <Card className="flex flex-col gap-3">
+          <Rating label="How hard was it?" value={intensity} onChange={setIntensity} lowLabel="Very light" highLabel="All-out" />
           <SectionTitle>How did it feel?</SectionTitle>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="How you felt">
             {FEELS.map((f) => (
@@ -227,7 +246,7 @@ function Summary({ r, onDone }: { r: { session: WorkoutSession; summary: Workout
   return (
     <Screen>
       <Header title="Workout saved" sub={r.error ? 'Kept on this device.' : undefined} />
-      {r.error && <Alert tone="info">{r.error} It will be uploaded when the server is connected, and nothing is lost.</Alert>}
+      {r.error && <Alert tone="info">{r.error} It stays on this device and can be uploaded again from the workout screen.</Alert>}
       <Card tone="hero" className="grid grid-cols-3 gap-3 text-center [[data-ts='2']_&]:grid-cols-1">
         <div>
           <p className="text-sub text-ink2">Time</p>

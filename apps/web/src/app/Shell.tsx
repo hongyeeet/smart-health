@@ -9,6 +9,7 @@ import { duration, ease } from '@/motion/tokens'
 import { SheetHost } from './SheetHost'
 import { href, type RouteId } from './routeIds'
 import { useGo } from './navigation'
+import { built } from './screens'
 
 function useMedia(q: string) {
   const [m, setM] = useState(() => (typeof window === 'undefined' ? false : window.matchMedia(q).matches))
@@ -71,8 +72,8 @@ export function Shell() {
     )
 
   return (
-    <div className="fixed inset-0 flex justify-center bg-well/60">
-      <div className="relative h-full w-full max-w-[480px] bg-canvas">
+    <div className="fixed inset-0 flex h-dvh justify-center bg-well/60">
+      <div className="relative h-full w-full max-w-[480px] bg-canvas md:max-w-none">
         <AppFrame fullBleed />
       </div>
     </div>
@@ -90,15 +91,16 @@ function AppFrame({ fullBleed }: { fullBleed?: boolean }) {
   }, [pathname])
 
   return (
-    <div data-ts={textScale} style={{ ['--ts' as string]: textScale }} className={cn('relative h-full w-full overflow-hidden bg-canvas text-ink', fullBleed && 'pt-[env(safe-area-inset-top)]')}>
+    <div data-ts={textScale} style={{ ['--ts' as string]: textScale }} className={cn('relative h-full w-full overflow-hidden bg-canvas text-ink', fullBleed && 'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]')}>
       <div className="absolute inset-x-0 top-0 z-30 h-10" aria-hidden />
-      <main className="absolute inset-x-0 bottom-0 top-10">
+      <main className="absolute inset-x-0 bottom-0 top-10 md:left-20 md:top-4 lg:left-60">
         <motion.div key={pathname} className="absolute inset-0" initial={animate ? { opacity: 0, y: 8 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: duration.page, ease: ease.out }}>
           <Outlet />
         </motion.div>
       </main>
       {showTabs(pathname) && <TabBar active={tab} />}
-      {(pathname === '/' || pathname === '/insights') && <AskButton />}
+      <SideRail active={tab} />
+      {built.I1 && (pathname === '/' || pathname === '/insights') && <AskButton />}
       <SheetHost />
       <Toast />
     </div>
@@ -108,7 +110,7 @@ function AppFrame({ fullBleed }: { fullBleed?: boolean }) {
 function AskButton() {
   const go = useGo()
   return (
-    <button type="button" onClick={() => go('I1')} aria-label="Ask Smart Health" className="press absolute bottom-[100px] right-5 z-20 flex min-h-12 items-center gap-2 rounded-chip bg-ink px-4 text-sub font-bold text-canvas shadow-lift">
+    <button type="button" onClick={() => go('I1')} aria-label="Ask Smart Health" className="press absolute bottom-[calc(100px+env(safe-area-inset-bottom))] right-5 z-20 md:bottom-8 md:right-8 flex min-h-12 items-center gap-2 rounded-chip bg-ink px-4 text-sub font-bold text-canvas shadow-lift">
       <ChatCircleDots size={22} weight="regular" aria-hidden />
       Ask
     </button>
@@ -127,7 +129,7 @@ const TABS: { key: TabKey; label: string; icon: IconType }[] = [
 function TabBar({ active }: { active: TabKey | null }) {
   const navigate = useNavigate()
   return (
-    <nav aria-label="Main" className="absolute inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 pb-5 pt-2 backdrop-blur-md">
+    <nav aria-label="Main" className="absolute inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md md:hidden">
       <ul className="grid grid-cols-5 items-end px-2">
         {TABS.map(({ key, label, icon: Icon }) => {
           const on = active === key
@@ -152,6 +154,25 @@ function TabBar({ active }: { active: TabKey | null }) {
   )
 }
 
+/** Tablet and laptop navigation: the bottom bar is too far from the hand on a wide screen, so it becomes a rail on the left. */
+function SideRail({ active }: { active: TabKey | null }) {
+  const navigate = useNavigate()
+  return (
+    <nav aria-label="Main" className="absolute inset-y-0 left-0 z-20 hidden w-20 flex-col gap-1 border-r border-line bg-card px-2 py-5 md:flex lg:w-60 lg:px-4">
+      <p className="mb-4 hidden px-3 font-serif text-h2 font-medium text-ink lg:block">{appConfig.name}</p>
+      {TABS.map(({ key, label, icon: Icon }) => {
+        const on = active === key
+        return (
+          <button key={key} type="button" aria-label={label} aria-current={on ? 'page' : undefined} onClick={() => navigate(href(TAB_ROUTE[key]))} className={cn('press flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-card px-2 lg:flex-row lg:justify-start lg:gap-3 lg:px-4', on ? 'bg-brand/10 text-brand' : 'text-ink2 hover:bg-well')}>
+            <Icon size={26} weight={on || key === 'log' ? 'fill' : 'regular'} aria-hidden />
+            <span className="text-micro font-bold leading-none lg:text-body">{label === 'Medications' ? 'Meds' : label}</span>
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
+
 function Toast() {
   const toast = useUi((s) => s.toast)
   const [shown, setShown] = useState<string | null>(null)
@@ -162,7 +183,7 @@ function Toast() {
     return () => clearTimeout(t)
   }, [toast])
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-28 z-50 flex justify-center px-6" aria-live="polite">
+    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(7rem+env(safe-area-inset-bottom))] z-50 md:bottom-10 md:left-20 lg:left-60 flex justify-center px-6" aria-live="polite">
       <AnimatePresence>
         {shown && (
           <motion.div key={toast?.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.22, ease: ease.out }} className="rounded-chip bg-ink px-4 py-2.5 text-sub font-bold text-canvas shadow-lift">

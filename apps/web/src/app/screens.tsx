@@ -1,6 +1,21 @@
 import type { ComponentType } from 'react'
 import { NotBuilt } from './NotBuilt'
 import { WorkoutTracker } from '@/features/workout/WorkoutTracker'
+import { ScanFrame } from '@/features/scan/ScanFrame'
+import { ScanReview } from '@/features/scan/ScanReview'
+import { ScanPlan } from '@/features/scan/ScanPlan'
+import { LogHub } from '@/features/log/LogHub'
+import { LogDone } from '@/features/log/LogDone'
+import { LogSymptom } from '@/features/log/LogSymptom'
+import { LogCheckin } from '@/features/log/LogCheckin'
+import { LogMeal } from '@/features/log/LogMeal'
+import { LogWorkout } from '@/features/workout/LogWorkout'
+import { Home } from '@/features/home/Home'
+import { Me } from '@/features/me/Me'
+import { Learned } from '@/features/me/Learned'
+import { Progress } from '@/features/me/Progress'
+import { LunchIdeas } from '@/features/log/LunchIdeas'
+import { Notifications } from '@/features/home/Notifications'
 import { ROUTES, routeIds, type RouteId } from './routeIds'
 
 /**
@@ -11,7 +26,22 @@ import { ROUTES, routeIds, type RouteId } from './routeIds'
  *   export const built: Partial<Record<RouteId, ComponentType>> = { B1: Home }
  */
 export const built: Partial<Record<RouteId, ComponentType>> = {
+  B1: Home,
+  B2: Notifications,
+  K1: Me,
+  K2: Learned,
+  K10: Progress,
+  F1: LogWorkout,
   F2: WorkoutTracker,
+  H2: ScanFrame,
+  H3: ScanReview,
+  H4: ScanPlan,
+  E1: LogHub,
+  E2: LogMeal,
+  E4: LogSymptom,
+  E5: LogCheckin,
+  E6: LogDone,
+  E8: LunchIdeas,
 }
 
 export function screenFor(id: RouteId): ComponentType {

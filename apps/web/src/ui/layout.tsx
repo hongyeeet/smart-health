@@ -13,8 +13,8 @@ export function Screen({ children, tabs = false, className, tone = 'canvas' }: {
     ref.current?.scrollTo({ top: 0 })
   }, [])
   return (
-    <div ref={ref} className={cn('hide-scroll absolute inset-0 overflow-y-auto overflow-x-hidden px-5 pt-1', tabs ? 'pb-32' : 'pb-10', tone === 'urgent' && 'bg-urgent', className)}>
-      <div className="flex flex-col gap-4">{children}</div>
+    <div ref={ref} className={cn('hide-scroll scroll-area absolute inset-0 overflow-y-auto overflow-x-hidden px-5 pt-1', tabs ? 'pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-10' : 'pb-[calc(2.5rem+env(safe-area-inset-bottom))]', 'md:px-8', tone === 'urgent' && 'bg-urgent', className)}>
+      <div className="mx-auto flex w-full flex-col gap-4 md:max-w-[720px] lg:max-w-[1040px]">{children}</div>
     </div>
   )
 }
@@ -39,7 +39,12 @@ export function Header({ title, back, backTo, trailing, sub }: { title: ReactNod
 
 /** Bottom action area that stays on screen above the keyboard-free bottom edge. */
 export function Footer({ children }: { children: ReactNode }) {
-  return <div className="sticky bottom-0 -mx-5 mt-2 flex flex-col gap-2 bg-gradient-to-t from-canvas from-70% to-transparent px-5 pb-6 pt-6">{children}</div>
+  return <div className="sticky bottom-0 -mx-5 mt-2 flex flex-col gap-2 md:flex-row md:[&>*]:flex-1 bg-gradient-to-t from-canvas from-70% to-transparent px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">{children}</div>
+}
+
+/** Stacks on a phone and tablet, two columns on a laptop. Put the main content first. */
+export function Split({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn('grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6', className)}>{children}</div>
 }
 
 const seen = new Set<string>()
