@@ -321,6 +321,13 @@ export interface ScanResult {
   /** model that produced the extraction, for audit */
   modelId: string | null
   error: string | null
+  /** "confirm": one medicine read clearly, the person checks it. "manual": the person types the form (unreadable, low confidence, a
+   *  missing required field, a drug we cannot identify, or several medicines). */
+  reviewMode: 'confirm' | 'manual'
+  /** Stable reason codes behind "manual", for logging and tests. */
+  reasons: string[]
+  /** Why, in plain words, when the mode is "manual". */
+  notice: string | null
 }
 
 export interface ChatReply {

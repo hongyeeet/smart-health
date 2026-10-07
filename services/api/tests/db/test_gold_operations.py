@@ -253,8 +253,8 @@ def bronze(conn, table, u):
 def test_adherence_summary_counts_closed_prescription_doses_only(conn):
     u = user(conn)
     b = bronze(conn, "bronze_medication", u)
-    rx = one(conn, "insert into medications (user_id, name, kind, frequency, source, bronze_id) values (%s, 'Test', 'prescription', 1, 'manual', %s) returning id", (u, b))
-    sup = one(conn, "insert into medications (user_id, name, kind, frequency, source, bronze_id) values (%s, 'Fish oil', 'supplement', 1, 'manual', %s) returning id", (u, b))
+    rx = one(conn, "insert into medications (user_id, name, kind, frequency, source, bronze_id, total_quantity) values (%s, 'Test', 'prescription', 1, 'manual', %s, 30) returning id", (u, b))
+    sup = one(conn, "insert into medications (user_id, name, kind, frequency, source, bronze_id, total_quantity) values (%s, 'Fish oil', 'supplement', 1, 'manual', %s, 30) returning id", (u, b))
     rows = [(rx, "taken", 1), (rx, "taken", 2), (rx, "missed", 3), (rx, "skipped", 4), (rx, "pending", -2), (sup, "missed", 1)]
     for med, status, days_ago in rows:
         taken = "now()" if status == "taken" else "NULL"

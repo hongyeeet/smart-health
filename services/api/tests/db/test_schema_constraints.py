@@ -54,7 +54,7 @@ def rejected(conn, error, sql, params=()):
 
 def new_medication(conn, u, **over):
     b = bronze(conn, "bronze_medication", u)
-    cols = dict(user_id=u, name="Test med", kind="prescription", frequency=1, source="manual", bronze_id=b)
+    cols = dict(user_id=u, name="Test med", kind="prescription", frequency=1, source="manual", bronze_id=b, total_quantity=30)
     cols.update(over)
     return conn.execute(f"insert into medications ({', '.join(cols)}) values ({', '.join(['%s'] * len(cols))}) returning id", list(cols.values())).fetchone()[0]
 
@@ -132,7 +132,7 @@ def test_blood_pressure_diastolic_must_be_below_systolic(conn):
 def test_medication_dates_frequency_and_schedule(conn):
     u = new_user(conn)
     b = bronze(conn, "bronze_medication", u)
-    sql = "insert into medications (user_id, name, frequency, start_date, end_date, source, bronze_id) values (%s, 'x', %s, %s, %s, 'manual', %s)"
+    sql = "insert into medications (user_id, name, frequency, start_date, end_date, source, bronze_id, total_quantity) values (%s, 'x', %s, %s, %s, 'manual', %s, 30)"
     assert rejected(conn, errors.CheckViolation, sql, (u, 1, "2026-03-01", "2026-02-01", b))
     assert rejected(conn, errors.CheckViolation, sql, (u, 0, "2026-01-01", None, b))
     med = new_medication(conn, u)

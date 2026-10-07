@@ -1,31 +1,50 @@
 import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useScan, useConfirmScan } from '@/data/hooks'
+import type { NewMedication } from '@/data/repositories/types'
 import { useUi } from '@/state/store'
 import { href } from '@/app/routeIds'
-import { useGo } from '@/app/navigation'
 import { Footer, Header, Screen } from '@/ui/layout'
-import { Alert, Button, Card, SectionTitle, Skeleton } from '@/ui/primitives'
-import { CheckCircle, Info, Pill, WarningCircle } from '@/ui/icons'
+import { Segmented } from '@/ui/controls'
+import { Alert, Button, Card, Chip, SectionTitle, Skeleton } from '@/ui/primitives'
+import { CheckCircle, Info, Pill } from '@/ui/icons'
+
+type Kind = NewMedication['kind']
+const KINDS: { value: Kind; label: string }[] = [
+  { value: 'prescription', label: 'Prescription' },
+  { value: 'otc', label: 'Over the counter' },
+  { value: 'supplement', label: 'Supplement' },
+  { value: 'tcm', label: 'Herbal' },
+]
+const MEALS: { value: 'before_meal' | 'after_meal' | 'na'; label: string }[] = [
+  { value: 'before_meal', label: 'Before' },
+  { value: 'after_meal', label: 'After' },
+  { value: 'na', label: 'Either' },
+]
+const KIND_FOR_ITEM: Record<string, Kind> = { prescription_label: 'prescription', otc: 'otc', supplement: 'supplement', tcm: 'tcm' }
+
+const inputClass =
+  'min-h-12 w-full rounded-field border-[1.5px] border-line bg-card px-3.5 py-2 text-body font-bold text-ink focus:border-brand focus:outline-none'
 
 /**
- * H4 — Your dose plan: shows the parsed schedule and medicine description.
- * The user can adjust dose times and the "with food" toggle, then click "Add to my medicines"
- * to save. The confirm mutation sends the edited fields to POST /scans/{id}/confirm, which
- * (in E3-2) saves patient_medications + dose_events + clash check in one transaction.
+ * H4 — Your dose plan. A label says "twice a day", not "8 am and 8 pm", so the times here are SUGGESTIONS the person changes to
+ * suit their day. Choosing the kind of product matters (adherence counts prescription medicines only), so it is shown and can be
+ * changed. "Add to my medicines" is the only place a scanned medicine is saved: POST /scans/{id}/confirm, one transaction.
  */
 export function ScanPlan() {
   const navigate = useNavigate()
-  const go = useGo()
   const location = useLocation()
-  const scanId = (location.state as { scanId?: string } | null)?.scanId
-  const edits = (location.state as { edits?: Record<string, string> } | null)?.edits ?? {}
+  const state = location.state as { scanId?: string; edits?: Record<string, string> } | null
+  const scanId = state?.scanId
+  const edits = state?.edits ?? {}
   const { data, isLoading } = useScan(scanId)
   const confirm = useConfirmScan()
   const showToast = useUi((s) => s.showToast)
-  const [timeEdits, setTimeEdits] = useState<Record<number, string>>({})
-  const [purpose] = useState('')
+  const [times, setTimes] = useState<string[] | null>(null)
+  const [kind, setKind] = useState<Kind | null>(null)
+  const [meal, setMeal] = useState<'before_meal' | 'after_meal' | 'na' | null>(null)
 
+  if (!scanId) return <Navigate to={href('H2')} replace />
   if (isLoading || !data) {
     return (
       <Screen>
@@ -34,49 +53,36 @@ export function ScanPlan() {
       </Screen>
     )
   }
-
-  if (data.status === 'failed') {
-    return (
-      <Screen>
-        <Header title="Your dose plan" back backTo="H3" />
-        <Alert tone="warn" title="No plan available">
-          The scan could not be read. Please go back and retake the photo, or add the medicine by hand.
-        </Alert>
-        <Footer>
-          <Button variant="secondary" onClick={() => navigate(href('H2'))}>
-            Retake photo
-          </Button>
-        </Footer>
-      </Screen>
-    )
+  // A scan that needs typing never gets this far (H3 sends it to the form), but a bookmarked address might.
+  if (data.reviewMode === 'manual') {
+    return <Navigate to={href('H8')} replace state={{ scanId: data.scanId, notice: data.notice }} />
   }
 
-  const schedule = data.schedule
+  const suggested = data.schedule.map((s) => s.time)
+  const chosen = times ?? suggested
+  const chosenKind = kind ?? KIND_FOR_ITEM[data.itemType] ?? 'prescription'
+  const fromLabel = data.fields.find((f) => f.key === 'meal_relation')?.value
+  const chosenMeal = meal ?? (fromLabel === 'before_meal' || fromLabel === 'after_meal' ? fromLabel : 'na')
   const medName = edits['name'] ?? data.drug
-  const description = data.description
+  const distinct = new Set(chosen).size === chosen.length
+  const valid = chosen.length > 0 && chosen.every(Boolean) && distinct
+  const problem = chosen.length === 0
+    ? 'No dose times were found on the label. Go back and type the medicine in.'
+    : !chosen.every(Boolean)
+      ? 'Choose a time for each dose.'
+      : !distinct
+        ? 'Each time of day can only be listed once.'
+        : null
 
-  const handleConfirm = () => {
-    // Merge the field edits from H3 + any time edits here into the confirm payload
-    const allEdits: Record<string, string | null> = { ...edits }
-    if (purpose) allEdits['purpose'] = purpose
-    // Time edits are part of the schedule, sent as a separate key
-    const timeOverrides = Object.entries(timeEdits)
-      .filter(([, v]) => v.trim())
-      .map(([i, v]) => ({ index: Number(i), time: v }))
-    if (timeOverrides.length) {
-      allEdits['schedule_times'] = JSON.stringify(timeOverrides)
-    }
-
+  const save = () => {
+    if (!valid) return
+    const fields: Record<string, string | null> = { ...edits, meal_relation: chosenMeal }
     confirm.mutate(
-      { scanId: data.scanId, fields: allEdits },
+      { scanId: data.scanId, fields, times: [...chosen].sort(), kind: chosenKind },
       {
         onSuccess: () => {
-          navigate(href('H1'), { replace: true })
           showToast('Added to your medicines')
-          // If there's an interaction, show the sheet after a brief delay
-          if (data.interaction) {
-            setTimeout(() => go('H5'), 350)
-          }
+          navigate(href('H1'), { replace: true })
         },
       },
     )
@@ -84,7 +90,7 @@ export function ScanPlan() {
 
   return (
     <Screen>
-      <Header title="Your dose plan" back backTo="H3" sub="Step 3 of 3" />
+      <Header title="Your dose plan" back backTo="H3" sub="Step 3 of 3. Nothing is saved until you add it." />
 
       <Card className="flex flex-col gap-3">
         <div className="flex items-start gap-3">
@@ -92,81 +98,67 @@ export function ScanPlan() {
             <Pill size={22} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-h2 font-bold leading-tight">{medName}</p>
-            {data.itemType !== 'unknown' && (
-              <p className="text-sub text-ink2">{itemTypeLabel(data.itemType)}</p>
-            )}
+            <p className="break-words text-h2 font-bold leading-tight">{medName}</p>
           </div>
         </div>
-
-        {description && (
-          <div className="rounded-card bg-well p-3">
-            <SectionTitle>What it's for</SectionTitle>
-            <p className="text-body text-ink2">{description}</p>
+        <div className="flex flex-col gap-1.5">
+          <p id="plan-kind" className="text-sub font-bold text-ink">
+            What kind is it?
+          </p>
+          <div role="group" aria-labelledby="plan-kind" className="flex flex-wrap gap-2">
+            {KINDS.map((k) => (
+              <Chip key={k.value} on={chosenKind === k.value} onClick={() => setKind(k.value)}>
+                {k.label}
+              </Chip>
+            ))}
           </div>
-        )}
+        </div>
       </Card>
 
-      {schedule.length > 0 && (
+      {suggested.length > 0 && (
         <Card className="flex flex-col gap-3">
-          <SectionTitle>Dose schedule</SectionTitle>
-          <ul className="divide-y divide-line">
-            {schedule.map((s, i) => (
-              <li key={i} className="flex items-center justify-between gap-3 py-3 text-body">
-                <span className="text-ink2">{s.label}</span>
+          <SectionTitle>Dose times</SectionTitle>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-sub font-bold text-ink">Before or after food?</p>
+            <Segmented label="Before or after food" options={MEALS} value={chosenMeal} onChange={setMeal} />
+          </div>
+          <ul className="flex flex-col gap-3">
+            {chosen.map((t, i) => (
+              <li key={i} className="flex items-center justify-between gap-3">
+                <label htmlFor={`dose-${i}`} className="text-body text-ink2">
+                  {data.schedule[i]?.label ?? `Dose ${i + 1}`}
+                </label>
                 <input
-                  value={timeEdits[i] ?? s.time}
-                  onChange={(e) => setTimeEdits((p) => ({ ...p, [i]: e.target.value }))}
-                  className="w-32 rounded-field border-[1.5px] border-line bg-card px-2.5 py-1.5 text-right font-bold text-ink focus:border-brand focus:outline-none"
-                  aria-label={`Dose time for ${s.label}`}
+                  id={`dose-${i}`}
+                  type="time"
+                  value={t}
+                  onChange={(e) => setTimes(chosen.map((x, j) => (j === i ? e.target.value : x)))}
+                  className={`${inputClass} !w-40 text-right`}
                 />
               </li>
             ))}
           </ul>
-          <p className="text-sub text-ink3">Tap a time to adjust it. Times come from your label.</p>
+          <p className="text-sub text-ink3">These are suggested times. Your label says how many times a day, not when, so change them to suit your day.</p>
         </Card>
       )}
 
-      {schedule.length === 0 && (
-        <Card tone="soft" className="flex items-start gap-3">
-          <Info size={20} className="mt-0.5 flex-none text-ink3" aria-hidden />
-          <p className="text-sub text-ink2">
-            No dose schedule was found on the label. You can add the medicine and set the times yourself later.
-          </p>
-        </Card>
-      )}
-
-      {data.interaction && (
-        <Alert tone="warn" title="Possible interaction" icon={WarningCircle}>
-          <strong>{data.interaction.a}</strong> may interact with <strong>{data.interaction.b}</strong>. Please check
-          with your pharmacist or doctor before continuing.
+      {problem && <Alert tone="warn">{problem}</Alert>}
+      {confirm.isError && (
+        <Alert tone="danger" title="Could not add it">
+          {confirm.error instanceof Error ? confirm.error.message : 'Please try again.'}
         </Alert>
       )}
 
       <Card tone="soft" className="flex items-start gap-3">
         <Info size={20} className="mt-0.5 flex-none text-ink3" aria-hidden />
-        <p className="text-sub text-ink2">
-          When you add it, we check it against your other medicines and tell you if there is something to ask about.
-        </p>
+        <p className="text-sub text-ink2">When you add it, we check it against your other medicines. If we cannot find it, it shows as Not checked.</p>
       </Card>
 
       <Footer>
-        <Button icon={CheckCircle} disabled={confirm.isPending} onClick={handleConfirm}>
+        <Button icon={CheckCircle} disabled={!valid || confirm.isPending} onClick={save}>
           {confirm.isPending ? 'Adding…' : 'Add to my medicines'}
         </Button>
       </Footer>
     </Screen>
   )
-}
-
-function itemTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    prescription_label: 'Prescription',
-    blister_or_box: 'Box / blister pack',
-    supplement: 'Supplement',
-    tcm: 'Traditional medicine',
-    otc: 'Over-the-counter',
-    unknown: 'Unknown type',
-  }
-  return labels[type] ?? type
 }

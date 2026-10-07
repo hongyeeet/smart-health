@@ -116,6 +116,7 @@ Deleting an original removes the stored object and sets `processing_status = 'de
 | `frequency` | smallint | yes | user: doses per day | must equal the number of active rows in `medication_schedule` |
 | `description` | text | no | user ("for sugar, with food") | what it is for and timing notes |
 | `start_date`, `end_date` | date | no | user | window in which doses are expected; no end date = still taking |
+| `total_quantity` | integer (0 or more) | **yes** | scan or user: the total tablets, capsules or units supplied, as printed on the label or typed in | predicting when the supply runs out (refill reminder). The six demo medicines hold a 30-day placeholder (doses per day x 30) |
 | `drug_reference_id` | uuid | no | matched by name -> `drug_reference` | side-effect and interaction lookups |
 | `source` | entry_source | yes | `manual` or `scan` | provenance |
 | `bronze_id` | uuid | yes | -> `bronze_medication` | lineage |
@@ -132,9 +133,13 @@ Each row is one time of day the medicine is taken, so a medicine can have differ
 | `dose_time` | time (local) | yes | user (e.g. 08:00) | when a dose is expected, reminders |
 | `quantity` | numeric(4,1) | yes | user: number per dose in the medicine's own unit (e.g. 1, 2, 0.5 tablets) | the brief, how much per dose |
 | `meal_relation` | enum `before_meal` / `after_meal` / `na` | yes | user, default `na` | overlay marker; comparing dose timing with logged meals |
+| `when_to_take` | text: `morning` / `noon` / `afternoon` / `evening` / `night` / `bedtime` / `as_needed` | no | scan or user, only when the label names a part of the day ("every morning") | showing the dose in the person's own words; empty when the label only gives a number of times a day |
 | `created_at`, `updated_at`, `deleted_at` | timestamptz | | system | |
 
 Rule: the number of active rows for a medicine equals `medications.frequency`.
+
+Added 2026-10-07 for the medicine scan (F2), decided by Joely: `medications.total_quantity` and `medication_schedule.when_to_take` (migration 0024). `total_quantity` is required (Joely, 2026-10-07). The dose unit, the drowsiness warning and the minutes from food are not columns: they stay in the verbatim directions in `medications.description` and in the scan record (`prescription_scans.extraction`).
+
 
 #### `medication_log` (dose log: one row per scheduled or extra dose)
 

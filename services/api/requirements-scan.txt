@@ -1,0 +1,12 @@
+# Packages for the medicine scan backend (F2, docs/specs/f2-scan.md). The wider backend (FastAPI and so on) will add its own.
+# Licences: all permissive (Pillow HPND, pydantic MIT, rapidfuzz MIT, rapidocr Apache-2.0, onnxruntime MIT, opencv-python Apache-2.0 / MIT, psycopg LGPL used as a library, requests Apache-2.0).
+pydantic>=2.7
+pydantic-settings>=2.3
+pillow>=10.3
+numpy>=1.26
+rapidfuzz>=3.9
+rapidocr>=3.9
+onnxruntime>=1.18
+requests>=2.31
+psycopg[binary]>=3.2
+pytest>=8

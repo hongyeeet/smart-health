@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useScan } from '@/data/hooks'
 import { href } from '@/app/routeIds'
 import type { ScanField } from '@/data/types'
@@ -8,13 +8,10 @@ import { Button, Card, Chip, ConfidenceChip, Field, SectionTitle, Skeleton, Stat
 import { CheckCircle, PencilSimple, Warning } from '@/ui/icons'
 
 /**
- * H3 — Check what we read: the AI extraction review screen.
- *
- * Every field shows a confidence chip. Fields below 0.85 confidence (level 'check') must be
- * tapped to confirm before the Confirm button enables. Any field can be edited inline — tap
- * the pencil and type the correction. Fields that are unreadable show a text input.
- *
- * Nothing saves until the user clicks Confirm and goes to H4.
+ * H3 — Check what we read: shown only when ONE medicine was read clearly (reviewMode "confirm"): every field is at or above the
+ * confidence threshold. The person can still correct any field with the pencil. Anything else (unreadable, a low-confidence field,
+ * a missing required field, a drug we cannot identify, several medicines) is sent straight to the typed form (H8), which opens blank
+ * and says why. Nothing is saved on this screen: Confirm goes on to H4, where the dose times are chosen.
  */
 export function ScanReview() {
   const navigate = useNavigate()
@@ -53,6 +50,11 @@ export function ScanReview() {
         <Skeleton className="h-64" />
       </Screen>
     )
+  }
+
+  // D-064: anything that is not one clearly read medicine is completed by typing, not by a tap. The form opens blank and says why.
+  if (data.reviewMode === 'manual') {
+    return <Navigate to={href('H8')} replace state={{ scanId: data.scanId, notice: data.notice }} />
   }
 
   if (data.status === 'failed') {
@@ -152,7 +154,7 @@ function FieldCard({
 }) {
   const isUnreadable = field.level === 'unreadable'
   const isLowConfidence = field.level === 'check'
-  const showEdit = !isUnreadable && !isEditing
+  const showEdit = !isUnreadable && !isEditing && EDITABLE.has(field.key)
 
   return (
     <Card className="flex flex-col gap-2">
@@ -170,7 +172,7 @@ function FieldCard({
         />
       ) : (
         <div className="flex items-center justify-between gap-2">
-          <p className="text-h2 font-bold">{field.value ?? '—'}</p>
+          <p className="break-words text-h2 font-bold">{pretty(field)}</p>
           {showEdit && (
             <button
               type="button"
@@ -201,4 +203,37 @@ function FieldCard({
       )}
     </Card>
   )
+}
+
+/** Fields the person can retype here. The coded ones (when, before or after food, the date) are chosen on the next screen or in the form,
+ *  and "times a day" is the number of dose times on the next screen. */
+const EDITABLE = new Set(['name', 'strength', 'dose_amount', 'dose_unit', 'directions', 'prescriber', 'total_quantity'])
+
+const MEAL: Record<string, string> = { before_meal: 'Before meals', after_meal: 'After meals', with_meal: 'With food', na: 'With or without food' }
+const WHEN: Record<string, string> = {
+  morning: 'Morning', noon: 'Noon', afternoon: 'Afternoon', evening: 'Evening', night: 'Night', bedtime: 'At bedtime', as_needed: 'When needed',
+}
+
+/** The label value in plain words: codes and ISO dates are shown the way a person says them. */
+function pretty(f: ScanField): string {
+  const v = f.value
+  if (v == null) return '—'
+  switch (f.key) {
+    case 'meal_relation':
+      return MEAL[v] ?? v
+    case 'when_to_take':
+      return WHEN[v] ?? v
+    case 'meal_offset_minutes':
+      return `${v} minutes`
+    case 'drowsiness_warning':
+      return 'The label warns it may cause drowsiness'
+    case 'times_per_day':
+      return v === '1' ? 'Once a day' : `${v} times a day`
+    case 'start_date': {
+      const d = new Date(`${v}T00:00:00`)
+      return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    }
+    default:
+      return v
+  }
 }

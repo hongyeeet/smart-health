@@ -4,6 +4,8 @@ import { WorkoutTracker } from '@/features/workout/WorkoutTracker'
 import { ScanFrame } from '@/features/scan/ScanFrame'
 import { ScanReview } from '@/features/scan/ScanReview'
 import { ScanPlan } from '@/features/scan/ScanPlan'
+import { AddByHand } from '@/features/meds/AddByHand'
+import { MedList } from '@/features/meds/MedList'
 import { LogHub } from '@/features/log/LogHub'
 import { LogDone } from '@/features/log/LogDone'
 import { LogSymptom } from '@/features/log/LogSymptom'
@@ -33,9 +35,11 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   K10: Progress,
   F1: LogWorkout,
   F2: WorkoutTracker,
+  H1: MedList,
   H2: ScanFrame,
   H3: ScanReview,
   H4: ScanPlan,
+  H8: AddByHand,
   E1: LogHub,
   E2: LogMeal,
   E4: LogSymptom,

@@ -23,7 +23,11 @@ const asUser = (extra?: Record<string, string>): Record<string, string> => ({ 'X
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${appConfig.apiBaseUrl}${path}`, { credentials: 'include', ...init, headers: asUser({ 'Content-Type': 'application/json', ...(init?.headers as Record<string, string> | undefined) }) })
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  if (!res.ok) {
+    // The server explains refusals in plain words (`detail`); use them when they are text.
+    const detail = ((await res.json().catch(() => null)) as { detail?: unknown } | null)?.detail
+    throw new Error(typeof detail === 'string' ? detail : `${res.status} ${res.statusText}`)
+  }
   return (await res.json()) as T
 }
 
@@ -64,9 +68,9 @@ export const httpApi: Api = {
   getProgress: () => request('/memory/progress'),
   getWeekWorkouts: () => request('/workouts/week'),
   deleteEntry: (id: string) => request<void>(`/logs/${id}`, { method: 'DELETE' }).then(() => undefined),
-  listMedications: todo('listMedications'),
+  listMedications: () => request('/medications'),
   getMedication: todo('getMedication'),
-  addMedication: todo('addMedication'),
+  addMedication: (m) => request('/medications', { method: 'POST', body: JSON.stringify(m) }),
   uploadScan: (file: File) => {
     const fd = new FormData()
     fd.append('file', file)
@@ -77,8 +81,8 @@ export const httpApi: Api = {
       })
   },
   getScanResult: (scanId: string) => request(`/scans/${scanId}`),
-  confirmScan: (scanId: string, editedFields: Record<string, string | null>) =>
-    request(`/scans/${scanId}/confirm`, { method: 'POST', body: JSON.stringify({ fields: editedFields }) }),
+  confirmScan: (scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: string) =>
+    request(`/scans/${scanId}/confirm`, { method: 'POST', body: JSON.stringify({ fields: editedFields, times, kind }) }),
   listDosesToday: todo('listDosesToday'),
   getFacts: todo('getFacts'),
   factAction: todo('factAction'),

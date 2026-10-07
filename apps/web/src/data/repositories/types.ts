@@ -70,11 +70,29 @@ export type LogInput =
     }
   | { kind: 'checkin'; mood: number; stress: number; sleep: number; energy: number }
 
+/** A medicine added by hand (screen H8). Times are 24-hour clock text ("08:00"), the person's own local time. */
+export interface NewMedicationDose {
+  time: string
+  /** Units each time (tablets, capsules or measures). */
+  quantity: number
+  mealRelation: 'before_meal' | 'after_meal' | 'na'
+  /** Only when the label names a part of the day. Left null for a hand-typed medicine. */
+  whenToTake: 'morning' | 'noon' | 'afternoon' | 'evening' | 'night' | 'bedtime' | 'as_needed' | null
+}
+
 export interface NewMedication {
   name: string
+  kind: 'prescription' | 'otc' | 'supplement' | 'tcm'
   strength: string
-  times: string[]
-  withFood: boolean
+  doses: NewMedicationDose[]
+  /** Required: the total tablets, capsules or units supplied. Used to tell the person when they may run out. */
+  totalQuantity: number
+  /** YYYY-MM-DD, or null for today. */
+  startDate: string | null
+  /** Directions as printed on the label, optional. */
+  directions: string
+  /** Set when this typed form completes a scan that needed manual entry. */
+  scanId?: string
 }
 
 /**
@@ -121,7 +139,7 @@ export interface Api {
   /** Re-fetch a scan by id (for polling while extracting, or re-reviewing). */
   getScanResult(scanId: string): Promise<ScanResult>
   /** User confirms the reviewed/edited fields → saves the medication (E3-2 does the full save). */
-  confirmScan(scanId: string, editedFields: Record<string, string | null>): Promise<Medication>
+  confirmScan(scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: NewMedication['kind']): Promise<Medication>
   listDosesToday(): Promise<Dose[]>
 
   getFacts(): Promise<{ facts: MemoryFact[]; compare: WeekCompare }>

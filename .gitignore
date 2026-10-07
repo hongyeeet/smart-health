@@ -26,3 +26,6 @@ dist/
 
 # design exports used as a one-off reference (owner deletes later)
 reference/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

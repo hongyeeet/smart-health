@@ -64,6 +64,7 @@ Everything runs through Google Cloud's Vertex AI (one project, one bill, one sig
 ## 6. Privacy and data handling
 
 - Names, NRIC, phone numbers and addresses never go to any model, translator or speech service (rules.md section 3). The evidence packet and the JEV state are de-identified.
+- **Medicine photos (F2, D-063):** a label photo contains the patient's name and NRIC, so before it goes to Gemini a local, offline OCR blacks out NRIC and FIN numbers, name, birth-date, phone, email and address lines and any line carrying the user's own name. Only that blacked-out copy is sent and stored as the Bronze original. A printed name with no label is the known weak spot. If no text can be found the photo is refused. See [f2-scan.md](f2-scan.md) section 4.
 - The tests used Vertex's `global` endpoint, which does not pin the data to one region. Before real data is sent, check Google's data-use terms for Vertex and, if needed, move to a regional endpoint (for example in Singapore) where `gemini-3.8-flash` is offered.
 - JEV decisions are sent to OpenRouter and on to TypeSafe. The state is de-identified and kept short. Check OpenRouter's data policy for this model and turn on its no-retention setting if it has one.
 - Voice clips go to ElevenLabs only after the person agrees. Transcribed speech passes the same input guard as typed text, and only final, guarded text is sent to text to speech (trust boundary TB-3).

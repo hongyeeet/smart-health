@@ -120,7 +120,8 @@ def main():
         rec = pd.Timestamp(m["start_date"] + " 09:00", tz=TZ) if m["key"] == "clarithro" else onboard
         med_b[m["id"]] = B.add("bronze_medication", f"entry:{m['key']}", SIM, payload, rec)
         meds_rows.append((m["id"], TAN, m["name"], m["kind"], m["strength"], int(m["frequency"]), m["description"], m["start_date"], m["end_date"],
-                          ref.get(m["drug_ref"]) if m["drug_ref"] else None, SIM, med_b[m["id"]]))
+                          ref.get(m["drug_ref"]) if m["drug_ref"] else None, SIM, med_b[m["id"]],
+                          max(1, round(float(rows.quantity.sum()) * 30))))      # total_quantity is required: a 30-day supply (demo placeholder)
     S["medications"] = meds_rows
     for r in ms.itertuples():
         sched_rows.append((r.id, TAN, r.medication_id, r.dose_time, float(r.quantity), r.meal_relation))
@@ -236,7 +237,7 @@ def main():
         return
 
     COLS = {
-        "medications": ["id", "user_id", "name", "kind", "strength", "frequency", "description", "start_date", "end_date", "drug_reference_id", "source", "bronze_id"],
+        "medications": ["id", "user_id", "name", "kind", "strength", "frequency", "description", "start_date", "end_date", "drug_reference_id", "source", "bronze_id", "total_quantity"],
         "medication_schedule": ["id", "user_id", "medication_id", "dose_time", "quantity", "meal_relation"],
         "medication_log": ["id", "user_id", "medication_id", "schedule_id", "scheduled_at", "taken_at", "status", "miss_reason", "source", "bronze_id"],
         "lab_results": ["id", "user_id", "measured_at", "test", "value", "unit", "source", "bronze_id"],
