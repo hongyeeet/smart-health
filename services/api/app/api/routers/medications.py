@@ -43,12 +43,12 @@ def clock12(t: time) -> str:
     return t.strftime("%I:%M %p").lstrip("0").lower()
 
 
-def refill_for(total: int, per_day: Decimal, start: date, source: str, today: date) -> Refill | None:
+def refill_for(total: int | None, per_day: Decimal, start: date, source: str, today: date) -> Refill | None:
     """How long the supply should last, assuming every dose since the start date was taken (F4 will use the real dose log).
 
     The demo medicines hold a placeholder total (data-model-v2.md), so they get no refill estimate rather than a wrong one.
     """
-    if source == "demo_dataset" or per_day <= 0:
+    if total is None or source == "demo_dataset" or per_day <= 0:     # no total printed: no estimate, never a guess
         return None
     left = max(Decimal(0), Decimal(total) - per_day * max(0, (today - start).days))
     return Refill(days_left=floor(left / per_day), units_left=floor(left))
@@ -62,7 +62,7 @@ def badge_for(listed: bool, kind: str) -> str | None:
 def to_confirmed(body: NewMedicationIn) -> ConfirmedMedication:
     return ConfirmedMedication(
         name=body.name.strip(), kind=body.kind, strength=(body.strength or "").strip() or None,
-        doses=[DoseTime(dose_time=d.time, quantity=d.quantity, meal_relation=d.meal_relation, when_to_take=d.when_to_take) for d in body.doses],
+        doses=[DoseTime(dose_time=d.time, quantity=d.quantity, meal_relation=d.meal_relation) for d in body.doses],
         directions=(body.directions or "").strip() or None, total_quantity=body.total_quantity, start_date=body.start_date,
     )
 
@@ -72,7 +72,7 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
     meds = conn.execute(
         "select id, name, strength, kind::text, total_quantity, start_date, source::text, drug_reference_id is not null "
         "from medications where user_id = %s and deleted_at is null order by created_at, name", (user_id,)).fetchall()
-    doses: dict[Any, list[tuple[time, Decimal, str]]] = defaultdict(list)
+    doses: dict[Any, list[tuple[time | None, Decimal, str]]] = defaultdict(list)
     for mid, t, q, rel in conn.execute(
             "select medication_id, dose_time, quantity, meal_relation::text from medication_schedule "
             "where user_id = %s and deleted_at is null order by dose_time", (user_id,)):
@@ -80,10 +80,11 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
     out = []
     for mid, name, strength, kind, total, start, source, listed in meds:
         ds = doses.get(mid, [])
-        per_day = sum((q for _, q, _ in ds), Decimal(0))
+        as_needed = any(t is None for t, _, _ in ds)
+        per_day = Decimal(0) if as_needed else sum((q for _, q, _ in ds), Decimal(0))    # how much is used when needed is not known
         out.append(MedicationOut(
-            id=str(mid), name=name, strength=strength or "Strength not entered", kind=kind,
-            times=[clock12(t) for t, _, _ in ds], with_food=any(rel != "na" for _, _, rel in ds),
+            id=str(mid), name=name, strength=strength or "Strength not entered", kind=kind, as_needed=as_needed,
+            times=[clock12(t) for t, _, _ in ds if t is not None], with_food=any(rel != "na" for _, _, rel in ds),
             badge=badge_for(bool(listed), kind), refill=refill_for(total, per_day, start or today, source, today),
         ))
     return out
@@ -92,10 +93,10 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
 def medication_out(conn: psycopg.Connection, med_id: str, entry: ConfirmedMedication, today: date, source: str = "manual") -> MedicationOut:
     """A saved medicine as the app shows it."""
     listed = conn.execute("select drug_reference_id is not null from medications where id = %s", (med_id,)).fetchone()
-    per_day = sum((d.quantity for d in entry.doses), Decimal(0))
+    per_day = Decimal(0) if entry.as_needed else sum((d.quantity for d in entry.doses), Decimal(0))
     return MedicationOut(
-        id=med_id, name=entry.name, strength=entry.strength or "Strength not entered", kind=entry.kind,
-        times=[clock12(d.dose_time) for d in entry.doses], with_food=any(d.meal_relation != "na" for d in entry.doses),
+        id=med_id, name=entry.name, strength=entry.strength or "Strength not entered", kind=entry.kind, as_needed=entry.as_needed,
+        times=[clock12(d.dose_time) for d in entry.doses if d.dose_time is not None], with_food=any(d.meal_relation != "na" for d in entry.doses),
         badge=badge_for(bool(listed and listed[0]), entry.kind),
         refill=refill_for(entry.total_quantity, per_day, entry.start_date or today, source, today),
     )

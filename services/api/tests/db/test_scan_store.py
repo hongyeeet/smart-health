@@ -214,19 +214,17 @@ def test_no_identity_is_stored_in_the_scan_or_the_audit_trail(conn, user):
 
 # --- the two label columns (migration 0024) ---------------------------------------------------------------------
 
-def test_total_supplied_and_time_of_day_are_saved(conn, user):
-    e = entry(total_quantity=30, doses=[DoseTime(dose_time=time(8, 0), quantity=Decimal("2"), meal_relation="after_meal", when_to_take="morning"),
+def test_the_total_supplied_is_saved(conn, user):
+    e = entry(total_quantity=30, doses=[DoseTime(dose_time=time(8, 0), quantity=Decimal("2"), meal_relation="after_meal"),
                                        DoseTime(dose_time=time(20, 0), quantity=Decimal("2"), meal_relation="after_meal")])
     mid = store.confirm_medication(conn, user, e)
     assert one(conn, "select total_quantity from medications where id = %s", (mid,)) == 30
-    rows = conn.execute("select dose_time, when_to_take from medication_schedule where medication_id = %s order by dose_time", (mid,)).fetchall()
-    assert rows == [(time(8, 0), "morning"), (time(20, 0), None)]       # NULL: the label did not name a time of day for that dose
 
 
-def test_the_time_of_day_stays_null_when_the_label_gives_none(conn, user):
-    mid = store.confirm_medication(conn, user, entry())
-    assert one(conn, "select total_quantity from medications where id = %s", (mid,)) == 60
-    assert one(conn, "select when_to_take from medication_schedule where medication_id = %s limit 1", (mid,)) is None
+def test_an_as_needed_medicine_is_saved_with_an_empty_dose_time(conn, user):
+    mid = store.confirm_medication(conn, user, entry(doses=[DoseTime(dose_time=None, quantity=Decimal("2"), meal_relation="na")]))
+    assert conn.execute("select frequency, source::text from medications where id = %s", (mid,)).fetchone() == (1, "manual")
+    assert conn.execute("select dose_time, quantity from medication_schedule where medication_id = %s", (mid,)).fetchall() == [(None, Decimal("2.0"))]
 
 
 def test_the_total_supplied_is_required(conn, user):
@@ -234,16 +232,13 @@ def test_the_total_supplied_is_required(conn, user):
         entry(total_quantity=None)
     with pytest.raises(ValidationError):
         entry(total_quantity=0)
-    b = conn.execute("insert into bronze_medication (user_id, source, payload, checksum) values (%s, 'manual', '{}'::jsonb, 'x-required') returning id", (user,)).fetchone()[0]
-    with pytest.raises(psycopg.errors.NotNullViolation):
-        with conn.transaction():
-            conn.execute("insert into medications (user_id, name, frequency, source, bronze_id) values (%s, 'x', 1, 'manual', %s)", (user, b))
+    with pytest.raises(ValidationError):
+        entry(total_quantity=-5)
 
 
 def test_the_database_rejects_bad_label_values(conn, user):
     mid = store.confirm_medication(conn, user, entry())
-    for sql in ("update medications set total_quantity = -1 where id = %s",
-                "update medication_schedule set when_to_take = 'whenever' where medication_id = %s"):
+    for sql in ("update medications set total_quantity = -1 where id = %s",):
         try:
             with conn.transaction():
                 conn.execute(sql, (mid,))

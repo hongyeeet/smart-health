@@ -64,7 +64,7 @@ def test_every_reason_the_scanner_can_give_has_words_for_the_screen():
 
 # --- suggested dose times -----------------------------------------------------------------------------------
 
-@pytest.mark.parametrize("per_day,when,expected", [(1, None, ["08:00"]), (1, "night", ["21:00"]), (1, "as_needed", ["08:00"]), (2, None, ["08:00", "20:00"]),
+@pytest.mark.parametrize("per_day,when,expected", [(1, None, ["08:00"]), (1, "night", ["21:00"]), (1, "as_needed", []), (2, None, ["08:00", "20:00"]),
                                                   (3, "morning", ["08:00", "13:00", "20:00"]), (4, None, ["08:00", "12:00", "16:00", "20:00"]),
                                                   (6, None, ["07:00", "10:00", "13:00", "16:00", "19:00", "22:00"]), (None, None, []), (7, None, [])])
 def test_suggested_times(per_day, when, expected):
@@ -96,11 +96,39 @@ def test_without_chosen_times_the_suggestions_are_used():
     assert [d.dose_time for d in m.doses] == [time(8), time(20)]
 
 
-def test_one_dose_a_day_keeps_the_part_of_the_day_from_the_label():
-    m = s.build_confirmed(extraction(fields={"times_per_day": field("1"), "when_to_take": field("morning")}), {}, ["08:00"], None, TODAY)
-    assert m.doses[0].when_to_take == "morning"
-    m2 = s.build_confirmed(extraction(fields={"times_per_day": field("2"), "when_to_take": field("morning")}), {}, ["08:00", "20:00"], None, TODAY)
-    assert all(d.when_to_take is None for d in m2.doses)
+def test_a_part_of_the_day_on_the_label_becomes_a_suggested_clock_time_and_nothing_else_is_kept():
+    ex = extraction(fields={"times_per_day": field("1"), "when_to_take": field("morning")})
+    assert s.default_times(1, "morning") == ["08:00"] and [x["time"] for x in s.api_schedule(ex)] == ["08:00"]
+    m = s.build_confirmed(ex, {}, None, None, TODAY)               # no times chosen: the suggestion is used
+    assert [d.dose_time for d in m.doses] == [time(8)]
+    assert not hasattr(m.doses[0], "when_to_take") and m.as_needed is False
+
+
+def test_an_as_needed_label_has_no_dose_time_and_no_times_a_day():
+    ex = extraction("confirm", fields={"when_to_take": field("as_needed"), "times_per_day": {"value": None, "confidence": 0}})
+    assert s.is_as_needed(ex) and s.api_schedule(ex) == []
+    assert "times_per_day" not in [f["key"] for f in s.api_fields(ex)]       # not a gap to fill: it is taken only when needed
+    m = s.build_confirmed(ex, {}, [], None, TODAY)
+    assert m.as_needed and len(m.doses) == 1 and m.doses[0].dose_time is None and m.doses[0].quantity == Decimal("2")
+
+
+def test_an_as_needed_label_that_also_says_times_a_day_still_has_no_dose_time():
+    ex = extraction(fields={"when_to_take": field("as_needed"), "times_per_day": field("3")})       # "3 times daily AS NECESSARY"
+    assert s.api_schedule(ex) == [] and s.build_confirmed(ex, {}, None, None, TODAY).as_needed
+
+
+def test_times_the_person_chooses_turn_an_as_needed_label_into_a_scheduled_one():
+    ex = extraction(fields={"when_to_take": field("as_needed")})
+    m = s.build_confirmed(ex, {}, ["09:00"], None, TODAY)
+    assert not m.as_needed and [d.dose_time for d in m.doses] == [time(9)]
+
+
+def test_a_confirmed_medicine_cannot_mix_as_needed_and_timed_doses_or_repeat_a_time():
+    from app.schemas.medicine_scan import ConfirmedMedication, DoseTime
+    with pytest.raises(ValueError):
+        ConfirmedMedication(name="x", total_quantity=5, doses=[DoseTime(dose_time=None, quantity=1), DoseTime(dose_time=time(8), quantity=1)])
+    with pytest.raises(ValueError):
+        ConfirmedMedication(name="x", total_quantity=5, doses=[DoseTime(dose_time=time(8), quantity=1), DoseTime(dose_time=time(8), quantity=1)])
 
 
 @pytest.mark.parametrize("meal,expected", [("with_meal", "na"), ("na", "na"), ("whenever", "na"), ("before_meal", "before_meal")])

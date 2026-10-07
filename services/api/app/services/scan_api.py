@@ -60,9 +60,16 @@ def clock12(hhmm: str) -> str:
 
 def default_times(per_day: int | None, when_to_take: str | None) -> list[str]:
     """Suggested clock times: the part of the day the label names for one dose, otherwise an even spread."""
+    if when_to_take == "as_needed":
+        return []                                   # taken only when needed: no clock time
     if per_day == 1 and when_to_take in WHEN_TIME:
         return [WHEN_TIME[when_to_take]]
     return list(DEFAULT_TIMES.get(per_day or 0, []))
+
+
+def is_as_needed(extraction: Mapping[str, Any] | None) -> bool:
+    item = first_item(extraction)
+    return bool(item) and ((item or {}).get("fields", {}).get("when_to_take") or {}).get("value") == "as_needed"
 
 
 def first_item(extraction: Mapping[str, Any] | None) -> dict[str, Any] | None:
@@ -85,10 +92,11 @@ def api_fields(extraction: Mapping[str, Any] | None, threshold: float = THRESHOL
     if not item:
         return []
     out = []
+    as_needed = is_as_needed(extraction)
     for key in ORDER:
         f = (item.get("fields") or {}).get(key)
         if not f or f.get("value") is None:
-            if key in REQUIRED_FIELDS:
+            if key in REQUIRED_FIELDS and not (key == "times_per_day" and as_needed):
                 out.append({"key": key, "label": LABELS[key], "value": None, "confidence": 0.0, "sourceText": None, "level": "unreadable"})
             continue
         conf = float(f.get("confidence") or 0)
@@ -100,7 +108,7 @@ def api_fields(extraction: Mapping[str, Any] | None, threshold: float = THRESHOL
 def api_schedule(extraction: Mapping[str, Any] | None) -> list[dict[str, str]]:
     """Suggested dose times for the plan screen (H4)."""
     item = first_item(extraction)
-    if not item:
+    if not item or is_as_needed(extraction):
         return []
     f = item.get("fields") or {}
     per_day = _int((f.get("times_per_day") or {}).get("value"))
@@ -149,16 +157,15 @@ def build_confirmed(extraction: Mapping[str, Any] | None, edits: Mapping[str, st
     chosen = [t for t in (times or []) if re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", t or "")]
     if times and len(chosen) != len(times):
         raise ValidationFailed("One of the dose times is not a valid time.", code="bad_time")
-    if not chosen:
+    as_needed = not chosen and val("when_to_take") == "as_needed"      # a label that says "when necessary" has no clock time
+    if not chosen and not as_needed:
         chosen = default_times(_int(val("times_per_day")), val("when_to_take"))
-    if not chosen:
+    if not chosen and not as_needed:
         raise ValidationFailed("Choose at least one dose time.", code="missing_time")
     if len(set(chosen)) != len(chosen):
         raise ValidationFailed("Each time of day can only be listed once.", code="duplicate_time")
     meal = val("meal_relation")
     meal = meal if meal in ("before_meal", "after_meal") else "na"
-    when = val("when_to_take")
-    when = when if when in WHEN_TIME or when == "as_needed" else None
     start: date | None = None
     if val("start_date"):
         try:
@@ -171,7 +178,8 @@ def build_confirmed(extraction: Mapping[str, Any] | None, edits: Mapping[str, st
     return ConfirmedMedication(
         name=name, kind=kind or KIND_FOR_ITEM.get(item.get("item_type") or "", "prescription"),  # type: ignore[arg-type]
         strength=val("strength"),
-        doses=[DoseTime(dose_time=time(int(t[:2]), int(t[3:])), quantity=qty if qty > 0 else Decimal(1), meal_relation=meal,  # type: ignore[arg-type]
-                        when_to_take=when if len(chosen) == 1 else None) for t in sorted(chosen)],  # type: ignore[arg-type]
+        doses=[DoseTime(dose_time=None, quantity=qty if qty > 0 else Decimal(1), meal_relation=meal)] if as_needed  # type: ignore[arg-type]
+        else [DoseTime(dose_time=time(int(t[:2]), int(t[3:])), quantity=qty if qty > 0 else Decimal(1), meal_relation=meal)  # type: ignore[arg-type]
+              for t in sorted(chosen)],
         directions=val("directions"), prescriber=val("prescriber"), total_quantity=total, start_date=start,
     )

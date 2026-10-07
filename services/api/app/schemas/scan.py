@@ -67,6 +67,7 @@ class ScanResult(BaseModel):
     error: str | None = None
     # Added for the medicine scan (docs/specs/f2-scan.md). "manual" means the person types the form: the scan was unreadable, a field was
     # below the confidence threshold, a required field was missing or the drug is not in the drug list. `notice` says why, in plain words.
+    as_needed: bool = Field(False, alias="asNeeded")     # the label says "when necessary": no dose times
     review_mode: Literal["confirm", "manual"] = Field("manual", alias="reviewMode")
     reasons: list[str] = Field(default_factory=list)
     notice: str | None = None

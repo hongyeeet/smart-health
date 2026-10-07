@@ -4,16 +4,16 @@ They mirror `NewMedication` and `Medication` in apps/web/src/data. The save itse
 """
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import date
+from datetime import time as ClockTime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 Kind = Literal["prescription", "otc", "supplement", "tcm"]
 MealRelation = Literal["before_meal", "after_meal", "na"]
-WhenToTake = Literal["morning", "noon", "afternoon", "evening", "night", "bedtime", "as_needed"]
 
 
 class Camel(BaseModel):
@@ -21,10 +21,9 @@ class Camel(BaseModel):
 
 
 class DoseIn(Camel):
-    time: time                                  # "08:00", the person's local clock time
+    time: ClockTime | None = None                    # "08:00", the person's local clock time. Empty means "only when needed"
     quantity: Decimal = Field(gt=0, le=100)     # units each time (tablets, capsules or measures)
     meal_relation: MealRelation = "na"
-    when_to_take: WhenToTake | None = None
 
 
 class NewMedicationIn(Camel):
@@ -36,6 +35,15 @@ class NewMedicationIn(Camel):
     start_date: date | None = None
     directions: str | None = Field(default=None, max_length=500)
     scan_id: str | None = Field(default=None, max_length=64)   # set when the typed form completes a scan that needed manual entry
+
+    @model_validator(mode="after")
+    def _times_or_as_needed(self) -> "NewMedicationIn":
+        times = [d.time for d in self.doses]
+        if any(t is None for t in times) and len(times) > 1:
+            raise ValueError("an as-needed medicine has one entry and no clock times")
+        if len(set(times)) != len(times):
+            raise ValueError("each time of day can only be listed once")
+        return self
 
 
 class Refill(Camel):
@@ -50,6 +58,7 @@ class MedicationOut(Camel):
     kind: Kind
     times: list[str]
     with_food: bool
+    as_needed: bool = False                      # taken only when needed: no dose times, no reminders, no supply estimate
     purpose: str = ""
     badge: Literal["interaction", "not_checked"] | None = None
     refill: Refill | None = None

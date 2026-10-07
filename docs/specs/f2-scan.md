@@ -2,7 +2,7 @@
 
 How a photo of a prescription label, box, supplement or TCM pack becomes a saved medicine. Read with [prd.md](prd.md) F2, [flow.md](flow.md) J2, [ai-models.md](ai-models.md) (the model) and [rules.md](rules.md) (what the AI may never do).
 
-**Status (2026-10-07): F2 is done, pending testing.** Built and connected end to end: the scanner (masking, Gemini, confidence scoring, manual-entry fallback), the save-on-confirm, the `/scans` and `/medications` routes and the screens H1, H2, H3, H4 and H8 (section 9). Tested so far: 277 unit and database tests, 7 live tests against the real model, an accuracy run on 5 real labels (53 of 55 fields correct, 0 wrong values trusted, section 8) and a run through the real app in a browser with made-up labels. **Still to test:** more real photos in the app (other pharmacies, curved or glared packs, handwriting), diabetes medicines (the drug list covers the NHANES diabetes top 100, so most other medicines go to manual entry), a phone camera, the 0.85 threshold on a larger set, and the frontend (it has no automated tests). Not part of F2: H6 medicine detail, H5 interaction sheet (F5), H7 missed-dose reasons (F4). Decisions D-062 to D-068 were approved by Joely (she approves her own features); Hong Yi is to be told his `/scans` route was changed (D-068).
+**Status (2026-10-07): F2 is done, pending testing.** Built and connected end to end: the scanner (masking, Gemini, confidence scoring, manual-entry fallback), the save-on-confirm, the `/scans` and `/medications` routes and the screens H1, H2, H3, H4 and H8 (section 9). Tested so far: 287 unit and database tests, 7 live tests against the real model, an accuracy run on 5 real labels (53 of 55 fields correct, 0 wrong values trusted, section 8) and a run through the real app in a browser with made-up labels. **Still to test:** more real photos in the app (other pharmacies, curved or glared packs, handwriting), diabetes medicines (the drug list covers the NHANES diabetes top 100, so most other medicines go to manual entry), a phone camera, the 0.85 threshold on a larger set, and the frontend (it has no automated tests). Not part of F2: H6 medicine detail, H5 interaction sheet (F5), H7 missed-dose reasons (F4). Decisions D-062 to D-068 were approved by Joely (she approves her own features); Hong Yi is to be told his `/scans` route was changed (D-068).
 
 ## 1. What happens to a photo
 
@@ -70,7 +70,7 @@ Run the tests from `services/api`: `python -m pytest tests/unit tests/db/test_sc
 
 ## 6. Mapping to the v2 tables
 
-**Two columns were added for the scan** (Joely's decision, 2026-10-07; migration `0024_medication_label_fields.py`): `medication_schedule.when_to_take` and `medications.total_quantity`. `total_quantity` is **required** (Joely, 2026-10-07): the six demo medicines were given a 30-day placeholder supply, a label that does not show the total sends the user to type it, and saving without it is refused. The SQL was first applied directly (the migration files 0021 to 0023 were not pushed yet); once they were, `alembic upgrade head` recorded revision 0024. The dose unit, the drowsiness warning and the minutes from food are deliberately **not** columns.
+**Two changes were made for the scan** (Joely's decision, 2026-10-07; migration `0024_medication_label_fields.py`): the new column `medications.total_quantity`, and `medication_schedule.dose_time` may now be empty (an as-needed medicine). There is no part-of-day column: "every morning" only suggests the clock time 08:00. `total_quantity` is **required for every new medicine** (Joely, 2026-10-07): a label that does not show the total sends the user to type it, and the app refuses to save without it. The database itself allows it to be empty, because the demo medicine with an unreadable label has no total; five other demo medicines were given a 30-day placeholder supply. The SQL was first applied directly (the migration files 0021 to 0023 were not pushed yet); once they were, `alembic upgrade head` recorded revision 0024. The dose unit, the drowsiness warning and the minutes from food are deliberately **not** columns.
 
 | Label field | Saved to |
 |---|---|
@@ -80,7 +80,8 @@ Run the tests from `services/api`: `python -m pytest tests/unit tests/db/test_sc
 | directions verbatim | `medications.description` |
 | "with food" (`with_meal`) | the schedule has only `before_meal`, `after_meal` and `na`, so it is saved as `na` and the words stay in `description` |
 | `start_date` | `medications.start_date` (the date printed on the label; day-month-year) |
-| when to take, total supplied | `medication_schedule.when_to_take`, `medications.total_quantity` |
+| when to take | the part of the day only suggests a clock time (`dose_time`); "when necessary" saves one schedule row with an empty `dose_time` and shows as "Only when needed" (no reminders, no supply estimate) |
+| total supplied | `medications.total_quantity` |
 | dose unit, drowsiness warning, minutes from food | **no column**: they are in the verbatim directions (`medications.description`), and read separately into `prescription_scans.extraction` |
 | prescriber, supplement ingredients | **no column in v2**: kept in `bronze_medication.payload` and `prescription_scans.extraction` and `extraction_review` |
 | which fields the user changed | `prescription_scans.extraction_review` (for accuracy per field) |

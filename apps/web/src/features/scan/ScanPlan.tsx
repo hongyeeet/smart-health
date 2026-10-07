@@ -65,8 +65,8 @@ export function ScanPlan() {
   const chosenMeal = meal ?? (fromLabel === 'before_meal' || fromLabel === 'after_meal' ? fromLabel : 'na')
   const medName = edits['name'] ?? data.drug
   const distinct = new Set(chosen).size === chosen.length
-  const valid = chosen.length > 0 && chosen.every(Boolean) && distinct
-  const problem = chosen.length === 0
+  const valid = data.asNeeded || (chosen.length > 0 && chosen.every(Boolean) && distinct)
+  const problem = data.asNeeded ? null : chosen.length === 0
     ? 'No dose times were found on the label. Go back and type the medicine in.'
     : !chosen.every(Boolean)
       ? 'Choose a time for each dose.'
@@ -78,7 +78,7 @@ export function ScanPlan() {
     if (!valid) return
     const fields: Record<string, string | null> = { ...edits, meal_relation: chosenMeal }
     confirm.mutate(
-      { scanId: data.scanId, fields, times: [...chosen].sort(), kind: chosenKind },
+      { scanId: data.scanId, fields, times: data.asNeeded ? [] : [...chosen].sort(), kind: chosenKind },
       {
         onSuccess: () => {
           showToast('Added to your medicines')
@@ -115,7 +115,14 @@ export function ScanPlan() {
         </div>
       </Card>
 
-      {suggested.length > 0 && (
+      {data.asNeeded && (
+        <Card tone="soft" className="flex flex-col gap-1.5">
+          <SectionTitle>Dose times</SectionTitle>
+          <p className="text-body text-ink2">Your label says to take this when it is needed, so there are no set times and no reminders.</p>
+        </Card>
+      )}
+
+      {suggested.length > 0 && !data.asNeeded && (
         <Card className="flex flex-col gap-3">
           <SectionTitle>Dose times</SectionTitle>
           <div className="flex flex-col gap-1.5">

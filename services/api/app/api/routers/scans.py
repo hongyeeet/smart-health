@@ -59,7 +59,7 @@ def to_result(scan_id: str, status: str, extraction: dict | None, error: str | N
         status=ScanStatus.failed if status == "failed" else ScanStatus.extracted,
         drug=name, fields=[ScanFieldSchema(**f) for f in fields],
         schedule=[ScanScheduleItem(**s) for s in scan_api.api_schedule(extraction)],
-        modelId=model_id, error=error, reviewMode=mode, reasons=reasons,
+        modelId=model_id, error=error, reviewMode=mode, reasons=reasons, asNeeded=scan_api.is_as_needed(extraction),
         notice=scan_api.reason_text(reasons) if mode == "manual" else None,
     )
 

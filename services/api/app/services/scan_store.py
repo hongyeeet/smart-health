@@ -112,8 +112,8 @@ def build_review(extraction: Mapping[str, Any] | None, entry: ConfirmedMedicatio
     final = {"name": entry.name, "strength": entry.strength, "directions": entry.directions, "prescriber": entry.prescriber,
              "start_date": entry.start_date.isoformat() if entry.start_date else None,
              "total_quantity": str(entry.total_quantity) if entry.total_quantity is not None else None,
-             "times_per_day": str(len(entry.doses)),
-             "when_to_take": next((d.when_to_take for d in entry.doses if d.when_to_take), None)}
+             "times_per_day": None if entry.as_needed else str(len(entry.doses)),
+             "when_to_take": "as_needed" if entry.as_needed else None}
     for k, v in final.items():
         scanned = (read.get(k) or {}).get("value")
         out["fields"][k] = {"scanned": scanned, "confirmed": v, "changed": (scanned or None) != (v or None)}
@@ -140,8 +140,8 @@ def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedM
     drug_ref = match.drug_reference_id if match and match.score >= MATCH_OK else None
     source = "scan" if scan_id else "manual"
     payload = {"kind": "medication_confirmed", "scan_id": scan_id, "name": entry.name, "medication_kind": entry.kind, "strength": entry.strength,
-               "doses": [{"dose_time": d.dose_time.isoformat(), "quantity": str(d.quantity), "meal_relation": d.meal_relation,
-                          "when_to_take": d.when_to_take} for d in entry.doses],
+               "doses": [{"dose_time": d.dose_time.isoformat() if d.dose_time else None, "quantity": str(d.quantity), "meal_relation": d.meal_relation}
+                         for d in entry.doses],
                "directions": entry.directions, "prescriber": entry.prescriber,
                "start_date": entry.start_date.isoformat() if entry.start_date else None, "total_quantity": entry.total_quantity}
     checksum = _checksum(json.dumps(payload, sort_keys=True).encode())
@@ -156,8 +156,8 @@ def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedM
         (user_id, entry.name, entry.kind, entry.strength, len(entry.doses), description, entry.start_date or date.today(), drug_ref, source, bronze_id,
          entry.total_quantity))[0]
     for d in entry.doses:
-        conn.execute("insert into medication_schedule (user_id, medication_id, dose_time, quantity, meal_relation, when_to_take) values (%s, %s, %s, %s, %s, %s)",
-                     (user_id, med_id, d.dose_time, d.quantity, d.meal_relation, d.when_to_take))
+        conn.execute("insert into medication_schedule (user_id, medication_id, dose_time, quantity, meal_relation) values (%s, %s, %s, %s, %s)",
+                     (user_id, med_id, d.dose_time, d.quantity, d.meal_relation))
     if scan_id and scan is not None:
         review = build_review(scan[1], entry)
         conn.execute("update prescription_scans set status = 'confirmed', extraction_review = %s where id = %s", (Jsonb(review), scan_id))

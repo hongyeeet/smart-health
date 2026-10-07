@@ -116,7 +116,7 @@ Deleting an original removes the stored object and sets `processing_status = 'de
 | `frequency` | smallint | yes | user: doses per day | must equal the number of active rows in `medication_schedule` |
 | `description` | text | no | user ("for sugar, with food") | what it is for and timing notes |
 | `start_date`, `end_date` | date | no | user | window in which doses are expected; no end date = still taking |
-| `total_quantity` | integer (0 or more) | **yes** | scan or user: the total tablets, capsules or units supplied, as printed on the label or typed in | predicting when the supply runs out (refill reminder). The six demo medicines hold a 30-day placeholder (doses per day x 30) |
+| `total_quantity` | integer (0 or more) | **yes for every new medicine** (the app, the form and the scanner require it); the database allows empty, which means the label did not show one | scan or user: the total tablets, capsules or units supplied, as printed on the label or typed in | predicting when the supply runs out (refill reminder). Five demo medicines hold a 30-day placeholder (doses per day x amount x 30); the demo medicine with an unreadable label has none |
 | `drug_reference_id` | uuid | no | matched by name -> `drug_reference` | side-effect and interaction lookups |
 | `source` | entry_source | yes | `manual` or `scan` | provenance |
 | `bronze_id` | uuid | yes | -> `bronze_medication` | lineage |
@@ -130,20 +130,19 @@ Each row is one time of day the medicine is taken, so a medicine can have differ
 |---|---|---|---|---|
 | `id`, `user_id` | uuid | yes | system | |
 | `medication_id` | uuid | yes | -> `medications` | which medicine |
-| `dose_time` | time (local) | yes | user (e.g. 08:00) | when a dose is expected, reminders |
+| `dose_time` | time (local) | **no**: empty means "only when needed" | user (e.g. 08:00), or a suggestion from the label ("every morning" suggests 08:00) that the person changes | when a dose is expected, reminders. A medicine taken only when needed has exactly one schedule row with no time: no daily dose is expected, no reminder is due and it can never be missed |
 | `quantity` | numeric(4,1) | yes | user: number per dose in the medicine's own unit (e.g. 1, 2, 0.5 tablets) | the brief, how much per dose |
 | `meal_relation` | enum `before_meal` / `after_meal` / `na` | yes | user, default `na` | overlay marker; comparing dose timing with logged meals |
-| `when_to_take` | text: `morning` / `noon` / `afternoon` / `evening` / `night` / `bedtime` / `as_needed` | no | scan or user, only when the label names a part of the day ("every morning") | showing the dose in the person's own words; empty when the label only gives a number of times a day |
 | `created_at`, `updated_at`, `deleted_at` | timestamptz | | system | |
 
 Rule: the number of active rows for a medicine equals `medications.frequency`.
 
-Added 2026-10-07 for the medicine scan (F2), decided by Joely: `medications.total_quantity` and `medication_schedule.when_to_take` (migration 0024). `total_quantity` is required (Joely, 2026-10-07). The dose unit, the drowsiness warning and the minutes from food are not columns: they stay in the verbatim directions in `medications.description` and in the scan record (`prescription_scans.extraction`).
+Added 2026-10-07 for the medicine scan (F2), decided by Joely (migration 0024): `medications.total_quantity`, and `medication_schedule.dose_time` may now be empty for an as-needed medicine. `total_quantity` is required for every new medicine but may be empty in the database (Joely, 2026-10-07). A label that names a part of the day ("every morning") is turned into a suggested clock time by the app (morning 08:00, noon 12:00, afternoon 15:00, evening 18:00, night 21:00, bedtime 22:00) and no separate column is kept. The dose unit, the drowsiness warning and the minutes from food are not columns: they stay in the verbatim directions in `medications.description` and in the scan record (`prescription_scans.extraction`).
 
 
 #### `medication_log` (dose log: one row per scheduled or extra dose)
 
-Rows are generated from `medication_schedule` each day with `status = pending`, then updated when the user confirms.
+Rows are generated from `medication_schedule` each day with `status = pending`, then updated when the user confirms. A schedule row with no `dose_time` (an as-needed medicine) generates no rows.
 
 | Column | Type | Required | Comes from | Used for |
 |---|---|---|---|---|

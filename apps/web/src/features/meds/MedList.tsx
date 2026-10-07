@@ -88,7 +88,7 @@ function MedCard({ m }: { m: Medication }) {
           {showStrength(m) && <span className="font-normal text-ink2"> {m.strength}</span>}
         </p>
         <p className="text-sub text-ink2">
-          {m.times.length ? m.times.join(', ') : 'No dose times'}
+          {m.asNeeded ? 'Only when needed' : m.times.length ? m.times.join(', ') : 'No dose times'}
           {m.withFood && ', with food'}
         </p>
       </div>

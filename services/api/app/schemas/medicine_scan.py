@@ -5,7 +5,7 @@ from datetime import date, time
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 ItemType = Literal["prescription_label", "blister_or_box", "supplement", "tcm", "otc", "unknown"]
 MealRelation = Literal["before_meal", "after_meal", "with_meal", "na"]
@@ -126,10 +126,10 @@ class ScanOutcome(BaseModel):
 # --- what the user confirms -----------------------------------------------------------------------------------
 
 class DoseTime(BaseModel):
-    dose_time: time
+    """One dose. An empty `dose_time` means the medicine is taken only when needed: no clock time, no daily dose expected."""
+    dose_time: time | None = None
     quantity: Decimal = Field(gt=0)
     meal_relation: Literal["before_meal", "after_meal", "na"] = "na"
-    when_to_take: Literal["morning", "noon", "afternoon", "evening", "night", "bedtime", "as_needed"] | None = None
 
 
 class ConfirmedMedication(BaseModel):
@@ -142,3 +142,16 @@ class ConfirmedMedication(BaseModel):
     prescriber: str | None = Field(default=None, max_length=200)
     total_quantity: int = Field(ge=1)    # required: the total supplied, to predict when it runs out
     start_date: date | None = None
+
+    @model_validator(mode="after")
+    def _times_or_as_needed(self) -> "ConfirmedMedication":
+        times = [d.dose_time for d in self.doses]
+        if any(t is None for t in times) and len(times) > 1:
+            raise ValueError("an as-needed medicine has one entry and no clock times")
+        if len(set(times)) != len(times):
+            raise ValueError("each time of day can only be listed once")
+        return self
+
+    @property
+    def as_needed(self) -> bool:
+        return self.doses[0].dose_time is None

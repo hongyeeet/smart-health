@@ -168,3 +168,15 @@ def test_the_response_uses_the_names_the_app_reads(db, monkeypatch):
     j = scans._upload(b"any").model_dump(by_alias=True)
     assert {"scanId", "itemType", "reviewMode", "reasons", "notice", "fields", "schedule"} <= set(j)
     assert "sourceText" in j["fields"][0] and j["fields"][0]["level"] in ("high", "check", "unreadable")
+
+
+def test_an_as_needed_label_is_saved_without_a_dose_time(db, monkeypatch):
+    conn, _ = db
+    fake_pipeline(monkeypatch, outcome(when_to_take=field("as_needed"), times_per_day=ScoredField(value=None, confidence=0.0, model_confidence=0.0,
+                                                                                                  source_text=None, needs_confirmation=False)))
+    r = scans._upload(b"any")
+    assert r.review_mode == "confirm" and r.as_needed is True and r.schedule == []
+    assert "times_per_day" not in [f.key for f in r.fields]
+    med = scans._confirm(r.scan_id, ScanConfirmRequest(times=[]))
+    assert med.as_needed and med.times == [] and med.refill is None
+    assert conn.execute("select dose_time from medication_schedule where medication_id = %s", (med.id,)).fetchall() == [(None,)]

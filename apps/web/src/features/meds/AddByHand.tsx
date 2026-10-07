@@ -6,7 +6,7 @@ import { href } from '@/app/routeIds'
 import { useUi } from '@/state/store'
 import { Footer, Header, Screen } from '@/ui/layout'
 import { Segmented } from '@/ui/controls'
-import { Alert, Button, Chip, Field, Stepper, TextLink } from '@/ui/primitives'
+import { Alert, Button, Chip, Field, Stepper, TextLink, Toggle } from '@/ui/primitives'
 import { Camera, Plus, Trash } from '@/ui/icons'
 
 type Kind = NewMedication['kind']
@@ -49,6 +49,7 @@ export function AddByHand() {
   const [strength, setStrength] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [times, setTimes] = useState<string[]>(['08:00'])
+  const [asNeeded, setAsNeeded] = useState(false)
   const [meal, setMeal] = useState<Meal>('na')
   const [total, setTotal] = useState('')
   const [startDate, setStartDate] = useState(today())
@@ -61,9 +62,9 @@ export function AddByHand() {
   // The first thing still missing, in the order the form is read. It is shown under the button, so a disabled button is never a mystery.
   const missing = !name.trim()
     ? 'Type the medicine name to continue.'
-    : filled.length === 0 || filled.length !== times.length
+    : !asNeeded && (filled.length === 0 || filled.length !== times.length)
       ? 'Choose a time for each dose, or remove the empty one.'
-      : !distinct
+      : !asNeeded && !distinct
         ? 'Each time of day can only be listed once.'
         : totalNumber < 1
           ? 'Type the total you were given, for example 30.'
@@ -77,7 +78,8 @@ export function AddByHand() {
       name: name.trim(),
       kind,
       strength: strength.trim(),
-      doses: [...filled].sort().map((time) => ({ time, quantity, mealRelation: meal, whenToTake: null })),
+      // Taken only when needed: one dose with no clock time, so no reminder and no missed dose.
+      doses: asNeeded ? [{ time: null, quantity, mealRelation: meal }] : [...filled].sort().map((time) => ({ time, quantity, mealRelation: meal })),
       totalQuantity: totalNumber,
       startDate: startDate || null,
       directions: directions.trim(),
@@ -137,27 +139,36 @@ export function AddByHand() {
         <p className="text-sub text-ink3">Number of tablets, capsules or measures.</p>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <p className="text-sub font-bold text-ink">Times each day</p>
-        <ul className="flex flex-col gap-2">
-          {times.map((t, i) => (
-            <li key={i} className="flex items-center gap-2">
-              <input
-                type="time"
-                aria-label={`Dose time ${i + 1}`}
-                value={t}
-                onChange={(e) => setTime(i, e.target.value)}
-                className={inputClass}
-              />
-              {times.length > 1 && (
-                <button
-                  type="button"
-                  aria-label={`Remove dose time ${i + 1}`}
-                  onClick={() => setTimes(times.filter((_, j) => j !== i))}
-                  className="press flex h-12 w-12 flex-none items-center justify-center rounded-full bg-well text-ink2"
-                >
-                  <Trash size={20} aria-hidden />
-                </button>
+      <div className="flex items-center justify-between gap-4 rounded-card border border-line bg-card p-3.5">
+        <div className="min-w-0">
+          <p className="text-body font-bold">Only when needed</p>
+          <p className="text-sub text-ink3">No set times, no reminders. For medicines you take when you need them.</p>
+        </div>
+        <Toggle on={asNeeded} onChange={setAsNeeded} label="Only when needed" />
+      </div>
+
+      {!asNeeded && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sub font-bold text-ink">Times each day</p>
+          <ul className="flex flex-col gap-2">
+            {times.map((t, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <input
+                  type="time"
+                  aria-label={`Dose time ${i + 1}`}
+                  value={t}
+                  onChange={(e) => setTime(i, e.target.value)}
+                  className={inputClass}
+                />
+                {times.length > 1 && (
+                  <button
+                    type="button"
+                    aria-label={`Remove dose time ${i + 1}`}
+                    onClick={() => setTimes(times.filter((_, j) => j !== i))}
+                    className="press flex h-12 w-12 flex-none items-center justify-center rounded-full bg-well text-ink2"
+                  >
+                    <Trash size={20} aria-hidden />
+                  </button>
               )}
             </li>
           ))}
@@ -168,6 +179,7 @@ export function AddByHand() {
           </TextLink>
         )}
       </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <p className="text-sub font-bold text-ink">Before or after food?</p>

@@ -121,7 +121,7 @@ def main():
         med_b[m["id"]] = B.add("bronze_medication", f"entry:{m['key']}", SIM, payload, rec)
         meds_rows.append((m["id"], TAN, m["name"], m["kind"], m["strength"], int(m["frequency"]), m["description"], m["start_date"], m["end_date"],
                           ref.get(m["drug_ref"]) if m["drug_ref"] else None, SIM, med_b[m["id"]],
-                          max(1, round(float(rows.quantity.sum()) * 30))))      # total_quantity is required: a 30-day supply (demo placeholder)
+                          None if m["key"] == "tonic" else max(1, round(float(rows.quantity.sum()) * 30))))   # a 30-day supply (demo placeholder); none for the unreadable label
     S["medications"] = meds_rows
     for r in ms.itertuples():
         sched_rows.append((r.id, TAN, r.medication_id, r.dose_time, float(r.quantity), r.meal_relation))

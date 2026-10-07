@@ -206,7 +206,8 @@ def decide(raw: RawExtraction, items: Sequence[ScoredItem], threshold: float = T
     for it in items:
         if any(f.needs_confirmation for f in it.fields.values()):
             reasons.append("low_confidence")
-        if any(it.fields[r].value is None for r in REQUIRED_FIELDS):
+        as_needed = it.fields["when_to_take"].value == "as_needed"       # "when necessary" has no times per day: that is not a gap
+        if any(it.fields[r].value is None for r in REQUIRED_FIELDS if not (r == "times_per_day" and as_needed)):
             reasons.append("missing_required")
         if not it.recognised:
             reasons.append("unrecognised")

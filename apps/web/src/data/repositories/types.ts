@@ -72,12 +72,11 @@ export type LogInput =
 
 /** A medicine added by hand (screen H8). Times are 24-hour clock text ("08:00"), the person's own local time. */
 export interface NewMedicationDose {
-  time: string
+  /** 24-hour clock text, or null when the medicine is taken only when needed (then it has exactly one dose, with no time). */
+  time: string | null
   /** Units each time (tablets, capsules or measures). */
   quantity: number
   mealRelation: 'before_meal' | 'after_meal' | 'na'
-  /** Only when the label names a part of the day. Left null for a hand-typed medicine. */
-  whenToTake: 'morning' | 'noon' | 'afternoon' | 'evening' | 'night' | 'bedtime' | 'as_needed' | null
 }
 
 export interface NewMedication {

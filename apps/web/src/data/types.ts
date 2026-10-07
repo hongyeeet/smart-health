@@ -34,6 +34,8 @@ export interface Medication {
   kind: 'prescription' | 'otc' | 'supplement' | 'tcm'
   times: string[]
   withFood: boolean
+  /** Taken only when needed: no dose times, no reminders, no supply estimate. */
+  asNeeded?: boolean
   purpose: string
   badge: 'interaction' | 'not_checked' | null
   refill: { daysLeft: number; unitsLeft: number } | null
@@ -323,6 +325,8 @@ export interface ScanResult {
   error: string | null
   /** "confirm": one medicine read clearly, the person checks it. "manual": the person types the form (unreadable, low confidence, a
    *  missing required field, a drug we cannot identify, or several medicines). */
+  /** The label says "when necessary": the medicine has no dose times. */
+  asNeeded: boolean
   reviewMode: 'confirm' | 'manual'
   /** Stable reason codes behind "manual", for logging and tests. */
   reasons: string[]

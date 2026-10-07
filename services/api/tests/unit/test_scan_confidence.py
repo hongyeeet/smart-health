@@ -142,3 +142,11 @@ def test_a_stricter_threshold_flags_more_fields():
     r = raw(item(strength=f("500 mg", 0.9, "500 mg")))
     assert c.decide(r, [c.score_item(i, OCR, INDEX, 0.85) for i in r.items]).review_mode == "confirm"
     assert c.decide(r, [c.score_item(i, OCR, INDEX, 0.95) for i in r.items]).review_mode == "manual"
+
+
+def test_an_as_needed_label_needs_no_times_a_day():
+    r = raw(item(times_per_day=RawField(), when_to_take=f("as_needed", src="when necessary")))
+    d = c.decide(r, [c.score_item(i, OCR + " when necessary", INDEX) for i in r.items])
+    assert d.review_mode == "confirm" and d.reasons == []
+    r2 = raw(item(times_per_day=RawField()))                              # no times and not as needed: still a gap
+    assert "missing_required" in c.decide(r2, [c.score_item(i, OCR, INDEX) for i in r2.items]).reasons

@@ -50,7 +50,7 @@ def test_a_hand_typed_medicine_is_saved_and_returned_as_the_app_shows_it(conn, u
     assert out.badge is None and out.refill.days_left == 30 and out.refill.units_left == 60       # 60 tablets at 2 a day
     row = conn.execute("select source, frequency, total_quantity, drug_reference_id is not null from medications where id = %s", (out.id,)).fetchone()
     assert row == ("manual", 2, 60, True)                       # linked to the drug list by a name match in code
-    sched = conn.execute("select dose_time::text, quantity, meal_relation::text, when_to_take from medication_schedule where medication_id = %s order by dose_time", (out.id,)).fetchall()
+    sched = conn.execute("select dose_time::text, quantity, meal_relation::text, null from medication_schedule where medication_id = %s order by dose_time", (out.id,)).fetchall()
     assert [(s[0], s[1], s[2], s[3]) for s in sched] == [("08:00:00", Decimal("1"), "after_meal", None), ("20:00:00", Decimal("1"), "after_meal", None)]
 
 
@@ -132,6 +132,15 @@ def test_the_supply_estimate_counts_down_from_the_start_date():
     assert api.refill_for(60, Decimal(2), date(2026, 10, 11), "manual", date(2026, 10, 1)).units_left == 60  # a future start date counts nothing
 
 
+def test_an_empty_total_gives_no_estimate_and_never_fails():
+    assert api.refill_for(None, Decimal(2), date(2026, 1, 1), "manual", date(2026, 10, 1)) is None
+
+
+def test_the_demo_medicine_with_an_unreadable_label_has_no_total(conn):
+    row = conn.execute("select total_quantity from medications where name = 'Herbal tonic (label not readable)' and source = 'demo_dataset'").fetchone()
+    assert row == (None,)
+
+
 def test_demo_placeholders_get_no_supply_estimate_and_zero_doses_never_divide():
     assert api.refill_for(60, Decimal(2), date(2026, 1, 1), "demo_dataset", date(2026, 10, 1)) is None
     assert api.refill_for(60, Decimal(0), date(2026, 1, 1), "manual", date(2026, 10, 1)) is None
@@ -141,3 +150,18 @@ def test_the_demo_patients_list_loads_and_shows_no_invented_supply(conn):
     mr_tan = "dc48e209-5731-5b3d-89d9-986242c54368"
     meds = api.list_medications(conn, mr_tan, date.today())
     assert len(meds) >= 6 and all(m.refill is None for m in meds) and all(m.times for m in meds)
+
+
+def test_an_as_needed_medicine_has_no_times_no_reminder_and_no_supply_estimate(conn, user):
+    out = api.create_medication(conn, user, body(name="Cough syrup", doses=[{"quantity": 2}]))
+    assert out.as_needed and out.times == [] and out.refill is None
+    listed = api.list_medications(conn, user, date.today())
+    assert [(m.name, m.as_needed, m.times, m.refill) for m in listed] == [("Cough syrup", True, [], None)]
+    assert conn.execute("select dose_time from medication_schedule where medication_id = %s", (out.id,)).fetchall() == [(None,)]
+
+
+def test_an_as_needed_medicine_cannot_also_have_clock_times():
+    with pytest.raises(ValidationError):
+        body(doses=[{"quantity": 1}, {"time": "08:00", "quantity": 1}])
+    with pytest.raises(ValidationError):
+        body(doses=[{"time": "08:00", "quantity": 1}, {"time": "08:00", "quantity": 1}])
