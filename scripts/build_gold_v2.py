@@ -542,8 +542,8 @@ def seed_care(conn, ctx, Dsum, events):
     for other, other_name in [("atorvastatin", "Atorvastatin 20 mg"), ("amlodipine", "Amlodipine 5 mg")]:
         rule = conn.execute("select id from interaction_rules where (drug_a_id=%s and drug_b_id=%s) or (drug_a_id=%s and drug_b_id=%s)",
                             (ref["clarithromycin"], ref[other], ref[other], ref["clarithromycin"])).fetchone()
-        conn.execute("insert into interaction_alerts (id, user_id, med_a_id, med_b_id, interaction_rule_id, status, created_at, acknowledged_at) values (%s,%s,%s,%s,%s,'acknowledged',%s,%s)",
-                     (str(uid("v2", "ia", other)), TAN, cl, mid[other_name], rule[0] if rule else None, created, pd.Timestamp("2026-09-13 09:20", tz=tz).to_pydatetime()))
+        conn.execute("insert into interaction_alerts (id, user_id, med_a_id, med_b_id, interaction_rule_id, status, created_at, acknowledged_at) values (%s,%s,%s,%s,%s,'open',%s,%s)",
+                     (str(uid("v2", "ia", other)), TAN, cl, mid[other_name], rule[0] if rule else None, created, None))   # open, so the Meds page clash box shows (Joely, 2026-10-08)
     for name in ["Herbal tonic (label not readable)", "Fish oil"]:
         conn.execute("insert into interaction_alerts (id, user_id, med_a_id, med_b_id, interaction_rule_id, status, created_at) values (%s,%s,%s,NULL,NULL,'not_checked',%s)",
                      (str(uid("v2", "ia", name)), TAN, mid[name], pd.Timestamp("2026-07-04 08:10", tz=tz).to_pydatetime()))

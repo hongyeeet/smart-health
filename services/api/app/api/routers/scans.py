@@ -16,11 +16,11 @@ import logging
 import uuid
 from collections import OrderedDict
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from psycopg.rows import tuple_row
 
-from app.agents import scan_pipeline
+from app.agents import clash_pipeline, scan_pipeline
 from app.api.routers.medications import datetime_today, medication_out
 from app.core.errors import (
     ExternalServiceError,
@@ -128,8 +128,11 @@ def _find(scan_id: str) -> tuple:
 
 
 @router.post("/{scan_id}/confirm", response_model=MedicationOut, response_model_by_alias=True)
-async def confirm_scan(scan_id: str, body: ScanConfirmRequest) -> MedicationOut:
-    return await run_in_threadpool(_confirm, scan_id, body)
+async def confirm_scan(scan_id: str, body: ScanConfirmRequest, background: BackgroundTasks) -> MedicationOut:
+    user = str(logstore.current_user())
+    out = await run_in_threadpool(_confirm, scan_id, body)
+    background.add_task(clash_pipeline.check_user, user)      # the clash check studies every saved medicine again, after the response
+    return out
 
 
 def _confirm(scan_id: str, body: ScanConfirmRequest) -> MedicationOut:

@@ -21,6 +21,7 @@ import type {
   WeekWorkouts,
   LogResult,
   MemoryFact,
+  ClashStatus,
   MissAnswer,
   MissReason,
   DosesToday,
@@ -147,6 +148,14 @@ export interface Api {
   /** User confirms the reviewed/edited fields → saves the medication (E3-2 does the full save). */
   confirmScan(scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: NewMedication['kind']): Promise<Medication>
   getDosesToday(): Promise<DosesToday>
+  /** The medicine clash alerts that are open, and whether a check is running now. */
+  getClash(): Promise<ClashStatus>
+  /** Run the clash check again now (it also runs in the background after every medicine is added). */
+  runClashCheck(): Promise<ClashStatus>
+  /** Save "Is it OK to take X and Y together?" to the doctor-question list. */
+  askAboutClash(alertId: string): Promise<void>
+  /** "I have checked with my doctor": the alert stops showing. */
+  acknowledgeClash(alertId: string): Promise<ClashStatus>
 
   getFacts(): Promise<{ facts: MemoryFact[]; compare: WeekCompare }>
   factAction(id: string, action: 'confirm' | 'delete' | 'edit', text?: string): Promise<void>

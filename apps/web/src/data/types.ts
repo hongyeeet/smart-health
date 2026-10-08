@@ -86,6 +86,27 @@ export interface DosesToday {
   next: { title: string; when: string } | null
 }
 
+/** Two of the person's medicines that may clash (prd F5). `text` is always the fixed wording: it never says to stop a medicine. */
+export interface ClashAlert {
+  id: string
+  medA: string
+  medB: string
+  text: string
+  summary: string
+  origin: 'database' | 'ai' | 'both'
+  sources: WebSource[]
+  /** The doctor question for this pair is already saved. */
+  questionAdded: boolean
+}
+
+export interface ClashStatus {
+  /** A check is running now, so more alerts may appear in a few seconds. */
+  checking: boolean
+  /** The AI half of the latest check could not finish; the database half still ran. */
+  checkIncomplete: boolean
+  alerts: ClashAlert[]
+}
+
 export interface Dose {
   id: string
   medId: string

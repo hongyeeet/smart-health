@@ -110,8 +110,10 @@ The Home page names each dose by what to take ("Metformin, 1 Tab"), not its stre
 ### F5 Clash checker (drug–drug, drug–supplement, drug–TCM)
 *Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `interaction_alerts`; reads `medications`, `interaction_rules`.*
 
-Deterministic lookup against an interaction reference table. The LLM only rephrases a confirmed hit into plain language.
-- AC: runs whenever a medication, supplement or TCM item is added or changed.
+*Built (2026-10-08, [f5-clash.md](f5-clash.md)): a clash box on the Meds page. **Changed by Joely on 2026-10-08, pending Hong Yi's confirmation:** a pair is flagged if the interaction reference table (a deterministic lookup, always run) OR an AI model with a web search finds a possible clash; the AI can only add a flag, never remove one the table found. The earlier rule (table only, the LLM only rephrases a confirmed hit) no longer describes the build.*
+
+Lookup against an interaction reference table, plus an AI check of all the person's saved medicines after every add. The wording is fixed and never advises.
+- AC: runs in the background whenever a medication, supplement or TCM item is added (typed or scanned), and looks at all saved medicines each time. No box shows when nothing may clash; a check that could not finish says so and is never shown as all clear.
 - AC: patient message is always of the form "Possible interaction between X and Y. Please check with your pharmacist or doctor before continuing." It never says "stop X".
 - AC: items not found in the reference table are labelled "not checked" (honest about uncertainty), never "safe".
 - AC: every hit appears in the brief.

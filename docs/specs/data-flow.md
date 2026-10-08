@@ -215,7 +215,7 @@ For each feature: what a user action writes (Bronze then Silver or App), and wha
 | F2 Medication capture | Photo to `bronze_medication` and `prescription_scans`; after confirmation `medications`, `medication_schedule`, `medication_log`; `interaction_alerts` | `drug_reference`, `drug_aliases` |
 | F3 Medication explainer | `medication_explanations` (the saved explanation), `doctor_questions` (a question asked from the page) | `medications`, `medication_schedule` (the person's own label); a web search through the model. Not the 250k Medicines file (D-071) |
 | F4 Adherence | `medication_log` (taken, missed with reason, skipped); `notifications`; `refill_forecasts` | `medication_schedule`, `adherence_summary` (view), `care_summary` |
-| F5 Clash checker | `interaction_alerts` | `medications`, `interaction_rules` |
+| F5 Clash checker | `interaction_alerts`, `doctor_questions` (the button on an alert) | `medications`, `interaction_rules`, `drug_reference`, `drug_aliases`; an AI model with a web search as a second source (D-073) |
 | F6 Tracking and logging | `bronze_*` then `cgm_readings` (finger-prick), `food_logs`, `exercise_logs` and `exercise_sets`, `symptom_logs`, `wellbeing_logs`, `blood_pressure_readings`, `lab_results`; `watch_readings` and `cgm_readings` from syncs; weight in `user_profile` | `timeline_5min`, `daily_summary` |
 | F7 CGM and personal food response | none (computed) | `meal_response`, `food_logs`; gentlest and spikiest foods = `meal_response` grouped by food, at least 2 meals |
 | F8 Fixed baseline and decline flag | `baselines`, `daily_summary`, `clinical_flags` (all by code) | `timeline_5min`, `baselines` |

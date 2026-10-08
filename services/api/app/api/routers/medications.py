@@ -13,10 +13,11 @@ from math import floor
 from typing import Any, Literal
 
 import psycopg
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from psycopg.rows import tuple_row
 
+from app.agents import clash_pipeline
 from app.core.errors import InvalidTransition, NotFound
 from app.db import logstore
 from app.schemas.medicine_scan import ConfirmedMedication, DoseTime
@@ -110,8 +111,11 @@ def _list() -> list[MedicationOut]:
 
 
 @router.post("", response_model=MedicationOut, response_model_by_alias=True)
-async def add_medication(body: NewMedicationIn) -> MedicationOut:
-    return await run_in_threadpool(_add, body)
+async def add_medication(body: NewMedicationIn, background: BackgroundTasks) -> MedicationOut:
+    user = str(logstore.current_user())
+    out = await run_in_threadpool(_add, body)
+    background.add_task(clash_pipeline.check_user, user)      # the clash check studies every saved medicine again, after the response
+    return out
 
 
 def _add(body: NewMedicationIn) -> MedicationOut:

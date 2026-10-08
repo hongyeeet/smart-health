@@ -92,6 +92,12 @@ export const httpApi: Api = {
   confirmScan: (scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: string) =>
     request(`/scans/${scanId}/confirm`, { method: 'POST', body: JSON.stringify({ fields: editedFields, times, kind }) }),
   getDosesToday: () => request('/doses/today'),
+  getClash: () => request('/interactions'),
+  runClashCheck: () => request('/interactions/check', { method: 'POST' }),
+  askAboutClash: async (id) => {
+    await request(`/interactions/${encodeURIComponent(id)}/question`, { method: 'POST' })
+  },
+  acknowledgeClash: (id) => request(`/interactions/${encodeURIComponent(id)}/acknowledge`, { method: 'POST' }),
   getFacts: todo('getFacts'),
   factAction: todo('factAction'),
   getCarePlan: todo('getCarePlan'),

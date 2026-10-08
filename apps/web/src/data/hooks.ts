@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './repositories'
 import type { LogInput, NewMedication } from './repositories/types'
-import type { MissAnswer, Period, UserList } from './types'
+import type { ClashStatus, MissAnswer, Period, UserList } from './types'
 import { request } from './repositories/http'
 import { useUi } from '@/state/store'
 
@@ -26,6 +26,24 @@ export const useAnalyzeMeal = () => useMutation({ mutationFn: (a: { file: File; 
 export const useRecent = () => useQuery({ queryKey: ['recent'], queryFn: () => api.listRecent() })
 /** Today's doses for Home. Refreshed every minute because a dose's window opens and closes with the clock. */
 export const useDoses = () => useQuery({ queryKey: ['doses'], queryFn: () => api.getDosesToday(), refetchInterval: 60_000 })
+/** The clash box. Polled every few seconds because the check runs in the background for up to a minute after a medicine is added. */
+export const useClash = () => useQuery({ queryKey: ['clash'], queryFn: () => api.getClash(), refetchInterval: 5_000 })
+export const useRunClashCheck = () => {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: () => api.runClashCheck(), onSuccess: (s) => qc.setQueryData(['clash'], s) })
+}
+export const useAskAboutClash = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.askAboutClash(id),
+    onSuccess: (_, id) =>
+      qc.setQueryData<ClashStatus>(['clash'], (old) => (old ? { ...old, alerts: old.alerts.map((a) => (a.id === id ? { ...a, questionAdded: true } : a)) } : old)),
+  })
+}
+export const useAcknowledgeClash = () => {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (id: string) => api.acknowledgeClash(id), onSuccess: (s) => qc.setQueryData(['clash'], s) })
+}
 export const useMeds = () => useQuery({ queryKey: ['meds'], queryFn: () => api.listMedications() })
 export const useMed = (id: string) => useQuery({ queryKey: ['med', id], queryFn: () => api.getMedication(id) })
 /** Makes the explanation the first time (a web search, up to 30 seconds), then it is saved and instant. */

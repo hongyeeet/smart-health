@@ -94,7 +94,7 @@ def test_the_gold_analysis_finds_the_planted_effects(conn):
 
 def test_the_scripted_low_and_the_interaction_alerts_exist(conn):
     assert one(conn, "select count(*) from glucose_events where event_type = 'low' and started_at::date = '2026-08-15'") == 1
-    assert one(conn, "select count(*) from interaction_alerts where status = 'acknowledged'") == 2
+    assert one(conn, "select count(*) from interaction_alerts where status = 'open'") == 2          # Clarithromycin with Atorvastatin and with Amlodipine: shown in the clash box
     assert one(conn, "select count(*) from interaction_alerts where status = 'not_checked'") == 2
 
 

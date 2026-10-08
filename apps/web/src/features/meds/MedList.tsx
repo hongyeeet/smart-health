@@ -6,6 +6,7 @@ import { Header, Reveal, Screen } from '@/ui/layout'
 import { Alert, Button, Card, EmptyState, SectionTitle, Skeleton, StatusPill } from '@/ui/primitives'
 import { Camera, CaretRight, Clock, Image as ImageIcon, Info, PencilSimple, Pill } from '@/ui/icons'
 import { useLabelPicker } from '@/features/scan/useLabelPicker'
+import { ClashBox } from './ClashBox'
 
 /** H1 — Medications: three ways to add a medicine (photo, upload, type it in), and the list of what is already saved. */
 export function MedList() {
@@ -51,6 +52,8 @@ export function MedList() {
           {soon.name} may run out in about {soon.refill.daysLeft} {soon.refill.daysLeft === 1 ? 'day' : 'days'}. You may want to arrange a refill.
         </Alert>
       )}
+
+      <ClashBox />
 
       <SectionTitle>Your medicines</SectionTitle>
       {isLoading && <Skeleton className="h-40" />}
