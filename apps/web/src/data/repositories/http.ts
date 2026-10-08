@@ -35,8 +35,12 @@ export const httpApi: Api = {
   // Example of a wired method. The rest throw NotWired until the endpoint exists.
   getPatient: () => request('/patient'),
   getHome: todo('getHome'),
-  markDoseTaken: todo('markDoseTaken'),
-  saveMissReason: todo('saveMissReason'),
+  markDoseTaken: async (id) => {
+    await request(`/doses/${encodeURIComponent(id)}/taken`, { method: 'POST' })
+  },
+  saveMissReason: async (id, reason, note) => {
+    await request(`/doses/${encodeURIComponent(id)}/reason`, { method: 'POST', body: JSON.stringify({ reason, note: note?.trim() || null }) })
+  },
   answerCheckin: todo('answerCheckin'),
   snoozePrompt: todo('snoozePrompt'),
   getInsights: todo('getInsights'),
@@ -87,7 +91,7 @@ export const httpApi: Api = {
   getScanResult: (scanId: string) => request(`/scans/${scanId}`),
   confirmScan: (scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: string) =>
     request(`/scans/${scanId}/confirm`, { method: 'POST', body: JSON.stringify({ fields: editedFields, times, kind }) }),
-  listDosesToday: todo('listDosesToday'),
+  getDosesToday: () => request('/doses/today'),
   getFacts: todo('getFacts'),
   factAction: todo('factAction'),
   getCarePlan: todo('getCarePlan'),

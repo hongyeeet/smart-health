@@ -7,6 +7,8 @@ import type { RouteId } from '@/app/routeIds'
 export type EvidenceStatus = 'observed' | 'derived' | 'inferred' | 'reference_matched'
 export type DoseStatus = 'scheduled' | 'due' | 'taken' | 'taken_late_logged' | 'unconfirmed' | 'missed' | 'skipped_by_plan'
 export type MissReason = 'forgot' | 'side_effects' | 'ran_out' | 'felt_fine' | 'cost' | 'away_from_home' | 'other'
+/** The answer to "Why was it not confirmed?": a reason it was missed, or "I took it, I just forgot to log it". */
+export type MissAnswer = MissReason | 'took_it'
 export type GlucoseLevel = 'very_low' | 'low' | 'in_range' | 'high' | 'very_high'
 export type Intensity = 'light' | 'moderate' | 'vigorous'
 export type WorkoutType = 'aerobic' | 'strength' | 'mixed' | 'flexibility'
@@ -63,6 +65,25 @@ export interface MedicineExplanation {
 export interface MedicationDetail extends Medication {
   directions: string | null
   explanation: MedicineExplanation | null
+}
+
+/** One dose on the Home page. `title` says what to take ("Metformin, 1 Tab"), not how strong it is. */
+export interface DoseItem {
+  id: string
+  title: string
+  time: string
+  withFood: boolean
+  /** "Yesterday's evening dose" */
+  whenLabel: string
+}
+
+/** What Home shows about medicines today: what is due now, what was not confirmed, and the next dose (prd F4). */
+export interface DosesToday {
+  hasMedicines: boolean
+  due: DoseItem[]
+  unconfirmed: DoseItem[]
+  takenToday: number
+  next: { title: string; when: string } | null
 }
 
 export interface Dose {

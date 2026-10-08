@@ -4,7 +4,6 @@ import type {
   ChatReply,
   ConnectedSource,
   DayTimeline,
-  Dose,
   HomeData,
   Insights,
   ExerciseKind,
@@ -22,7 +21,9 @@ import type {
   WeekWorkouts,
   LogResult,
   MemoryFact,
+  MissAnswer,
   MissReason,
+  DosesToday,
   Medication,
   MedicationDetail,
   MedicineExplanation,
@@ -104,7 +105,7 @@ export interface Api {
   getPatient(): Promise<Patient>
   getHome(): Promise<HomeData>
   markDoseTaken(id: string): Promise<void>
-  saveMissReason(id: string, reason: MissReason, note?: string): Promise<void>
+  saveMissReason(id: string, reason: MissAnswer, note?: string): Promise<void>
   answerCheckin(id: string, answer: 'yes' | 'no' | 'skip'): Promise<void>
   snoozePrompt(): Promise<void>
 
@@ -145,7 +146,7 @@ export interface Api {
   getScanResult(scanId: string): Promise<ScanResult>
   /** User confirms the reviewed/edited fields → saves the medication (E3-2 does the full save). */
   confirmScan(scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: NewMedication['kind']): Promise<Medication>
-  listDosesToday(): Promise<Dose[]>
+  getDosesToday(): Promise<DosesToday>
 
   getFacts(): Promise<{ facts: MemoryFact[]; compare: WeekCompare }>
   factAction(id: string, action: 'confirm' | 'delete' | 'edit', text?: string): Promise<void>

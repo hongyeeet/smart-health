@@ -8,6 +8,7 @@
 import { useDismissSuggestion, useFoodFlags, useLearned, useLogProgress, useLunchIdeas, useNotices } from '@/data/hooks'
 import { useGo } from '@/app/navigation'
 import { MealBanner } from '@/features/log/MealBanner'
+import { DoseCard } from './DoseCard'
 import type { ProgressItem } from '@/data/types'
 import { cn } from '@/lib/cn'
 import { Header, Reveal, Screen, Split } from '@/ui/layout'
@@ -99,6 +100,7 @@ export function Home() {
         }
       />
       <MealBanner />
+      <DoseCard />
       {isError && (
         <Alert tone="warn" onClick={() => void refetch()}>
           We could not load today's logs. Tap to try again.

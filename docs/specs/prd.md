@@ -97,9 +97,11 @@ Open a medicine from the Meds page: plain-language "what this is for, how you ta
 - Not in F3 for now: text-to-speech and 4 languages (to be discussed with the team first); refusal template for "can I stop/double/skip…" questions in chat.
 
 ### F4 Adherence engine
+*Built so far (2026-10-08, [f4-home-doses.md](f4-home-doses.md)): the Home card (due now, next dose, "not confirmed" with "Tell us why"), the Taken button and the missed-dose sheet H7. Reminders, refill reminders and the adherence timeline are not built yet.*
+
 *Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `medication_log` (taken, missed with reason, skipped), `notifications`, `refill_forecasts`; reads `medication_schedule`, the `adherence_summary` view (prescription medicines only) and `care_summary`.*
 
-Dose windows (scheduled time ±2h, configurable per med), with a reminder at T and a re-nudge at T+1h. Unconfirmed at window close → the dose stays `pending` and is shown as unconfirmed. On the next app open, a one-tap reason prompt: *took it, forgot to log / forgot / side effects / ran out / felt fine, skipped / cost / other*.
+The Home page names each dose by what to take ("Metformin, 1 Tab"), not its strength. Dose windows (scheduled time ±2h, configurable per med), with a reminder at T and a re-nudge at T+1h. Unconfirmed at window close → the dose stays `pending` and is shown as unconfirmed. On the next app open, a one-tap reason prompt: *took it, forgot to log / forgot / side effects / ran out / felt fine, skipped / cost / other*.
 - AC: "with food" medications can be triggered by logging a meal.
 - AC: a reason turns an unconfirmed dose into `taken` (shown as late if more than 60 minutes after the scheduled time) or `missed`, with the reason stored.
 - AC: running out is predicted from pill count and dose rate (`refill_forecasts`), with a refill reminder 7 days ahead.

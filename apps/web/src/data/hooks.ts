@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './repositories'
 import type { LogInput, NewMedication } from './repositories/types'
-import type { MissReason, Period, UserList } from './types'
+import type { MissAnswer, Period, UserList } from './types'
 import { request } from './repositories/http'
 import { useUi } from '@/state/store'
 
@@ -24,6 +24,8 @@ export const useLogContext = () => useQuery({ queryKey: ['logContext'], queryFn:
 export const useWeekWorkouts = () => useQuery({ queryKey: ['weekWorkouts'], queryFn: () => api.getWeekWorkouts() })
 export const useAnalyzeMeal = () => useMutation({ mutationFn: (a: { file: File; description?: string }) => api.analyzeMeal(a.file, a.description) })
 export const useRecent = () => useQuery({ queryKey: ['recent'], queryFn: () => api.listRecent() })
+/** Today's doses for Home. Refreshed every minute because a dose's window opens and closes with the clock. */
+export const useDoses = () => useQuery({ queryKey: ['doses'], queryFn: () => api.getDosesToday(), refetchInterval: 60_000 })
 export const useMeds = () => useQuery({ queryKey: ['meds'], queryFn: () => api.listMedications() })
 export const useMed = (id: string) => useQuery({ queryKey: ['med', id], queryFn: () => api.getMedication(id) })
 /** Makes the explanation the first time (a web search, up to 30 seconds), then it is saved and instant. */
@@ -57,7 +59,7 @@ function useWrite<A, R>(fn: (a: A) => Promise<R>) {
 }
 
 export const useMarkTaken = () => useWrite((id: string) => api.markDoseTaken(id))
-export const useMissReason = () => useWrite((a: { id: string; reason: MissReason; note?: string }) => api.saveMissReason(a.id, a.reason, a.note))
+export const useMissReason = () => useWrite((a: { id: string; reason: MissAnswer; note?: string }) => api.saveMissReason(a.id, a.reason, a.note))
 export const useAnswerCheckin = () => useWrite((a: { id: string; answer: 'yes' | 'no' | 'skip' }) => api.answerCheckin(a.id, a.answer))
 export const useSnooze = () => useWrite(() => api.snoozePrompt())
 export const useLog = () => useWrite((i: LogInput) => api.logEntry(i))
