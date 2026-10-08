@@ -146,10 +146,20 @@ def test_demo_placeholders_get_no_supply_estimate_and_zero_doses_never_divide():
     assert api.refill_for(60, Decimal(0), date(2026, 1, 1), "manual", date(2026, 10, 1)) is None
 
 
-def test_the_demo_patients_list_loads_and_shows_no_invented_supply(conn):
+def test_the_demo_patients_list_shows_supply_only_where_a_pack_start_was_given(conn):
     mr_tan = "dc48e209-5731-5b3d-89d9-986242c54368"
-    meds = api.list_medications(conn, mr_tan, date.today())
-    assert len(meds) >= 6 and all(m.refill is None for m in meds) and all(m.times for m in meds)
+    meds = {m.name: m for m in api.list_medications(conn, mr_tan, date(2026, 10, 8))}
+    assert len(meds) >= 6 and all(m.times for m in meds.values())
+    assert [(meds[n].refill.days_left, meds[n].refill.units_left) for n in ("Metformin 500 mg", "Amlodipine 5 mg", "Atorvastatin 20 mg", "Fish oil")]         == [(6, 12), (12, 12), (17, 17), (21, 21)]                   # matches the mock-up: Metformin runs out in about 6 days
+    assert meds["Clarithromycin 500 mg"].refill is None and meds["Herbal tonic (label not readable)"].refill is None   # a finished course; no pack count
+
+
+def test_a_pack_start_date_counts_from_that_day_not_from_when_the_medicine_began():
+    r = api.refill_for(60, Decimal(2), date(2021, 4, 11), "demo_dataset", date(2026, 10, 8), pack_start=date(2026, 9, 14))
+    assert (r.days_left, r.units_left) == (6, 12)
+    assert api.refill_for(60, Decimal(2), date(2021, 4, 11), "demo_dataset", date(2026, 10, 8)) is None      # placeholder total, no pack start
+    assert api.refill_for(60, Decimal(2), date(2021, 4, 11), "manual", date(2026, 10, 8), pack_start=date(2026, 10, 6)).units_left == 56
+
 
 
 def test_an_as_needed_medicine_has_no_times_no_reminder_and_no_supply_estimate(conn, user):

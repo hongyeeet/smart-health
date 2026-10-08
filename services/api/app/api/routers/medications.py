@@ -31,14 +31,15 @@ def clock12(t: time) -> str:
     return t.strftime("%I:%M %p").lstrip("0").lower()
 
 
-def refill_for(total: int | None, per_day: Decimal, start: date, source: str, today: date) -> Refill | None:
+def refill_for(total: int | None, per_day: Decimal, start: date, source: str, today: date, pack_start: date | None = None) -> Refill | None:
     """How long the supply should last, assuming every dose since the start date was taken (F4 will use the real dose log).
 
-    The demo medicines hold a placeholder total (data-model-v2.md), so they get no refill estimate rather than a wrong one.
+    The count starts on `pack_start` (the day the pack in hand was started) when it is known, otherwise on the start date. The simulated
+    demo medicines hold a placeholder total (data-model-v2.md): unless they were given a pack start date they get no estimate, not a wrong one.
     """
-    if total is None or source == "demo_dataset" or per_day <= 0:     # no total printed: no estimate, never a guess
+    if total is None or per_day <= 0 or (source == "demo_dataset" and pack_start is None):     # no real total: no estimate, never a guess
         return None
-    left = max(Decimal(0), Decimal(total) - per_day * max(0, (today - start).days))
+    left = max(Decimal(0), Decimal(total) - per_day * max(0, (today - (pack_start or start)).days))
     return Refill(days_left=floor(left / per_day), units_left=floor(left))
 
 
@@ -59,7 +60,7 @@ def to_confirmed(body: NewMedicationIn) -> ConfirmedMedication:
 def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> list[MedicationOut]:
     """The person's current medicines, oldest first, as the Meds page shows them."""
     meds = conn.execute(
-        "select id, name, strength, kind::text, total_quantity, start_date, source::text "
+        "select id, name, strength, kind::text, total_quantity, start_date, source::text, pack_started_on "
         "from medications where user_id = %s and deleted_at is null order by created_at, name", (user_id,)).fetchall()
     doses: dict[Any, list[tuple[time | None, Decimal, str]]] = defaultdict(list)
     for mid, t, q, rel in conn.execute(
@@ -67,14 +68,14 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
             "where user_id = %s and deleted_at is null order by dose_time", (user_id,)):
         doses[mid].append((t, q, rel))
     out = []
-    for mid, name, strength, kind, total, start, source in meds:
+    for mid, name, strength, kind, total, start, source, pack_start in meds:
         ds = doses.get(mid, [])
         as_needed = any(t is None for t, _, _ in ds)
         per_day = Decimal(0) if as_needed else sum((q for _, q, _ in ds), Decimal(0))    # how much is used when needed is not known
         out.append(MedicationOut(
             id=str(mid), name=name, strength=strength or "Strength not entered", kind=kind, as_needed=as_needed,
             times=[clock12(t) for t, _, _ in ds if t is not None], with_food=any(rel != "na" for _, _, rel in ds),
-            badge=badge_for(kind), refill=refill_for(total, per_day, start or today, source, today),
+            badge=badge_for(kind), refill=refill_for(total, per_day, start or today, source, today, pack_start),
         ))
     return out
 

@@ -108,6 +108,9 @@ def main():
              "glucose_target_low", "glucose_target_high", "allergies_note", "conditions_note", "bronze_id"]
 
     # ---------------------------------------------------------------- medications, schedule, log
+    # Demo pack sizes and the day each pack in hand was started (migration 0026), so the medicine page can show "runs out in about N days".
+    # Simulated for the demo, matching the mock-up (Metformin runs out in about 6 days). The count is relative to today, so it drifts.
+    PACKS = {"metformin": (60, "2026-09-14"), "amlodipine": (30, "2026-09-20"), "atorvastatin": (30, "2026-09-25"), "fishoil": (60, "2026-08-30")}
     med_b = {}
     ms = F["medication_schedule"]
     meds_rows, sched_rows = [], []
@@ -121,7 +124,8 @@ def main():
         med_b[m["id"]] = B.add("bronze_medication", f"entry:{m['key']}", SIM, payload, rec)
         meds_rows.append((m["id"], TAN, m["name"], m["kind"], m["strength"], int(m["frequency"]), m["description"], m["start_date"], m["end_date"],
                           ref.get(m["drug_ref"]) if m["drug_ref"] else None, SIM, med_b[m["id"]],
-                          None if m["key"] == "tonic" else max(1, round(float(rows.quantity.sum()) * 30))))   # a 30-day supply (demo placeholder); none for the unreadable label
+                          PACKS[m["key"]][0] if m["key"] in PACKS else (None if m["key"] == "tonic" else max(1, round(float(rows.quantity.sum()) * 30))),
+                          PACKS[m["key"]][1] if m["key"] in PACKS else None))   # other rows: a 30-day supply placeholder with no pack start; none for the unreadable label
     S["medications"] = meds_rows
     for r in ms.itertuples():
         sched_rows.append((r.id, TAN, r.medication_id, r.dose_time, float(r.quantity), r.meal_relation))
@@ -237,7 +241,7 @@ def main():
         return
 
     COLS = {
-        "medications": ["id", "user_id", "name", "kind", "strength", "frequency", "description", "start_date", "end_date", "drug_reference_id", "source", "bronze_id", "total_quantity"],
+        "medications": ["id", "user_id", "name", "kind", "strength", "frequency", "description", "start_date", "end_date", "drug_reference_id", "source", "bronze_id", "total_quantity", "pack_started_on"],
         "medication_schedule": ["id", "user_id", "medication_id", "dose_time", "quantity", "meal_relation"],
         "medication_log": ["id", "user_id", "medication_id", "schedule_id", "scheduled_at", "taken_at", "status", "miss_reason", "source", "bronze_id"],
         "lab_results": ["id", "user_id", "measured_at", "test", "value", "unit", "source", "bronze_id"],
