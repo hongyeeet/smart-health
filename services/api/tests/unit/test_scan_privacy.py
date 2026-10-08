@@ -125,3 +125,51 @@ def test_the_users_own_name_is_removed_but_the_doctor_is_not():
     assert p.scrub_value("Dr Lim Wei Ming", ["Mdm Siti Aminah"]) == ("Dr Lim Wei Ming", False)
     assert p.scrub_value("500 mg") == ("500 mg", False)
     assert p.scrub_value(None) == (None, False)
+
+
+# --- a pharmacy label with a patient number before the name (found on a real photo) -------------------------------
+
+def test_a_patient_number_followed_by_a_name_is_masked_but_the_clinic_and_the_directions_are_not():
+    lines = [L("BERNARD KWOK CARDIOLOGY CLINIC", 10), L("CRESTOR 10mg - 168 Tabs", 50), L("Take 1 tab/s every morning", 90),
+             L("For cholesterol lowering", 130), L("84933 CHUA CHOR KIANG DEREK", 170), L("03/06/2026", 210)]
+    hits = p.find_private_lines(lines, protect_words={"crestor", "rosuvastatin"})
+    assert hits == {4: "unlabelled_name"}            # only the patient line; the clinic name has a label word, the directions are sentences
+
+
+@pytest.mark.parametrize("text", ["For cholesterol lowering", "Take with a full glass of water", "Keep out of reach of children",
+                                  "Manufactured by IPR Pharmaceuticals Inc. Puerto Rico"])
+def test_sentences_are_not_taken_for_names(text):
+    assert p.find_private_lines([L(text, 10)]) == {}
+
+
+@pytest.mark.parametrize("text", ["84933 CHUA CHOR KIANG DEREK", "10231 TAN AH KOW", "5521 Lim Mei Ling", "LEE MEI LING"])
+def test_names_with_or_without_a_number_in_front_are_masked(text):
+    assert p.find_private_lines([L(text, 10)]) == {0: "unlabelled_name"}
+
+
+def test_a_name_the_ocr_joined_to_text_beside_it_is_still_masked():
+    lines = [L("cted by the pres84933 CHUA CHOR KIANG DEREK", 10), L("Take 1 tab/s every morning", 50)]
+    assert p.find_private_lines(lines) == {0: "unlabelled_name"}
+
+
+@pytest.mark.parametrize("text", ["500 MG TABLET", "Take 168 TABS ONLY", "Qty 60 TABLETS DAILY", "Exp 2027 FILM COATED TABLET", "10 mg TWICE DAILY"])
+def test_a_number_before_capital_letters_is_not_always_a_name(text):
+    assert p.find_private_lines([L(text, 10)]) == {}
+
+
+# --- precision: hide private lines, never the text the app needs --------------------------------------------------
+
+@pytest.mark.parametrize("text", ["(ALVERSIME)", "COLODIUM", "PARACETAMOL", "SERRATIOPEPTIDASE", "VFCOL", "Lopeyad", "DEC 26",
+                                  "CRESTOR 10mg - 168 Tabs", "MARY JANE 10 mg", "TAKE 2 TAB/S 4 times a day", "ATORVASTATIN 20 MG TABLET"])
+def test_packaging_print_brand_names_and_needed_text_are_never_taken_for_names(text):
+    assert p.find_private_lines([L(text, 10)]) == {}
+
+
+def test_a_line_that_carries_a_strength_or_directions_is_not_hidden_even_if_it_looks_like_a_name_with_a_number():
+    lines = [L("84933 TAKE 1 TAB DAILY", 10), L("5521 JANE MARY 10 mg", 50)]
+    assert p.find_private_lines(lines) == {}
+
+
+def test_real_names_are_still_hidden():
+    lines = [L("LIM KEI WEN NICOLE", 10), L("84933 CHUA CHOR KIANG DEREK", 50), L("Patient: TAN AH KOW", 90)]
+    assert set(p.find_private_lines(lines)) == {0, 1, 2}

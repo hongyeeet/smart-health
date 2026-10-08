@@ -22,7 +22,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from app.agents.scan_extractor import extract_scan  # noqa: E402
 from app.core.settings import get_settings  # noqa: E402
 from app.llm.vertex import VertexClient  # noqa: E402
-from app.services.scan_store import load_drug_index  # noqa: E402
 
 
 def main() -> None:
@@ -33,7 +32,6 @@ def main() -> None:
     ap.add_argument("--user-id")
     ap.add_argument("--name", action="append", default=[])
     ap.add_argument("--out")
-    ap.add_argument("--no-db", action="store_true", help="skip loading the drug list (names are then not checked against it)")
     a = ap.parse_args()
     s = get_settings()
     if a.sample:
@@ -46,10 +44,9 @@ def main() -> None:
 
     import psycopg
     from check_supabase import clean_url
-    conn = None if a.no_db else psycopg.connect(clean_url(s.database_url.get_secret_value()), connect_timeout=20)
-    index = load_drug_index(conn) if conn else None
+    conn = psycopg.connect(clean_url(s.database_url.get_secret_value()), connect_timeout=20) if a.save else None
     client = VertexClient(s.google_api_key.get_secret_value(), s.google_cloud_project, s.google_cloud_region)
-    outcome, masked = extract_scan(data, client=client, model=s.llm_vision_model, index=index, known_names=a.name,
+    outcome, masked = extract_scan(data, client=client, model=s.llm_vision_model, known_names=a.name,
                                    threshold=s.scan_confidence_threshold)
     if a.out and masked:
         Path(a.out).write_bytes(masked.image)
@@ -58,9 +55,8 @@ def main() -> None:
     print(f"masked={outcome.mask_summary} model={outcome.model_id} prompt=v{outcome.prompt_version} "
           f"tokens={outcome.input_tokens}/{outcome.output_tokens} latency={outcome.latency_ms}ms")
     for n, it in enumerate(outcome.items, 1):
-        m = it.drug_match
-        print(f"\nitem {n}: {it.item_type}  recognised={it.recognised}  min_confidence={it.min_confidence:.2f}"
-              + (f"  drug_list={m.generic_name} ({m.score:.0f})" if m else ""))
+        print()
+        print(f"item {n}: {it.item_type}  min_confidence={it.min_confidence:.2f}")
         for name, f in it.fields.items():
             if f.value is None:
                 continue

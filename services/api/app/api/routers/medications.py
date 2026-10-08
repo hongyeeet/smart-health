@@ -10,7 +10,7 @@ from collections import defaultdict
 from datetime import date, datetime, time
 from decimal import Decimal
 from math import floor
-from typing import Any
+from typing import Any, Literal
 
 import psycopg
 from fastapi import APIRouter, HTTPException
@@ -21,22 +21,10 @@ from app.core.errors import InvalidTransition, NotFound
 from app.db import logstore
 from app.schemas.medicine_scan import ConfirmedMedication, DoseTime
 from app.schemas.medicines import MedicationOut, NewMedicationIn, Refill
-from app.services.scan_confidence import DrugIndex
-from app.services.scan_store import confirm_medication, load_drug_index
+from app.services.scan_store import confirm_medication
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/medications", tags=["medications"])
-
-_index: DrugIndex | None = None
-
-
-def drug_index(conn: psycopg.Connection) -> DrugIndex:
-    """The drug list is read once per process: it is reference data and does not change while the app runs."""
-    global _index
-    if _index is None:
-        _index = load_drug_index(conn)
-    return _index
-
 
 def clock12(t: time) -> str:
     """08:00 -> '8:00 am', as the app shows times."""
@@ -54,9 +42,10 @@ def refill_for(total: int | None, per_day: Decimal, start: date, source: str, to
     return Refill(days_left=floor(left / per_day), units_left=floor(left))
 
 
-def badge_for(listed: bool, kind: str) -> str | None:
-    """Unlisted names and every supplement or herbal item are 'not checked', never 'safe' (rules.md 1, rule 7)."""
-    return "not_checked" if (not listed or kind in ("supplement", "tcm")) else None
+def badge_for(kind: str) -> Literal["not_checked"] | None:
+    """Supplements and herbal products are never checked for interactions, so they say so, never 'safe' (rules.md 1, rule 7).
+    Nothing is matched to a medicine list yet: understanding the medicine, and any interaction check, comes later (F5)."""
+    return "not_checked" if kind in ("supplement", "tcm") else None
 
 
 def to_confirmed(body: NewMedicationIn) -> ConfirmedMedication:
@@ -70,7 +59,7 @@ def to_confirmed(body: NewMedicationIn) -> ConfirmedMedication:
 def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> list[MedicationOut]:
     """The person's current medicines, oldest first, as the Meds page shows them."""
     meds = conn.execute(
-        "select id, name, strength, kind::text, total_quantity, start_date, source::text, drug_reference_id is not null "
+        "select id, name, strength, kind::text, total_quantity, start_date, source::text "
         "from medications where user_id = %s and deleted_at is null order by created_at, name", (user_id,)).fetchall()
     doses: dict[Any, list[tuple[time | None, Decimal, str]]] = defaultdict(list)
     for mid, t, q, rel in conn.execute(
@@ -78,26 +67,25 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
             "where user_id = %s and deleted_at is null order by dose_time", (user_id,)):
         doses[mid].append((t, q, rel))
     out = []
-    for mid, name, strength, kind, total, start, source, listed in meds:
+    for mid, name, strength, kind, total, start, source in meds:
         ds = doses.get(mid, [])
         as_needed = any(t is None for t, _, _ in ds)
         per_day = Decimal(0) if as_needed else sum((q for _, q, _ in ds), Decimal(0))    # how much is used when needed is not known
         out.append(MedicationOut(
             id=str(mid), name=name, strength=strength or "Strength not entered", kind=kind, as_needed=as_needed,
             times=[clock12(t) for t, _, _ in ds if t is not None], with_food=any(rel != "na" for _, _, rel in ds),
-            badge=badge_for(bool(listed), kind), refill=refill_for(total, per_day, start or today, source, today),
+            badge=badge_for(kind), refill=refill_for(total, per_day, start or today, source, today),
         ))
     return out
 
 
 def medication_out(conn: psycopg.Connection, med_id: str, entry: ConfirmedMedication, today: date, source: str = "manual") -> MedicationOut:
     """A saved medicine as the app shows it."""
-    listed = conn.execute("select drug_reference_id is not null from medications where id = %s", (med_id,)).fetchone()
     per_day = Decimal(0) if entry.as_needed else sum((d.quantity for d in entry.doses), Decimal(0))
     return MedicationOut(
         id=med_id, name=entry.name, strength=entry.strength or "Strength not entered", kind=entry.kind, as_needed=entry.as_needed,
         times=[clock12(d.dose_time) for d in entry.doses if d.dose_time is not None], with_food=any(d.meal_relation != "na" for d in entry.doses),
-        badge=badge_for(bool(listed and listed[0]), entry.kind),
+        badge=badge_for(entry.kind),
         refill=refill_for(entry.total_quantity, per_day, entry.start_date or today, source, today),
     )
 
@@ -105,7 +93,7 @@ def medication_out(conn: psycopg.Connection, med_id: str, entry: ConfirmedMedica
 def create_medication(conn: psycopg.Connection, user_id: str, body: NewMedicationIn, today: date | None = None) -> MedicationOut:
     """Save and return the medicine as the app shows it. The caller owns the transaction. With `scan_id`, the typed form completes that scan."""
     entry = to_confirmed(body)
-    med_id = confirm_medication(conn, user_id, entry, scan_id=body.scan_id, index=drug_index(conn))
+    med_id = confirm_medication(conn, user_id, entry, scan_id=body.scan_id)
     return medication_out(conn, med_id, entry, today or date.today())
 
 

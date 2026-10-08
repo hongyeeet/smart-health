@@ -19,7 +19,7 @@ def extraction(mode="confirm", reasons=(), fields=None, item_type="prescription_
             "meal_relation": field("after_meal"), "directions": field("TAKE 2 TAB/S 4 times a day FOR FEVER/PAIN TAKE AFTER FOOD"),
             "start_date": field("2026-04-13"), "total_quantity": field("30")}
     base.update(fields or {})
-    item = {"item_type": item_type, "recognised": True, "min_confidence": 0.97, "drug_match": None, "ingredients": [], "fields": base}
+    item = {"item_type": item_type, "min_confidence": 0.97, "ingredients": [], "fields": base}
     return {"review_mode": mode, "reasons": list(reasons), "mask_summary": {}, "items": [item] * items}
 
 
@@ -34,9 +34,9 @@ def test_one_clean_medicine_is_confirm_and_lists_its_fields_in_reading_order():
 
 
 def test_a_manual_scan_stays_manual_and_says_why_in_plain_words():
-    ex = extraction("manual", ["unrecognised", "low_confidence"])
-    assert s.review_mode(ex) == ("manual", ["unrecognised", "low_confidence"])
-    assert "not able to identify" in s.reason_text(["unrecognised", "low_confidence"])
+    ex = extraction("manual", ["missing_required", "low_confidence"])
+    assert s.review_mode(ex) == ("manual", ["missing_required", "low_confidence"])
+    assert "could not find the name" in s.reason_text(["missing_required", "low_confidence"])
     assert "blurred" in s.reason_text(["unreadable"])
 
 
@@ -57,7 +57,7 @@ def test_a_missing_required_field_shows_as_unreadable_not_invented():
 
 
 def test_every_reason_the_scanner_can_give_has_words_for_the_screen():
-    for r in ("unrecognised", "low_confidence", "missing_required", "several_items", "unreadable", "ocr_empty", "not_a_medicine", "invalid_json",
+    for r in ("low_confidence", "missing_required", "several_items", "unreadable", "ocr_empty", "not_a_medicine", "invalid_json",
               "service_unavailable", "file_type_not_allowed", "file_too_large", "file_empty"):
         assert s.reason_text([r])
 

@@ -2,7 +2,7 @@
 
   1. POST /scans (photo): black out identity, read it with the vision model, score every field, store the blacked-out photo and the
      scan row, and return what was read. `reviewMode` is "confirm" (one medicine, every field clear) or "manual" (the person types the
-     form: unreadable, a low-confidence field, a missing required field, an unrecognised drug, or several medicines).
+     form: unreadable, a low-confidence field, a missing required field, or several medicines).
   2. GET /scans/{id}: the same result again (the review screen reloads).
   3. POST /scans/{id}/confirm: the values the person checked, with their edits and chosen dose times, saved in one transaction.
      Nothing is saved before this call.
@@ -21,7 +21,7 @@ from fastapi.concurrency import run_in_threadpool
 from psycopg.rows import tuple_row
 
 from app.agents import scan_pipeline
-from app.api.routers.medications import datetime_today, drug_index, medication_out
+from app.api.routers.medications import datetime_today, medication_out
 from app.core.errors import (
     ExternalServiceError,
     InvalidTransition,
@@ -147,7 +147,7 @@ def _confirm(scan_id: str, body: ScanConfirmRequest) -> MedicationOut:
         today = datetime_today()
         try:
             entry = scan_api.build_confirmed(row[1], body.fields, body.times, body.kind, today)
-            med_id = confirm_medication(conn, user, entry, scan_id=scan_id, index=drug_index(conn))
+            med_id = confirm_medication(conn, user, entry, scan_id=scan_id)
         except ValidationFailed as e:
             raise HTTPException(422, str(e)) from None
         except NotFound as e:

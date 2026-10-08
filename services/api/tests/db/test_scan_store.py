@@ -22,7 +22,6 @@ from app.core.errors import InvalidTransition, NotFound  # noqa: E402
 from app.schemas.medicine_scan import (  # noqa: E402
     ConfirmedMedication,
     DoseTime,
-    DrugMatch,
     ScanOutcome,
     ScoredField,
     ScoredItem,
@@ -56,8 +55,7 @@ def field(value, conf=0.99):
 
 
 def outcome(mode="confirm", reasons=()):
-    item = ScoredItem(item_type="prescription_label", recognised=True, min_confidence=0.99,
-                      drug_match=DrugMatch(drug_reference_id="x", generic_name="metformin", matched_text="metformin", score=100),
+    item = ScoredItem(item_type="prescription_label", min_confidence=0.99,
                       fields={"name": field("METFORMIN"), "strength": field("500 mg"), "times_per_day": field("2"), "total_quantity": field("60"),
                               "directions": field("Take 1 tablet twice daily after meals")})
     return ScanOutcome(status="needs_review", review_mode=mode, reasons=list(reasons), items=[item], prompt_version="1", model_id="gemini-3.8-flash",
@@ -110,11 +108,6 @@ def test_the_same_photo_twice_gives_the_same_scan_and_one_upload(conn, user):
     assert one(conn, "select count(*) from prescription_scans where user_id = %s", (user,)) == 1
 
 
-def test_an_unrecognised_drug_is_logged(conn, user):
-    store.save_scan(conn, user, masked(b"u"), outcome("manual", ["unrecognised", "low_confidence"]), uploader=Uploads())
-    assert "scan.item.unrecognised" in events(conn, user)
-
-
 def test_a_failed_read_is_stored_as_failed_with_the_reason(conn, user):
     out = ScanOutcome(status="failed", review_mode="manual", reasons=["not_a_medicine"], prompt_version="1", model_id="m")
     sid = store.save_scan(conn, user, masked(b"f"), out, uploader=Uploads())
@@ -157,13 +150,9 @@ def test_the_user_can_type_the_form_after_a_failed_read(conn, user):
     assert one(conn, "select status from prescription_scans where id = %s", (sid,)) == "confirmed"
 
 
-def test_the_drug_list_id_comes_from_a_name_match_in_code(conn, user):
-    index = store.load_drug_index(conn)
-    mid = store.confirm_medication(conn, user, entry(name="Metformin 500mg"), index=index)
-    ref = conn.execute("select r.generic_name from medications m join drug_reference r on r.id = m.drug_reference_id where m.id = %s", (mid,)).fetchone()
-    assert ref == ("metformin",)
-    mid2 = store.confirm_medication(conn, user, entry(name="Zorblaxine"), index=index)
-    assert one(conn, "select drug_reference_id from medications where id = %s", (mid2,)) is None      # not in the list: "not checked"
+def test_a_saved_medicine_is_not_matched_to_any_medicine_list(conn, user):
+    mid = store.confirm_medication(conn, user, entry(name="Metformin 500mg"))
+    assert one(conn, "select drug_reference_id from medications where id = %s", (mid,)) is None       # understanding the medicine comes later
 
 
 def test_a_scan_cannot_be_confirmed_twice_or_by_another_user(conn, user):

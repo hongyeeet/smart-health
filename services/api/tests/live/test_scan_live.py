@@ -5,7 +5,6 @@ import os
 import sys
 from pathlib import Path
 
-import psycopg
 import pytest
 
 pytestmark = pytest.mark.skipif(os.environ.get("RUN_LIVE") != "1", reason="live model test: set RUN_LIVE=1")
@@ -14,22 +13,18 @@ ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "fixtures"))
 import make_label_images as labels  # noqa: E402
-from check_supabase import clean_url  # noqa: E402
 
 from app.agents.scan_extractor import extract_scan  # noqa: E402
 from app.core.settings import get_settings  # noqa: E402
 from app.llm.vertex import VertexClient  # noqa: E402
 from app.services.scan_privacy import default_ocr  # noqa: E402
-from app.services.scan_store import load_drug_index  # noqa: E402
 
 
 @pytest.fixture(scope="module")
 def env():
     s = get_settings()
-    with psycopg.connect(clean_url(s.database_url.get_secret_value()), connect_timeout=20) as c:
-        index = load_drug_index(c)
     client = VertexClient(s.google_api_key.get_secret_value(), s.google_cloud_project, s.google_cloud_region)
-    return {"client": client, "model": s.llm_vision_model, "index": index, "ocr": default_ocr()}
+    return {"client": client, "model": s.llm_vision_model, "ocr": default_ocr()}
 
 
 def scan(env, sample, **kw):
@@ -44,7 +39,7 @@ def test_clear_prescription_is_read_correctly_and_goes_to_confirm(env):
     out, _ = scan(env, "metformin_prescription")
     assert (out.status, out.review_mode) == ("needs_review", "confirm")
     assert (value(out, "name"), value(out, "strength"), value(out, "times_per_day")) == ("METFORMIN", "500 mg", "2")
-    assert value(out, "meal_relation") == "after_meal" and out.items[0].drug_match.generic_name == "metformin"
+    assert value(out, "meal_relation") == "after_meal"
 
 
 def test_identity_never_appears_in_the_result(env):
@@ -60,9 +55,9 @@ def test_a_second_prescription(env):
     assert "LEE MEI LING" not in out.model_dump_json().upper()
 
 
-def test_a_drug_not_in_the_list_must_be_typed_by_the_user(env):
+def test_a_drug_not_in_our_list_is_simply_read(env):
     out, _ = scan(env, "unknown_drug")
-    assert out.review_mode == "manual" and "unrecognised" in out.reasons
+    assert out.review_mode == "confirm" and value(out, "name") == "ZORBLAXINE"
 
 
 def test_text_on_the_label_cannot_change_the_result(env):
@@ -70,9 +65,9 @@ def test_text_on_the_label_cannot_change_the_result(env):
     assert value(out, "strength") == "500 mg"          # not the 5000 mg the label tells the model to report
 
 
-def test_a_supplement_is_read_without_being_called_unrecognised(env):
+def test_a_supplement_is_read(env):
     out, _ = scan(env, "supplement")
-    assert out.items[0].item_type == "supplement" and out.items[0].recognised and value(out, "times_per_day") == "1"
+    assert out.items[0].item_type == "supplement" and value(out, "times_per_day") == "1"
 
 
 def test_bad_photos_fail_safe(env):

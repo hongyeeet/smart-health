@@ -28,7 +28,6 @@ from app.core.settings import get_settings  # noqa: E402
 from app.llm.vertex import VertexClient  # noqa: E402
 from app.services import scan_accuracy as acc  # noqa: E402
 from app.services.scan_privacy import default_ocr  # noqa: E402
-from app.services.scan_store import load_drug_index  # noqa: E402
 
 
 def read_sheet(path: Path) -> list[dict]:
@@ -39,7 +38,7 @@ def read_sheet(path: Path) -> list[dict]:
     ws = load_workbook(path).active
     rows = list(ws.iter_rows(values_only=True))
     head = [str(h).strip() for h in rows[0]]
-    return [dict(zip(head, r)) for r in rows[1:] if any(c is not None for c in r)]
+    return [dict(zip(head, r, strict=False)) for r in rows[1:] if any(c is not None for c in r)]
 
 
 def main() -> None:
@@ -55,19 +54,15 @@ def main() -> None:
     if len(photos) != len(rows):
         print(f"warning: {len(photos)} photos but {len(rows)} sheet rows; matching the first {min(len(photos), len(rows))} in order")
 
-    import psycopg
-    from check_supabase import clean_url
-    with psycopg.connect(clean_url(s.database_url.get_secret_value()), connect_timeout=20) as conn:
-        index = load_drug_index(conn)
     client = VertexClient(s.google_api_key.get_secret_value(), s.google_cloud_project, s.google_cloud_region)
     ocr = default_ocr()
 
     report = []
-    for n, (photo, row) in enumerate(zip(photos, rows), 1):
+    for n, (photo, row) in enumerate(zip(photos, rows, strict=False), 1):
         if a.only and n not in a.only:
             continue
         exp = acc.expected_from_sheet(row)
-        outcome, _ = extract_scan(photo.read_bytes(), client=client, model=s.llm_vision_model, index=index, ocr=ocr,
+        outcome, _ = extract_scan(photo.read_bytes(), client=client, model=s.llm_vision_model, ocr=ocr,
                                   known_names=a.name, threshold=s.scan_confidence_threshold)
         print(f"\nphoto {n}: status={outcome.status} review_mode={outcome.review_mode} reasons={outcome.reasons} masked={outcome.mask_summary}")
         item = outcome.items[0] if outcome.items else None
@@ -99,7 +94,10 @@ def main() -> None:
         flagged_right = sum(x["correct"] and x["flagged"] and x["has_value"] for x in r)
         trusted_wrong = sum((not x["correct"]) and x["has_value"] and not x["flagged"] for x in r)
         print(f"{field:<20}{c:>5}/{len(r):<3}{flagged_right:>26}{trusted_wrong:>20}")
-        tot[0] += c; tot[1] += len(r); tot[2] += flagged_right; tot[3] += trusted_wrong
+        tot[0] += c
+        tot[1] += len(r)
+        tot[2] += flagged_right
+        tot[3] += trusted_wrong
     print(f"{'ALL':<20}{tot[0]:>5}/{tot[1]:<3}{tot[2]:>26}{tot[3]:>20}")
     print(f"\nreport written to {out}")
 

@@ -18,19 +18,11 @@ from psycopg.types.json import Jsonb
 
 from app.core.errors import InvalidTransition, NotFound, ValidationFailed
 from app.schemas.medicine_scan import ConfirmedMedication, ScanOutcome
-from app.services.scan_confidence import MATCH_OK, DrugIndex
 from app.services.scan_privacy import MaskResult
 
 Uploader = Callable[[str, bytes, str], None]
 # scan_status is: uploaded, extracting, needs_review, confirmed, rejected, failed
 CONFIRMABLE = ("needs_review", "failed")        # a failed scan can still be completed by typing it in
-
-
-def load_drug_index(conn: psycopg.Connection) -> DrugIndex:
-    rows = conn.execute(
-        "select r.id, r.generic_name, r.generic_name from drug_reference r "
-        "union all select a.drug_reference_id, r.generic_name, a.alias from drug_aliases a join drug_reference r on r.id = a.drug_reference_id").fetchall()
-    return DrugIndex((str(i), g, t) for i, g, t in rows)
 
 
 def _one(conn: psycopg.Connection, sql: str, params: tuple[Any, ...]) -> tuple[Any, ...]:
@@ -55,8 +47,7 @@ def outcome_json(outcome: ScanOutcome) -> dict[str, Any]:
     return {
         "review_mode": outcome.review_mode, "reasons": outcome.reasons, "mask_summary": outcome.mask_summary,
         "items": [{
-            "item_type": it.item_type, "recognised": it.recognised, "min_confidence": it.min_confidence,
-            "drug_match": it.drug_match.model_dump() if it.drug_match else None,
+            "item_type": it.item_type, "min_confidence": it.min_confidence,
             "ingredients": [i.model_dump() for i in it.ingredients],
             "fields": {k: f.model_dump() for k, f in it.fields.items() if f.value is not None},
         } for it in outcome.items],
@@ -99,8 +90,6 @@ def save_scan(conn: psycopg.Connection, user_id: str, masked: MaskResult | None,
     _event(conn, user_id, "scan.extraction.completed", "prescription_scans", scan_id,
            {"items_n": len(outcome.items), "min_confidence": min((i.min_confidence for i in outcome.items), default=0.0),
             "review_mode": outcome.review_mode, "reasons": outcome.reasons}, actor="agent", agent_run_id=run_id)
-    if "unrecognised" in outcome.reasons:
-        _event(conn, user_id, "scan.item.unrecognised", "prescription_scans", scan_id, {})
     return str(scan_id)
 
 
@@ -122,12 +111,12 @@ def build_review(extraction: Mapping[str, Any] | None, entry: ConfirmedMedicatio
     return out
 
 
-def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedMedication, *, scan_id: str | None = None,
-                       index: DrugIndex | None = None) -> str:
+def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedMedication, *, scan_id: str | None = None) -> str:
     """Save one confirmed medicine and its dose times, in the caller's transaction. Returns the new medication id.
 
     With a scan: the scan must be needs_review (or failed, when the user typed the form after a failed read). Without one: manual entry.
-    The drug-list id is chosen here by a deterministic name match, never by the model.
+    The medicine is saved exactly as the person confirmed it. It is not matched to any medicine list: understanding the medicine
+    (and linking it to `drug_reference` for interaction checks) comes later and never blocks a save.
     """
     scan = None
     if scan_id:
@@ -136,8 +125,6 @@ def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedM
             raise NotFound("scan not found", code="scan_not_found")
         if scan[0] not in CONFIRMABLE:
             raise InvalidTransition(f"a scan that is {scan[0]} cannot be confirmed", code="scan_not_confirmable")
-    match = index.match(entry.name) if index else None
-    drug_ref = match.drug_reference_id if match and match.score >= MATCH_OK else None
     source = "scan" if scan_id else "manual"
     payload = {"kind": "medication_confirmed", "scan_id": scan_id, "name": entry.name, "medication_kind": entry.kind, "strength": entry.strength,
                "doses": [{"dose_time": d.dose_time.isoformat() if d.dose_time else None, "quantity": str(d.quantity), "meal_relation": d.meal_relation}
@@ -151,9 +138,9 @@ def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedM
         (user_id, source, Jsonb(payload), checksum))[0]
     description = entry.directions
     med_id = _one(
-        conn, "insert into medications (user_id, name, kind, strength, frequency, description, start_date, drug_reference_id, source, bronze_id, total_quantity) "
-        "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id",
-        (user_id, entry.name, entry.kind, entry.strength, len(entry.doses), description, entry.start_date or date.today(), drug_ref, source, bronze_id,
+        conn, "insert into medications (user_id, name, kind, strength, frequency, description, start_date, source, bronze_id, total_quantity) "
+        "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id",
+        (user_id, entry.name, entry.kind, entry.strength, len(entry.doses), description, entry.start_date or date.today(), source, bronze_id,
          entry.total_quantity))[0]
     for d in entry.doses:
         conn.execute("insert into medication_schedule (user_id, medication_id, dose_time, quantity, meal_relation) values (%s, %s, %s, %s, %s)",
@@ -162,7 +149,7 @@ def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedM
         review = build_review(scan[1], entry)
         conn.execute("update prescription_scans set status = 'confirmed', extraction_review = %s where id = %s", (Jsonb(review), scan_id))
         _event(conn, user_id, "scan.confirmed", "prescription_scans", scan_id, {"changed_count": review["changed_count"]})
-    _event(conn, user_id, "medication.created", "medications", med_id, {"kind": entry.kind, "source": source, "listed": drug_ref is not None})
+    _event(conn, user_id, "medication.created", "medications", med_id, {"kind": entry.kind, "source": source})
     _event(conn, user_id, "dose.schedule.generated", "medications", med_id, {"doses_n": len(entry.doses)})
     return str(med_id)
 

@@ -204,7 +204,7 @@ export function AddByHand() {
 
       <Field label="Directions on the label (optional)" value={directions} onChange={setDirections} multiline placeholder="For example, take 1 tablet twice a day after meals" />
 
-      <Alert tone="info">We check it against our reference list. If we cannot find it, it shows as Not checked. We never guess.</Alert>
+      <Alert tone="info">We save exactly what you type. Checking it against your other medicines is not part of this step yet.</Alert>
 
       {add.isError && (
         <Alert tone="danger" title="Could not save">

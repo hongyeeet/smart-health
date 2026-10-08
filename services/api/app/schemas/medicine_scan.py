@@ -91,19 +91,10 @@ class ScoredField(BaseModel):
     needs_confirmation: bool   # value present and confidence below the threshold: the user must type it
 
 
-class DrugMatch(BaseModel):
-    drug_reference_id: str
-    generic_name: str
-    matched_text: str
-    score: float               # 0 to 100
-
-
 class ScoredItem(BaseModel):
     item_type: ItemType
     fields: dict[str, ScoredField]
     ingredients: list[RawIngredient] = []
-    drug_match: DrugMatch | None = None
-    recognised: bool
     min_confidence: float
 
 
@@ -113,7 +104,7 @@ ReviewMode = Literal["confirm", "manual"]
 class ScanOutcome(BaseModel):
     status: Literal["needs_review", "failed"]
     review_mode: ReviewMode          # "confirm": every value is clear, the user still confirms. "manual": the user types the form.
-    reasons: list[str]               # stable codes: low_confidence, missing_required, unrecognised, unreadable, not_a_medicine, invalid_json, service_unavailable, ocr_empty
+    reasons: list[str]               # stable codes: low_confidence, missing_required, unreadable, not_a_medicine, invalid_json, service_unavailable, ocr_empty
     items: list[ScoredItem] = []
     prompt_version: str | None = None
     model_id: str | None = None

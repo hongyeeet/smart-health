@@ -48,15 +48,15 @@ def test_a_hand_typed_medicine_is_saved_and_returned_as_the_app_shows_it(conn, u
     out = api.create_medication(conn, user, body())
     assert (out.name, out.strength, out.kind, out.times, out.with_food) == ("Metformin", "500 mg", "prescription", ["8:00 am", "8:00 pm"], True)
     assert out.badge is None and out.refill.days_left == 30 and out.refill.units_left == 60       # 60 tablets at 2 a day
-    row = conn.execute("select source, frequency, total_quantity, drug_reference_id is not null from medications where id = %s", (out.id,)).fetchone()
+    row = conn.execute("select source, frequency, total_quantity, drug_reference_id is null from medications where id = %s", (out.id,)).fetchone()
     assert row == ("manual", 2, 60, True)                       # linked to the drug list by a name match in code
     sched = conn.execute("select dose_time::text, quantity, meal_relation::text, null from medication_schedule where medication_id = %s order by dose_time", (out.id,)).fetchall()
     assert [(s[0], s[1], s[2], s[3]) for s in sched] == [("08:00:00", Decimal("1"), "after_meal", None), ("20:00:00", Decimal("1"), "after_meal", None)]
 
 
-def test_an_unlisted_name_and_every_supplement_show_as_not_checked(conn, user):
+def test_only_supplements_and_herbal_products_say_not_checked(conn, user):
     unknown = api.create_medication(conn, user, body(name="Zorblaxine"))
-    assert unknown.badge == "not_checked"
+    assert unknown.badge is None                       # nothing is matched to a medicine list yet, so no claim either way
     fish = api.create_medication(conn, user, body(name="Fish oil", kind="supplement"))
     assert fish.badge == "not_checked"
 

@@ -21,7 +21,6 @@ from app.agents import scan_pipeline  # noqa: E402
 from app.api.routers import medications, scans  # noqa: E402
 from app.db import logstore  # noqa: E402
 from app.schemas.medicine_scan import (  # noqa: E402
-    DrugMatch,
     ScanOutcome,
     ScoredField,
     ScoredItem,
@@ -60,8 +59,7 @@ def outcome(mode="confirm", reasons=(), **over):
               "meal_relation": field("after_meal"), "directions": field("TAKE 2 TAB/S 4 times a day TAKE AFTER FOOD"),
               "start_date": field("2026-04-13"), "total_quantity": field("30")}
     fields.update(over)
-    item = ScoredItem(item_type="prescription_label", recognised=mode == "confirm", min_confidence=0.97, fields=fields,
-                      drug_match=DrugMatch(drug_reference_id="x", generic_name="paracetamol", matched_text="paracetamol", score=100) if mode == "confirm" else None)
+    item = ScoredItem(item_type="prescription_label", min_confidence=0.97, fields=fields)
     return ScanOutcome(status="needs_review", review_mode=mode, reasons=list(reasons), items=[item], prompt_version="3", model_id="gemini-3.8-flash",
                        mask_summary={"nric": 1})
 
@@ -100,9 +98,9 @@ def test_confirming_saves_the_checked_values_with_the_chosen_times(db, monkeypat
 
 
 def test_a_scan_that_needs_typing_cannot_be_confirmed_by_a_tap(db, monkeypatch):
-    fake_pipeline(monkeypatch, outcome("manual", ["unrecognised", "low_confidence"], name=field("ZORBLAXINE", 0.4)))
+    fake_pipeline(monkeypatch, outcome("manual", ["low_confidence"], strength=field("500 mg", 0.5)))
     r = scans._upload(b"any")
-    assert r.review_mode == "manual" and "not able to identify" in r.notice and r.reasons == ["unrecognised", "low_confidence"]
+    assert r.review_mode == "manual" and "hard to read" in r.notice and r.reasons == ["low_confidence"]
     with pytest.raises(HTTPException) as e:
         scans._confirm(r.scan_id, ScanConfirmRequest(times=["08:00"]))
     assert e.value.status_code == 409 and "typed in" in e.value.detail
@@ -110,11 +108,11 @@ def test_a_scan_that_needs_typing_cannot_be_confirmed_by_a_tap(db, monkeypatch):
 
 def test_the_typed_form_completes_a_manual_scan(db, monkeypatch):
     conn, _ = db
-    fake_pipeline(monkeypatch, outcome("manual", ["unrecognised"], name=field("ZORBLAXINE", 0.4)))
+    fake_pipeline(monkeypatch, outcome("manual", ["low_confidence"], strength=field("500 mg", 0.5)))
     r = scans._upload(b"any")
     body = NewMedicationIn.model_validate({"name": "Zorblaxine", "totalQuantity": 14, "scanId": r.scan_id, "doses": [{"time": "09:00", "quantity": 1}]})
     out = medications.create_medication(conn, str(logstore.current_user()), body)
-    assert out.badge == "not_checked"
+    assert out.badge is None                       # nothing is matched to a medicine list yet
     assert conn.execute("select status::text from prescription_scans where id = %s", (r.scan_id,)).fetchone() == ("confirmed",)
     assert conn.execute("select source::text from medications where id = %s", (out.id,)).fetchone() == ("scan",)
 

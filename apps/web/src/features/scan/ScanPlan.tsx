@@ -145,7 +145,7 @@ export function ScanPlan() {
               </li>
             ))}
           </ul>
-          <p className="text-sub text-ink3">These are suggested times. Your label says how many times a day, not when, so change them to suit your day.</p>
+          <p className="text-sub text-ink3">These are suggested times, worked out from your label. Change them to suit your day.</p>
         </Card>
       )}
 
@@ -158,7 +158,7 @@ export function ScanPlan() {
 
       <Card tone="soft" className="flex items-start gap-3">
         <Info size={20} className="mt-0.5 flex-none text-ink3" aria-hidden />
-        <p className="text-sub text-ink2">When you add it, we check it against your other medicines. If we cannot find it, it shows as Not checked.</p>
+        <p className="text-sub text-ink2">We save it as printed on your label. Checking it against your other medicines is not part of this step yet.</p>
       </Card>
 
       <Footer>

@@ -30,6 +30,11 @@ log = logging.getLogger(__name__)
 PROMPT_FILE = Path(__file__).parent / "prompts" / "scan_label.md"
 
 
+# The model "thinks" before it answers and that counts against the limit: a dense label used 3,500 of the old 4,096 and the
+# JSON was cut off. A truncated answer is useless, so leave room.
+MAX_OUTPUT_TOKENS = 12288
+
+
 def load_prompt() -> tuple[str, str]:
     """Return (version, text). The prompt lives in a file with a `version:` header (rules.md section 4)."""
     head, _, body = PROMPT_FILE.read_text(encoding="utf-8").partition("\n")
@@ -82,7 +87,6 @@ def extract_scan(
     *,
     client: VertexClient,
     model: str,
-    index: conf.DrugIndex | None = None,
     ocr: Any = None,
     known_names: Iterable[str] = (),
     threshold: float = conf.THRESHOLD,
@@ -92,7 +96,7 @@ def extract_scan(
     version, system = load_prompt()
     names = list(known_names)
     try:
-        masked = privacy.mask_photo(image_bytes, ocr=ocr, known_names=names, protect_words=index.words() if index else ())
+        masked = privacy.mask_photo(image_bytes, ocr=ocr, known_names=names)
     except ValidationFailed as e:
         return ScanOutcome(status="failed", review_mode="manual", reasons=[e.code], prompt_version=version), None
 
@@ -103,7 +107,8 @@ def extract_scan(
     for attempt in range(2):          # invalid JSON is retried once, then it fails safe
         try:
             result = client.generate_json(model=model, system=system, parts=[ImagePart(masked.image, masked.mime_type),
-                                          "Read this item and return the JSON."], response_schema=response_schema())
+                                          "Read this item and return the JSON."], response_schema=response_schema(),
+                                          max_output_tokens=MAX_OUTPUT_TOKENS)
         except ExternalServiceError as e:
             log.warning("scan model call failed: %s", e.code)
             return ScanOutcome(status="failed", review_mode="manual", reasons=["service_unavailable"], prompt_version=version,
@@ -125,7 +130,7 @@ def extract_scan(
     raw, removed = scrub(raw, names)
     if removed:
         summary["removed_from_answer"] = removed
-    items = [conf.score_item(it, masked.ocr_text, index, threshold) for it in raw.items]
+    items = [conf.score_item(it, masked.ocr_text, threshold) for it in raw.items]
     d = conf.decide(raw, items, threshold)
     return ScanOutcome(status=d.status, review_mode=d.review_mode, reasons=d.reasons, items=items if d.status == "needs_review" else [],  # type: ignore[arg-type]
                        prompt_version=version, model_id=model, input_tokens=in_tokens, output_tokens=out_tokens, latency_ms=latency,

@@ -30,7 +30,6 @@ KIND_FOR_ITEM = {"prescription_label": "prescription", "otc": "otc", "supplement
 MEAL_TEXT = {"before_meal": "before meals", "after_meal": "after meals", "with_meal": "with food", "na": "with or without food"}
 # Why a scan sends the person to type the form, in the words the app shows (rules.md: plain, one next step, never a guess).
 REASON_TEXT = {
-    "unrecognised": "I'm not able to identify this medication. Please check with your pharmacist, and type it in below.",
     "low_confidence": "Some of the label was hard to read, so please type it in yourself.",
     "missing_required": "We could not find the name, how often or the total on the label, so please type it in.",
     "several_items": "There is more than one medicine in this photo. Please add them one at a time.",
@@ -47,7 +46,7 @@ REASON_TEXT = {
 
 def reason_text(reasons: list[str]) -> str:
     for r in ("unreadable", "ocr_empty", "not_a_medicine", "service_unavailable", "invalid_json", "file_type_not_allowed", "file_too_large",
-              "file_empty", "several_items", "unrecognised", "missing_required", "low_confidence"):
+              "file_empty", "several_items", "missing_required", "low_confidence"):
         if r in reasons:
             return REASON_TEXT[r]
     return REASON_TEXT["low_confidence"]

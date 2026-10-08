@@ -35,6 +35,11 @@ DOB_RE = re.compile(r"\b(?:d\.?\s?o\.?\s?b\.?|date\s+of\s+birth|birth\s*date|bor
 NAME_LABEL_RE = re.compile(r"^\s*(?:(?:patient(?:\s*name)?|pt\.?\s*name|pt\.?|nama|姓名|病人)(?![A-Za-z])|name\s*[:：])\s*[:：\-]?\s*", re.I)
 LABEL_ONLY_RE = re.compile(r"^\s*(?:patient(?:\s*name)?|pt\.?\s*name|pt\.?|nama|name|姓名|病人|nric|fin|ic|i/c|id)\s*[:：\-]?\s*$", re.I)
 DATE_PREFIX_RE = re.compile(r"^[\d/.\- :]{5,}[-–]\s*(.+)$")
+NUMBER_THEN_NAME_RE = re.compile(r"(?<![\d/])\d{3,}\s+([A-Z][A-Z'.\-]+(?:\s+[A-Z][A-Z'.\-]+){1,5})")
+# Text the app needs: a strength, a quantity, directions. A line carrying any of it is never hidden as "a name".
+NEEDED_TEXT_RE = re.compile(r"\d+(?:[.,]\d+)?\s?(?:mg|mcg|µg|ml|iu|g|%)\b|\b(?:tabs?|caps?|tablets?|capsules?|take|qty|quantity|daily|twice|once|"
+                            r"morning|evening|night|dose|expiry|exp)\b", re.I)
+LEADING_NUMBER_RE = re.compile(r"^\s*\d{3,}\s+")     # a patient or queue number printed before the name
 DOCTOR_RE = re.compile(r"^\s*(?i:dr|prof|doctor)(?![A-Za-z])|^Dr[A-Z]")
 HONORIFICS = {"mr", "mrs", "ms", "mdm", "madam", "miss", "dr", "encik", "puan", "cik"}
 # Words that appear on labels. A line made only of these words and drug names is never treated as a stray name.
@@ -168,8 +173,17 @@ def _looks_like_name(text: str, protect: set[str], min_letters: int = 10) -> boo
     dated = DATE_PREFIX_RE.match(t)       # "18/03/2026 - TAN AH KOW": a date, then the name
     if dated:
         t = dated.group(1).strip()
+    numbered = LEADING_NUMBER_RE.match(t) is not None
+    t = LEADING_NUMBER_RE.sub("", t)      # "84933 CHUA CHOR KIANG DEREK": a patient number, then the name
+    if dated or numbered:
+        min_letters = min(min_letters, 5)  # a number or date in front is a strong sign of a name, so a short one counts
     if not t or DOCTOR_RE.match(t) or re.search(r"[^A-Za-z\s()'.\-]", re.sub(r"\([^)]*\)", "", t)):
         return False
+    words = re.findall(r"[A-Za-z]+", t)
+    if len(words) < 2 and not (dated or numbered):
+        return False                      # a person's name is two or more words; one word alone is packaging print or a brand
+    if len(words) > 1 and not all(w[0].isupper() for w in words):
+        return False                      # "For cholesterol lowering" is a sentence, not a name: names are written in capitals
     letters = _letters(t)
     return len(letters) >= min_letters and not any(w in letters for w in protect)
 
@@ -197,7 +211,13 @@ def find_private_lines(lines: Sequence[OcrLine], known_names: Iterable[str] = ()
                     hits[j] = "name_value"
     # A full name on a line of its own with no label: nothing but letters and no label word or drug name in it.
     for i, ln in enumerate(lines):
-        if i not in hits and _looks_like_name(ln.text, protect):
+        if i not in hits and not NEEDED_TEXT_RE.search(ln.text) and _looks_like_name(ln.text, protect):
+            hits[i] = "unlabelled_name"
+    # The OCR sometimes joins the name to text beside it ("cted by the pres84933 CHUA CHOR KIANG DEREK"). A number followed by
+    # two or more capitalised words, anywhere in a line, is looked at on its own.
+    for i, ln in enumerate(lines):
+        m = NUMBER_THEN_NAME_RE.search(ln.text) if i not in hits and not NEEDED_TEXT_RE.search(ln.text) else None
+        if m and _looks_like_name(m.group(1), protect, min_letters=5):
             hits[i] = "unlabelled_name"
     # A shorter name printed straight above or below an ID or name-label line.
     for i, kind in list(hits.items()):
@@ -208,7 +228,7 @@ def find_private_lines(lines: Sequence[OcrLine], known_names: Iterable[str] = ()
             if j in hits:
                 continue
             gap = min(abs(other.box[1] - lines[i].box[3]), abs(lines[i].box[1] - other.box[3]))
-            if gap <= 1.2 * h and _looks_like_name(other.text, protect, min_letters=5):
+            if gap <= 1.2 * h and not NEEDED_TEXT_RE.search(other.text) and _looks_like_name(other.text, protect, min_letters=5):
                 hits[j] = "stray_name"
     return hits
 
