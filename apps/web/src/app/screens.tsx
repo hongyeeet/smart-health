@@ -5,6 +5,7 @@ import { ScanFrame } from '@/features/scan/ScanFrame'
 import { ScanReview } from '@/features/scan/ScanReview'
 import { ScanPlan } from '@/features/scan/ScanPlan'
 import { AddByHand } from '@/features/meds/AddByHand'
+import { MedDetail } from '@/features/meds/MedDetail'
 import { MedList } from '@/features/meds/MedList'
 import { LogHub } from '@/features/log/LogHub'
 import { LogDone } from '@/features/log/LogDone'
@@ -39,6 +40,7 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   H2: ScanFrame,
   H3: ScanReview,
   H4: ScanPlan,
+  H6: MedDetail,
   H8: AddByHand,
   E1: LogHub,
   E2: LogMeal,

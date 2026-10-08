@@ -82,16 +82,19 @@ Collects demographics (birth year, gender, race, height, weight), diagnosis and 
 
 Photo of a prescription label, medication box, supplement or TCM packaging → vision model extracts name, strength, dose, frequency, timing, prescriber, date → **user confirms/edits** → saved.
 - AC: every extracted field shows a confidence score; low-confidence fields are highlighted and must be confirmed.
-- AC: unrecognised items get "I'm not able to identify this medication, please check with your pharmacist" plus a manual-entry option. The app never guesses.
+- AC: the scanner only reads what is printed and never guesses. A medicine that is not in our reference list is still read and saved as the label prints it, and shows as "Not checked" for interactions; it is never called "safe". An unreadable or unclear label goes to manual entry (D-064, D-070).
 - AC: saving a medication builds its dose schedule (F4) and triggers the clash check (F5).
 
 ### F3 Medication explainer
-*Data (data model v2, see [data-flow.md](data-flow.md) section 6): reads `medications`, `drug_reference`, `drug_side_effects`, `knowledge_chunks`; writes nothing.*
+*Data (data model v2, see [data-flow.md](data-flow.md) section 6, [f3-explainer.md](f3-explainer.md)): reads `medications` and `medication_schedule`; writes `medication_explanations` (the saved explanation) and `doctor_questions` (a question from the page).*
 
-Plain-language "what this is for, how to take it, common side effects, what to tell your doctor", retrieved from the 250k Medicines dataset (uses, side effects, classes; RAG), with citations to that dataset and a note that it is not an authoritative label. Available in 4 languages with TTS playback.
-- AC: every explanation cites its source(s).
-- AC: dose information shown is **only** what's on the user's own confirmed prescription, never generated.
-- AC: questions like "can I stop/double/skip…" get a refusal template and an offer to add the question to the doctor brief (F12).
+Open a medicine from the Meds page: plain-language "what this is for, how you take it (from your own label), common side effects, when to tell your doctor", written by the model from the medicine's name and label text after a web search, with the web pages it used, and a box to save a question for the doctor. The 250k Medicines file is not used: it is a general list (under 5% anti-diabetic) with no supplements or herbal products (D-071). Not an authoritative drug label, and the page says so.
+- AC: every explanation cites its web sources; nothing is shown without at least one (reliable medical sites are preferred and are the only ones shown when any were used).
+- AC: dose information shown is **only** what's on the user's own confirmed label, never generated. Any generated sentence that gives a dose, a number of tablets or a schedule, tells the person to stop, skip, change or swap a treatment, or calls a medicine "safe" is dropped by code before it is saved.
+- AC: a product the model cannot identify is not explained; the page says so and offers the doctor-question box.
+- AC: the explanation is made once (the first open takes up to about 30 seconds) and kept; it is made again only when the medicine's name, strength, type or label text changes.
+- AC: a question typed on the page is saved to the doctor-question list (`origin` user) for the care plan and the doctor brief (F12).
+- Not in F3 for now: text-to-speech and 4 languages (to be discussed with the team first); refusal template for "can I stop/double/skip…" questions in chat.
 
 ### F4 Adherence engine
 *Data (data model v2, see [data-flow.md](data-flow.md) section 6): writes `medication_log` (taken, missed with reason, skipped), `notifications`, `refill_forecasts`; reads `medication_schedule`, the `adherence_summary` view (prescription medicines only) and `care_summary`.*
@@ -257,7 +260,7 @@ The system improves for each user through four concrete mechanisms (details in a
 
 1. **Explain, organise, remind. Never advise on medication.** No dose changes, starts, stops or substitutions.
 2. **Deterministic where it matters:** interactions, thresholds, all numbers in the brief, and urgent escalation are rule-based and code-computed.
-3. **Honest about uncertainty:** confidence shown on extraction; "not checked" instead of "safe"; "I'm not able to identify that medication, please check with your pharmacist."
+3. **Honest about uncertainty:** confidence shown on extraction; "not checked" instead of "safe"; a label that cannot be read is typed in by the person, never guessed.
 4. **No hidden findings:** the patient can see everything the doctor sees. Patterns are framed as "worth discussing", never as diagnoses.
 5. **Urgent never waits:** safety thresholds trigger immediate guidance.
 6. **Cited sources only** for health and lifestyle content.

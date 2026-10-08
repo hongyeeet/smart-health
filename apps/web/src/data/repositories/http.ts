@@ -69,7 +69,11 @@ export const httpApi: Api = {
   getWeekWorkouts: () => request('/workouts/week'),
   deleteEntry: (id: string) => request<void>(`/logs/${id}`, { method: 'DELETE' }).then(() => undefined),
   listMedications: () => request('/medications'),
-  getMedication: todo('getMedication'),
+  getMedication: (id) => request(`/medications/${encodeURIComponent(id)}`),
+  explainMedication: (id) => request(`/medications/${encodeURIComponent(id)}/explanation`, { method: 'POST' }),
+  askDoctorAbout: async (id, text) => {
+    await request(`/medications/${encodeURIComponent(id)}/questions`, { method: 'POST', body: JSON.stringify({ text }) })
+  },
   addMedication: (m) => request('/medications', { method: 'POST', body: JSON.stringify(m) }),
   uploadScan: (file: File) => {
     const fd = new FormData()

@@ -35,6 +35,17 @@ class GenerationResult:
     latency_ms: int
 
 
+@dataclass(frozen=True)
+class WebSource:
+    title: str
+    url: str
+
+
+@dataclass(frozen=True)
+class GroundedResult(GenerationResult):
+    sources: list[WebSource]
+
+
 class VertexClient:
     def __init__(
         self,
@@ -88,23 +99,70 @@ class VertexClient:
                 "maxOutputTokens": max_output_tokens,
             },
         }
-        headers = {"x-goog-api-key": self._key, "Content-Type": "application/json", "User-Agent": USER_AGENT}
         started = time.monotonic()
+        return self._parse(self._post(model, body), model, started)
+
+    def generate_grounded(
+        self,
+        *,
+        model: str,
+        system: str,
+        prompt: str,
+        max_output_tokens: int = 8192,
+        timeout_s: float = 90.0,
+    ) -> GroundedResult:
+        """One call that may search the web (Google Search grounding) before it answers. The answer is plain text (the model cannot
+        be forced into JSON while it searches), so the caller must parse and validate it. The web pages used come back as `sources`.
+        Only the prompt text leaves the machine: callers must keep personal details out of it."""
+        body = {
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "tools": [{"googleSearch": {}}],
+            "generationConfig": {"temperature": 0.0, "maxOutputTokens": max_output_tokens},
+        }
+        started = time.monotonic()
+        j = self._post(model, body, timeout_s=timeout_s)
+        res = self._parse(j, model, started)
+        sources = self._sources(j)
+        return GroundedResult(text=res.text, model=model, input_tokens=res.input_tokens, output_tokens=res.output_tokens,
+                              latency_ms=res.latency_ms, sources=sources)
+
+    def _post(self, model: str, body: Mapping[str, Any], *, timeout_s: float | None = None) -> Mapping[str, Any]:
+        """POST with the retry rules of rules.md section 6 (429 and 5xx retried with backoff, other 4xx refused at once)."""
+        headers = {"x-goog-api-key": self._key, "Content-Type": "application/json", "User-Agent": USER_AGENT}
         last = "no attempt"
         for attempt in range(self._retries + 1):
             try:
-                r = self._session.post(self._url(model), json=body, headers=headers, timeout=self._timeout)
+                r = self._session.post(self._url(model), json=body, headers=headers, timeout=timeout_s or self._timeout)
             except requests.RequestException as e:  # timeouts and connection errors are retried too
                 last = type(e).__name__
             else:
                 if r.status_code == 200:
-                    return self._parse(r.json(), model, started)
+                    return r.json()  # type: ignore[no-any-return]
                 last = f"HTTP {r.status_code}"
                 if r.status_code not in RETRY_STATUS:  # no retry on other 4xx
                     raise ExternalServiceError(f"model call refused ({last})", code="llm_refused")
             if attempt < self._retries:
                 self._sleep(min(8.0, 0.5 * (2 ** attempt)) + random.uniform(0, 0.25))
         raise ExternalServiceError(f"model call failed ({last})", code="llm_unavailable")
+
+    @staticmethod
+    def _sources(j: Mapping[str, Any]) -> list[WebSource]:
+        """The web pages the answer was based on, from the grounding metadata. Links are Google's redirect links to the page."""
+        try:
+            chunks = j["candidates"][0]["groundingMetadata"]["groundingChunks"]
+        except (KeyError, IndexError, TypeError):
+            return []
+        seen: set[str] = set()
+        out: list[WebSource] = []
+        for ch in chunks:
+            web = (ch or {}).get("web") or {}
+            uri = web.get("uri")
+            if not uri or uri in seen or not str(uri).startswith("https://"):
+                continue
+            seen.add(uri)
+            out.append(WebSource(title=str(web.get("title") or "Web page")[:120], url=str(uri)))
+        return out
 
     @staticmethod
     def _parse(j: Mapping[str, Any], model: str, started: float) -> GenerationResult:

@@ -86,3 +86,27 @@ def test_the_image_is_sent_as_base64_inline_data():
     go(client(s))
     parts = s.calls[0][1]["contents"][0]["parts"]
     assert parts[0]["inlineData"]["mimeType"] == "image/jpeg" and parts[0]["inlineData"]["data"] == "aW1n" and parts[1] == {"text": "hi"}
+
+
+# --- web-grounded answers (the medicine explainer, docs/specs/f3-explainer.md)
+GROUNDED = {"candidates": [{"content": {"parts": [{"text": "answer"}]},
+                            "groundingMetadata": {"groundingChunks": [
+                                {"web": {"uri": "https://vertexaisearch.cloud.google.com/r/1", "title": "drugs.com"}},
+                                {"web": {"uri": "https://vertexaisearch.cloud.google.com/r/1", "title": "drugs.com again"}},
+                                {"web": {"uri": "http://insecure.example/x", "title": "plain http"}},
+                                {"web": {"title": "no link"}}]}}],
+            "usageMetadata": {"promptTokenCount": 9, "candidatesTokenCount": 4}}
+
+
+def test_a_grounded_call_turns_on_search_and_returns_deduplicated_https_sources():
+    s = Session(Resp(200, GROUNDED))
+    r = client(s).generate_grounded(model="gemini-x", system="s", prompt="p")
+    body = s.calls[0][1]
+    assert body["tools"] == [{"googleSearch": {}}] and "responseMimeType" not in body["generationConfig"]
+    assert r.text == "answer" and [(w.title, w.url) for w in r.sources] == [("drugs.com", "https://vertexaisearch.cloud.google.com/r/1")]
+
+
+def test_a_grounded_answer_without_metadata_has_no_sources_and_uses_the_longer_timeout():
+    s = Session(Resp(200, OK))
+    r = client(s).generate_grounded(model="m", system="s", prompt="p", timeout_s=90)
+    assert r.sources == [] and s.calls[0][3] == 90

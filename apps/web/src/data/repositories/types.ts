@@ -24,6 +24,8 @@ import type {
   MemoryFact,
   MissReason,
   Medication,
+  MedicationDetail,
+  MedicineExplanation,
   EmergencyContact,
   WorkoutSession,
   WorkoutSummary,
@@ -131,7 +133,11 @@ export interface Api {
   deleteEntry(id: string): Promise<void>
 
   listMedications(): Promise<Medication[]>
-  getMedication(id: string): Promise<Medication | undefined>
+  getMedication(id: string): Promise<MedicationDetail>
+  /** Make (or fetch the saved) plain-language explanation of a medicine: a web search and a short summary, 10 to 30 seconds the first time. */
+  explainMedication(id: string): Promise<MedicineExplanation>
+  /** Save a question for the doctor, about this medicine, to the doctor-question list. */
+  askDoctorAbout(id: string, text: string): Promise<void>
   addMedication(m: NewMedication): Promise<Medication>
   /** Upload a label photo and start AI extraction. Returns the scan with extracted fields. */
   uploadScan(file: File): Promise<ScanResult>

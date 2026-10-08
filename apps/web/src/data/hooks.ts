@@ -26,6 +26,9 @@ export const useAnalyzeMeal = () => useMutation({ mutationFn: (a: { file: File; 
 export const useRecent = () => useQuery({ queryKey: ['recent'], queryFn: () => api.listRecent() })
 export const useMeds = () => useQuery({ queryKey: ['meds'], queryFn: () => api.listMedications() })
 export const useMed = (id: string) => useQuery({ queryKey: ['med', id], queryFn: () => api.getMedication(id) })
+/** Makes the explanation the first time (a web search, up to 30 seconds), then it is saved and instant. */
+export const useExplainMed = () => useMutation({ mutationFn: (id: string) => api.explainMedication(id) })
+export const useAskDoctorAbout = () => useMutation({ mutationFn: (a: { id: string; text: string }) => api.askDoctorAbout(a.id, a.text) })
 export const useScan = (scanId: string | undefined) =>
   useQuery({ queryKey: ['scan', scanId], queryFn: () => api.getScanResult(scanId!), enabled: !!scanId })
 export const useUploadScan = () =>

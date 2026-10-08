@@ -42,6 +42,29 @@ export interface Medication {
   sideEffects: string[]
 }
 
+/** A web page the explanation was based on. */
+export interface WebSource {
+  title: string
+  url: string
+}
+
+/** What a medicine is for and its common side effects, in plain words, with the web pages they came from (prd F3). */
+export interface MedicineExplanation {
+  /** `not_identified`: the product could not be identified, so nothing is explained. */
+  status: 'ready' | 'not_identified'
+  purpose: string
+  sideEffects: string[]
+  tellDoctor: string
+  sources: WebSource[]
+  generatedAt: string
+}
+
+/** One medicine on its own page (H6). `directions` is the label text exactly as saved; `explanation` is empty until it is made. */
+export interface MedicationDetail extends Medication {
+  directions: string | null
+  explanation: MedicineExplanation | null
+}
+
 export interface Dose {
   id: string
   medId: string

@@ -4,7 +4,7 @@ They mirror `NewMedication` and `Medication` in apps/web/src/data. The save itse
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from datetime import time as ClockTime
 from decimal import Decimal
 from typing import Literal
@@ -63,3 +63,32 @@ class MedicationOut(Camel):
     badge: Literal["interaction", "not_checked"] | None = None
     refill: Refill | None = None
     side_effects: list[str] = []
+
+
+class WebSourceOut(Camel):
+    title: str
+    url: str
+
+
+class ExplanationOut(Camel):
+    """The plain-language explanation of a medicine and the web pages it came from (docs/specs/f3-explainer.md)."""
+    status: Literal["ready", "not_identified"]
+    purpose: str = ""
+    side_effects: list[str] = []
+    tell_doctor: str = ""
+    sources: list[WebSourceOut] = []
+    generated_at: datetime
+
+
+class MedicationDetailOut(MedicationOut):
+    """One medicine on its own page (H6). `directions` is the label text exactly as saved; `explanation` is empty until it is made."""
+    directions: str | None = None
+    explanation: ExplanationOut | None = None
+
+
+class QuestionIn(Camel):
+    text: str = Field(min_length=3, max_length=500)
+
+
+class QuestionOut(Camel):
+    id: str

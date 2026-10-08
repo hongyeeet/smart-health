@@ -26,7 +26,7 @@ flowchart TB
     V3["Logs: food_logs, exercise_logs, exercise_sets, symptom_logs, wellbeing_logs"]
   end
 
-  APP[("APP tables: users, consents, prescription_scans, appointments, doctor_questions, notifications, refill_forecasts, patient_preventive_status")]
+  APP[("APP tables: users, consents, prescription_scans, medication_explanations, appointments, doctor_questions, notifications, refill_forecasts, patient_preventive_status")]
   REF[("REFERENCE: seeded lookups. drug_reference, interaction_rules, foods, preventive_items, routing_rules, population_priors, knowledge_chunks")]
 
   subgraph GLD["GOLD: built only from Silver"]
@@ -86,7 +86,7 @@ Reading it: data only moves down. Gold never writes back into Silver, and Bronze
 |---|---|---|---|---|
 | **Bronze** (10 tables) | `bronze_*`: the input as received (`payload` jsonb, optional `object_key` for a photo or file) | The ingest path, once per input | No. Only `processing_status` changes; the guard trigger blocks the rest | `source`, `checksum` (UNIQUE per user, so a re-sent batch does nothing), `received_at` |
 | **Silver** (13 tables) | Typed facts | User, importers, and services after the user confirms | Yes for logs (soft delete, `updated_at`); sensor tables are append-only | `user_id`, `source`, `bronze_id`; UTC timestamps; canonical units (mmol/L, g, mg); NULL for "no data" |
-| **App** (8 tables) | Application state and records outside the pipeline: `users`, `consents`, `prescription_scans`, `appointments`, `doctor_questions`, `notifications`, `refill_forecasts`, `patient_preventive_status` | The app and services | Yes | `user_id` |
+| **App** (9 tables) | Application state and records outside the pipeline: `users`, `consents`, `prescription_scans`, `appointments`, `doctor_questions`, `notifications`, `refill_forecasts`, `patient_preventive_status`, `medication_explanations` | The app and services | Yes | `user_id` |
 | **Reference** (11 tables) | Seeded lookups with source and licence | Seed scripts only | Versioned reload | `source`, licence |
 | **Gold** (15 tables, 6 views) | Derived values and application memory | Deterministic code (`scripts/build_gold_v2.py` today), nightly reflection through the Memory Service | Recomputed; `briefs` are fixed once `ready` | `user_id`; `built_at` on derived tables |
 | **Operations** (6 tables) | Logs, conversations, audit trail | The harness and services | `event_log` is append-only | Ids and digests only, never health values or free text |
@@ -213,7 +213,7 @@ For each feature: what a user action writes (Bronze then Silver or App), and wha
 |---|---|---|
 | F1 Onboarding | `bronze_profile` then `user_profile`; `consents`; generates the first `medication_log` rows | none |
 | F2 Medication capture | Photo to `bronze_medication` and `prescription_scans`; after confirmation `medications`, `medication_schedule`, `medication_log`; `interaction_alerts` | `drug_reference`, `drug_aliases` |
-| F3 Medication explainer | none | `medications`, `drug_reference`, `drug_side_effects`, `knowledge_chunks` |
+| F3 Medication explainer | `medication_explanations` (the saved explanation), `doctor_questions` (a question asked from the page) | `medications`, `medication_schedule` (the person's own label); a web search through the model. Not the 250k Medicines file (D-071) |
 | F4 Adherence | `medication_log` (taken, missed with reason, skipped); `notifications`; `refill_forecasts` | `medication_schedule`, `adherence_summary` (view), `care_summary` |
 | F5 Clash checker | `interaction_alerts` | `medications`, `interaction_rules` |
 | F6 Tracking and logging | `bronze_*` then `cgm_readings` (finger-prick), `food_logs`, `exercise_logs` and `exercise_sets`, `symptom_logs`, `wellbeing_logs`, `blood_pressure_readings`, `lab_results`; `watch_readings` and `cgm_readings` from syncs; weight in `user_profile` | `timeline_5min`, `daily_summary` |

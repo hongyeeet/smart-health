@@ -4,7 +4,7 @@ import type { Medication } from '@/data/types'
 import { href } from '@/app/routeIds'
 import { Header, Reveal, Screen } from '@/ui/layout'
 import { Alert, Button, Card, EmptyState, SectionTitle, Skeleton, StatusPill } from '@/ui/primitives'
-import { Camera, Clock, Image as ImageIcon, Info, PencilSimple, Pill } from '@/ui/icons'
+import { Camera, CaretRight, Clock, Image as ImageIcon, Info, PencilSimple, Pill } from '@/ui/icons'
 import { useLabelPicker } from '@/features/scan/useLabelPicker'
 
 /** H1 — Medications: three ways to add a medicine (photo, upload, type it in), and the list of what is already saved. */
@@ -65,7 +65,7 @@ export function MedList() {
           {data.map((m, i) => (
             <li key={m.id}>
               <Reveal id={`med-${m.id}`} i={i}>
-                <MedCard m={m} />
+                <MedCard m={m} onOpen={() => navigate(href('H6', { id: m.id }))} />
               </Reveal>
             </li>
           ))}
@@ -79,9 +79,9 @@ export function MedList() {
 const showStrength = (m: Medication) =>
   !!m.strength && m.strength !== 'Strength not entered' && !m.name.toLowerCase().replace(/\s+/g, '').includes(m.strength.toLowerCase().replace(/\s+/g, ''))
 
-function MedCard({ m }: { m: Medication }) {
+function MedCard({ m, onOpen }: { m: Medication; onOpen: () => void }) {
   return (
-    <Card className="flex flex-col gap-3">
+    <Card className="flex flex-col gap-3" onClick={onOpen}>
       <div className="min-w-0">
         <p className="break-words text-h2 font-bold leading-tight">
           {m.name}
@@ -116,6 +116,10 @@ function MedCard({ m }: { m: Medication }) {
           )}
         </div>
       )}
+      <p className="flex items-center gap-1 text-sub font-bold text-brand">
+        What it is for and side effects
+        <CaretRight size={16} aria-hidden />
+      </p>
     </Card>
   )
 }
