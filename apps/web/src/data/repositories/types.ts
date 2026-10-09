@@ -23,7 +23,6 @@ import type {
   MemoryFact,
   ClashStatus,
   MissAnswer,
-  MissReason,
   DosesToday,
   Medication,
   MedicationDetail,
