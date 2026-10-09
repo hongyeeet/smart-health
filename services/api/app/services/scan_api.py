@@ -131,10 +131,27 @@ def _amount(v: str | None) -> Decimal:
         return Decimal(1)
 
 
+# Wording on a label that names a symptom to treat. It suggests "only when needed" but never decides it: a daily allergy tablet says the same.
+SYMPTOM_RE = re.compile(r"\bfor\b[^.;]{0,50}?\b(fever|pain|ache|aches|headache|cough|cold|flu|itch|itchy|allerg\w*|sneez\w*|runny nose|nausea|vomit\w*|"
+                        r"diarrh\w*|heartburn|indigestion|bloat\w*|cramp\w*|inflammation|throat|spasm\w*|insomnia|anxiety)\b", re.I)
+
+
+def symptom_hint(extraction: Mapping[str, Any] | None) -> bool:
+    """Does the label say what it is for in terms of a symptom (fever, pain, cough...)? Used only to ask the person a better question."""
+    item = first_item(extraction)
+    if not item or is_as_needed(extraction):
+        return False
+    text = ((item.get("fields") or {}).get("directions") or {}).get("value") or ""
+    return bool(SYMPTOM_RE.search(text))
+
+
 def build_confirmed(extraction: Mapping[str, Any] | None, edits: Mapping[str, str | None], times: list[str] | None, kind: str | None,
-                    today: date) -> ConfirmedMedication:
+                    today: date, as_needed_choice: bool | None = None) -> ConfirmedMedication:
     """The medicine the person confirmed: the label values with their edits on top, and the times they chose. Raises ValidationFailed
-    with a plain message if something required is missing: the caller returns it to the screen and nothing is saved."""
+    with a plain message if something required is missing: the caller returns it to the screen and nothing is saved.
+
+    `as_needed_choice` is the person's own answer to "how do you take it?": True means only when needed (no clock times, whatever the label
+    says), False means every day (times are required, whatever the label says), None means follow the label."""
     item = first_item(extraction)
     if item is None:
         raise ValidationFailed("This scan has no single medicine to save. Please type it in.", code="scan_not_confirmable")
@@ -156,7 +173,9 @@ def build_confirmed(extraction: Mapping[str, Any] | None, edits: Mapping[str, st
     chosen = [t for t in (times or []) if re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", t or "")]
     if times and len(chosen) != len(times):
         raise ValidationFailed("One of the dose times is not a valid time.", code="bad_time")
-    as_needed = not chosen and val("when_to_take") == "as_needed"      # a label that says "when necessary" has no clock time
+    if as_needed_choice is True:
+        chosen = []                                                    # the person said only when needed: no clock times
+    as_needed = as_needed_choice is True or (as_needed_choice is None and not chosen and val("when_to_take") == "as_needed")
     if not chosen and not as_needed:
         chosen = default_times(_int(val("times_per_day")), val("when_to_take"))
     if not chosen and not as_needed:

@@ -141,12 +141,14 @@ export interface Api {
   /** Save a question for the doctor, about this medicine, to the doctor-question list. */
   askDoctorAbout(id: string, text: string): Promise<void>
   addMedication(m: NewMedication): Promise<Medication>
+  /** Remove one of the person's medicines (its deleted_at is filled in; the dose history is kept). */
+  removeMedication(id: string): Promise<void>
   /** Upload a label photo and start AI extraction. Returns the scan with extracted fields. */
   uploadScan(file: File): Promise<ScanResult>
   /** Re-fetch a scan by id (for polling while extracting, or re-reviewing). */
   getScanResult(scanId: string): Promise<ScanResult>
   /** User confirms the reviewed/edited fields → saves the medication (E3-2 does the full save). */
-  confirmScan(scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: NewMedication['kind']): Promise<Medication>
+  confirmScan(scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: NewMedication['kind'], asNeeded?: boolean): Promise<Medication>
   getDosesToday(): Promise<DosesToday>
   /** The medicine clash alerts that are open, and whether a check is running now. */
   getClash(): Promise<ClashStatus>

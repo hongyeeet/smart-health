@@ -208,7 +208,10 @@ export function AddByHand() {
 
       {add.isError && (
         <Alert tone="danger" title="Could not save">
-          We could not save this medicine. Check the details and try again.
+          {/* The server explains a refusal in plain words ("This scan was already saved..."); a bare status such as "500 Internal Server Error" is not shown. */}
+          {add.error instanceof Error && add.error.message && !/^\d{3}/.test(add.error.message)
+            ? add.error.message
+            : 'We could not save this medicine. Check the details and try again.'}
         </Alert>
       )}
 

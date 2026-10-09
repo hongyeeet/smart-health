@@ -79,6 +79,9 @@ export const httpApi: Api = {
     await request(`/medications/${encodeURIComponent(id)}/questions`, { method: 'POST', body: JSON.stringify({ text }) })
   },
   addMedication: (m) => request('/medications', { method: 'POST', body: JSON.stringify(m) }),
+  removeMedication: async (id) => {
+    await request(`/medications/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  },
   uploadScan: (file: File) => {
     const fd = new FormData()
     fd.append('file', file)
@@ -89,8 +92,8 @@ export const httpApi: Api = {
       })
   },
   getScanResult: (scanId: string) => request(`/scans/${scanId}`),
-  confirmScan: (scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: string) =>
-    request(`/scans/${scanId}/confirm`, { method: 'POST', body: JSON.stringify({ fields: editedFields, times, kind }) }),
+  confirmScan: (scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: string, asNeeded?: boolean) =>
+    request(`/scans/${scanId}/confirm`, { method: 'POST', body: JSON.stringify({ fields: editedFields, times, kind, asNeeded }) }),
   getDosesToday: () => request('/doses/today'),
   getClash: () => request('/interactions'),
   runClashCheck: () => request('/interactions/check', { method: 'POST' }),

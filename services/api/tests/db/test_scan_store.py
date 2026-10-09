@@ -241,3 +241,33 @@ def test_the_review_records_a_change_to_the_new_fields(conn, user):
     store.confirm_medication(conn, user, entry(total_quantity=90), scan_id=sid)
     review = conn.execute("select extraction_review from prescription_scans where id = %s", (sid,)).fetchone()[0]
     assert review["fields"]["total_quantity"] == {"scanned": "60", "confirmed": "90", "changed": True}
+
+
+def test_a_photo_scanned_again_after_it_was_saved_or_discarded_gets_a_fresh_scan(conn, user):
+    # Everyone shares the Demo account and the same test photos: the second person must be able to scan and save the same label.
+    up = Uploads()
+    first = store.save_scan(conn, user, masked(), outcome(), uploader=up)
+    store.confirm_medication(conn, user, entry(), scan_id=first)
+    second = store.save_scan(conn, user, masked(), outcome(), uploader=up)
+    assert second != first and one(conn, "select status::text from prescription_scans where id = %s", (second,)) == "needs_review"
+    store.confirm_medication(conn, user, entry(name="Second tablet"), scan_id=second)                          # and it can be saved
+    third = store.save_scan(conn, user, masked(), outcome(), uploader=up)
+    store.reject_scan(conn, user, third)
+    fourth = store.save_scan(conn, user, masked(), outcome(), uploader=up)
+    assert fourth not in (first, second, third)
+    assert len(up.keys) == 4                                                       # the stored photo is the same key each time; it is only sent again
+
+
+def test_a_double_tap_on_an_open_scan_still_returns_the_same_scan(conn, user):
+    up = Uploads()
+    a = store.save_scan(conn, user, masked(b"d"), outcome(), uploader=up)
+    assert store.save_scan(conn, user, masked(b"d"), outcome(), uploader=up) == a
+    assert one(conn, "select count(*) from prescription_scans where user_id = %s", (user,)) == 1
+
+
+def test_confirming_a_scan_twice_says_so_in_plain_words(conn, user):
+    sid = store.save_scan(conn, user, masked(), outcome(), uploader=Uploads())
+    store.confirm_medication(conn, user, entry(), scan_id=sid)
+    with pytest.raises(InvalidTransition) as e:
+        store.confirm_medication(conn, user, entry(), scan_id=sid)
+    assert "already saved or discarded" in str(e.value) and "confirmed cannot" not in str(e.value)

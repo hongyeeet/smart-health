@@ -392,6 +392,8 @@ export interface ScanResult {
    *  missing required field, a drug we cannot identify, or several medicines). */
   /** The label says "when necessary": the medicine has no dose times. */
   asNeeded: boolean
+  /** The label names a symptom (fever, pain, cough...): worth asking whether it is only taken when needed. */
+  symptomHint?: boolean
   reviewMode: 'confirm' | 'manual'
   /** Stable reason codes behind "manual", for logging and tests. */
   reasons: string[]

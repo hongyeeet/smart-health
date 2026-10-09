@@ -1,10 +1,11 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMeds } from '@/data/hooks'
+import { useMeds, useRemoveMed } from '@/data/hooks'
 import type { Medication } from '@/data/types'
 import { href } from '@/app/routeIds'
 import { Header, Reveal, Screen } from '@/ui/layout'
 import { Alert, Button, Card, EmptyState, SectionTitle, Skeleton, StatusPill } from '@/ui/primitives'
-import { Camera, CaretRight, Clock, Image as ImageIcon, Info, PencilSimple, Pill } from '@/ui/icons'
+import { Camera, CaretRight, Clock, Image as ImageIcon, Info, PencilSimple, Pill, Trash } from '@/ui/icons'
 import { useLabelPicker } from '@/features/scan/useLabelPicker'
 import { ClashBox } from './ClashBox'
 
@@ -49,7 +50,9 @@ export function MedList() {
 
       {soon?.refill && (
         <Alert tone="info" icon={Clock}>
-          {soon.name} may run out in about {soon.refill.daysLeft} {soon.refill.daysLeft === 1 ? 'day' : 'days'}. You may want to arrange a refill.
+          {soon.refill.daysLeft === 0
+            ? `${soon.name} may have run out. You may want to arrange a refill.`
+            : `${soon.name} may run out in about ${soon.refill.daysLeft} ${soon.refill.daysLeft === 1 ? 'day' : 'days'}. You may want to arrange a refill.`}
         </Alert>
       )}
 
@@ -83,9 +86,46 @@ const showStrength = (m: Medication) =>
   !!m.strength && m.strength !== 'Strength not entered' && !m.name.toLowerCase().replace(/\s+/g, '').includes(m.strength.toLowerCase().replace(/\s+/g, ''))
 
 function MedCard({ m, onOpen }: { m: Medication; onOpen: () => void }) {
+  const remove = useRemoveMed()
+  const [confirming, setConfirming] = useState(false)
   return (
-    <Card className="flex flex-col gap-3" onClick={onOpen}>
-      <div className="min-w-0">
+    <div className="relative">
+      <Card className="flex flex-col gap-3" onClick={onOpen}>
+        <MedCardBody m={m} />
+      </Card>
+      {/* A sibling of the card, not inside it, because a button cannot sit inside another button. */}
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        aria-label={`Remove ${m.name}`}
+        className="press absolute right-3 top-3 flex min-h-10 items-center gap-1.5 rounded-chip px-3 text-sub font-bold text-ink2 hover:bg-well"
+      >
+        <Trash size={18} aria-hidden /> Remove
+      </button>
+      {confirming && (
+        <div className="mt-2 flex flex-col gap-3 rounded-card border border-line bg-card p-4" role="alertdialog" aria-label={`Remove ${m.name}?`}>
+          <p className="text-body">
+            Remove <b>{m.name}</b> from your list? It will stop showing in your medicines, doses and clash checks. Your past dose history is kept.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="md" variant="danger" className="!w-auto" disabled={remove.isPending} onClick={() => remove.mutate(m.id, { onSuccess: () => setConfirming(false) })}>
+              {remove.isPending ? 'Removing…' : 'Yes, remove it'}
+            </Button>
+            <Button size="md" variant="ghost" className="!w-auto" disabled={remove.isPending} onClick={() => setConfirming(false)}>
+              Keep it
+            </Button>
+          </div>
+          {remove.isError && <p className="text-sub text-ink2">We could not remove it just now. Please try again.</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MedCardBody({ m }: { m: Medication }) {
+  return (
+    <>
+      <div className="min-w-0 pr-24">
         <p className="break-words text-h2 font-bold leading-tight">
           {m.name}
           {showStrength(m) && <span className="font-normal text-ink2"> {m.strength}</span>}
@@ -123,6 +163,6 @@ function MedCard({ m, onOpen }: { m: Medication; onOpen: () => void }) {
         What it is for and side effects
         <CaretRight size={16} aria-hidden />
       </p>
-    </Card>
+    </>
   )
 }

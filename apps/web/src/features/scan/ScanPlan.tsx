@@ -5,9 +5,9 @@ import type { NewMedication } from '@/data/repositories/types'
 import { useUi } from '@/state/store'
 import { href } from '@/app/routeIds'
 import { Footer, Header, Screen } from '@/ui/layout'
-import { Segmented } from '@/ui/controls'
+import { ChoiceCards, Segmented } from '@/ui/controls'
 import { Alert, Button, Card, Chip, SectionTitle, Skeleton } from '@/ui/primitives'
-import { CheckCircle, Info, Pill } from '@/ui/icons'
+import { CalendarBlank, CheckCircle, Info, Pill } from '@/ui/icons'
 
 type Kind = NewMedication['kind']
 const KINDS: { value: Kind; label: string }[] = [
@@ -43,6 +43,7 @@ export function ScanPlan() {
   const [times, setTimes] = useState<string[] | null>(null)
   const [kind, setKind] = useState<Kind | null>(null)
   const [meal, setMeal] = useState<'before_meal' | 'after_meal' | 'na' | null>(null)
+  const [how, setHow] = useState<'daily' | 'needed' | null>(null)
 
   if (!scanId) return <Navigate to={href('H2')} replace />
   if (isLoading || !data) {
@@ -58,15 +59,18 @@ export function ScanPlan() {
     return <Navigate to={href('H8')} replace state={{ scanId: data.scanId, notice: data.notice }} />
   }
 
+  // Every day, or only when needed? The person's own answer decides (the label only suggests it): an only-when-needed medicine has no
+  // set times, no reminders and no refill estimate, because the app cannot know how much of it is used.
+  const asNeeded = (how ?? (data.asNeeded ? 'needed' : 'daily')) === 'needed'
   const suggested = data.schedule.map((s) => s.time)
-  const chosen = times ?? suggested
+  const chosen = times ?? (suggested.length > 0 ? suggested : ['08:00'])
   const chosenKind = kind ?? KIND_FOR_ITEM[data.itemType] ?? 'prescription'
   const fromLabel = data.fields.find((f) => f.key === 'meal_relation')?.value
   const chosenMeal = meal ?? (fromLabel === 'before_meal' || fromLabel === 'after_meal' ? fromLabel : 'na')
   const medName = edits['name'] ?? data.drug
   const distinct = new Set(chosen).size === chosen.length
-  const valid = data.asNeeded || (chosen.length > 0 && chosen.every(Boolean) && distinct)
-  const problem = data.asNeeded ? null : chosen.length === 0
+  const valid = asNeeded || (chosen.length > 0 && chosen.every(Boolean) && distinct)
+  const problem = asNeeded ? null : chosen.length === 0
     ? 'No dose times were found on the label. Go back and type the medicine in.'
     : !chosen.every(Boolean)
       ? 'Choose a time for each dose.'
@@ -78,7 +82,7 @@ export function ScanPlan() {
     if (!valid) return
     const fields: Record<string, string | null> = { ...edits, meal_relation: chosenMeal }
     confirm.mutate(
-      { scanId: data.scanId, fields, times: data.asNeeded ? [] : [...chosen].sort(), kind: chosenKind },
+      { scanId: data.scanId, fields, times: asNeeded ? [] : [...chosen].sort(), kind: chosenKind, asNeeded },
       {
         onSuccess: () => {
           showToast('Added to your medicines')
@@ -115,14 +119,24 @@ export function ScanPlan() {
         </div>
       </Card>
 
-      {data.asNeeded && (
-        <Card tone="soft" className="flex flex-col gap-1.5">
-          <SectionTitle>Dose times</SectionTitle>
-          <p className="text-body text-ink2">Your label says to take this when it is needed, so there are no set times and no reminders.</p>
-        </Card>
-      )}
+      <Card className="flex flex-col gap-3">
+        <SectionTitle>How do you take it?</SectionTitle>
+        <ChoiceCards
+          label="How do you take it?"
+          value={asNeeded ? 'needed' : 'daily'}
+          onChange={setHow}
+          options={[
+            { value: 'daily', title: 'Every day', sub: 'At set times. You get reminders and a refill estimate.', icon: <CalendarBlank size={22} aria-hidden /> },
+            { value: 'needed', title: 'Only when I need it', sub: 'No set times, no reminders and no refill estimate.', icon: <Pill size={22} aria-hidden /> },
+          ]}
+        />
+        {data.asNeeded && <p className="text-sub text-ink3">Your label says to take this when it is needed.</p>}
+        {!asNeeded && data.symptomHint && (
+          <Alert tone="info">This label is for a symptom (such as fever or pain). If you only take it when you have that symptom, choose "Only when I need it".</Alert>
+        )}
+      </Card>
 
-      {suggested.length > 0 && !data.asNeeded && (
+      {!asNeeded && (
         <Card className="flex flex-col gap-3">
           <SectionTitle>Dose times</SectionTitle>
           <div className="flex flex-col gap-1.5">
@@ -142,9 +156,19 @@ export function ScanPlan() {
                   onChange={(e) => setTimes(chosen.map((x, j) => (j === i ? e.target.value : x)))}
                   className={`${inputClass} !w-40 text-right`}
                 />
+                {chosen.length > 1 && (
+                  <button type="button" aria-label={`Remove dose ${i + 1}`} onClick={() => setTimes(chosen.filter((_, j) => j !== i))} className="press -mr-1 flex h-10 w-10 flex-none items-center justify-center rounded-full text-ink2 hover:bg-well">
+                    ×
+                  </button>
+                )}
               </li>
             ))}
           </ul>
+          {chosen.length < 6 && (
+            <button type="button" onClick={() => setTimes([...chosen, '20:00'])} className="press self-start text-sub font-bold text-brand underline underline-offset-4">
+              Add another time
+            </button>
+          )}
           <p className="text-sub text-ink3">These are suggested times, worked out from your label. Change them to suit your day.</p>
         </Card>
       )}
