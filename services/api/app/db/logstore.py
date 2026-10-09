@@ -695,11 +695,24 @@ def notifications() -> list[dict]:
         key = r["payload"].get("key", "")
         return not key[-10:].count("-") == 2 or key[-10:] >= today
 
-    return [
-        {"id": str(r["id"]), "kind": r["kind"], "title": r["payload"].get("title", ""), "body": r["payload"].get("body", ""),
-         "when": _when_label(r["scheduled_for"]), "to": r["payload"].get("to"), "unread": r["opened_at"] is None}
-        for r in rows if live(r)
-    ]
+    def text(r) -> tuple[str, str]:
+        p = r["payload"]
+        title, body = p.get("title", ""), p.get("body", "")
+        # older records (the seeded history) carry no wording: a refill row names the medicine, anything else with no words is not shown
+        if not title and r["kind"] == "refill" and p.get("medication"):
+            return f"Time to refill {p['medication']}", "Your supply is running low. Ask your pharmacy or clinic for a refill."
+        return title, body
+
+    out = []
+    for r in rows:
+        if not live(r):
+            continue
+        title, body = text(r)
+        if not title and not body:
+            continue
+        out.append({"id": str(r["id"]), "kind": r["kind"], "title": title, "body": body,
+                    "when": _when_label(r["scheduled_for"]), "to": r["payload"].get("to"), "unread": r["opened_at"] is None})
+    return out
 
 
 def open_notification(nid: str) -> None:
