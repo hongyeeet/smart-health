@@ -97,6 +97,8 @@ export interface ClashAlert {
   sources: WebSource[]
   /** The doctor question for this pair is already saved. */
   questionAdded: boolean
+  /** When the alert was first raised (ISO time), if the server sent it. */
+  raisedAt?: string | null
 }
 
 export interface ClashStatus {

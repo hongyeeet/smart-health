@@ -20,6 +20,7 @@ import { Learned } from '@/features/me/Learned'
 import { Progress } from '@/features/me/Progress'
 import { LunchIdeas } from '@/features/log/LunchIdeas'
 import { Notifications } from '@/features/home/Notifications'
+import { InteractionDetail } from '@/features/alerts/InteractionDetail'
 import { Welcome } from '@/features/onboarding/Welcome'
 import { Eligibility } from '@/features/onboarding/Eligibility'
 import { AboutYou } from '@/features/onboarding/AboutYou'
@@ -51,6 +52,7 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   H2: ScanFrame,
   H3: ScanReview,
   H4: ScanPlan,
+  H5: InteractionDetail,
   H6: MedDetail,
   H8: AddByHand,
   E1: LogHub,

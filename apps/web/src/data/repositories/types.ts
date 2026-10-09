@@ -152,8 +152,8 @@ export interface Api {
   getClash(): Promise<ClashStatus>
   /** Run the clash check again now (it also runs in the background after every medicine is added). */
   runClashCheck(): Promise<ClashStatus>
-  /** Save "Is it OK to take X and Y together?" to the doctor-question list. */
-  askAboutClash(alertId: string): Promise<void>
+  /** Save "Is it OK to take X and Y together?" to the doctor-question list, or the person's own question when `text` is given. */
+  askAboutClash(alertId: string, text?: string): Promise<void>
   /** "I have checked with my doctor": the alert stops showing. */
   acknowledgeClash(alertId: string): Promise<ClashStatus>
 

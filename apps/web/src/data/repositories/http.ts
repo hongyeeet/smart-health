@@ -94,8 +94,8 @@ export const httpApi: Api = {
   getDosesToday: () => request('/doses/today'),
   getClash: () => request('/interactions'),
   runClashCheck: () => request('/interactions/check', { method: 'POST' }),
-  askAboutClash: async (id) => {
-    await request(`/interactions/${encodeURIComponent(id)}/question`, { method: 'POST' })
+  askAboutClash: async (id, text) => {
+    await request(`/interactions/${encodeURIComponent(id)}/question`, { method: 'POST', ...(text ? { body: JSON.stringify({ text }) } : {}) })
   },
   acknowledgeClash: (id) => request(`/interactions/${encodeURIComponent(id)}/acknowledge`, { method: 'POST' }),
   getFacts: todo('getFacts'),

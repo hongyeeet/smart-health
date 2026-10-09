@@ -1,6 +1,7 @@
 """API shapes for the medicine clash box (Meds page, prd F5). camelCase on the wire, like the other routers."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from app.schemas.medicines import Camel, WebSourceOut
@@ -15,6 +16,7 @@ class ClashAlertOut(Camel):
     origin: Literal["database", "ai", "both"]
     sources: list[WebSourceOut] = []
     question_added: bool = False     # the doctor question for this pair is already saved
+    raised_at: datetime | None = None  # when the alert was first raised (shown on the alerts page)
 
 
 class ClashStatus(Camel):

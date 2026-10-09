@@ -138,15 +138,16 @@ def question_text(a: str, b: str) -> str:
 
 def list_open(conn: psycopg.Connection, user_id: str) -> list[dict[str, Any]]:
     rows = conn.execute(
-        "select a.id, a.origin, a.summary, a.sources, ma.name, ma.strength, mb.name, mb.strength from interaction_alerts a "
+        "select a.id, a.origin, a.summary, a.sources, ma.name, ma.strength, mb.name, mb.strength, a.created_at from interaction_alerts a "
         "join medications ma on ma.id = a.med_a_id and ma.deleted_at is null join medications mb on mb.id = a.med_b_id and mb.deleted_at is null "
         "where a.user_id = %s and a.status = 'open' and a.med_b_id is not null order by a.created_at, a.id", (user_id,)).fetchall()
     asked = {r[0] for r in conn.execute("select text from doctor_questions where user_id = %s and status = 'open' and text like 'Is it OK to take %%'", (user_id,)).fetchall()}
     out = []
-    for aid, origin, summary, sources, na, sa, nb, sb in rows:
+    for aid, origin, summary, sources, na, sa, nb, sb, raised_at in rows:
         la, lb = _label(na, sa), _label(nb, sb)
         out.append({"id": str(aid), "med_a": la, "med_b": lb, "text": patient_text(la, lb), "summary": summary or "", "origin": origin,
-                    "sources": list(sources or []), "question_added": question_text(la, lb) in asked or question_text(lb, la) in asked})
+                    "sources": list(sources or []), "question_added": question_text(la, lb) in asked or question_text(lb, la) in asked,
+                    "raised_at": raised_at})
     return out
 
 
@@ -174,9 +175,17 @@ def acknowledge(conn: psycopg.Connection, user_id: str, alert_id: str) -> None:
                  "'interaction_alerts', %s, '{}'::jsonb)", (user_id, row[0]))
 
 
-def add_question(conn: psycopg.Connection, user_id: str, alert_id: str) -> str:
-    """Save 'Is it OK to take X and Y together?' to the doctor-question list."""
+def add_question(conn: psycopg.Connection, user_id: str, alert_id: str, text: str | None = None) -> str:
+    """Save 'Is it OK to take X and Y together?' to the doctor-question list, or the person's own words when they typed a question."""
     row = _owned(conn, user_id, alert_id)
+    if text and text.strip():                           # their own question about this alert: saved as written, every time
+        own = conn.execute("insert into doctor_questions (user_id, text, origin, status) values (%s, %s, 'user', 'open') returning id",
+                           (user_id, text.strip())).fetchone()
+        if own is None:
+            raise RuntimeError("the database returned no row for an insert")
+        conn.execute("insert into event_log (user_id, actor, event, entity_table, entity_id, payload) values (%s, 'user', 'doctor_question.added', "
+                     "'doctor_questions', %s, %s)", (user_id, own[0], Jsonb({"from": "interaction_alert", "own_words": True})))
+        return str(own[0])
     names = [_label(r[0], r[1]) for r in (conn.execute("select name, strength from medications where id = %s", (m,)).fetchone() for m in (row[1], row[2])) if r]
     text = question_text(names[0], names[1]) if len(names) == 2 else "Can you check my medicines for interactions?"
     same = conn.execute("select id from doctor_questions where user_id = %s and text = %s and status = 'open' limit 1", (user_id, text)).fetchone()

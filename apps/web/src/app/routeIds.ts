@@ -31,7 +31,7 @@ export const ROUTES = {
   A6: { path: '/welcome/summary', title: 'Your profile summary', kind: 'screen', group: 'Onboarding', from: 'A3', links: [l('Edit a section', 'A3'), l('Edit welcome', 'A1'), l('Finish', 'B1')], note: 'Editable read-back of the answers (flow J1 step 6), plain arithmetic (age, BMI, unit conversions) and gaps worth raising with the doctor. No stage, risk tier or target.' },
 
   B1: { path: '/', title: 'Home', kind: 'tab', group: 'Home', from: 'A5, bottom bar, J1', links: [l('Alert strip', 'C2'), l('Tiles', 'C2'), l('Taken (marks the dose)', 'B1'), l('Tell us why', 'H7'), l('Log a walk', 'F1'), l('Check-in answer', 'B1'), l('What changed', 'C4'), l('Prepare for the visit', 'K3'), l('Notifications', 'B2'), l('Ask', 'I1')] },
-  B2: { path: '/notifications', title: 'Notifications', kind: 'screen', group: 'Home', from: 'B1', links: [l('Each item opens its screen', 'B1')] },
+  B2: { path: '/notifications', title: 'Notifications and alerts', kind: 'screen', group: 'Home', from: 'B1', links: [l('Review interaction', 'H5'), l('Each reminder opens its screen', 'B1')], note: 'Medicine-interaction alerts (from the clash check) on top, then reminders. Filter chips: all, medicines, reminders.' },
 
   C1: { path: '/insights', title: 'Overview', kind: 'tab', group: 'Insights', from: 'Bottom bar, D1, I1', links: [l('A day in Your week', 'D1'), l('What changed', 'C2'), l('Why am I seeing this?', 'C7'), l('Ask', 'I1')] },
   C2: { path: '/insights/glucose', title: 'Glucose', kind: 'screen', group: 'Insights', from: 'B1, D1, K2, C1', links: [l('Sprint details', 'C8'), l('Why am I seeing this?', 'C7')] },
@@ -61,7 +61,7 @@ export const ROUTES = {
   H2: { path: '/meds/scan', title: 'Scan a label', kind: 'screen', group: 'Medications', from: 'H1, A3', links: [l('Take photo', 'H3')] },
   H3: { path: '/meds/scan/review', title: 'Check what we read', kind: 'screen', group: 'Medications', from: 'H2', links: [l('Confirm', 'H4'), l('Retake photo', 'H2')] },
   H4: { path: '/meds/scan/plan', title: 'Your dose plan', kind: 'screen', group: 'Medications', from: 'H3', links: [l('Add to my medicines', 'H1')] },
-  H5: { path: '#interaction', title: 'Possible interaction', kind: 'sheet', group: 'Medications', from: 'H4, H1 badges', links: [l('Add to my doctor questions', 'K3')] },
+  H5: { path: '/meds/interaction/:id', title: 'Possible interaction', kind: 'screen', group: 'Medications', from: 'B2, H1 (clash box)', links: [l('Add to my doctor questions', 'K3'), l('Back to alerts', 'B2')], note: 'Details of one clash alert: the pair, where the flag came from, why, the next step and the sources. Never says stop or safe.' },
   H6: { path: '/meds/:id', title: 'Medicine detail', kind: 'screen', group: 'Medications', from: 'H1, I1', links: [l('Add a question', 'K3')] },
   H7: { path: '#missed', title: 'Why was it missed?', kind: 'sheet', group: 'Medications', from: 'B1 (Tell us why)', links: [l('Add a symptom', 'E4'), l('Save or skip', 'B1')] },
   H8: { path: '/meds/add', title: 'Add a medicine by hand', kind: 'screen', group: 'Medications', from: 'H1, A3', links: [l('Save', 'H1')] },

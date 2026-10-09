@@ -5,7 +5,8 @@
  * clear "next up" action, so the person always knows which log to do next. Everything comes from the database
  * (GET /logs/today); the bell opens the reminders (B2).
  */
-import { useDismissSuggestion, useFoodFlags, useLearned, useLogProgress, useLunchIdeas, useNotices } from '@/data/hooks'
+import { useClash, useDismissSuggestion, useFoodFlags, useLearned, useLogProgress, useLunchIdeas, useNotices } from '@/data/hooks'
+import { useDismissed } from '@/features/alerts/pieces'
 import { useGo } from '@/app/navigation'
 import { MealBanner } from '@/features/log/MealBanner'
 import { DoseCard } from './DoseCard'
@@ -80,7 +81,10 @@ export function Home() {
   const go = useGo()
   const { data, isError, refetch } = useLogProgress()
   const { data: notices } = useNotices()
-  const unread = notices?.filter((n) => n.unread).length ?? 0
+  const { data: clash } = useClash()
+  const setAside = useDismissed((s) => s.ids)
+  /** unread reminders plus medicine alerts the person has not set aside */
+  const unread = (notices?.filter((n) => n.unread).length ?? 0) + (clash?.alerts.filter((a) => !setAside.includes(a.id)).length ?? 0)
   const now = new Date()
   const dateLabel = now.toLocaleDateString('en-SG', { weekday: 'long', day: 'numeric', month: 'long' })
 
@@ -91,7 +95,7 @@ export function Home() {
         sub={dateLabel}
         trailing={
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => go('B2')} aria-label={`Reminders, ${unread} new`} className="press relative flex h-12 w-12 items-center justify-center rounded-full border border-line bg-card">
+            <button type="button" onClick={() => go('B2')} aria-label={`Notifications and alerts, ${unread} new`} className="press relative flex h-12 w-12 items-center justify-center rounded-full border border-line bg-card">
               <Bell size={24} aria-hidden />
               {unread > 0 && <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-brass ring-2 ring-card" />}
             </button>

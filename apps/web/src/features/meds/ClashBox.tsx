@@ -1,5 +1,6 @@
 import { useAcknowledgeClash, useAskAboutClash, useClash, useRunClashCheck } from '@/data/hooks'
 import { useUi } from '@/state/store'
+import { useGo } from '@/app/navigation'
 import { Alert, Button } from '@/ui/primitives'
 import { CheckCircle, Stethoscope, Warning } from '@/ui/icons'
 
@@ -14,6 +15,7 @@ export function ClashBox() {
   const ack = useAcknowledgeClash()
   const rerun = useRunClashCheck()
   const toast = useUi((s) => s.showToast)
+  const go = useGo()
   if (!data) return null
 
   return (
@@ -53,6 +55,9 @@ export function ClashBox() {
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2">
+                  <Button size="md" variant="secondary" className="!w-auto" onClick={() => go('H5', { params: { id: a.id } })}>
+                    Review interaction
+                  </Button>
                   {a.questionAdded ? (
                     <p className="flex min-h-12 items-center gap-2 px-1 text-sub font-bold text-ok">
                       <CheckCircle size={22} weight="fill" aria-hidden /> Added to your doctor questions

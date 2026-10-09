@@ -40,6 +40,8 @@ export const useAskAboutClash = () => {
       qc.setQueryData<ClashStatus>(['clash'], (old) => (old ? { ...old, alerts: old.alerts.map((a) => (a.id === id ? { ...a, questionAdded: true } : a)) } : old)),
   })
 }
+/** The person's own question about a clash alert, in their words. It does not use up the ready-made question. */
+export const useAskOwnClashQuestion = () => useMutation({ mutationFn: (a: { id: string; text: string }) => api.askAboutClash(a.id, a.text) })
 export const useAcknowledgeClash = () => {
   const qc = useQueryClient()
   return useMutation({ mutationFn: (id: string) => api.acknowledgeClash(id), onSuccess: (s) => qc.setQueryData(['clash'], s) })
