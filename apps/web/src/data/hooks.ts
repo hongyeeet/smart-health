@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './repositories'
 import type { LogInput, NewMedication } from './repositories/types'
-import type { ClashStatus, MissAnswer, Period, UserList } from './types'
+import type { ClashStatus, MissAnswer, Period, ReportDays, UserList } from './types'
 import { request } from './repositories/http'
 import { useUi } from '@/state/store'
 
@@ -58,6 +58,7 @@ export const useUploadScan = () =>
 export const useFacts = () => useQuery({ queryKey: ['facts'], queryFn: () => api.getFacts() })
 export const useCarePlan = () => useQuery({ queryKey: ['care'], queryFn: () => api.getCarePlan() })
 export const useBrief = () => useQuery({ queryKey: ['brief'], queryFn: () => api.getBrief() })
+export const useDoctorReport = (days: ReportDays) => useQuery({ queryKey: ['doctorReport', days], queryFn: () => api.getDoctorReport(days) })
 export const useNotices = () => useQuery({ queryKey: ['notices'], queryFn: () => api.listNotices() })
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => request<UserList>('/users'), staleTime: Infinity })
 

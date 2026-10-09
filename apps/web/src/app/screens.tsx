@@ -21,6 +21,7 @@ import { Progress } from '@/features/me/Progress'
 import { LunchIdeas } from '@/features/log/LunchIdeas'
 import { Notifications } from '@/features/home/Notifications'
 import { InteractionDetail } from '@/features/alerts/InteractionDetail'
+import { BriefHome } from '@/features/brief/BriefHome'
 import { Welcome } from '@/features/onboarding/Welcome'
 import { Eligibility } from '@/features/onboarding/Eligibility'
 import { AboutYou } from '@/features/onboarding/AboutYou'
@@ -44,6 +45,7 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   B1: Home,
   B2: Notifications,
   K1: Me,
+  L1: BriefHome,
   K2: Learned,
   K10: Progress,
   F1: LogWorkout,

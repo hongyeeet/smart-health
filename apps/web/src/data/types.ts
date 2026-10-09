@@ -689,3 +689,47 @@ export interface AiUsage {
   providers: { provider: string; calls: number; inputTokens: number; outputTokens: number; costUsd: number | null }[]
   note: string
 }
+
+/* ---------------- doctor report (prd F12): every value is computed by the backend, the screen only lays it out ---------------- */
+export type ReportDays = 7 | 14 | 30 | 90
+export type GlucoseBandKey = 'very_high' | 'high' | 'in_range' | 'low' | 'very_low'
+export interface DoctorReport {
+  generatedOn: string
+  period: { start: string; end: string; days: number; label: string }
+  patient: { name: string; sexAge: string; diagnosis: string }
+  cgmWear: string
+  sources: string
+  keyFindings: string[]
+  alerts: { priority: 'urgent' | 'interaction' | 'review'; title: string; detail: string }[]
+  glucose: {
+    hasData: boolean
+    /** false when the sensor was active for too little of the period */
+    sufficient: boolean
+    bands: { key: GlucoseBandKey; label: string; pct: number; perDay: string; reference: string; outside: boolean }[]
+    metrics: { label: string; value: string; reference: string; outside: boolean }[]
+    /** percentiles of glucose by hour of the day; hours with too few readings are left out */
+    profile: { hour: number; p5: number; p25: number; p50: number; p75: number; p95: number }[]
+    low: number | null
+    high: number | null
+    veryLow: number | null
+    veryHigh: number | null
+  }
+  symptoms: { symptom: string; logged: number; low: number; high: number; inRange: number; noReading: number; note: string }[]
+  episodes: {
+    when: string
+    symptom: string
+    severity: number | null
+    glucose: number | null
+    zone: 'very_low' | 'low' | 'in_range' | 'high' | null
+    change30: number | null
+    lastDose: string | null
+    heartRate: number | null
+    spo2: number | null
+    note: string | null
+  }[]
+  episodesTotal: number
+  medicines: { name: string; regimen: string; scheduled: number | null; taken: number | null; missed: number | null; notLogged: number | null; adherencePct: number | null; interaction: boolean }[]
+  medicinesNote: string | null
+  activity: { label: string; value: string; sub: string }[]
+  questions: string[]
+}
