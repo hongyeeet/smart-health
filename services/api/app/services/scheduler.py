@@ -3,7 +3,7 @@
   every minute   the reminder tick: which logs are due now, lunch ideas, the high-salt prompt (quiet: only changes are traced)
   nightly 02:00  the reflection: barriers, anchors and food habits, proposed as facts (never activated)
 Both go through the orchestrator, so they are routed, guarded and logged like any other event. They run for the people named in
-`scheduler_users` (default: the demo user only, so Mr Tan's record is never written to by a timer).
+`scheduler_users` (default: Mr Tan, who has the six months of history the agent learns from, and the demo user for live logging).
 """
 from __future__ import annotations
 

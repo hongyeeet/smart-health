@@ -80,7 +80,7 @@ class Settings(BaseSettings):
 
     # Timers (docs/specs/learning-loop.md 12.4): the reminder tick and the nightly reflection, for these people only
     scheduler_enabled: bool = True
-    scheduler_users: str = "demo"
+    scheduler_users: str = "mr-tan,demo"
 
     # Demo mode
     demo_mode: bool = True

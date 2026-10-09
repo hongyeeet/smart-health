@@ -195,9 +195,13 @@ class LogContext(Camel):
     glucose: GlucoseContext | None
 
 
+# every value of the database enum `notification_kind`: other parts of the app (refills, doses, clashes) write reminders too
+NotificationKind = Literal["dose_reminder", "dose_renudge", "miss_reason", "checkin", "nudge", "refill", "appointment", "urgent", "clash", "brief_ready"]
+
+
 class Notification(Camel):
     id: str
-    kind: Literal["checkin", "nudge"]
+    kind: NotificationKind
     title: str
     body: str
     when: str

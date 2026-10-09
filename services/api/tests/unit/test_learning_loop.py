@@ -313,3 +313,14 @@ def test_the_guard_asks_all_three_questions_in_one_request(monkeypatch):
     monkeypatch.setattr(jev, "_post", lambda state, qs: calls.append(qs) or {k: {"noul": 0.02} for k in qs})
     assert jev.guard_blocks("An easy walk after meals is a good habit.")[0] is False
     assert len(calls) == 1 and set(calls[0]) == set(FROZEN)  # one request, the three frozen questions
+
+
+def test_the_reminder_list_accepts_every_kind_the_database_defines():
+    """Regression: a refill reminder written by the medicines code made GET /notifications fail validation (500) for Mr Tan."""
+    from typing import get_args
+    from app.schemas.log import Notification, NotificationKind
+
+    db_enum = {"dose_reminder", "dose_renudge", "miss_reason", "checkin", "nudge", "refill", "appointment", "urgent", "clash", "brief_ready"}
+    assert set(get_args(NotificationKind)) == db_enum
+    for k in db_enum:
+        assert Notification(id="x", kind=k, title="t", body="b", when="now", unread=True).kind == k
