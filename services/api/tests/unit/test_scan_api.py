@@ -179,3 +179,37 @@ def test_a_scan_with_no_single_medicine_cannot_be_saved():
                                            ("blister_or_box", "prescription"), ("unknown", "prescription")])
 def test_the_kind_follows_the_item_type_unless_the_person_chooses(item_type, kind):
     assert s.build_confirmed(extraction(item_type=item_type), {}, ["08:00"], None, TODAY).kind == kind
+
+
+# --- every day, or only when needed: the person's own answer ------------------------------------------------
+
+def test_a_label_for_a_symptom_gets_the_hint_but_a_label_for_a_condition_does_not():
+    assert s.symptom_hint(extraction()) is True                                  # TAKE 2 TAB/S 4 times a day FOR FEVER/PAIN
+    for text, expected in [("Take 1 tab/s every morning For cholesterol lowering", False), ("For high blood pressure", False),
+                           ("FOR RUNNY NOSE/SNEEZING/ITCH/ALLERGY", True), ("TAKE 1 CAP/S 3 times a day FOR ABDOMINAL PAIN/CRAMP/BLOATEDNESS", True),
+                           ("ANTI-INFLAMMATION FOR THROAT", True), ("Take 1 tablet twice daily after meals", False), ("Take 1 tab for painless nothing", False)]:
+        assert s.symptom_hint(extraction(fields={"directions": field(text)})) is expected, text
+
+
+def test_no_hint_when_the_label_already_says_when_needed_or_there_is_no_single_medicine():
+    assert s.symptom_hint(extraction(fields={"when_to_take": field("as_needed")})) is False
+    assert s.symptom_hint(extraction(items=2)) is False and s.symptom_hint(None) is False
+
+
+def test_the_person_saying_only_when_needed_wins_over_a_label_that_gives_times():
+    m = s.build_confirmed(extraction(), {}, ["08:00", "12:00", "16:00", "20:00"], None, TODAY, as_needed_choice=True)
+    assert m.as_needed and [d.dose_time for d in m.doses] == [None] and m.doses[0].quantity == Decimal("2")
+
+
+def test_the_person_saying_every_day_wins_over_a_label_that_says_when_needed():
+    ex = extraction(fields={"when_to_take": field("as_needed")})
+    m = s.build_confirmed(ex, {}, ["09:00"], None, TODAY, as_needed_choice=False)
+    assert not m.as_needed and [d.dose_time for d in m.doses] == [time(9, 0)]
+    with pytest.raises(ValidationFailed) as e:                                   # every day needs at least one time
+        s.build_confirmed(ex, {}, [], None, TODAY, as_needed_choice=False)
+    assert e.value.code == "missing_time"
+
+
+def test_no_answer_from_the_person_follows_the_label_as_before():
+    assert s.build_confirmed(extraction(fields={"when_to_take": field("as_needed")}), {}, [], None, TODAY, as_needed_choice=None).as_needed
+    assert not s.build_confirmed(extraction(), {}, ["08:00"], None, TODAY, as_needed_choice=None).as_needed

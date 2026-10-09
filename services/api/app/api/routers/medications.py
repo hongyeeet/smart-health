@@ -23,6 +23,7 @@ from app.core.errors import InvalidTransition, NotFound
 from app.db import logstore
 from app.schemas.medicine_scan import ConfirmedMedication, DoseTime
 from app.schemas.medicines import MedicationOut, NewMedicationIn, Refill
+from app.services.medication_remove import remove_medication
 from app.services.scan_store import confirm_medication
 
 logger = logging.getLogger(__name__)
@@ -33,15 +34,23 @@ def clock12(t: time) -> str:
     return t.strftime("%I:%M %p").lstrip("0").lower()
 
 
-def refill_for(total: int | None, per_day: Decimal, start: date, source: str, today: date, pack_start: date | None = None) -> Refill | None:
-    """How long the supply should last, assuming every dose since the start date was taken (F4 will use the real dose log).
+def refill_for(total: int | None, per_day: Decimal, start: date, source: str, today: date, pack_start: date | None = None,
+               added: date | None = None) -> Refill | None:
+    """How long the supply should last, assuming every dose since the pack was started was taken (F4 will use the real dose log).
 
-    The count starts on `pack_start` (the day the pack in hand was started) when it is known, otherwise on the start date. The simulated
-    demo medicines hold a placeholder total (data-model-v2.md): unless they were given a pack start date they get no estimate, not a wrong one.
+    The count starts on `pack_start` (the day the pack in hand was started) when it is known, otherwise on the start date, which for a
+    scanned label is the date printed on it. A label can be old: counted from a date that far back the pack would long be finished, which
+    says nothing about the pack in hand. So when the supply would already be used up by that date, and the medicine was added to the app
+    later, the count starts on the day it was added instead (the pack is taken as new when the person began tracking it).
+    The simulated demo medicines hold a placeholder total (data-model-v2.md): unless they were given a pack start date they get no
+    estimate, not a wrong one.
     """
     if total is None or per_day <= 0 or (source == "demo_dataset" and pack_start is None):     # no real total: no estimate, never a guess
         return None
-    left = max(Decimal(0), Decimal(total) - per_day * max(0, (today - (pack_start or start)).days))
+    begin = pack_start or start
+    left = max(Decimal(0), Decimal(total) - per_day * max(0, (today - begin).days))
+    if left == 0 and pack_start is None and added is not None and added > begin:
+        left = max(Decimal(0), Decimal(total) - per_day * max(0, (today - added).days))
     return Refill(days_left=floor(left / per_day), units_left=floor(left))
 
 
@@ -62,7 +71,7 @@ def to_confirmed(body: NewMedicationIn) -> ConfirmedMedication:
 def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> list[MedicationOut]:
     """The person's current medicines, oldest first, as the Meds page shows them."""
     meds = conn.execute(
-        "select id, name, strength, kind::text, total_quantity, start_date, source::text, pack_started_on "
+        "select id, name, strength, kind::text, total_quantity, start_date, source::text, pack_started_on, created_at, as_needed "
         "from medications where user_id = %s and deleted_at is null order by created_at, name", (user_id,)).fetchall()
     doses: dict[Any, list[tuple[time | None, Decimal, str]]] = defaultdict(list)
     for mid, t, q, rel in conn.execute(
@@ -70,14 +79,14 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
             "where user_id = %s and deleted_at is null order by dose_time", (user_id,)):
         doses[mid].append((t, q, rel))
     out = []
-    for mid, name, strength, kind, total, start, source, pack_start in meds:
+    for mid, name, strength, kind, total, start, source, pack_start, created, flagged in meds:
         ds = doses.get(mid, [])
-        as_needed = any(t is None for t, _, _ in ds)
+        as_needed = bool(flagged) or any(t is None for t, _, _ in ds)      # the column is the answer; an empty dose time still counts for older rows
         per_day = Decimal(0) if as_needed else sum((q for _, q, _ in ds), Decimal(0))    # how much is used when needed is not known
         out.append(MedicationOut(
             id=str(mid), name=name, strength=strength or "Strength not entered", kind=kind, as_needed=as_needed,
             times=[clock12(t) for t, _, _ in ds if t is not None], with_food=any(rel != "na" for _, _, rel in ds),
-            badge=badge_for(kind), refill=refill_for(total, per_day, start or today, source, today, pack_start),
+            badge=badge_for(kind), refill=refill_for(total, per_day, start or today, source, today, pack_start, created.astimezone(logstore.TZ).date()),
         ))
     return out
 
@@ -89,7 +98,7 @@ def medication_out(conn: psycopg.Connection, med_id: str, entry: ConfirmedMedica
         id=med_id, name=entry.name, strength=entry.strength or "Strength not entered", kind=entry.kind, as_needed=entry.as_needed,
         times=[clock12(d.dose_time) for d in entry.doses if d.dose_time is not None], with_food=any(d.meal_relation != "na" for d in entry.doses),
         badge=badge_for(entry.kind),
-        refill=refill_for(entry.total_quantity, per_day, entry.start_date or today, source, today),
+        refill=refill_for(entry.total_quantity, per_day, entry.start_date or today, source, today, None, today),
     )
 
 
@@ -131,6 +140,23 @@ def _add(body: NewMedicationIn) -> MedicationOut:
             raise HTTPException(409, str(e)) from None
     logger.info("medication added kind=%s doses=%d", body.kind, len(body.doses))   # ids and counts only, never names
     return out
+
+
+@router.delete("/{med_id}")
+async def delete_medication(med_id: str) -> dict[str, bool]:
+    """Remove one of the person's own medicines: its deleted_at is filled in and the app stops showing it. Its dose history is kept."""
+    return await run_in_threadpool(_remove, med_id)
+
+
+def _remove(med_id: str) -> dict[str, bool]:
+    with logstore.tx() as conn:
+        conn.row_factory = tuple_row
+        try:
+            counts = remove_medication(conn, str(logstore.current_user()), med_id)
+        except NotFound as e:
+            raise HTTPException(404, str(e)) from None
+    logger.info("medication removed dose_times=%d", counts["dose_times"])     # counts only, never the name
+    return {"removed": True}
 
 
 def datetime_today() -> date:

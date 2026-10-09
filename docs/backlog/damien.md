@@ -20,7 +20,7 @@ Ready means everything under **Needs first** is done, so you can start. Blocked 
 **Blocked (7)**
 
 - E2-1 Onboarding flow: waiting for E0-2 (Hong Yi, in progress)
-- E2-2 Chat onboarding: waiting for E2-1 (Damien, backlog), E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
+- E2-2 Chat onboarding: waiting for E2-1 (Damien, in progress), E16-1 (Hong Yi, backlog), E0-3 (Hong Yi, in progress)
 - E8-2 Food leaderboard: waiting for E8-1 (Damien, backlog)
 - E10-1 Check-ins: waiting for E9-1 (Hong Yi, backlog)
 - E12-1 Nudge messages and learning: waiting for E9-1 (Hong Yi, backlog)
@@ -35,22 +35,22 @@ Done: 0 of 10 tasks.
 ### E2-1 Onboarding flow · P0
 
 - **Ask:** Build the onboarding flow: a step-by-step form, eligibility and consent checks, an editable summary and the demo shortcut. Use medical domain knowledge to ask the right history questions: past illnesses, conditions, allergies, family history and current medicines.
-- **Status:** backlog
+- **Status:** in progress
 - **Needs first:** E0-2, E1-2
 - **Needed later:** E1-4
 - **Phase:** 1
 - **Spec:** prd F1
-- **Note:**
+- **Note:** An 11-step form and profile summary built in apps/web from the Stitch design (2026-10-09); answers stay on the device until a profile endpoint exists, so the save, consent-row, timing and demo-shortcut criteria are still open
 - **Success criteria:**
-  - [ ] Steps: about you, diagnosis and HbA1c, conditions, allergies, family history, medications entry point, connected sources, reminder times
+  - [x] Steps: about you, diagnosis and HbA1c, conditions, allergies, family history, medications entry point, connected sources, reminder times
   - [ ] Finishes in 5 minutes or less on a phone-size screen
   - [ ] Each step saves
-  - [ ] Leaving and returning resumes
+  - [x] Leaving and returning resumes
   - [ ] Writes profile, conditions and allergies
-  - [ ] Type 1, pregnancy and under-18 are blocked with a clear message
+  - [x] Type 1, pregnancy and under-18 are blocked with a clear message
   - [ ] Consent rows stored
-  - [ ] The user cannot continue without data-processing consent
-  - [ ] Editable summary screen
+  - [x] The user cannot continue without data-processing consent
+  - [x] Editable summary screen
   - [ ] 'Start as demo patient' skips onboarding and loads the seeded persona
 
 ### E2-2 Chat onboarding · P1

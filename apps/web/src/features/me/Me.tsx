@@ -9,7 +9,7 @@ import { useGo } from '@/app/navigation'
 import type { RouteId } from '@/app/routeIds'
 import { Header, Screen } from '@/ui/layout'
 import { Card } from '@/ui/primitives'
-import { Bell, Brain, CaretRight, ChartLineUp, type IconType } from '@/ui/icons'
+import { Bell, Brain, CaretRight, ChartLineUp, ClipboardText, type IconType } from '@/ui/icons'
 import { UserSwitch } from '@/features/home/UserSwitch'
 
 export function Me() {
@@ -19,6 +19,7 @@ export function Me() {
     { id: 'K2', title: 'What Smart Health has learned', sub: 'Everything it noticed about you, and why. You decide what stays.', icon: Brain, badge: data?.toConfirm },
     { id: 'K10', title: 'How it is going', sub: 'Week by week, what you logged and did.', icon: ChartLineUp },
     { id: 'B2', title: 'Reminders', sub: 'What is due and what you have opened.', icon: Bell },
+    { id: 'A1', title: 'Set up again', sub: 'Go through the welcome questions and change your answers.', icon: ClipboardText },
   ]
   return (
     <Screen tabs>

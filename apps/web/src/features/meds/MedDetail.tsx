@@ -144,8 +144,8 @@ export function MedDetail() {
       )}
 
       {m.refill && (
-        <Alert tone="info" icon={Clock} title={`Runs out in about ${m.refill.daysLeft} days`}>
-          {m.refill.unitsLeft} tablets or capsules left at your current pace.
+        <Alert tone="info" icon={Clock} title={m.refill.daysLeft === 0 ? 'May have run out' : `Runs out in about ${m.refill.daysLeft} ${m.refill.daysLeft === 1 ? 'day' : 'days'}`}>
+          {m.refill.daysLeft === 0 ? 'At your current pace the pack may be used up.' : `${m.refill.unitsLeft} tablets or capsules left at your current pace.`}
         </Alert>
       )}
 

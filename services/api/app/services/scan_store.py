@@ -55,7 +55,9 @@ def outcome_json(outcome: ScanOutcome) -> dict[str, Any]:
 
 
 def save_scan(conn: psycopg.Connection, user_id: str, masked: MaskResult | None, outcome: ScanOutcome, *, uploader: Uploader | None = None) -> str:
-    """Store the masked photo as the Bronze original and record the extraction. Repeat-safe: the same photo returns the same scan.
+    """Store the masked photo as the Bronze original and record the extraction. Repeat-safe while a scan is still open: the same photo sent
+    again (a double tap) returns the same scan. Once that scan has been confirmed or discarded the photo is read afresh and gets a new scan:
+    people share an account in the demo, and a medicine scanned again later must be savable.
 
     Nothing identifying is stored: the photo is the blacked-out copy, and the answer was scrubbed before scoring.
     """
@@ -63,7 +65,8 @@ def save_scan(conn: psycopg.Connection, user_id: str, masked: MaskResult | None,
         raise ValidationFailed("there is no photo to store", code="no_photo")
     checksum = _checksum(masked.image)
     key = f"{user_id}/medications/{checksum}.jpg"
-    existing = conn.execute("select id from prescription_scans where user_id = %s and image_key = %s", (user_id, key)).fetchone()
+    existing = conn.execute("select id from prescription_scans where user_id = %s and image_key = %s and status = 'needs_review' "
+                            "order by created_at desc limit 1", (user_id, key)).fetchone()
     if existing:
         return str(existing[0])
     if uploader is None:
@@ -124,7 +127,7 @@ def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedM
         if scan is None:
             raise NotFound("scan not found", code="scan_not_found")
         if scan[0] not in CONFIRMABLE:
-            raise InvalidTransition(f"a scan that is {scan[0]} cannot be confirmed", code="scan_not_confirmable")
+            raise InvalidTransition("This scan was already saved or discarded. Check your medicines list, or scan the label again.", code="scan_not_confirmable")
     source = "scan" if scan_id else "manual"
     payload = {"kind": "medication_confirmed", "scan_id": scan_id, "name": entry.name, "medication_kind": entry.kind, "strength": entry.strength,
                "doses": [{"dose_time": d.dose_time.isoformat() if d.dose_time else None, "quantity": str(d.quantity), "meal_relation": d.meal_relation}
@@ -138,10 +141,10 @@ def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedM
         (user_id, source, Jsonb(payload), checksum))[0]
     description = entry.directions
     med_id = _one(
-        conn, "insert into medications (user_id, name, kind, strength, frequency, description, start_date, source, bronze_id, total_quantity) "
-        "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id",
+        conn, "insert into medications (user_id, name, kind, strength, frequency, description, start_date, source, bronze_id, total_quantity, as_needed) "
+        "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id",
         (user_id, entry.name, entry.kind, entry.strength, len(entry.doses), description, entry.start_date or date.today(), source, bronze_id,
-         entry.total_quantity))[0]
+         entry.total_quantity, entry.as_needed))[0]
     for d in entry.doses:
         conn.execute("insert into medication_schedule (user_id, medication_id, dose_time, quantity, meal_relation) values (%s, %s, %s, %s, %s)",
                      (user_id, med_id, d.dose_time, d.quantity, d.meal_relation))

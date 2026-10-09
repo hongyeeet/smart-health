@@ -40,6 +40,8 @@ export const useAskAboutClash = () => {
       qc.setQueryData<ClashStatus>(['clash'], (old) => (old ? { ...old, alerts: old.alerts.map((a) => (a.id === id ? { ...a, questionAdded: true } : a)) } : old)),
   })
 }
+/** The person's own question about a clash alert, in their words. It does not use up the ready-made question. */
+export const useAskOwnClashQuestion = () => useMutation({ mutationFn: (a: { id: string; text: string }) => api.askAboutClash(a.id, a.text) })
 export const useAcknowledgeClash = () => {
   const qc = useQueryClient()
   return useMutation({ mutationFn: (id: string) => api.acknowledgeClash(id), onSuccess: (s) => qc.setQueryData(['clash'], s) })
@@ -83,9 +85,10 @@ export const useSnooze = () => useWrite(() => api.snoozePrompt())
 export const useLog = () => useWrite((i: LogInput) => api.logEntry(i))
 export const useDeleteEntry = () => useWrite((id: string) => api.deleteEntry(id))
 export const useAddMed = () => useWrite((m: NewMedication) => api.addMedication(m))
+export const useRemoveMed = () => useWrite((id: string) => api.removeMedication(id))
 export const useConfirmScan = () =>
-  useWrite((a: { scanId: string; fields: Record<string, string | null>; times: string[]; kind?: NewMedication['kind'] }) =>
-    api.confirmScan(a.scanId, a.fields, a.times, a.kind))
+  useWrite((a: { scanId: string; fields: Record<string, string | null>; times: string[]; kind?: NewMedication['kind']; asNeeded?: boolean }) =>
+    api.confirmScan(a.scanId, a.fields, a.times, a.kind, a.asNeeded))
 export const useFactAction = () => useWrite((a: { id: string; action: 'confirm' | 'delete' | 'edit'; text?: string }) => api.factAction(a.id, a.action, a.text))
 export const useAddQuestion = () => useWrite((a: { text: string; origin: 'user' | 'refused_chat' | 'clash' | 'side_effect' }) => api.addQuestion(a.text, a.origin))
 export const useRemoveQuestion = () => useWrite((id: string) => api.removeQuestion(id))

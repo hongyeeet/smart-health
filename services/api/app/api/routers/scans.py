@@ -61,6 +61,7 @@ def to_result(scan_id: str, status: str, extraction: dict | None, error: str | N
         drug=name, fields=[ScanFieldSchema(**f) for f in fields],
         schedule=[ScanScheduleItem(**s) for s in scan_api.api_schedule(extraction)],
         modelId=model_id, error=error, reviewMode=mode, reasons=reasons, asNeeded=scan_api.is_as_needed(extraction),
+        symptomHint=scan_api.symptom_hint(extraction),
         notice=scan_api.reason_text(reasons) if mode == "manual" else None,
     )
 
@@ -151,7 +152,7 @@ def _confirm(scan_id: str, body: ScanConfirmRequest) -> MedicationOut:
             raise HTTPException(409, "This label needs to be typed in. Please use the form.")
         today = datetime_today()
         try:
-            entry = scan_api.build_confirmed(row[1], body.fields, body.times, body.kind, today)
+            entry = scan_api.build_confirmed(row[1], body.fields, body.times, body.kind, today, body.as_needed)
             med_id = confirm_medication(conn, user, entry, scan_id=scan_id)
         except ValidationFailed as e:
             raise HTTPException(422, str(e)) from None

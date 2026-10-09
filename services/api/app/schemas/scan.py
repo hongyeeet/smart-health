@@ -68,6 +68,7 @@ class ScanResult(BaseModel):
     # Added for the medicine scan (docs/specs/f2-scan.md). "manual" means the person types the form: the scan was unreadable, a field was
     # below the confidence threshold, a required field was missing or the drug is not in the drug list. `notice` says why, in plain words.
     as_needed: bool = Field(False, alias="asNeeded")     # the label says "when necessary": no dose times
+    symptom_hint: bool = Field(False, alias="symptomHint")     # the label is for a symptom (fever, pain...): ask whether it is only taken when needed
     review_mode: Literal["confirm", "manual"] = Field("manual", alias="reviewMode")
     reasons: list[str] = Field(default_factory=list)
     notice: str | None = None
@@ -81,3 +82,7 @@ class ScanConfirmRequest(BaseModel):
     fields: dict[str, str | None] = Field(default_factory=dict, description="field key -> edited value or null")
     times: list[str] | None = Field(None, description="dose clock times chosen on the plan screen, 24-hour HH:MM")
     kind: Literal["prescription", "otc", "supplement", "tcm"] | None = None
+    # The person's own answer to "how do you take it?": true = only when needed (no times, no reminders, no refill estimate), false = every day.
+    as_needed: bool | None = Field(None, alias="asNeeded")
+
+    model_config = {"populate_by_name": True}

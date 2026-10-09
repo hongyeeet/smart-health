@@ -275,3 +275,18 @@ def test_asking_the_doctor_twice_saves_one_question_and_the_alert_remembers_it(c
     assert route._status(user).alerts[0].question_added is True
     conn.execute("update doctor_questions set status = 'asked' where id = %s", (first.id,))          # once it has been asked, the button is offered again
     assert route._status(user).alerts[0].question_added is False
+
+
+def test_a_typed_question_about_an_alert_is_saved_in_the_persons_own_words_and_the_alert_has_a_time(conn, user, monkeypatch):
+    add(conn, user, "Atorvastatin 20 mg")
+    add(conn, user, "Clarithromycin 500 mg")
+    fake_ai(monkeypatch, ok())
+    pipe.check_user(user)
+    [alert] = route._status(user).alerts
+    assert alert.raised_at is not None
+    q = route._ask(user, alert.id, "  Should I take these at different times of day?  ")
+    row = conn.execute("select text, origin, status from doctor_questions where id = %s", (q.id,)).fetchone()
+    assert row == ("Should I take these at different times of day?", "user", "open")
+    assert route._status(user).alerts[0].question_added is False            # their own words do not use up the ready-made question
+    assert route._ask(user, alert.id).id != q.id
+

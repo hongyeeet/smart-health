@@ -175,3 +175,56 @@ def test_an_as_needed_medicine_cannot_also_have_clock_times():
         body(doses=[{"quantity": 1}, {"time": "08:00", "quantity": 1}])
     with pytest.raises(ValidationError):
         body(doses=[{"time": "08:00", "quantity": 1}, {"time": "08:00", "quantity": 1}])
+
+
+def test_an_old_label_date_does_not_make_a_new_pack_look_finished():
+    # Paracetamol: label dated 13 Apr, 30 tablets, 8 a day. Counted from the label the pack was finished in April; the person added it on 8 Oct.
+    old = api.refill_for(30, Decimal(8), date(2026, 4, 13), "scan", date(2026, 10, 9), None, date(2026, 10, 8))
+    assert (old.days_left, old.units_left) == (2, 22)                       # counted from the day it was added: 30 - 8 = 22 left
+    assert api.refill_for(30, Decimal(8), date(2026, 4, 13), "scan", date(2026, 10, 9)).units_left == 0           # no added date known: the plain count
+
+
+def test_a_recent_label_date_is_still_the_start_of_the_count():
+    r = api.refill_for(60, Decimal(2), date(2026, 10, 1), "scan", date(2026, 10, 9), None, date(2026, 10, 8))
+    assert (r.days_left, r.units_left) == (22, 44)                          # 8 days at 2 a day (16 tablets) counted from the label, not from the day it was added
+
+
+def test_a_pack_that_is_used_up_even_counting_from_the_day_it_was_added_still_says_zero():
+    r = api.refill_for(30, Decimal(8), date(2026, 4, 13), "scan", date(2026, 10, 20), None, date(2026, 10, 8))
+    assert (r.days_left, r.units_left) == (0, 0)
+
+
+def test_a_pack_start_date_is_never_overridden_by_the_added_date():
+    r = api.refill_for(60, Decimal(2), date(2021, 4, 11), "demo_dataset", date(2026, 10, 8), date(2026, 9, 14), date(2026, 10, 1))
+    assert (r.days_left, r.units_left) == (6, 12)
+
+
+def test_the_as_needed_column_is_saved_and_decides_reminders_and_refill(conn, user):
+    daily = api.create_medication(conn, user, body(name="Metformin"))
+    needed = api.create_medication(conn, user, body(name="Paracetamol", doses=[{"time": None, "quantity": 2, "mealRelation": "na"}]))
+    rows = dict(conn.execute("select name, as_needed from medications where user_id = %s", (user,)).fetchall())
+    assert rows == {"Metformin": False, "Paracetamol": True}
+    assert daily.as_needed is False and daily.refill is not None
+    assert needed.as_needed is True and needed.times == [] and needed.refill is None          # no refill estimate for a medicine taken when needed
+    listed = {m.name: m for m in api.list_medications(conn, user, date(2026, 10, 9))}
+    assert listed["Paracetamol"].as_needed and listed["Paracetamol"].refill is None and listed["Metformin"].refill is not None
+
+
+def test_the_column_alone_makes_a_medicine_only_when_needed_even_if_it_still_has_clock_times(conn, user):
+    mid = api.create_medication(conn, user, body(name="Cetirizine")).id
+    assert api.list_medications(conn, user, date(2026, 10, 9))[0].refill is not None
+    conn.execute("update medications set as_needed = true where id = %s", (mid,))
+    m = api.list_medications(conn, user, date(2026, 10, 9))[0]
+    assert m.as_needed and m.refill is None
+
+
+def test_a_scan_confirmed_as_only_when_needed_keeps_one_entry_with_no_time(conn, user):
+    from app.services import scan_api
+    ex = {"review_mode": "confirm", "reasons": [], "items": [{"item_type": "prescription_label", "fields": {
+        "name": {"value": "PARACETAMOL"}, "dose_amount": {"value": "2"}, "times_per_day": {"value": "4"},
+        "directions": {"value": "TAKE 2 TAB/S 4 times a day FOR FEVER/PAIN"}, "total_quantity": {"value": "30"}}}]}
+    entry = scan_api.build_confirmed(ex, {}, ["08:00", "12:00"], None, date(2026, 10, 9), True)
+    from app.services.scan_store import confirm_medication
+    mid = confirm_medication(conn, user, entry)
+    assert conn.execute("select as_needed, frequency from medications where id = %s", (mid,)).fetchone() == (True, 1)
+    assert conn.execute("select dose_time from medication_schedule where medication_id = %s", (mid,)).fetchall() == [(None,)]

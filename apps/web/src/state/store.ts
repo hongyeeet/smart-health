@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { Locale, LogResult } from '@/data/types'
 import type { ThemeName } from '@/theme/palettes'
 
-export type SheetId = 'C7' | 'D2' | 'E7' | 'H5' | 'H7' | 'L2'
+export type SheetId = 'C7' | 'D2' | 'E7' | 'H7' | 'L2'
 
 export interface SheetState {
   id: SheetId
