@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_key: SecretStr = SecretStr("")
     storage_bucket: str = "smart-health-originals"
+    # Workato: the recipe that puts a medicine's dose times on Google Calendar (docs/specs/f4-calendar.md). Blank = not set up, and the
+    # calendar step is skipped. The token goes in the header named below; neither value is ever logged.
+    workato_webhook_url: str = ""
+    workato_webhook_token: SecretStr = SecretStr("")
+    workato_token_header: str = "API-TOKEN"
     # Fields the scanner is less sure of than this must be typed in by the user (backlog E3-1 used 0.85).
     scan_confidence_threshold: float = 0.85
 

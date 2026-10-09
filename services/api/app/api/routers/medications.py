@@ -18,6 +18,7 @@ from fastapi.concurrency import run_in_threadpool
 from psycopg.rows import tuple_row
 
 from app.agents import clash_pipeline
+from app.api.routers.calendar import schedule_sync
 from app.core.errors import InvalidTransition, NotFound
 from app.db import logstore
 from app.schemas.medicine_scan import ConfirmedMedication, DoseTime
@@ -115,6 +116,7 @@ async def add_medication(body: NewMedicationIn, background: BackgroundTasks) -> 
     user = str(logstore.current_user())
     out = await run_in_threadpool(_add, body)
     background.add_task(clash_pipeline.check_user, user)      # the clash check studies every saved medicine again, after the response
+    await run_in_threadpool(schedule_sync, background, user, out.id)     # and the calendar reminders are made after it
     return out
 
 

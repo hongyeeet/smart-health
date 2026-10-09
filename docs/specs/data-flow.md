@@ -26,7 +26,7 @@ flowchart TB
     V3["Logs: food_logs, exercise_logs, exercise_sets, symptom_logs, wellbeing_logs"]
   end
 
-  APP[("APP tables: users, consents, prescription_scans, medication_explanations, appointments, doctor_questions, notifications, refill_forecasts, patient_preventive_status")]
+  APP[("APP tables: users, consents, prescription_scans, medication_explanations, calendar_syncs, appointments, doctor_questions, notifications, refill_forecasts, patient_preventive_status")]
   REF[("REFERENCE: seeded lookups. drug_reference, interaction_rules, foods, preventive_items, routing_rules, population_priors, knowledge_chunks")]
 
   subgraph GLD["GOLD: built only from Silver"]
@@ -86,7 +86,7 @@ Reading it: data only moves down. Gold never writes back into Silver, and Bronze
 |---|---|---|---|---|
 | **Bronze** (10 tables) | `bronze_*`: the input as received (`payload` jsonb, optional `object_key` for a photo or file) | The ingest path, once per input | No. Only `processing_status` changes; the guard trigger blocks the rest | `source`, `checksum` (UNIQUE per user, so a re-sent batch does nothing), `received_at` |
 | **Silver** (13 tables) | Typed facts | User, importers, and services after the user confirms | Yes for logs (soft delete, `updated_at`); sensor tables are append-only | `user_id`, `source`, `bronze_id`; UTC timestamps; canonical units (mmol/L, g, mg); NULL for "no data" |
-| **App** (9 tables) | Application state and records outside the pipeline: `users`, `consents`, `prescription_scans`, `appointments`, `doctor_questions`, `notifications`, `refill_forecasts`, `patient_preventive_status`, `medication_explanations` | The app and services | Yes | `user_id` |
+| **App** (10 tables) | Application state and records outside the pipeline: `users`, `consents`, `prescription_scans`, `appointments`, `doctor_questions`, `notifications`, `refill_forecasts`, `patient_preventive_status`, `medication_explanations`, `calendar_syncs` | The app and services | Yes | `user_id` |
 | **Reference** (11 tables) | Seeded lookups with source and licence | Seed scripts only | Versioned reload | `source`, licence |
 | **Gold** (15 tables, 6 views) | Derived values and application memory | Deterministic code (`scripts/build_gold_v2.py` today), nightly reflection through the Memory Service | Recomputed; `briefs` are fixed once `ready` | `user_id`; `built_at` on derived tables |
 | **Operations** (6 tables) | Logs, conversations, audit trail | The harness and services | `event_log` is append-only | Ids and digests only, never health values or free text |

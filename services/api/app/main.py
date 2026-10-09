@@ -11,6 +11,7 @@ import logging
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routers.calendar import router as calendar_router
 from app.api.routers.doses import router as doses_router
 from app.api.routers.interactions import router as interactions_router
 from app.api.routers.logs import router as logs_router
@@ -80,6 +81,7 @@ app.include_router(medications_router, prefix="/api/v1")
 app.include_router(med_explain_router, prefix="/api/v1")
 app.include_router(doses_router, prefix="/api/v1")
 app.include_router(interactions_router, prefix="/api/v1")
+app.include_router(calendar_router, prefix="/api/v1")
 app.include_router(meals_router, prefix="/api/v1")
 app.include_router(workouts_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
