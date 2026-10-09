@@ -207,20 +207,60 @@ export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boo
 }
 
 /* ------------------------------------ Field ------------------------------------ */
-export function Field({ label, value, onChange, placeholder, hint, inputMode, multiline }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; hint?: string; inputMode?: 'text' | 'numeric' | 'decimal'; multiline?: boolean }) {
+export function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  hint,
+  inputMode,
+  multiline,
+  type = 'text',
+  suffix,
+  error,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  hint?: string
+  inputMode?: 'text' | 'numeric' | 'decimal' | 'tel'
+  multiline?: boolean
+  type?: 'text' | 'date' | 'time' | 'tel'
+  /** unit shown inside the field, on the right (cm, kg, %) */
+  suffix?: string
+  /** shown instead of the hint, with the field outlined, when the value cannot be used */
+  error?: string
+}) {
   const id = useId()
-  const cls = 'w-full rounded-field border-[1.5px] border-line bg-card px-3.5 py-3 text-body text-ink placeholder:text-ink3 focus:border-brand focus:outline-none'
+  const cls = cn(
+    'min-h-12 w-full rounded-field border-[1.5px] bg-card px-3.5 py-3 text-body text-ink placeholder:text-ink3 focus:border-brand focus:outline-none',
+    error ? 'border-danger' : 'border-line',
+    suffix && 'pr-14',
+  )
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <label htmlFor={id} className="text-sub font-bold text-ink">
         {label}
       </label>
       {multiline ? (
         <textarea id={id} rows={3} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={cls} />
       ) : (
-        <input id={id} value={value} inputMode={inputMode} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={cls} />
+        <div className="relative">
+          <input id={id} type={type} value={value} inputMode={inputMode} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-invalid={!!error} aria-describedby={error || hint ? `${id}-note` : undefined} className={cls} />
+          {suffix && <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sub text-ink3">{suffix}</span>}
+        </div>
       )}
-      {hint && <p className="text-sub text-ink3">{hint}</p>}
+      {error ? (
+        <p id={`${id}-note`} className="flex items-start gap-1.5 text-sub text-danger">
+          <WarningCircle size={18} className="mt-0.5 flex-none" aria-hidden />
+          {error}
+        </p>
+      ) : hint ? (
+        <p id={`${id}-note`} className="text-sub text-ink3">
+          {hint}
+        </p>
+      ) : null}
     </div>
   )
 }

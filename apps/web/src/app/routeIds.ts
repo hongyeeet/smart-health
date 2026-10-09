@@ -23,11 +23,12 @@ export interface RouteDef {
 const l = (label: string, to: string): RouteLink => ({ label, to })
 
 export const ROUTES = {
-  A1: { path: '/welcome', title: 'Welcome', kind: 'screen', group: 'Onboarding', from: 'App start, Me (Replay onboarding)', links: [l('Next', 'A2'), l('Skip to Home', 'B1')], note: 'Language and the two consents. The data-use consent is required.' },
+  A1: { path: '/welcome', title: 'Welcome', kind: 'screen', group: 'Onboarding', from: 'App start, Me (Replay onboarding)', links: [l('Next', 'A2'), l('Start as demo patient', 'B1')], note: 'Language and the two consents. The data-use consent is required.' },
   A2: { path: '/welcome/eligibility', title: 'Is this app right for you?', kind: 'screen', group: 'Onboarding', from: 'A1', links: [l('Continue', 'A3'), l('Back', 'A1')], note: 'Out-of-scope answers (type 1, pregnancy, under 18) stop here with a clear message.' },
-  A3: { path: '/welcome/about', title: 'About you', kind: 'screen', group: 'Onboarding', from: 'A2, A4', links: [l('Scan a label', 'H2'), l('Add by hand', 'H8'), l('Chat instead', 'A4'), l('Next', 'A5')] },
+  A3: { path: '/welcome/about', title: 'About you', kind: 'screen', group: 'Onboarding', from: 'A2, A4, A6', links: [l('Scan a label', 'H2'), l('Add by hand', 'H8'), l('Chat instead', 'A4'), l('Check my answers', 'A6')], note: 'Nine steps on one route (?step=1 to 9), following the clinical onboarding design: body measurements, diabetes history, medicines, lows, conditions, lab results, devices and routine, lifestyle, safety check. Records answers only; shows no score, stage or target.' },
   A4: { path: '/welcome/chat', title: 'Set up by chat', kind: 'screen', group: 'Onboarding', from: 'A3', links: [l('Use the form instead', 'A3'), l('Next', 'A5')] },
-  A5: { path: '/welcome/connect', title: 'Connect your data', kind: 'screen', group: 'Onboarding', from: 'A3, A4', links: [l('Finish', 'B1'), l('Back', 'A3')] },
+  A5: { path: '/welcome/connect', title: 'Connect your data', kind: 'screen', group: 'Onboarding', from: 'A3, A4', links: [l('Devices and routine', 'A3')], note: 'Folded into A3 (step 7, devices and routine). This path redirects there.' },
+  A6: { path: '/welcome/summary', title: 'Your profile summary', kind: 'screen', group: 'Onboarding', from: 'A3', links: [l('Edit a section', 'A3'), l('Edit welcome', 'A1'), l('Finish', 'B1')], note: 'Editable read-back of the answers (flow J1 step 6), plain arithmetic (age, BMI, unit conversions) and gaps worth raising with the doctor. No stage, risk tier or target.' },
 
   B1: { path: '/', title: 'Home', kind: 'tab', group: 'Home', from: 'A5, bottom bar, J1', links: [l('Alert strip', 'C2'), l('Tiles', 'C2'), l('Taken (marks the dose)', 'B1'), l('Tell us why', 'H7'), l('Log a walk', 'F1'), l('Check-in answer', 'B1'), l('What changed', 'C4'), l('Prepare for the visit', 'K3'), l('Notifications', 'B2'), l('Ask', 'I1')] },
   B2: { path: '/notifications', title: 'Notifications', kind: 'screen', group: 'Home', from: 'B1', links: [l('Each item opens its screen', 'B1')] },

@@ -30,10 +30,10 @@ Points to watch:
 
 | | Tasks done | Subtasks ticked | Progress |
 |---|---|---|---|
-| **Whole project** | 4 of 57 | 26 of 284 | `[##------------------] 9%` |
+| **Whole project** | 4 of 57 | 31 of 284 | `[##------------------] 11%` |
 | Hong Yi | 1 of 32 | 12 of 161 | `[#-------------------] 7%` |
 | Joely | 3 of 15 | 14 of 74 | `[####----------------] 19%` |
-| Damien | 0 of 10 | 0 of 49 | `[--------------------] 0%` |
+| Damien | 0 of 10 | 5 of 49 | `[##------------------] 10%` |
 
 ## Gates
 
@@ -70,7 +70,7 @@ The number in brackets is how many other tasks are waiting, directly or indirect
 | E1-5 | Analysis data and baseline model | Joely | P1 | ready | 0/2 | none |  |
 | E1-6 | Medicine knowledge index | Joely | P0 | blocked | 0/4 | E0-3 |  |
 | E1-7 | Schema additions for symptoms and the emergency contact | Hong Yi | P0 | ready | 0/4 | none |  |
-| E2-1 | Onboarding flow | Damien | P0 | blocked | 0/10 | E0-2 |  |
+| E2-1 | Onboarding flow | Damien | P0 | blocked | 5/10 | E0-2 |  |
 | E2-2 | Chat onboarding | Damien | P1 | blocked | 0/2 | E2-1, E16-1, E0-3 |  |
 | E3-1 | Scan and read | Hong Yi | P0 | blocked | 0/9 | E0-2, E0-3 |  |
 | E3-2 | Match, parse and save | Hong Yi | P0 | blocked | 0/9 | E3-1 |  |
