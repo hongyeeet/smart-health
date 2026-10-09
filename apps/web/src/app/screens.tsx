@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import { Navigate } from 'react-router-dom'
 import { NotBuilt } from './NotBuilt'
 import { WorkoutTracker } from '@/features/workout/WorkoutTracker'
 import { ScanFrame } from '@/features/scan/ScanFrame'
@@ -19,6 +20,11 @@ import { Learned } from '@/features/me/Learned'
 import { Progress } from '@/features/me/Progress'
 import { LunchIdeas } from '@/features/log/LunchIdeas'
 import { Notifications } from '@/features/home/Notifications'
+import { InteractionDetail } from '@/features/alerts/InteractionDetail'
+import { Welcome } from '@/features/onboarding/Welcome'
+import { Eligibility } from '@/features/onboarding/Eligibility'
+import { AboutYou } from '@/features/onboarding/AboutYou'
+import { Summary } from '@/features/onboarding/Summary'
 import { ROUTES, routeIds, type RouteId } from './routeIds'
 
 /**
@@ -29,6 +35,12 @@ import { ROUTES, routeIds, type RouteId } from './routeIds'
  *   export const built: Partial<Record<RouteId, ComponentType>> = { B1: Home }
  */
 export const built: Partial<Record<RouteId, ComponentType>> = {
+  A1: Welcome,
+  A2: Eligibility,
+  A3: AboutYou,
+  /** Folded into A3: devices and routine is step 7 there. */
+  A5: () => <Navigate to="/welcome/about?step=7" replace />,
+  A6: Summary,
   B1: Home,
   B2: Notifications,
   K1: Me,
@@ -40,6 +52,7 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   H2: ScanFrame,
   H3: ScanReview,
   H4: ScanPlan,
+  H5: InteractionDetail,
   H6: MedDetail,
   H8: AddByHand,
   E1: LogHub,

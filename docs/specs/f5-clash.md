@@ -60,8 +60,30 @@ Checks on what the AI says, in code:
 ## 8. Not built, and open
 
 - Hong Yi's confirmation of the departure (section 6).
-- The detailed "Possible interaction" sheet (H5) and the box on Home; only the Meds page box exists.
+- The box on Home. (The alerts page and the "Possible interaction" details page were added on 2026-10-09, section 9.)
 - A way to un-acknowledge, and a recheck when a medicine's name is edited (there is no edit screen yet). Deleting a medicine removes its alerts, but nothing re-runs the check for the rest.
 - A pharmacist's review of the prompts and a sample of results.
 - The AI is not repeatable: the same medicines can give slightly different flags on different runs. The rules half is repeatable.
 - Cost: each check is one to three Gemini calls with search, counted under the existing `vertex_vision` line of the daily AI limit.
+
+## 9. Alerts page and details page (added 2026-10-09, Damien's alert design)
+
+Built from Damien's notification design (a Stitch export) on top of the same alerts. Nothing about how a pair is flagged changed.
+
+**Alerts page (B2, `/notifications`, was "Reminders").** Now "Notifications and alerts": open clash alerts on top, then the reminders, with filter chips (All, Medicines, Reminders) and a "mark all reminders as read" button. The bell on Home counts open alerts as well as unread reminders. Each alert is a card with:
+
+- the tag "Medication review", the time the alert was raised, the two medicines joined by a "Possible interaction" marker;
+- the fixed sentence from the server (section 1), unchanged;
+- a note: "This alert does not mean the two medicines are unsafe together. Smart Health cannot advise on your medicines; your pharmacist or doctor can.";
+- **Review interaction** (opens the details page), **Contact clinic** (says Smart Health has no clinic or pharmacy number yet and to use the one on the appointment card or medicine label), **Ask a question** (a text box; the question is saved in the person's own words to the doctor-question list);
+- **Dismiss for now and add to my doctor questions**: saves the ready-made question for the pair and hides the card on this device, with **Restore**. The alert stays `open` on the server and in the Meds page box until "I have checked with my doctor" is used there.
+
+**Details page (H5, `/meds/interaction/:id`, was planned as a sheet).** The pair and the fixed sentence; where the flag came from (drug-label rules, AI web search, or both) with the tag "Not reviewed by a clinician"; "Why this was flagged" (the server's `summary`); a suggested next step ("Ask your pharmacist or doctor to review your medicines... bring your full medicine list"); the same contact, add-question and typed-question actions; and the sources behind a fold. The Meds page box has a **Review interaction** button that opens it.
+
+**Left out of the design, and why.** A severity grade and "verified source" label (nothing is clinically reviewed, rules.md 1.15; the origin is shown instead). The pharmacology paragraph and the report line "consider an alternative" medicine (medication advice and uncited health content, rules.md 1.1 and 1.9). "Do not stop or change your prescribed medicines" and "stopping abruptly can lead to..." (design.md section 9 counts "you should not skip your dose" as advice; the note above replaces it). Care-team notes, pharmacy pick-up cards, a clinic hotline and the "DiaCare" name (Smart Health has no care-team or pharmacy link). The report download (waits for the doctor brief, L1). "New" and "Active" tags on each medicine (the alert does not carry them).
+
+**API changes (small, additive).** `GET /interactions` alerts gain `raisedAt` (the alert's `created_at`). `POST /interactions/{id}/question` accepts an optional body `{"text": "..."}`: with it, the person's own question is saved (`origin = 'user'`, every time, 3 to 500 characters) and the ready-made question is untouched; without it, behaviour is as before.
+
+**Where things are.** `apps/web/src/features/alerts/` (`InteractionCard.tsx`, `InteractionDetail.tsx`, `pieces.tsx`), `apps/web/src/features/home/Notifications.tsx`. Test added: `tests/db/test_clash_store.py` (typed question and `raisedAt`); **it was written but not run**, because the session had no database connection.
+
+**Open.** The wording of the note and the next step needs the same pharmacist or clinician review as the rest of F5. "Dismiss for now" is per device; a server-side state (and un-acknowledge, section 8) would make it follow the person. Events for the new actions are not in flow.md section 4 and are not emitted.

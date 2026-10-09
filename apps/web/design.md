@@ -62,7 +62,7 @@ All in `src/ui`. Import from there, never restyle in a screen.
 | `Button`, `TextLink`, `Chip` | `primitives.tsx` | Variants primary, secondary, ghost, danger. All press with `scale(0.97)` |
 | `StatusPill`, `Alert` | `primitives.tsx` | Tone plus icon plus words, never colour alone |
 | `EstimateBadge`, `ConfidenceChip`, `UnverifiedTag`, `SourceTag`, `Dots` | `primitives.tsx` | The honesty vocabulary: estimated, check this, unverified, source, confidence |
-| `Field`, `Stepper`, `Toggle` | `primitives.tsx` | Form pieces |
+| `Field`, `Stepper`, `Toggle` | `primitives.tsx` | Form pieces. `Field` takes `type` (text, date, time, tel), a unit `suffix` shown inside the field, and an `error` that replaces the hint and outlines the field |
 | `Segmented`, `TabStrip`, `NumberPad`, `ChoiceCards`, `Rating` | `controls.tsx` | The segment and tab indicators slide |
 | `Sheet` | `Sheet.tsx` | Bottom sheet: drawer curve, velocity-based dismiss, Escape, focus return |
 | `Screen`, `Header`, `Footer`, `Reveal` | `layout.tsx` | `Reveal` animates a section the first time it is seen and never again |
