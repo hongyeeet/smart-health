@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import logging
 import math
 import uuid
@@ -718,6 +719,19 @@ def notifications() -> list[dict]:
         out.append({"id": str(r["id"]), "kind": r["kind"], "title": title, "body": body,
                     "when": _when_label(r["scheduled_for"]), "to": r["payload"].get("to"), "unread": r["opened_at"] is None})
     return out
+
+
+def dismiss_notification(nid: str) -> None:
+    """"Not for me": the reminder leaves the list and the learning loop reads action='dismissed' (an offset or idea the person does not want is excluded)."""
+    with tx() as c:
+        row = c.execute("update notifications set acted_at = coalesce(acted_at, now()), action = coalesce(action, 'dismissed') where id = %s and user_id = %s "
+                        "returning payload->>'key' k", (uuid.UUID(nid), current_user())).fetchone()
+    # a dismissed preventive check is remembered as an excluded arm, so that check is not offered again (app/agents/preventive.py)
+    m = re.match(r"^preventive-(.+)-\d{4}-W\d{2}$", (row or {}).get("k") or "")
+    if m:
+        from app.db import nutritionstore
+
+        nutritionstore.policy_reject(current_user(), "template", f"preventive:{m.group(1)}")
 
 
 def open_notification(nid: str) -> None:

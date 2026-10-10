@@ -104,5 +104,6 @@ export const usePlanAppointment = () => useWrite((a: { label: string; when: stri
 export const useShare = () => useWrite(() => api.createShareLink())
 export const useRevoke = () => useWrite(() => api.revokeShareLink())
 export const useOpenNotice = () => useWrite((id: string) => api.openNotice(id))
+export const useDismissNotice = () => useWrite((id: string) => api.dismissNotice(id))
 export const useSync = () => useWrite(() => api.syncSources())
 export const useChat = () => useMutation({ mutationFn: (t: string) => api.sendChat(t) })

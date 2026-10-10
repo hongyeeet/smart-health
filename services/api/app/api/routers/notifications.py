@@ -1,4 +1,4 @@
-"""GET /notifications, POST /notifications/{id}/open: log reminders that keep the person on track."""
+"""GET /notifications, POST /notifications/{id}/open and /dismiss: log reminders that keep the person on track."""
 from __future__ import annotations
 
 from fastapi import APIRouter
@@ -18,3 +18,9 @@ async def list_notifications() -> list[dict]:
 @router.post("/{notification_id}/open", status_code=204)
 async def open_notification(notification_id: str) -> None:
     await run_in_threadpool(logstore.open_notification, notification_id)
+
+
+@router.post("/{notification_id}/dismiss", status_code=204)
+async def dismiss_notification(notification_id: str) -> None:
+    """"Not for me". Removes the reminder and tells the learning loop, so it stops offering that time or idea."""
+    await run_in_threadpool(logstore.dismiss_notification, notification_id)

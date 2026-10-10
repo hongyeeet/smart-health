@@ -120,6 +120,7 @@ export const httpApi: Api = {
   revokeShareLink: todo('revokeShareLink'),
   listNotices: () => request('/notifications'),
   openNotice: (id: string) => request<void>(`/notifications/${id}/open`, { method: 'POST' }).then(() => undefined),
+  dismissNotice: (id: string) => request<void>(`/notifications/${id}/dismiss`, { method: 'POST' }).then(() => undefined),
   listSources: todo('listSources'),
   syncSources: todo('syncSources'),
   sendChat: todo('sendChat'),

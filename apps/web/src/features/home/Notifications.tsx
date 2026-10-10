@@ -8,7 +8,7 @@
  */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClash, useNotices, useOpenNotice } from '@/data/hooks'
+import { useClash, useDismissNotice, useNotices, useOpenNotice } from '@/data/hooks'
 import { useGo } from '@/app/navigation'
 import { cn } from '@/lib/cn'
 import { Header, Screen } from '@/ui/layout'
@@ -24,6 +24,7 @@ export function Notifications() {
   const { data, isError } = useNotices()
   const clash = useClash()
   const open = useOpenNotice()
+  const dismiss = useDismissNotice()
   const go = useGo()
   const dismissedIds = useDismissed((s) => s.ids)
   const restore = useDismissed((s) => s.restore)
@@ -114,6 +115,9 @@ export function Notifications() {
                 {n.unread && <span className="mt-2 h-2.5 w-2.5 flex-none rounded-full bg-brass" aria-label={t('alerts.new', 'New')} />}
                 {n.to && <CaretRight size={18} className="mt-2 flex-none text-ink3" aria-hidden />}
               </button>
+              <div className="pb-2 pl-14">
+                <TextLink onClick={() => dismiss.mutate(n.id)}>{t('alerts.notForMe', 'Not for me')}</TextLink>
+              </div>
             </li>
           ))}
         </ul>

@@ -191,6 +191,8 @@ export interface Api {
 
   listNotices(): Promise<Notice[]>
   openNotice(id: string): Promise<void>
+  /** "Not for me": removes the reminder and tells the learning loop */
+  dismissNotice(id: string): Promise<void>
   listSources(): Promise<ConnectedSource[]>
   syncSources(): Promise<void>
 
