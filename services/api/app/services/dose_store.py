@@ -104,7 +104,7 @@ def ensure_rows(conn: psycopg.Connection, user_id: str, now: datetime) -> int:
     made = 0
     sched = conn.execute(
         "select s.id, s.medication_id, s.dose_time, s.created_at from medication_schedule s join medications m on m.id = s.medication_id "
-        "where s.user_id = %s and s.deleted_at is null and m.deleted_at is null and s.dose_time is not null "
+        "where s.user_id = %s and s.deleted_at is null and m.deleted_at is null and s.dose_time is not null and m.as_needed is not true "
         "and (m.end_date is null or m.end_date >= %s)", (user_id, today)).fetchall()
     for sid, mid, t, created in sched:
         for day in (today, today + timedelta(days=1)):
@@ -122,11 +122,11 @@ def today(conn: psycopg.Connection, user_id: str, now: datetime) -> dict[str, An
     """What the Home page shows: doses due now, doses not confirmed, the next dose, and whether today's are done."""
     ensure_rows(conn, user_id, now)
     has = conn.execute("select 1 from medication_schedule s join medications m on m.id = s.medication_id where s.user_id = %s and s.deleted_at is null "
-                       "and m.deleted_at is null and s.dose_time is not null limit 1", (user_id,)).fetchone()
+                       "and m.deleted_at is null and s.dose_time is not null and m.as_needed is not true limit 1", (user_id,)).fetchone()
     rows = conn.execute(
         "select l.id, l.status::text, l.scheduled_at, l.taken_at, s.quantity, s.meal_relation::text, m.name, m.strength, m.kind::text, m.description "
         "from medication_log l join medication_schedule s on s.id = l.schedule_id join medications m on m.id = l.medication_id "
-        "where l.user_id = %s and m.deleted_at is null and l.scheduled_at between %s and %s order by l.scheduled_at",
+        "where l.user_id = %s and m.deleted_at is null and m.as_needed is not true and l.scheduled_at between %s and %s order by l.scheduled_at",
         (user_id, now - LOOKBACK - timedelta(hours=1), now + timedelta(days=2))).fetchall()
     due: list[dict[str, Any]] = []
     unconfirmed: list[dict[str, Any]] = []

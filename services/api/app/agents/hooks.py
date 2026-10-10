@@ -17,12 +17,18 @@ REFLECTORS = {"dose_timing": dose_timing, "barrier_actions": barrier_actions, "p
 Row = tuple[str, str, str, str, str, datetime]
 
 
+def _is_dose(row: Row) -> bool:
+    return row[0].startswith("dose-")
+
+
 def dose_nudges(user_id: Any, now: datetime, have_keys: set[str]) -> list[Row]:
-    try:
-        return dose_timing.nudges(user_id, now, have_keys, 99)
-    except Exception:
-        logger.exception("dose-time reminders failed; the other reminders are unaffected")
-        return []
+    out: list[Row] = []
+    for name, mod in (("dose_timing", dose_timing), ("barrier_actions", barrier_actions)):
+        try:
+            out += [r for r in mod.nudges(user_id, now, have_keys, 99) if _is_dose(r)]   # an anchored dose reminder is a dose reminder
+        except Exception:
+            logger.exception("%s dose reminders failed; the other reminders are unaffected", name)
+    return out
 
 
 def extra_nudges(user_id: Any, now: datetime, have_keys: set[str], max_new: int) -> list[Row]:
@@ -31,7 +37,7 @@ def extra_nudges(user_id: Any, now: datetime, have_keys: set[str], max_new: int)
         if len(out) >= max_new:
             break
         try:
-            out += mod.nudges(user_id, now, have_keys, max_new - len(out))
+            out += [r for r in mod.nudges(user_id, now, have_keys, max_new - len(out)) if not _is_dose(r)]
         except Exception:
             logger.exception("%s nudges failed; the other reminders are unaffected", name)
     return out[:max_new]
