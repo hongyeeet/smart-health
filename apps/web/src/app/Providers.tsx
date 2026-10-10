@@ -18,7 +18,7 @@ function ThemeSync() {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', palettes[theme].canvas)
   }, [theme])
   useEffect(() => {
-    void i18n.changeLanguage(locale === 'zh' ? 'zh' : 'en')
+    void i18n.changeLanguage(locale)
     document.documentElement.lang = locale
   }, [locale])
   return null
