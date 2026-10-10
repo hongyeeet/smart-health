@@ -183,3 +183,17 @@ def test_simulate_refuses_in_range_values():
 
 def test_urgent_keys_are_exempt_from_the_cap_and_quiet_hours():
     assert logstore.is_exempt("urgent-abc") and logstore.is_exempt("urgent-abc-contact")
+
+
+def test_a_demo_alert_is_refused_for_the_loaded_patient(monkeypatch):
+    import asyncio
+    import pytest
+    from fastapi import HTTPException
+    from app.api import guards
+    from app.api.routers import urgent as router
+    from app.schemas import urgent as S
+
+    monkeypatch.setattr(router.logstore, "current_user", lambda: guards.MR_TAN)
+    with pytest.raises(HTTPException) as e:
+        asyncio.run(router.simulate(S.SimulateIn(value=3.4)))
+    assert e.value.status_code == 409

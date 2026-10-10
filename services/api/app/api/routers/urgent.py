@@ -12,6 +12,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
+from app.api.guards import MR_TAN
 from app.db import logstore
 from app.schemas import urgent as S
 from app.services import urgent as svc
@@ -52,6 +53,9 @@ async def state():
 
 @router.post("/simulate", response_model=S.UrgentState, response_model_by_alias=True)
 async def simulate(body: S.SimulateIn):
+    # a demo alert on the loaded patient could queue a real email to his emergency contact: it is for the demo user only
+    if str(logstore.current_user()) == str(MR_TAN):
+        raise HTTPException(409, "A demo alert can only be made on the demo user, so no message can reach a real contact.")
     if svc.tier_for(body.value) == "none":
         raise HTTPException(422, f"A demo alert needs a value below {svc.LOW_BELOW} mmol/L.")
     return await _change(svc.simulate, body.value, svc.utcnow())
