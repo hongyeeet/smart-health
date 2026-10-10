@@ -1,6 +1,7 @@
 import { cn } from '@/lib/cn'
 import type { InsightsDoseCell, InsightsGridCell } from '@/data/types'
 import { shortDate } from '@/lib/format'
+import { useGo } from '@/app/navigation'
 
 /** How much, as a shade of the brand colour. It is an amount and not a verdict (more stress is not "bad green"), and the number is always written. */
 const SHADE = [18, 38, 62, 92] as const
@@ -8,6 +9,7 @@ const shade = (level: number) => `color-mix(in oklab, var(--c-brand) ${SHADE[lev
 
 export function WeekGrid({ rows }: { rows: { key: string; label: string; cells: InsightsGridCell[] }[] }) {
   const days = rows[0]?.cells ?? []
+  const go = useGo()
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-7 gap-1.5 text-center" aria-hidden>
@@ -23,15 +25,16 @@ export function WeekGrid({ rows }: { rows: { key: string; label: string; cells: 
           <p className="text-sub font-bold text-ink">{row.label}</p>
           <div className="grid grid-cols-7 gap-1.5" role="group" aria-label={row.label}>
             {row.cells.map((c) => (
-              <span
+              <button
+                type="button"
                 key={c.date}
-                role="img"
-                aria-label={`${row.label}, ${shortDate(c.date)}: ${c.level === 0 && c.value == null ? 'no data' : c.label}`}
+                onClick={() => go('D1', { params: { date: c.date } })}
+                aria-label={`${row.label}, ${shortDate(c.date)}: ${c.level === 0 && c.value == null ? 'no data' : c.label}. Open this day`}
                 style={c.level > 0 ? { background: shade(c.level) } : undefined}
-                className={cn('flex min-h-12 items-center justify-center rounded-field text-sub font-bold', c.level === 0 ? 'bg-well text-ink3' : c.level >= 3 ? 'text-on-brand' : 'text-ink')}
+                className={cn('press flex min-h-12 items-center justify-center rounded-field text-sub font-bold', c.level === 0 ? 'bg-well text-ink3' : c.level >= 3 ? 'text-on-brand' : 'text-ink')}
               >
                 {c.label}
-              </span>
+              </button>
             ))}
           </div>
         </div>

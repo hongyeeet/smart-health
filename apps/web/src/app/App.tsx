@@ -5,6 +5,7 @@ import { routedIds, screenFor } from './screens'
 import { ROUTES } from './routeIds'
 import { ReportA4 } from '@/features/brief/ReportA4'
 import { SharedReport } from '@/features/brief/SharedReport'
+import { Day } from '@/features/day/Day'
 
 /** Every routed screen in routeIds.ts gets a route. Unbuilt ones show a placeholder (see screens.tsx). */
 export function App() {
@@ -22,6 +23,8 @@ export function App() {
               const path = ROUTES[id].path
               return path === '/' ? <Route key={id} index element={<Comp />} /> : <Route key={id} path={path.slice(1)} element={<Comp />} />
             })}
+            {/* /day with no date opens the latest day that has data (Day redirects) */}
+            <Route path="day" element={<Day />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

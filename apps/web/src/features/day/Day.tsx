@@ -1,6 +1,123 @@
-import { NotBuilt } from '@/app/NotBuilt'
+import { useParams, Navigate } from 'react-router-dom'
+import { useGo } from '@/app/navigation'
+import { href } from '@/app/routeIds'
+import { Screen, Header } from '@/ui/layout'
+import { Alert, Button, Card, EmptyState, ListRow, SectionTitle, Skeleton, TextLink } from '@/ui/primitives'
+import { CalendarBlank, CaretLeft, CaretRight, ChartLineUp } from '@/ui/icons'
+import { useDay, useDayDates, type DayMarker, type DayView } from './api'
+import { DayTimeline } from './DayTimeline'
+import { dayLabel, doseWords, glucoseSummary, loggedSummary } from './dayMath'
 
-/** D1: placeholder until it is built. The registration in src/app/screens.tsx is already in place; replace this file's contents. */
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/** D1, "Your day": one day on one clock, opened from Insights, Home and Log. */
 export function Day() {
-  return <NotBuilt id="D1" />
+  const { date = '' } = useParams()
+  const go = useGo()
+  const dates = useDayDates(90)
+  const day = useDay(date)
+
+  // Opening the day with no date (the default) goes to the latest day with data, the same rule as Insights.
+  if (!date && dates.data) return <Navigate to={href('D1', { date: dates.data.latestDate })} replace />
+
+  const valid = DATE_RE.test(date)
+  const latest = dates.data?.latestDate
+  const pick = (m: DayMarker) => go('D2', { sheet: { marker: m } })
+
+  return (
+    <Screen>
+      <Header back backTo="C1" title="Your day" sub={valid ? dayLabel(date) : undefined} />
+
+      {valid && <DateNav date={date} data={day.data} onMove={(d) => go('D1', { params: { date: d } })} />}
+
+      {!valid && (
+        <EmptyState icon={CalendarBlank} action={latest && <Button variant="secondary" onClick={() => go('D1', { params: { date: latest }, replace: true })}>See your latest day</Button>}>
+          That is not a date we can open.
+        </EmptyState>
+      )}
+
+      {valid && day.isPending && <Skeleton className="h-80" />}
+      {valid && day.isError && <Alert tone="warn" title="This day did not load">Check the connection and try again. Your data is safe.</Alert>}
+
+      {day.data && !day.data.hasData && (
+        <EmptyState icon={CalendarBlank} action={<DayLinks data={day.data} onMove={(d) => go('D1', { params: { date: d } })} />}>
+          Nothing is recorded for this day. Glucose, meals, medicines and workouts show here once they are logged.
+        </EmptyState>
+      )}
+
+      {day.data?.hasData && <DayBody day={day.data} onPick={pick} onGo={go} />}
+    </Screen>
+  )
+}
+
+function DayBody({ day, onPick, onGo }: { day: DayView; onPick: (m: DayMarker) => void; onGo: ReturnType<typeof useGo> }) {
+  const glucose = glucoseSummary(
+    day.series.map((p) => p.glucoseMmol),
+    day.targetLow,
+    day.targetHigh,
+  )
+  return (
+    <>
+      <Card tone="hero" as="section">
+        <DayTimeline day={day} onPick={onPick} />
+      </Card>
+
+      <Card as="section">
+        <ul className="flex flex-col gap-2 text-body text-ink2">
+          <li>{glucose ?? 'No glucose readings for this day.'}</li>
+          <li>{day.sleepHours != null ? `Slept about ${day.sleepHours.toFixed(1)} hours.` : 'No sleep total for this day.'}</li>
+          <li>Logged: {loggedSummary(day.markers)}.</li>
+        </ul>
+        <p className="mt-3 text-sub text-ink3">The shaded band is your target range, set in your profile.</p>
+      </Card>
+
+      <section className="flex flex-col gap-2">
+        <SectionTitle>Everything logged</SectionTitle>
+        {day.markers.length === 0 && <p className="text-body text-ink2">Nothing logged for this day.</p>}
+        {day.markers.map((m) => (
+          <ListRow
+            key={m.id}
+            title={`${m.clock}  ${m.title}`}
+            sub={m.kind === 'dose' && m.status ? doseWords(m.status) : m.subtitle ?? undefined}
+            onClick={() => onPick(m)}
+            trailing={<CaretRight size={20} className="text-ink3" aria-hidden />}
+          />
+        ))}
+      </section>
+
+      <div className="flex flex-wrap gap-4">
+        <TextLink icon={ChartLineUp} onClick={() => onGo('C2')}>
+          Glucose insights
+        </TextLink>
+      </div>
+    </>
+  )
+}
+
+function DateNav({ date, data, onMove }: { date: string; data: DayView | undefined; onMove: (d: string) => void }) {
+  const prev = data?.prevDate ?? null
+  const next = data?.nextDate ?? null
+  const arrow = 'press flex h-12 w-12 flex-none items-center justify-center rounded-full text-brand hover:bg-brand-soft disabled:opacity-35 disabled:pointer-events-none'
+  return (
+    <nav aria-label="Move between days with data" className="flex items-center justify-between gap-2">
+      <button type="button" className={arrow} disabled={!prev} onClick={() => prev && onMove(prev)} aria-label={prev ? `Previous day with data, ${dayLabel(prev)}` : 'No earlier day with data'}>
+        <CaretLeft size={24} aria-hidden />
+      </button>
+      <p className="min-w-0 text-center text-body font-bold text-ink" aria-live="polite">
+        {dayLabel(date)}
+      </p>
+      <button type="button" className={arrow} disabled={!next} onClick={() => next && onMove(next)} aria-label={next ? `Next day with data, ${dayLabel(next)}` : 'No later day with data'}>
+        <CaretRight size={24} aria-hidden />
+      </button>
+    </nav>
+  )
+}
+
+function DayLinks({ data, onMove }: { data: DayView; onMove: (d: string) => void }) {
+  return (
+    <div className="flex w-full flex-col gap-2">
+      {data.prevDate && <Button variant="secondary" onClick={() => onMove(data.prevDate!)}>Go to {dayLabel(data.prevDate)}</Button>}
+      {data.nextDate && <Button variant="secondary" onClick={() => onMove(data.nextDate!)}>Go to {dayLabel(data.nextDate)}</Button>}
+    </div>
+  )
 }
