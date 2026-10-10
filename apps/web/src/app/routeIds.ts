@@ -81,9 +81,9 @@ export const ROUTES = {
 
   K9: { path: '/me/contact', title: 'Emergency contact', kind: 'screen', group: 'Me', from: 'K1, J1', links: [], note: 'Who is alerted on a very low reading, and how. Needs the patient\'s consent.' },
 
-  L1: { path: '/brief', title: 'Doctor brief', kind: 'screen', group: 'Doctor brief', from: 'K3, K1', links: [l('Share with my doctor', 'L2'), l('Open the A4 page', 'L3')] },
+  L1: { path: '/brief', title: 'Doctor brief', kind: 'screen', group: 'Doctor brief', from: 'K3, K1', links: [l('Open the A4 page', 'L3'), l('Share with my doctor', 'L2')], note: 'Pick the period, see the key findings and alerts, and open the printable report. The person sees exactly what the doctor sees.' },
   L2: { path: '#share', title: 'Share with my doctor', kind: 'sheet', group: 'Doctor brief', from: 'L1', links: [l('Create link', 'L2')] },
-  L3: { path: '/brief/a4', title: 'Doctor brief, A4 page', kind: 'external', group: 'Doctor brief', from: 'L1', links: [], note: 'Printable in grayscale. This is the page the doctor sees.' },
+  L3: { path: '/brief/a4', title: 'Doctor brief, A4 page', kind: 'external', group: 'Doctor brief', from: 'L1', links: [], note: 'The printable Diabetes monitoring report (?days=7, 14, 30 or 90). Print or save as PDF. Every number is computed by the server.' },
 
   X1: { path: '/screens', title: 'Screen index', kind: 'external', group: 'Prototype', from: 'Demo panel', links: [], note: 'Generated from the route registry.' },
 } as const satisfies Record<string, RouteDef>

@@ -108,6 +108,7 @@ export const httpApi: Api = {
   removeQuestion: todo('removeQuestion'),
   planAppointment: todo('planAppointment'),
   getBrief: todo('getBrief'),
+  getDoctorReport: (days) => request(`/brief/report?days=${days}`),
   createShareLink: todo('createShareLink'),
   revokeShareLink: todo('revokeShareLink'),
   listNotices: () => request('/notifications'),

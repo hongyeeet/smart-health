@@ -11,6 +11,7 @@ import logging
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routers.brief import router as brief_router
 from app.api.routers.calendar import router as calendar_router
 from app.api.routers.doses import router as doses_router
 from app.api.routers.interactions import router as interactions_router
@@ -87,6 +88,7 @@ app.include_router(workouts_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(nutrition_router, prefix="/api/v1")
 app.include_router(memory_router, prefix="/api/v1")
+app.include_router(brief_router, prefix="/api/v1")
 
 
 @app.on_event("startup")

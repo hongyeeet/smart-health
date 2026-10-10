@@ -1,5 +1,7 @@
 import type {
   BriefData,
+  DoctorReport,
+  ReportDays,
   CarePlan,
   ChatReply,
   ConnectedSource,
@@ -167,6 +169,8 @@ export interface Api {
   planAppointment(label: string, when: string): Promise<void>
 
   getBrief(): Promise<BriefData>
+  /** The printable doctor report for the last `days` days of data. All numbers come from the server. */
+  getDoctorReport(days: ReportDays): Promise<DoctorReport>
   createShareLink(): Promise<{ url: string; expiresIn: string }>
   revokeShareLink(): Promise<void>
 
