@@ -38,6 +38,12 @@
 .rp-two { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .rp-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
 .rp-cells { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.rp-worth { margin: 0; padding-left: 18px; }
+.rp-worth li + li { margin-top: 6px; }
+.rp-scroll { overflow-x: auto; }
+.rp-night { font-size: 11px; }
+.rp-night th, .rp-night td { padding-left: 6px; }
+.rp-night td:first-child, .rp-night th:first-child { padding-left: 0; white-space: normal; }
 .rp-cells b { font-size: 16px; }
 .rp-break { break-before: page; border-top: 2px solid #101828; padding-top: 10px; margin-top: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .rp-foot { margin-top: auto; border-top: 1px solid #d0d5dd; padding-top: 8px; font-size: 12px; color: #475467; line-height: 1.5; }

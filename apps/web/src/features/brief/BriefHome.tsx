@@ -62,6 +62,22 @@ export function BriefHome() {
           </Card>
 
           <Card as="section" className="flex flex-col gap-3">
+            <h2 className="font-serif text-h2 font-medium tracking-tight">{t('brief.worth', 'Worth discussing')}</h2>
+            {data.worthDiscussing.length === 0 ? (
+              <p className="text-body text-ink2">{t('brief.worthEmpty', 'Nothing stands out yet. This list fills in as you log.')}</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-line">
+                {data.worthDiscussing.map((w, i) => (
+                  <li key={i} className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0">
+                    <p className="break-words text-body">{w.text}</p>
+                    <p className="break-words text-sub text-ink2">{w.evidence}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card as="section" className="flex flex-col gap-3">
             <h2 className="font-serif text-h2 font-medium tracking-tight">{t('brief.questions', 'Questions you want to ask')}</h2>
             {context.data && context.data.questions.length > 0 ? (
               <ul className="flex list-disc flex-col gap-1.5 pl-5 text-body">

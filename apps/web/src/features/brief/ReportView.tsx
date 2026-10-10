@@ -71,6 +71,64 @@ function DailyProfile({ g }: { g: DoctorReport['glucose'] }) {
   )
 }
 
+const KIND_LABEL: Record<DoctorReport['worthDiscussing'][number]['kind'], string> = {
+  clash: 'Medicines',
+  adherence: 'Missed doses',
+  pattern: 'Pattern',
+  fact: 'Your note',
+}
+/** The last nights shown in the overnight table; a longer period would not fit the page width. */
+const OVERNIGHT_MAX = 14
+
+/** Fasting glucose, heart rate and SpO2 while asleep, one column per morning. Gaps are dashes, never zero. */
+function Overnight({ nights, periodDays }: { nights: DoctorReport['overnight']; periodDays: number }) {
+  const shown = nights.slice(-OVERNIGHT_MAX)
+  const hasWatch = nights.some((n) => n.heartRate !== null || n.spo2 !== null)
+  const rows: { label: string; pick: (n: DoctorReport['overnight'][number]) => string }[] = [
+    { label: 'Fasting glucose (mmol/L)', pick: (n) => (n.fasting === null ? '—' : n.fasting.toFixed(1)) },
+    { label: 'Heart rate asleep (bpm)', pick: (n) => dash(n.heartRate) },
+    { label: 'SpO2 asleep (%)', pick: (n) => dash(n.spo2) },
+  ]
+  return (
+    <section>
+      <h2>Overnight, beside glucose</h2>
+      {!hasWatch && <p className="rp-muted">No watch readings while asleep in this period. The rows below show glucose only.</p>}
+      <div className="rp-scroll">
+        <table className="rp-night">
+          <thead>
+            <tr>
+              <th>Morning of</th>
+              {shown.map((n) => (
+                <th key={n.day} className="rp-num">
+                  {n.day}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label}>
+                <td className="rp-strong">{row.label}</td>
+                {shown.map((n) => (
+                  <td key={n.day} className="rp-num">
+                    {row.pick(n)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {nights.length > shown.length && (
+        <p className="rp-muted">
+          Showing the last {shown.length} of {periodDays} nights.
+        </p>
+      )}
+      <p className="rp-muted">Fasting glucose is the average from 05:00 to 07:00. Heart rate and SpO2 are averages while asleep. SpO2 from a wrist watch is less accurate than a fingertip meter. In this demo the watch values are simulated.</p>
+    </section>
+  )
+}
+
 /** The report sheet itself, as a doctor reads it. ReportA4 (print page) and SharedReport (share link) both use it. */
 export function ReportView({ r }: { r: DoctorReport }) {
   const g = r.glucose
@@ -139,6 +197,20 @@ export function ReportView({ r }: { r: DoctorReport }) {
         )}
       </section>
 
+      {r.worthDiscussing.length > 0 && (
+        <section className="rp-box">
+          <h2>Worth discussing</h2>
+          <ul className="rp-worth">
+            {r.worthDiscussing.map((w, i) => (
+              <li key={i}>
+                <span className="rp-tag rp-tag-review">{KIND_LABEL[w.kind].toUpperCase()}</span> <span className="rp-strong">{w.text}</span>
+                <div className="rp-muted">{w.evidence}</div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section>
         <h2>Glucose (CGM) · mmol/L</h2>
         {!g.hasData ? (
@@ -193,6 +265,8 @@ export function ReportView({ r }: { r: DoctorReport }) {
           </>
         )}
       </section>
+
+      <Overnight nights={r.overnight} periodDays={r.period.days} />
 
       <div className="rp-break">
         <span className="rp-strong" style={{ fontSize: 15 }}>

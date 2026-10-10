@@ -731,6 +731,10 @@ export interface DoctorReport {
   medicines: { name: string; regimen: string; scheduled: number | null; taken: number | null; missed: number | null; notLogged: number | null; adherencePct: number | null; interaction: boolean }[]
   medicinesNote: string | null
   activity: { label: string; value: string; sub: string }[]
+  /** one column per morning: fasting glucose 05:00 to 07:00 beside the night's heart rate and SpO2 while asleep; null means no reading */
+  overnight: { day: string; fasting: number | null; heartRate: number | null; spo2: number | null }[]
+  /** up to five plain observations from the person's own data, most important first; empty when nothing stands out yet */
+  worthDiscussing: { text: string; evidence: string; kind: 'clash' | 'adherence' | 'pattern' | 'fact' }[]
   questions: string[]
 }
 

@@ -151,3 +151,52 @@ def test_the_report_fits_the_api_shape_and_the_header_is_filled_from_the_profile
     assert out.patient.name == "Mr Tan" and out.patient.sex_age == "Male, 58" and out.patient.diagnosis == "Diabetes (self-reported)"
     assert out.period.label == "1 Oct – 2 Oct 2026 (2 days)" and out.generated_on == "3 Oct 2026"
     assert out.questions == ["Should I take these at different times of day?"] and out.sources == "CGM"
+
+
+BANNED = ("stop ", "safe", "caused", "because", "normal", "validated", "should")
+
+
+def test_worth_discussing_is_ordered_capped_and_only_uses_the_rules_in_the_brief() -> None:
+    alerts = [{"med_a_id": "a", "med_b_id": "b", "med_a": "Atorvastatin 20 mg", "med_b": "Clarithromycin 500 mg", "summary": "", "origin": "database"}]
+    doses = [{"medication_id": "m1", "scheduled_at": at(1, 8), "taken_at": None, "status": "missed", "miss_reason": "forgot"},
+             {"medication_id": "m1", "scheduled_at": at(1, 20), "taken_at": None, "status": "missed", "miss_reason": "forgot"},
+             {"medication_id": "m1", "scheduled_at": at(2, 8), "taken_at": None, "status": "missed", "miss_reason": "forgot"},
+             {"medication_id": "m1", "scheduled_at": at(2, 20), "taken_at": None, "status": "missed", "miss_reason": "felt_fine"}]
+    patterns = [{"pattern_key": "short_sleep__fasting_glucose", "n_pairs": 9, "median_delta": 0.5},
+                {"pattern_key": "evening_walk__next_morning_fasting", "n_pairs": 5, "median_delta": -0.4},     # exactly 5: counted
+                {"pattern_key": "sweet_drink__rise", "n_pairs": 4, "median_delta": 1.0}]                    # 4: left out
+    facts = [{"statement": "Skips the evening dose on busy days", "category": "barrier", "confidence": 0.9},
+             {"statement": "Prefers tea without sugar", "category": "preference", "confidence": 0.99},       # not a shown category
+             {"statement": "Walks after dinner", "category": "routine", "confidence": 0.7},
+             {"statement": "Eats rice at lunch", "category": "food_response", "confidence": 0.8}]
+    r = dr.build(inputs(alerts=alerts, doses=doses, patterns=patterns, facts=facts))
+    items = r["worth_discussing"]
+    assert [x["kind"] for x in items] == ["clash", "adherence", "pattern", "pattern", "fact"]          # 6 candidates, capped at 5
+    assert items[0]["text"] == "A possible interaction is flagged between Atorvastatin 20 mg and Clarithromycin 500 mg."
+    assert items[0]["evidence"] == "Open alert · source: drug-label rules, not clinically reviewed"
+    assert items[1] == {"text": "Missed doses marked 'Forgot': 3 in 2 days.", "evidence": "3 of 4 doses marked missed in the period", "kind": "adherence"}
+    assert items[2]["text"] == "After nights of under 6 hours of sleep, your fasting glucose was 0.5 mmol/L higher."
+    assert items[3]["text"] == "On mornings after an evening walk, your fasting glucose was 0.4 mmol/L lower."
+    assert items[4] == {"text": "Skips the evening dose on busy days", "evidence": "Confirmed by you · Barrier", "kind": "fact"}
+    text = " ".join(f"{x['text']} {x['evidence']}" for x in items).lower()
+    assert not any(w in text for w in BANNED)
+
+
+def test_no_data_gives_an_empty_worth_list_and_empty_overnight_columns_not_zeros() -> None:
+    r = dr.build(inputs())
+    assert r["worth_discussing"] == []
+    assert [(n["day"], n["fasting"], n["heart_rate"], n["spo2"]) for n in r["overnight"]] == [("1 Oct", None, None, None), ("2 Oct", None, None, None)]
+
+
+def test_overnight_pairs_each_morning_fasting_glucose_with_the_night_that_ends_on_it() -> None:
+    watch = [{"recorded_at": at(1, 0), "heart_rate_bpm": 90, "spo2_pct": 97.0, "steps": 0, "sleep_minutes": 5},       # night of 30 Sep
+             {"recorded_at": at(1, 23), "heart_rate_bpm": 58, "spo2_pct": 96.0, "steps": 0, "sleep_minutes": 5},      # night ending 2 Oct
+             {"recorded_at": at(2, 2), "heart_rate_bpm": 62, "spo2_pct": 94.0, "steps": 0, "sleep_minutes": 5},       # night ending 2 Oct
+             {"recorded_at": at(2, 14), "heart_rate_bpm": 75, "spo2_pct": 98.0, "steps": 0, "sleep_minutes": 0}]      # awake: not a night
+    r = dr.build(inputs(cgm=cgm([6.2], start=at(2, 5, 30)) + cgm([6.6], start=at(2, 6)), watch=watch))
+    assert r["overnight"] == [{"day": "1 Oct", "fasting": None, "heart_rate": 90, "spo2": 97},
+                              {"day": "2 Oct", "fasting": 6.4, "heart_rate": 60, "spo2": 95}]
+    out = DoctorReport.model_validate(r)
+    dumped = out.model_dump(by_alias=True)
+    assert dumped["overnight"][1] == {"day": "2 Oct", "fasting": 6.4, "heartRate": 60, "spo2": 95}
+    assert dumped["worthDiscussing"] == []

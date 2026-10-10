@@ -103,6 +103,19 @@ class ActivityCell(Camel):
     sub: str
 
 
+class WorthItem(Camel):
+    text: str                      # one plain observation, never advice
+    evidence: str                  # what it is based on
+    kind: Literal["clash", "adherence", "pattern", "fact"]
+
+
+class OvernightNight(Camel):
+    day: str                       # the morning the night ends on
+    fasting: float | None = None   # glucose 05:00 to 07:00 that morning
+    heart_rate: int | None = None  # average while asleep
+    spo2: int | None = None        # average while asleep
+
+
 class DoctorReport(Camel):
     generated_on: str
     period: Period
@@ -118,4 +131,6 @@ class DoctorReport(Camel):
     medicines: list[MedicineRow]
     medicines_note: str | None = None
     activity: list[ActivityCell]
+    overnight: list[OvernightNight] = []
+    worth_discussing: list[WorthItem] = []
     questions: list[str]

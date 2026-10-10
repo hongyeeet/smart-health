@@ -14,7 +14,7 @@ What the report does not do, on purpose:
 from __future__ import annotations
 
 import statistics
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from itertools import pairwise
@@ -22,6 +22,8 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import psycopg
+
+from app.services.insights import MISS_LABELS, patterns_for
 
 # clinical validation pending
 # Reference values printed in the "Reference" columns. They are the international consensus figures for CGM reports as used in
@@ -45,6 +47,9 @@ MIN_PROFILE_READINGS = 5                  # readings needed in an hour of the da
 MAX_EPISODES = 20
 SLEEP_BUCKET_MIN = 4                      # a 5-minute watch bucket counts as asleep from this many minutes
 HIGH_STRESS = 4                           # self-rated stress (1 to 5) counted as "high"
+WORTH_MAX = 5                             # "Worth discussing" shows at most this many observations
+FACT_CATEGORIES = ("barrier", "routine", "food_response")   # memory fact categories shown there (the enum has no "activity")
+FACT_LABELS = {"barrier": "Barrier", "routine": "Routine", "food_response": "Food response"}
 
 SYMPTOM_LABELS = {
     "numbness": "Numbness", "tingling": "Tingling", "blurred_vision": "Blurred vision", "fatigue": "Fatigue", "thirst": "Thirst",
@@ -68,6 +73,8 @@ class Inputs:
     stress: list[tuple[datetime, int]] = field(default_factory=list)                # wellbeing_logs.stress_self
     alerts: list[dict[str, Any]] = field(default_factory=list)                      # med_a_id, med_b_id, med_a, med_b, summary, origin
     questions: list[str] = field(default_factory=list)                              # open doctor questions
+    patterns: list[dict[str, Any]] = field(default_factory=list)                    # pattern_key, n_pairs, median_delta (status open)
+    facts: list[dict[str, Any]] = field(default_factory=list)                       # statement, category, confidence (confirmed)
 
 
 # ----------------------------------------------------------------------------------------------- small helpers
@@ -258,28 +265,80 @@ def _medicines(i: Inputs) -> tuple[list[dict[str, Any]], str | None]:
     return rows, note
 
 
-def _activity(i: Inputs) -> list[dict[str, Any]]:
-    steps: dict[date, int] = defaultdict(int)
-    sleep_hr: dict[date, list[float]] = defaultdict(list)
-    sleep_o2: dict[date, list[float]] = defaultdict(list)
+def _mornings(i: Inputs) -> list[date]:
+    return [i.start + timedelta(days=k) for k in range((i.end - i.start).days + 1)]
+
+
+def _nights(i: Inputs) -> dict[str, dict[date, list[float]]]:
+    """Watch readings while asleep, grouped by the morning the night ends on (a night belongs to the day it started).
+    Only the period's mornings are kept, so the widened watch read at the start of the period does not leak in."""
+    keep = set(_mornings(i))
+    hr: dict[date, list[float]] = defaultdict(list)
+    o2: dict[date, list[float]] = defaultdict(list)
     for w in i.watch:
         local = w["recorded_at"].astimezone(i.tz)
-        if w.get("steps") is not None:
+        morning = (local - timedelta(hours=12)).date() + timedelta(days=1)
+        if (w.get("sleep_minutes") or 0) < SLEEP_BUCKET_MIN or morning not in keep:
+            continue
+        if w.get("heart_rate_bpm") is not None:
+            hr[morning].append(float(w["heart_rate_bpm"]))
+        if w.get("spo2_pct") is not None:
+            o2[morning].append(float(w["spo2_pct"]))
+    return {"hr": hr, "o2": o2}
+
+
+def _overnight(i: Inputs) -> list[dict[str, Any]]:
+    """One column per morning: fasting glucose (05:00 to 07:00, the insights definition) beside the night's heart rate and SpO2.
+    A morning with no reading is None, never zero."""
+    fasting: dict[date, list[float]] = defaultdict(list)
+    for t, v in i.cgm:
+        local = t.astimezone(i.tz)
+        if local.hour in (5, 6):
+            fasting[local.date()].append(v)
+    nights = _nights(i)
+    out = []
+    for m in _mornings(i):
+        f = fasting.get(m)
+        hr = nights["hr"].get(m)
+        o2 = nights["o2"].get(m)
+        out.append({"day": _day(m), "fasting": None if not f else _r1(statistics.fmean(f)),
+                    "heart_rate": None if not hr else round(statistics.fmean(hr)), "spo2": None if not o2 else round(statistics.fmean(o2))})
+    return out
+
+
+def _worth_discussing(i: Inputs, days: int) -> list[dict[str, Any]]:
+    """Up to WORTH_MAX observations from the person's own data, most important first. Worded as what was recorded, never as advice."""
+    clash = [{"text": f"A possible interaction is flagged between {a['med_a']} and {a['med_b']}.",
+              "evidence": f"Open alert · source: {_origin(a.get('origin'))}, not clinically reviewed", "kind": "clash"} for a in i.alerts]
+    missed = [d for d in i.doses if d.get("status") == "missed"]
+    reasons = Counter(str(d["miss_reason"]) for d in missed if d.get("miss_reason"))
+    adherence = []
+    if reasons:
+        reason, n = reasons.most_common(1)[0]
+        adherence = [{"text": f"Missed doses marked '{MISS_LABELS.get(reason, reason)}': {n} in {days} days.",
+                      "evidence": f"{n} of {len(missed)} doses marked missed in the period", "kind": "adherence"}]
+    patterns = [{"text": p["text"], "evidence": f"{p['n']} matched events · an association, not checked yet", "kind": "pattern"}
+                for p in patterns_for(i.patterns)]
+    facts = [{"text": str(f["statement"]), "evidence": f"Confirmed by you · {FACT_LABELS.get(str(f['category']), str(f['category']))}", "kind": "fact"}
+             for f in sorted(i.facts, key=lambda x: -float(x.get("confidence") or 0)) if str(f.get("category")) in FACT_CATEGORIES]
+    return [*clash, *adherence, *patterns, *facts][:WORTH_MAX]
+
+
+def _activity(i: Inputs) -> list[dict[str, Any]]:
+    steps: dict[date, int] = defaultdict(int)
+    for w in i.watch:
+        local = w["recorded_at"].astimezone(i.tz)
+        if w.get("steps") is not None and i.start <= local.date() <= i.end:
             steps[local.date()] += int(w["steps"])
-        if (w.get("sleep_minutes") or 0) >= SLEEP_BUCKET_MIN:
-            night = (local - timedelta(hours=12)).date()          # a night belongs to the day it started
-            if w.get("heart_rate_bpm") is not None:
-                sleep_hr[night].append(float(w["heart_rate_bpm"]))
-            if w.get("spo2_pct") is not None:
-                sleep_o2[night].append(float(w["spo2_pct"]))
+    nights = _nights(i)
     cells: list[dict[str, Any]] = []
     if steps:
         vals = list(steps.values())
         cells.append({"label": "Steps", "value": f"{round(statistics.fmean(vals)):,}/day", "sub": f"range {min(vals):,}–{max(vals):,}"})
     else:
         cells.append({"label": "Steps", "value": "No data", "sub": ""})
-    for label, nights, unit in (("Heart rate while asleep", sleep_hr, " bpm"), ("SpO2 while asleep", sleep_o2, "%")):
-        nightly = [statistics.fmean(v) for v in nights.values() if v]
+    for label, key, unit in (("Heart rate while asleep", "hr", " bpm"), ("SpO2 while asleep", "o2", "%")):
+        nightly = [statistics.fmean(v) for v in nights[key].values() if v]
         if nightly:
             cells.append({"label": label, "value": f"{round(statistics.fmean(nightly))}{unit}", "sub": f"nightly {_span(round(min(nightly)), round(max(nightly)))}{unit}"})
         else:
@@ -396,6 +455,8 @@ def build(i: Inputs) -> dict[str, Any]:
         "medicines": meds,
         "medicines_note": med_note,
         "activity": _activity(i),
+        "overnight": _overnight(i),
+        "worth_discussing": _worth_discussing(i, days),
         "questions": i.questions[:12],
     }
 
@@ -423,10 +484,12 @@ def load(conn: psycopg.Connection[Any], user_id: str, days: int, now: datetime) 
     medicines = [dict(r) for r in conn.execute(
         "select id, name, strength, frequency, as_needed from medications where user_id = %s and deleted_at is null order by start_date nulls last, created_at, name", (user_id,))]
     doses = [dict(r) for r in conn.execute(
-        "select medication_id, scheduled_at, taken_at, status::text as status from medication_log "
+        "select medication_id, scheduled_at, taken_at, status::text as status, miss_reason::text as miss_reason from medication_log "
         "where user_id = %s and coalesce(scheduled_at, taken_at) >= %s and coalesce(scheduled_at, taken_at) < %s", span)]
+    # one day wider at the start, so the first morning's night (which began the evening before) is complete
     watch = [dict(r) for r in conn.execute(
-        "select recorded_at, heart_rate_bpm, spo2_pct, steps, sleep_minutes from watch_readings where user_id = %s and recorded_at >= %s and recorded_at < %s", span)]
+        "select recorded_at, heart_rate_bpm, spo2_pct, steps, sleep_minutes from watch_readings where user_id = %s and recorded_at >= %s and recorded_at < %s",
+        (user_id, lo - timedelta(days=1), hi))]
     stress = [(r["recorded_at"], int(r["stress_self"])) for r in conn.execute(
         "select recorded_at, stress_self from wellbeing_logs where user_id = %s and deleted_at is null and stress_self is not null and recorded_at >= %s and recorded_at < %s", span)]
     alerts = [{"med_a_id": r["med_a_id"], "med_b_id": r["med_b_id"], "med_a": _label(r["a_name"], r["a_strength"]), "med_b": _label(r["b_name"], r["b_strength"]),
@@ -435,5 +498,10 @@ def load(conn: psycopg.Connection[Any], user_id: str, days: int, now: datetime) 
         "from interaction_alerts a join medications ma on ma.id = a.med_a_id and ma.deleted_at is null join medications mb on mb.id = a.med_b_id and mb.deleted_at is null "
         "where a.user_id = %s and a.status = 'open' and a.med_b_id is not null order by a.created_at, a.id", (user_id,))]
     questions = [str(r["text"]) for r in conn.execute("select text from doctor_questions where user_id = %s and status = 'open' order by created_at", (user_id,))]
+    patterns = [dict(r) for r in conn.execute(
+        "select pattern_key, n_pairs, median_delta from pattern_candidates where user_id = %s and status = 'open' order by n_pairs desc", (user_id,))]
+    facts = [dict(r) for r in conn.execute(
+        "select statement, category::text as category, confidence from memory_facts where user_id = %s and status = 'active' "
+        "and category::text = any(%s) order by confidence desc nulls last, updated_at desc", (user_id, list(FACT_CATEGORIES)))]
     return Inputs(now=now, tz=tz, start=start, end=end, profile=profile, cgm=cgm, symptoms=symptoms, medicines=medicines, doses=doses, watch=watch,
-                  stress=stress, alerts=alerts, questions=questions)
+                  stress=stress, alerts=alerts, questions=questions, patterns=patterns, facts=facts)
