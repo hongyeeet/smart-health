@@ -8,6 +8,14 @@ import type {
   DayTimeline,
   HomeData,
   Insights,
+  InsightsDays,
+  InsightsOverview,
+  InsightsGlucose,
+  InsightsFood,
+  InsightsActivity,
+  InsightsSleep,
+  InsightsMedication,
+  InsightsSprint,
   ExerciseKind,
   AiUsage,
   AuditRun,
@@ -112,6 +120,13 @@ export interface Api {
   snoozePrompt(): Promise<void>
 
   getInsights(period: Period): Promise<Insights>
+  getInsightsOverview(days: InsightsDays): Promise<InsightsOverview>
+  getInsightsGlucose(days: InsightsDays): Promise<InsightsGlucose>
+  getInsightsFood(days: InsightsDays): Promise<InsightsFood>
+  getInsightsActivity(days: InsightsDays): Promise<InsightsActivity>
+  getInsightsSleep(days: InsightsDays): Promise<InsightsSleep>
+  getInsightsMedication(days: InsightsDays): Promise<InsightsMedication>
+  getInsightsSprint(): Promise<InsightsSprint>
   getDay(date: string): Promise<DayTimeline>
   getDayList(): Promise<{ date: string; short: string; weekday: string }[]>
 

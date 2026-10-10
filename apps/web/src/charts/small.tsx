@@ -94,7 +94,7 @@ export function IntensityBars({ weeks }: { weeks: { label: string; light: number
   const uid = useId().replace(/:/g, '')
   return (
     <div ref={ref} className="w-full">
-      <svg width={width} height={h} role="img" aria-label={`Minutes by intensity: ${weeks.map((w) => `${w.label} ${w.moderate} moderate`).join(', ')}`} className="overflow-visible">
+      <svg width={width} height={h} role="img" aria-label={`Minutes by intensity: ${weeks.map((w) => `${w.label} ${w.moderate + w.vigorous} moderate or vigorous`).join(', ')}`} className="overflow-visible">
         <defs>
           <pattern id={`l-${uid}`} width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.2" fill="var(--c-brand)" fillOpacity=".7" /></pattern>
           <pattern id={`v-${uid}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#fff" strokeWidth="2" strokeOpacity=".7" /></pattern>
@@ -119,7 +119,7 @@ export function IntensityBars({ weeks }: { weeks: { label: string; light: number
                 </>
               )}
               <text x={cx} y={yVig - 6} textAnchor="middle" fill="var(--c-ink)" className="num" style={{ fontSize: 'calc(15px * var(--ts))', fontWeight: 600 }}>
-                {w.moderate}
+                {w.moderate + w.vigorous}
               </text>
               <text x={cx} y={h - 6} textAnchor="middle" fill="var(--c-ink3)" style={{ fontSize: 'calc(12px * var(--ts))' }}>
                 {w.label}
@@ -130,9 +130,10 @@ export function IntensityBars({ weeks }: { weeks: { label: string; light: number
       </svg>
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sub text-ink2">
         <Legend swatch="bg-brand-soft border border-brand/50" label="Light" />
-        <Legend swatch="bg-brand" label="Moderate (number shown)" />
+        <Legend swatch="bg-brand" label="Moderate" />
         <Legend swatch="bg-brass" label="Vigorous" />
       </ul>
+      <p className="mt-1 text-micro text-ink3">The number above a bar is moderate plus vigorous minutes, which is what counts towards the weekly goal.</p>
     </div>
   )
 }
@@ -270,14 +271,14 @@ export function AdherenceTimeline({ days, rows, fasting }: { days: string[]; row
 }
 
 /* ------------------------------ mood and stress pairs ------------------------------ */
-export function MoodStress({ data }: { data: { date: string; mood: number; stress: number }[] }) {
+export function MoodStress({ data, label = 'Mood and stress check-ins, 1 to 5, last 14 days' }: { data: { date: string; mood: number; stress: number }[]; label?: string }) {
   const [ref, width] = useMeasure<HTMLDivElement>()
   const h = 132
   const sy = linear(1, 5, h - 18, 10)
   const colW = width / data.length
   return (
     <div ref={ref} className="w-full">
-      <svg width={width} height={h} role="img" aria-label="Mood and stress check-ins, 1 to 5, last 14 days" className="overflow-visible">
+      <svg width={width} height={h} role="img" aria-label={label} className="overflow-visible">
         {[1, 3, 5].map((v) => (
           <line key={v} x1={0} x2={width} y1={sy(v)} y2={sy(v)} stroke="var(--c-line)" strokeDasharray="3 5" />
         ))}

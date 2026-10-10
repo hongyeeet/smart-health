@@ -44,7 +44,8 @@ export function Footer({ children }: { children: ReactNode }) {
 
 /** Stacks on a phone and tablet, two columns on a laptop. Put the main content first. */
 export function Split({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6', className)}>{children}</div>
+  // min-w-0: a grid item will not shrink below its content by default, so one wide chart could push the whole page past a phone's edge
+  return <div className={cn('grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6 [&>*]:min-w-0', className)}>{children}</div>
 }
 
 const seen = new Set<string>()

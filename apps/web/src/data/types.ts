@@ -733,3 +733,135 @@ export interface DoctorReport {
   activity: { label: string; value: string; sub: string }[]
   questions: string[]
 }
+
+/* ------------------------------- Insights tab (C1 to C6, C8) ------------------------------- */
+/** Mirrors services/api/app/schemas/insights.py. Every value is computed by the server from stored data. */
+export type InsightsDays = 7 | 30 | 90
+export type InsightsTab = 'C2' | 'C3' | 'C4' | 'C5' | 'C6'
+export interface InsightsPeriod {
+  start: string
+  end: string
+  days: number
+  label: string
+  hasData: boolean
+}
+export interface InsightsPattern {
+  key: string
+  text: string
+  n: number
+  to: InsightsTab
+}
+export interface InsightsChange {
+  id: string
+  text: string
+  to: InsightsTab
+}
+export interface InsightsGridCell {
+  date: string
+  weekday: string
+  value: number | null
+  label: string
+  /** 0 no data, 1 to 4 how much (a shade, not a verdict) */
+  level: number
+}
+export interface InsightsOverview {
+  period: InsightsPeriod
+  grid: { key: 'glucose' | 'meals' | 'activity' | 'sleep' | 'stress' | 'doses'; label: string; cells: InsightsGridCell[] }[]
+  changes: InsightsChange[]
+  patterns: InsightsPattern[]
+}
+export interface InsightsBand {
+  key: GlucoseBandKey
+  label: string
+  pct: number
+}
+export interface InsightsGlucoseMetrics {
+  mean: number | null
+  gmi: number | null
+  cv: number | null
+  coverage: number | null
+  readings: number
+}
+export interface InsightsGlucose {
+  period: InsightsPeriod
+  hasData: boolean
+  bands: InsightsBand[]
+  days: { date: string; mean: number | null; tir: number | null; fasting: number | null }[]
+  baseline: { p25: number; p50: number; p75: number; n: number } | null
+  drift: { weeks: number; text: string } | null
+  metrics: InsightsGlucoseMetrics
+  events: { spikes: number; lows: number; sustainedHigh: number }
+  low: number
+  high: number
+  patterns: InsightsPattern[]
+}
+export interface InsightsMeal {
+  id: string
+  when: string
+  name: string
+  mealType: string
+  kcal: number | null
+  carbsG: number | null
+  sugarG: number | null
+  sodiumMg: number | null
+  flags: ('high_salt' | 'high_sugar')[]
+  rise: number | null
+}
+export interface InsightsFood {
+  period: InsightsPeriod
+  totals: { meals: number; avgKcalPerDay: number | null; avgSodiumPerDay: number | null; highSaltMeals: number; highSugarMeals: number }
+  meals: InsightsMeal[]
+  responses: { name: string; n: number; medianRise: number; low: number; high: number }[]
+  stillLearning: string[]
+  patterns: InsightsPattern[]
+}
+export interface InsightsActivity {
+  period: InsightsPeriod
+  moderateMin: number
+  moderateGoal: number
+  strength: number
+  strengthGoal: number
+  weeks: { label: string; light: number; moderate: number; vigorous: number }[]
+  mix: { type: string; label: string; count: number; minutes: number }[]
+  workouts: { id: string; date: string; label: string; type: string; intensity: number; minutes: number; glucoseChange2h: number | null }[]
+  steps: { date: string; steps: number | null }[]
+  stepsAvg: number | null
+  stepsBaseline: number | null
+  patterns: InsightsPattern[]
+}
+export interface InsightsSleep {
+  period: InsightsPeriod
+  days: { date: string; hours: number | null; mood: number | null; stress: number | null; energy: number | null }[]
+  sleepAvg: number | null
+  sleepBaseline: number | null
+  shortNights: number
+  stressAvg: number | null
+  moodAvg: number | null
+  highStressDays: number
+  loggedDays: number
+  patterns: InsightsPattern[]
+}
+export type InsightsDoseCell = 'taken' | 'late' | 'unconfirmed' | 'missed' | 'none'
+export interface InsightsMedication {
+  period: InsightsPeriod
+  dates: string[]
+  meds: { id: string; name: string; regimen: string; taken: number; scheduled: number; adherencePct: number | null; cells: InsightsDoseCell[] }[]
+  fasting: (number | null)[]
+  taken: number
+  scheduled: number
+  unconfirmed: number
+  adherencePct: number | null
+  reasons: { key: string; label: string; count: number }[]
+  patterns: InsightsPattern[]
+  shownDays: number
+}
+export interface InsightsSprint {
+  period: InsightsPeriod
+  status: 'complete' | 'partial' | 'none'
+  daysWorn: number
+  of: number
+  metrics: InsightsGlucoseMetrics
+  bands: InsightsBand[]
+  gentlest: { name: string; medianRise: number; n: number }[]
+  spikiest: { name: string; medianRise: number; n: number }[]
+}

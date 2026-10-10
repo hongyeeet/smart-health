@@ -22,6 +22,13 @@ import { LunchIdeas } from '@/features/log/LunchIdeas'
 import { Notifications } from '@/features/home/Notifications'
 import { InteractionDetail } from '@/features/alerts/InteractionDetail'
 import { BriefHome } from '@/features/brief/BriefHome'
+import { Overview } from '@/features/insights/Overview'
+import { GlucoseTab } from '@/features/insights/Glucose'
+import { FoodTab } from '@/features/insights/Food'
+import { ActivityTab } from '@/features/insights/Activity'
+import { SleepTab } from '@/features/insights/Sleep'
+import { MedicationTab } from '@/features/insights/Medication'
+import { Sprint } from '@/features/insights/Sprint'
 import { Welcome } from '@/features/onboarding/Welcome'
 import { Eligibility } from '@/features/onboarding/Eligibility'
 import { AboutYou } from '@/features/onboarding/AboutYou'
@@ -43,6 +50,13 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   A5: () => <Navigate to="/welcome/about?step=7" replace />,
   A6: Summary,
   B1: Home,
+  C1: Overview,
+  C2: GlucoseTab,
+  C3: FoodTab,
+  C4: ActivityTab,
+  C5: SleepTab,
+  C6: MedicationTab,
+  C8: Sprint,
   B2: Notifications,
   K1: Me,
   L1: BriefHome,

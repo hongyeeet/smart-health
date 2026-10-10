@@ -1,12 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './repositories'
 import type { LogInput, NewMedication } from './repositories/types'
-import type { ClashStatus, MissAnswer, Period, ReportDays, UserList } from './types'
+import type { ClashStatus, InsightsDays, MissAnswer, Period, ReportDays, UserList } from './types'
 import { request } from './repositories/http'
 import { useUi } from '@/state/store'
 
 export const useHome = () => useQuery({ queryKey: ['home'], queryFn: () => api.getHome() })
 export const useInsights = (period: Period) => useQuery({ queryKey: ['insights', period], queryFn: () => api.getInsights(period) })
+export const useInsightsOverview = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'overview', days], queryFn: () => api.getInsightsOverview(days) })
+export const useInsightsGlucose = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'glucose', days], queryFn: () => api.getInsightsGlucose(days) })
+export const useInsightsFood = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'food', days], queryFn: () => api.getInsightsFood(days) })
+export const useInsightsActivity = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'activity', days], queryFn: () => api.getInsightsActivity(days) })
+export const useInsightsSleep = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'sleep', days], queryFn: () => api.getInsightsSleep(days) })
+export const useInsightsMedication = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'medication', days], queryFn: () => api.getInsightsMedication(days) })
+export const useInsightsSprint = () => useQuery({ queryKey: ['insights', 'sprint'], queryFn: () => api.getInsightsSprint() })
 export const useDay = (date: string) => useQuery({ queryKey: ['day', date], queryFn: () => api.getDay(date) })
 export const useDayList = () => useQuery({ queryKey: ['dayList'], queryFn: () => api.getDayList() })
 export const useLogProgress = () => useQuery({ queryKey: ['logProgress'], queryFn: () => api.getLogProgress(), refetchInterval: 60_000 })

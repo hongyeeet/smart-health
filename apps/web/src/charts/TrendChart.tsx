@@ -21,6 +21,7 @@ export function TrendChart({
   drawKey,
   yMin,
   yMax,
+  endLabel = 'Today',
 }: {
   points: SeriesPoint[]
   baseline?: [number, number]
@@ -31,6 +32,8 @@ export function TrendChart({
   drawKey?: string
   yMin?: number
   yMax?: number
+  /** what the right-hand end of the axis is called; "Today" unless the data stops earlier */
+  endLabel?: string
 }) {
   const [ref, width] = useMeasure<HTMLDivElement>()
   const id = useId()
@@ -107,7 +110,7 @@ export function TrendChart({
           {points[0] ? shortDate(points[0].date) : ''}
         </text>
         <text x={width - padR} y={height - 6} textAnchor="end" fill="var(--c-ink3)" style={{ fontSize: 'calc(13px * var(--ts))' }}>
-          Today
+          {endLabel}
         </text>
         <motion.path
           d={path}
