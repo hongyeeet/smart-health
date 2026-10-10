@@ -15,7 +15,8 @@ import { cn } from '@/lib/cn'
 import { Header, Reveal, Screen, Split } from '@/ui/layout'
 import { Alert, Button, Card, SectionTitle, Skeleton } from '@/ui/primitives'
 import { UserSwitch } from './UserSwitch'
-import { Barbell, Bell, CaretRight, CheckCircle, Circle, ForkKnife, Lightning, PersonSimpleWalk, Smiley, Thermometer, type IconType } from '@/ui/icons'
+import { useSimulate, useUrgentState } from '@/features/urgent/api'
+import { Barbell, Bell, CaretRight, CheckCircle, Circle, ForkKnife, Lightning, PersonSimpleWalk, Smiley, Thermometer, WarningCircle, type IconType } from '@/ui/icons'
 
 const ICON: Record<ProgressItem['key'], IconType> = { meals: ForkKnife, checkin: Smiley, workout: PersonSimpleWalk, symptom: Thermometer }
 
@@ -103,6 +104,7 @@ export function Home() {
           </div>
         }
       />
+      <UrgentBanner />
       <MealBanner />
       <DoseCard />
       {isError && (
@@ -168,7 +170,34 @@ export function Home() {
           </Split>
         </Reveal>
       )}
+      <DemoLowLink />
     </Screen>
+  )
+}
+
+/** Shown first on Home while a low glucose alert is open. */
+function UrgentBanner() {
+  const { data } = useUrgentState()
+  const go = useGo()
+  if (!data || (data.status !== 'active' && data.status !== 'escalated')) return null
+  return (
+    <Alert tone="danger" icon={WarningCircle} title={data.tier === 'very_low' ? 'Very low glucose alert' : 'Low glucose alert'} onClick={() => go('J1')}>
+      Your glucose looks low: {data.value?.toFixed(1)} mmol/L{data.demo ? ' (demo)' : ''}. Tap to see what to do.
+    </Alert>
+  )
+}
+
+/** Demo only: the sample data stops on 2 Oct, so a real low reading cannot happen on stage. */
+function DemoLowLink() {
+  const sim = useSimulate()
+  const go = useGo()
+  return (
+    <p className="px-1 text-center text-micro text-ink3">
+      Demo:{' '}
+      <button type="button" disabled={sim.isPending} onClick={() => sim.mutate(3.4, { onSuccess: () => go('J1') })} className="press min-h-11 px-2 font-bold underline">
+        Simulate a low reading
+      </button>
+    </p>
   )
 }
 
