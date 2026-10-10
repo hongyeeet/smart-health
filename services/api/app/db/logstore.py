@@ -654,6 +654,10 @@ def notifications() -> list[dict]:
             if r["k"] and not is_exempt(r["k"])
         )
     # the daily cap and quiet hours apply to new items only; what is already there stays until it is acted on or expires
+    # dose reminders inside their window come from the learning loop and are exempt from the cap and quiet hours (their keys start "dose-")
+    from app.agents import hooks
+
+    want += hooks.dose_nudges(current_user(), now, have_keys)
     quiet, left, keep = in_quiet_hours(now), slots_left(created_today), []
     for w in want:
         if w[0] in have_keys or is_exempt(w[0]):
@@ -665,6 +669,7 @@ def notifications() -> list[dict]:
     if not quiet and left > 0:
         try:
             want += nutritionstore.nutrition_nudges(current_user(), have_keys, lunch_today, now, max_new=left)
+            want += hooks.extra_nudges(current_user(), now, have_keys, max(0, left - len([w for w in want if not is_exempt(w[0])])))
         except Exception:
             logger.exception("nutrition nudges failed; the other reminders are unaffected")
     with tx() as c:

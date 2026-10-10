@@ -71,6 +71,7 @@ export const ROUTES = {
 
   K1: { path: '/me', title: 'Me', kind: 'tab', group: 'Me', from: 'Bottom bar', links: [l('What Smart Health has learned', 'K2'), l('Doctor brief', 'L1'), l('Care plan', 'K3'), l('Connected sources', 'K4'), l('Language and display', 'K5'), l('Privacy and consent', 'K6'), l('Emergency contact', 'K9'), l('Data and account', 'K8'), l('Replay onboarding', 'A1')] },
   K10: { path: '/me/progress', title: 'How it is going', kind: 'screen', group: 'Me', from: 'K1', links: [l('What Smart Health has learned', 'K2')], note: 'Week by week, what the person logged and did. Not proof that the app caused a change.' },
+  K11: { path: '/me/review', title: 'Review suggestions', kind: 'screen', group: 'Me', from: 'K1', links: [l('What Smart Health has learned', 'K2')], note: 'For the care team and reviewers: rate each suggestion the app made (reasonable, not reasonable, unsafe). Ratings feed the review score in the spec.' },
   K2: { path: '/me/learned', title: 'What Smart Health has learned', kind: 'screen', group: 'Me', from: 'K1', links: [l('A fact\'s evidence', 'C4')] },
   K3: { path: '/me/care', title: 'Care plan', kind: 'screen', group: 'Me', from: 'K1, B1, H5, I1, H6', links: [l('Plan an appointment', 'K7'), l('Generate my doctor brief', 'L1')] },
   K4: { path: '/me/sources', title: 'Connected sources', kind: 'screen', group: 'Me', from: 'K1, B1', links: [l('Sensor sprint', 'C8')] },

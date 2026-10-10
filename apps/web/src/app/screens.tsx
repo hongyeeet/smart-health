@@ -34,6 +34,9 @@ import { Eligibility } from '@/features/onboarding/Eligibility'
 import { AboutYou } from '@/features/onboarding/AboutYou'
 import { Summary } from '@/features/onboarding/Summary'
 import { Day } from '@/features/day/Day'
+import { Chat } from '@/features/chat/Chat'
+import { Review } from '@/features/review/Review'
+import { ChatSetup } from '@/features/onboarding/ChatSetup'
 import { Care } from '@/features/me/Care'
 import { Sources } from '@/features/me/Sources'
 import { Language } from '@/features/me/Language'
@@ -55,6 +58,7 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   A1: Welcome,
   A2: Eligibility,
   A3: AboutYou,
+  A4: ChatSetup,
   /** Folded into A3: devices and routine is step 7 there. */
   A5: () => <Navigate to="/welcome/about?step=7" replace />,
   A6: Summary,
@@ -67,6 +71,8 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   C6: MedicationTab,
   C8: Sprint,
   D1: Day,
+  I1: Chat,
+  K11: Review,
   J1: Urgent,
   K3: Care,
   K4: Sources,

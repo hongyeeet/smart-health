@@ -16,7 +16,7 @@ from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from app.agents import adherence
+from app.agents import adherence, hooks, preventive as preventive_agent
 from app.agents.trace import Run, audit
 from app.db import logstore, nutritionstore
 from app.llm import jev
@@ -91,6 +91,7 @@ def reflection(state: State) -> dict:
     for key, result in out["adherence"]["proposals"] + out["nutrition"]["proposals"]:
         if result in ("proposed", "superseded_and_proposed"):
             audit(uid, "agent", "memory.fact_proposed", "memory_facts", None, {"key": key, "result": result}, _run().id)
+    out["learning"] = hooks.reflect(uid, write)
     return out
 
 
@@ -110,7 +111,7 @@ def activity(state: State) -> dict:
 
 
 def preventive(state: State) -> dict:
-    return {"skipped": "the preventive agent is not built yet"}
+    return preventive_agent.run(_uid(state), write=state["event"].get("write", False))
 
 
 def unrouted(state: State) -> dict:
@@ -123,7 +124,7 @@ def build_graph():
     nodes = {"reminders": reminders, "reflection": reflection, "nutrition": nutrition, "adherence": adherence_node, "activity": activity,
              "preventive": preventive, "unrouted": unrouted}
     tools = {"reminders": "logstore.notifications", "reflection": "adherence.run + nutritionstore.reflect_habits", "nutrition": "nutritionstore.food_habits",
-             "adherence": "adherence.run", "activity": "nutritionstore.salt_nudge", "preventive": "none", "unrouted": "none"}
+             "adherence": "adherence.run", "activity": "nutritionstore.salt_nudge", "preventive": "preventive.run", "unrouted": "none"}
     for name, fn in nodes.items():
         g.add_node(name, _wrap(name, tools[name], fn))
         g.add_edge(name, END)

@@ -9,7 +9,7 @@ import { useGo } from '@/app/navigation'
 import type { RouteId } from '@/app/routeIds'
 import { Header, Screen } from '@/ui/layout'
 import { Card } from '@/ui/primitives'
-import { Bell, Brain, CalendarCheck, CaretRight, ChartLineUp, ClipboardText, Globe, Lock, Phone, Stethoscope, UserCircle, Watch, type IconType } from '@/ui/icons'
+import { Bell, Brain, CalendarCheck, CaretRight, ChartLineUp, ClipboardText, Globe, ListChecks, Lock, Phone, Stethoscope, UserCircle, Watch, type IconType } from '@/ui/icons'
 import { UserSwitch } from '@/features/home/UserSwitch'
 
 export function Me() {
@@ -26,6 +26,7 @@ export function Me() {
     { id: 'K5', title: 'Language and display', sub: 'Language, text size and light or dark.', icon: Globe },
     { id: 'K6', title: 'Privacy and consent', sub: 'What you have agreed to, and your reminder emails.', icon: Lock },
     { id: 'K8', title: 'Data and account', sub: 'Download your data, or ask us to delete it.', icon: UserCircle },
+    { id: 'K11', title: 'Review suggestions', sub: 'For reviewers: rate the suggestions Smart Health made.', icon: ListChecks },
     { id: 'A1', title: 'Set up again', sub: 'Go through the welcome questions and change your answers.', icon: ClipboardText },
   ]
   return (

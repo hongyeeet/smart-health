@@ -20,6 +20,8 @@ from app.api.routers.share import router as share_router
 from app.api.routers.onboarding import router as onboarding_router
 from app.api.routers.urgent import router as urgent_router
 from app.api.routers.notify import router as notify_router
+from app.api.routers.chat import router as chat_router
+from app.api.routers.review import router as review_router
 from app.api.routers.calendar import router as calendar_router
 from app.api.routers.doses import router as doses_router
 from app.api.routers.interactions import router as interactions_router
@@ -105,6 +107,8 @@ app.include_router(share_router, prefix="/api/v1")
 app.include_router(onboarding_router, prefix="/api/v1")
 app.include_router(urgent_router, prefix="/api/v1")
 app.include_router(notify_router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")
+app.include_router(review_router, prefix="/api/v1")
 
 
 @app.on_event("startup")
