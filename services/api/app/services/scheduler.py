@@ -1,6 +1,7 @@
 """The scheduler: what runs without anyone opening the app (docs/specs/learning-loop.md 12.4).
 
   every minute   the reminder tick: which logs are due now, lunch ideas, the high-salt prompt (quiet: only changes are traced)
+  every minute   the email dispatcher: the reminders that are also emails, sent through the Workato recipe
   nightly 02:00  the reflection: barriers, anchors and food habits, proposed as facts (never activated)
 Both go through the orchestrator, so they are routed, guarded and logged like any other event. They run for the people named in
 `scheduler_users` (default: Mr Tan, who has the six months of history the agent learns from, and the demo user for live logging).
@@ -35,6 +36,19 @@ def tick() -> None:
             logger.exception("tick failed for %s", key)
 
 
+def emails() -> None:
+    """Send the reminder emails that are due (docs/specs/email-notifications.md). Cheap when the recipe is not set up: it returns at once."""
+    from app.integrations.workato_email import WorkatoEmail
+    from app.services import notify_email
+
+    try:
+        sender = WorkatoEmail.from_settings()
+        if sender.configured:
+            notify_email.dispatch(sender)
+    except Exception:
+        logger.exception("email dispatch failed")
+
+
 def nightly_done_today(key: str) -> bool:
     logstore.set_user(key)
     with tx() as c:
@@ -62,6 +76,7 @@ def start() -> None:
         return
     _scheduler = AsyncIOScheduler(timezone="Asia/Singapore")
     _scheduler.add_job(tick, IntervalTrigger(seconds=60), id="tick", max_instances=1, coalesce=True)
+    _scheduler.add_job(emails, IntervalTrigger(seconds=60), id="emails", max_instances=1, coalesce=True)
     _scheduler.add_job(nightly, CronTrigger(hour=2, minute=0, timezone="Asia/Singapore"), id="nightly", max_instances=1, coalesce=True)
     _scheduler.add_job(lambda: nightly(catch_up=True), id="nightly_catch_up", next_run_time=datetime.now(TZ), max_instances=1)  # after a restart
     _scheduler.start()

@@ -7,13 +7,15 @@ Decided by Hong Yi on 2026-10-10. A reminder is an in-app notification first. Wh
 has not turned emails off), a dispatcher also sends it as an email through a Workato recipe. To do that without ever sending the same
 thing twice, each notification now records what happened to its email:
 
-  delivery_status   null = not an email candidate yet, 'pending' = to be sent, 'sent', 'failed', 'skipped' (nothing to send to, or history)
+  delivery_status   'pending' (the default for every new row: the dispatcher decides), 'sent', 'failed', 'skipped' (not an email kind, nothing to
+                    send to, expired, over the daily limit, or history)
   delivered_at      when the recipe accepted it
   delivery_attempts how many times it was tried (a failed one is retried a few times, then left as failed)
   delivery_error    a short reason, never an address or a token
   delivery_to       'person' (their own address) or 'contact' (their emergency contact's address, for an urgent alert)
 
-Every notification that already exists is history and is marked 'skipped', so turning this on can never send old reminders.
+Every notification that already exists is history and is marked 'skipped', so turning this on can never send old reminders. New rows
+default to 'pending' so no code that writes notifications has to change.
 `user_profile` gets the person's email, an on/off switch, and the emergency contact's email (the name and phone were already there).
 Written so it can run twice.
 """
@@ -31,6 +33,8 @@ UP = [
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS delivery_error text",
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS delivery_to text NOT NULL DEFAULT 'person'",
     "UPDATE notifications SET delivery_status = 'skipped' WHERE delivery_status IS NULL",
+    # every notification written from now on starts as pending; the dispatcher decides whether it is an email at all
+    "ALTER TABLE notifications ALTER COLUMN delivery_status SET DEFAULT 'pending'",
     "DO $$ BEGIN ALTER TABLE notifications ADD CONSTRAINT notifications_delivery_status_chk "
     "CHECK (delivery_status IN ('pending','sent','failed','skipped')); EXCEPTION WHEN duplicate_object THEN NULL; END $$",
     "DO $$ BEGIN ALTER TABLE notifications ADD CONSTRAINT notifications_delivery_to_chk "

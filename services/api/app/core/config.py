@@ -79,6 +79,15 @@ class Settings(BaseSettings):
     quiet_end_hour: int = 7
 
     # Timers (docs/specs/learning-loop.md 12.4): the reminder tick and the nightly reflection, for these people only
+    # reminder emails through a Workato recipe (docs/specs/email-notifications.md). Blank webhook = not set up: nothing is sent and nothing is lost.
+    workato_email_webhook_url: str = ""
+    workato_email_webhook_token: str = ""
+    workato_email_token_header: str = "API-TOKEN"
+    app_base_url: str = "http://localhost:5174"     # where the button in an email opens the app
+    api_public_url: str = ""                          # where the unsubscribe link points (this API, as the internet sees it); blank = no link
+    notify_secret: str = ""                           # signs unsubscribe links; blank = no link
+    email_daily_cap: int = 3                          # reminder emails per person per day (an urgent alert to the contact is exempt)
+    email_max_attempts: int = 3
     scheduler_enabled: bool = True
     scheduler_users: str = "mr-tan,demo"
 
