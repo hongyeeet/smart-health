@@ -1,5 +1,7 @@
 # Flow — Smart Health user journeys, screens and event logging
 
+> **Superseded for the built app (2026-10-10):** what is actually built, screen by screen, is in [app-flow-and-features.md](app-flow-and-features.md). This file is kept for the original plan: journeys, the event catalogue and the demo script.
+
 How users move through the product, which tools and services each step touches, and **what gets logged at every step**. Screen and route names match [architecture.md](architecture.md) §3; event names are written to `event_log` ([schema.md](schema.md) §9). Feature IDs (F#) refer to [prd.md](prd.md).
 
 **Tables.** The "System" column names the tables of data model v2 ([data-model-v2.md](data-model-v2.md)). Every typed entry or upload first lands in a Bronze row (`bronze_*`, the input as received) and then in its Silver table; Gold is built by code and never written by the app. Which feature reads and writes which table is in [data-flow.md](data-flow.md) section 6.
