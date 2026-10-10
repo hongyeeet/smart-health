@@ -77,3 +77,15 @@ class SaveOut(OnboardingOut):
 class CompleteOut(Camel):
     consent_recorded: bool                          # False when an active consent already existed
     completed_at: datetime
+
+
+class ChatIn(Camel):
+    text: str = Field(default="", max_length=1000)  # the person's own words for one question
+    step: str = Field(max_length=40)                # the question being answered, e.g. "birthYear" (see CHAT_STEPS in the service)
+
+
+class ChatOut(Camel):
+    fields: dict[str, str] = {}                     # answers found in the text, keyed as the form and the answers store name them
+    understood: bool                                # the answer to the step asked was read and passed the checks
+    next_step: str | None = None                    # the step to ask next; the same step again when it was not understood
+    reply: str                                      # a short friendly line, or the clarifying question
