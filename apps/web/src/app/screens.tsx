@@ -33,6 +33,15 @@ import { Welcome } from '@/features/onboarding/Welcome'
 import { Eligibility } from '@/features/onboarding/Eligibility'
 import { AboutYou } from '@/features/onboarding/AboutYou'
 import { Summary } from '@/features/onboarding/Summary'
+import { Day } from '@/features/day/Day'
+import { Care } from '@/features/me/Care'
+import { Sources } from '@/features/me/Sources'
+import { Language } from '@/features/me/Language'
+import { Privacy } from '@/features/me/Privacy'
+import { Appointment } from '@/features/me/Appointment'
+import { DataAccount } from '@/features/me/DataAccount'
+import { Contact } from '@/features/me/Contact'
+import { Urgent } from '@/features/urgent/Urgent'
 import { ROUTES, routeIds, type RouteId } from './routeIds'
 
 /**
@@ -57,6 +66,15 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   C5: SleepTab,
   C6: MedicationTab,
   C8: Sprint,
+  D1: Day,
+  J1: Urgent,
+  K3: Care,
+  K4: Sources,
+  K5: Language,
+  K6: Privacy,
+  K7: Appointment,
+  K8: DataAccount,
+  K9: Contact,
   B2: Notifications,
   K1: Me,
   L1: BriefHome,

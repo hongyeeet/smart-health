@@ -13,6 +13,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers.brief import router as brief_router
 from app.api.routers.insights import router as insights_router
+from app.api.routers.day import router as day_router
+from app.api.routers.care import router as care_router
+from app.api.routers.me_settings import router as me_settings_router
+from app.api.routers.share import router as share_router
+from app.api.routers.onboarding import router as onboarding_router
+from app.api.routers.urgent import router as urgent_router
+from app.api.routers.notify import router as notify_router
 from app.api.routers.calendar import router as calendar_router
 from app.api.routers.doses import router as doses_router
 from app.api.routers.interactions import router as interactions_router
@@ -91,6 +98,13 @@ app.include_router(nutrition_router, prefix="/api/v1")
 app.include_router(memory_router, prefix="/api/v1")
 app.include_router(brief_router, prefix="/api/v1")
 app.include_router(insights_router, prefix="/api/v1")
+app.include_router(day_router, prefix="/api/v1")
+app.include_router(care_router, prefix="/api/v1")
+app.include_router(me_settings_router, prefix="/api/v1")
+app.include_router(share_router, prefix="/api/v1")
+app.include_router(onboarding_router, prefix="/api/v1")
+app.include_router(urgent_router, prefix="/api/v1")
+app.include_router(notify_router, prefix="/api/v1")
 
 
 @app.on_event("startup")
