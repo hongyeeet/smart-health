@@ -27,7 +27,7 @@ export function TopBar() {
         </StatusPill>
       </div>
       <StatusPill tone="neutral" icon={Lock}>
-        {t('onboarding.onDevice', 'Kept on this device')}
+        {t('onboarding.onDevice', 'Saved when you finish')}
       </StatusPill>
     </div>
   )
