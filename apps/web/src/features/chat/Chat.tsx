@@ -6,6 +6,7 @@
  * come from as chips that open the screen. The line under the box says what this is and is not.
  */
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGo } from '@/app/navigation'
 import { ROUTES, type RouteId } from '@/app/routeIds'
 import { Header } from '@/ui/layout'
@@ -15,9 +16,9 @@ import { useSend, useStarters, useThread, type Item } from './api'
 import { Actions, Bubble, TypingIndicator } from './parts'
 
 const MAX = 500
-const NOTE = 'Smart Health answers from your own data. It cannot give medical advice. For emergencies call 995.'
 
 export function Chat() {
+  const { t } = useTranslation()
   const { thread } = useThread()
   const { send, pending } = useSend()
   const starters = useStarters()
@@ -53,19 +54,21 @@ export function Chat() {
     <div className="absolute inset-0 flex flex-col">
       <div className="hide-scroll scroll-area flex-1 overflow-y-auto overflow-x-hidden px-5 pt-1 md:px-8">
         <div className="mx-auto flex w-full flex-col gap-4 pb-4 md:max-w-[720px]">
-          <Header title="Ask Smart Health" back backTo="B1" />
-          <div role="log" aria-live="polite" aria-label="Conversation" className="flex flex-col gap-3">
+          <Header title={t('chat.title', 'Ask Smart Health')} back backTo="B1" />
+          <div role="log" aria-live="polite" aria-label={t('chat.conversation', 'Conversation')} className="flex flex-col gap-3">
             {items.length === 0 && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-3 rounded-card border border-line bg-card p-4">
                   <ChatCircleDots size={28} className="mt-0.5 flex-none text-brand" aria-hidden />
-                  <p className="text-body text-ink">Ask about your own glucose, meals, activity, sleep or medicines. I answer from what you have logged.</p>
+                  <p className="text-body text-ink">
+                    {t('chat.intro', 'Ask about your own glucose, meals, activity, sleep or medicines. I answer from what you have logged.')}
+                  </p>
                 </div>
-                <p className="text-sub font-bold text-ink3">You could ask</p>
+                <p className="text-sub font-bold text-ink3">{t('chat.couldAsk', 'You could ask')}</p>
                 {starters.isLoading ? (
                   <Skeleton className="h-12" />
                 ) : starters.isError ? (
-                  <p className="text-sub text-ink2">You can type your own question below.</p>
+                  <p className="text-sub text-ink2">{t('chat.typeBelow', 'You can type your own question below.')}</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {(starters.data ?? []).map((s) => (
@@ -95,7 +98,7 @@ export function Chat() {
         <div className="mx-auto flex w-full flex-col gap-2 md:max-w-[720px]">
           <form onSubmit={submit} className="flex items-end gap-2">
             <label htmlFor="chat-input" className="sr-only">
-              Your question
+              {t('chat.yourQuestion', 'Your question')}
             </label>
             <textarea
               id="chat-input"
@@ -105,15 +108,22 @@ export function Chat() {
               onKeyDown={onKey}
               maxLength={MAX}
               rows={1}
-              placeholder="Type your question"
+              placeholder={t('chat.placeholder', 'Type your question')}
               enterKeyHint="send"
               className="max-h-40 min-h-12 flex-1 resize-none rounded-card border-[1.5px] border-line bg-card px-3.5 py-3 text-body text-ink placeholder:text-ink3 focus:border-brand focus:outline-none"
             />
-            <Button type="submit" size="md" disabled={!text.trim() || pending} aria-label="Send" className="!w-12 flex-none !px-0" icon={ArrowRight}>
-              <span className="sr-only">Send</span>
+            <Button
+              type="submit"
+              size="md"
+              disabled={!text.trim() || pending}
+              aria-label={t('chat.send', 'Send')}
+              className="!w-12 flex-none !px-0"
+              icon={ArrowRight}
+            >
+              <span className="sr-only">{t('chat.send', 'Send')}</span>
             </Button>
           </form>
-          <p className="text-micro text-ink3">{NOTE}</p>
+          <p className="text-micro text-ink3">{t('chat.note', 'Smart Health answers from your own data. It cannot give medical advice. For emergencies call 995.')}</p>
         </div>
       </div>
     </div>
@@ -121,14 +131,15 @@ export function Chat() {
 }
 
 function Row({ item, showFollowUps, onAsk, onRetry }: { item: Item; showFollowUps: boolean; onAsk: (t: string) => void; onRetry: () => void }) {
+  const { t } = useTranslation()
   const go = useGo()
   if (item.failed)
     return (
-      <Alert tone="warn" title="That did not go through">
+      <Alert tone="warn" title={t('chat.failedTitle', 'That did not go through')}>
         <div className="flex flex-col gap-2">
-          <span>We could not reach Smart Health. Your question was not answered.</span>
+          <span>{t('chat.failedText', 'We could not reach Smart Health. Your question was not answered.')}</span>
           <Button variant="secondary" size="md" onClick={onRetry}>
-            Try again
+            {t('chat.retry', 'Try again')}
           </Button>
         </div>
       </Alert>
@@ -139,7 +150,7 @@ function Row({ item, showFollowUps, onAsk, onRetry }: { item: Item; showFollowUp
       <Bubble item={item} />
       {item.role === 'assistant' && openable.length > 0 && (
         <div className="flex flex-col gap-1">
-          <p className="text-micro text-ink3">Where this comes from</p>
+          <p className="text-micro text-ink3">{t('chat.whereFrom', 'Where this comes from')}</p>
           <div className="flex flex-wrap gap-2">
             {openable.map((s) => (
               <button
@@ -157,7 +168,7 @@ function Row({ item, showFollowUps, onAsk, onRetry }: { item: Item; showFollowUp
       )}
       <Actions item={item} />
       {showFollowUps && (item.followUps ?? []).length > 0 && (
-        <div className="flex flex-wrap gap-2" aria-label="Other things you could ask">
+        <div className="flex flex-wrap gap-2" aria-label={t('chat.otherAsk', 'Other things you could ask')}>
           {(item.followUps ?? []).map((f) => (
             <button
               key={f}

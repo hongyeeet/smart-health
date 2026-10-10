@@ -3,30 +3,24 @@
  * then the rating. Keyed by suggestion, so switching cards starts each one from its own saved rating.
  */
 import { useState, type ComponentProps } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
 import { Alert, Button, Card, Field, StatusPill } from '@/ui/primitives'
 import { Check, Warning, X, type IconType } from '@/ui/icons'
 import { COMMENT_MAX, useRateSuggestion, type QueueSource, type ReviewItem, type Verdict } from './api'
 
-export const VERDICT_WORDS: Record<Verdict, string> = { reasonable: 'Reasonable', not_reasonable: 'Not reasonable', unsafe: 'Unsafe' }
-
-const VERDICTS: { value: Verdict; icon: IconType; hint: string }[] = [
-  { value: 'reasonable', icon: Check, hint: 'A sensible swap for this dish' },
-  { value: 'not_reasonable', icon: X, hint: 'Not a sensible swap' },
-  { value: 'unsafe', icon: Warning, hint: 'Could harm someone with type 2 diabetes' },
-]
-
 /** Numbers as the person logged them or as published. A missing number is a dash, never zero. */
 export const fmt = (v: number | null, unit: string) => (v == null ? '–' : `${Math.round(v).toLocaleString('en-US')} ${unit}`)
 
 function Numbers({ n }: { n: { kcal: number | null; protein: number | null; carbs: number | null; fat: number | null; salt: number | null; sugar: number | null } }) {
+  const { t } = useTranslation()
   const rows: [string, string][] = [
-    ['Energy', fmt(n.kcal, 'kcal')],
-    ['Protein', fmt(n.protein, 'g')],
-    ['Carbs', fmt(n.carbs, 'g')],
-    ['Fat', fmt(n.fat, 'g')],
-    ['Salt', fmt(n.salt, 'mg')],
-    ['Sugar', fmt(n.sugar, 'g')],
+    [t('review.num.energy', 'Energy'), fmt(n.kcal, 'kcal')],
+    [t('review.num.protein', 'Protein'), fmt(n.protein, 'g')],
+    [t('review.num.carbs', 'Carbs'), fmt(n.carbs, 'g')],
+    [t('review.num.fat', 'Fat'), fmt(n.fat, 'g')],
+    [t('review.num.salt', 'Salt'), fmt(n.salt, 'mg')],
+    [t('review.num.sugar', 'Sugar'), fmt(n.sugar, 'g')],
   ]
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sub">
@@ -55,10 +49,22 @@ function DishPanel({ kind, name, sub, n }: { kind: string; name: string; sub: st
 
 export function SuggestionCard({ item, source }: { item: ReviewItem; source: QueueSource }) {
   const rate = useRateSuggestion(source)
+  const { t } = useTranslation()
   const saved = item.myRating
   const [verdict, setVerdict] = useState<Verdict | null>(saved?.verdict ?? null)
   const [comment, setComment] = useState(saved?.comment ?? '')
   const [problem, setProblem] = useState<string | null>(null)
+
+  const VERDICT_WORDS: Record<Verdict, string> = {
+    reasonable: t('review.verdict.reasonable', 'Reasonable'),
+    not_reasonable: t('review.verdict.notReasonable', 'Not reasonable'),
+    unsafe: t('review.verdict.unsafe', 'Unsafe'),
+  }
+  const VERDICTS: { value: Verdict; icon: IconType; hint: string }[] = [
+    { value: 'reasonable', icon: Check, hint: t('review.verdict.reasonableHint', 'A sensible swap for this dish') },
+    { value: 'not_reasonable', icon: X, hint: t('review.verdict.notReasonableHint', 'Not a sensible swap') },
+    { value: 'unsafe', icon: Warning, hint: t('review.verdict.unsafeHint', 'Could harm someone with type 2 diabetes') },
+  ]
 
   const trimmed = comment.trim()
   const unsafe = verdict === 'unsafe'
@@ -66,44 +72,52 @@ export function SuggestionCard({ item, source }: { item: ReviewItem; source: Que
   const showSaved = !!saved && !changed && rate.isSuccess
 
   function save() {
-    if (!verdict) return setProblem('Choose Reasonable, Not reasonable or Unsafe first.')
-    if (unsafe && !trimmed) return setProblem('Unsafe needs a comment. Say what could harm someone.')
+    if (!verdict) return setProblem(t('review.problemChoose', 'Choose Reasonable, Not reasonable or Unsafe first.'))
+    if (unsafe && !trimmed) return setProblem(t('review.problemUnsafe', 'Unsafe needs a comment. Say what could harm someone.'))
     setProblem(null)
     rate.mutate(
       { suggestionKey: item.suggestionKey, verdict, comment: trimmed || null },
-      { onError: (e) => setProblem(e instanceof Error ? e.message : 'The rating was not saved. Please try again.') },
+      { onError: (e) => setProblem(e instanceof Error ? e.message : t('review.saveFailed', 'The rating was not saved. Please try again.')) },
     )
   }
 
   const usual = item.usual
   const sugg = item.suggested
   return (
-    <Card as="section" className="flex flex-col gap-4 md:p-5" aria-label="Suggestion to rate">
+    <Card as="section" className="flex flex-col gap-4 md:p-5" aria-label={t('review.card.aria', 'Suggestion to rate')}>
       <div className="grid gap-3 md:grid-cols-2">
         <DishPanel
-          kind="Your usual dish"
+          kind={t('review.card.usual', 'Your usual dish')}
           name={usual.name}
-          sub={usual.timesLogged == null ? 'Typical serving (sample set, not logged by anyone)' : `Logged ${usual.timesLogged} times. These are the average numbers.`}
+          sub={
+            usual.timesLogged == null
+              ? t('review.card.usualSample', 'Typical serving (sample set, not logged by anyone)')
+              : t('review.card.usualLogged', 'Logged {{n}} times. These are the average numbers.', { n: usual.timesLogged })
+          }
           n={{ kcal: usual.kcal, protein: usual.proteinG, carbs: usual.carbsG, fat: usual.fatG, salt: usual.sodiumMg, sugar: usual.sugarG }}
         />
         <DishPanel
-          kind="Suggested instead"
+          kind={t('review.card.suggested', 'Suggested instead')}
           name={sugg.name}
-          sub={sugg.serving ? `Serving: ${sugg.serving}` : 'Serving not known'}
+          sub={sugg.serving ? t('review.card.serving', 'Serving: {{serving}}', { serving: sugg.serving }) : t('review.card.servingUnknown', 'Serving not known')}
           n={{ kcal: sugg.kcal, protein: sugg.proteinG, carbs: sugg.carbsG, fat: sugg.fatG, salt: sugg.sodiumMg, sugar: sugg.sugarG }}
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <h2 className="text-sub font-bold text-ink2">What changes</h2>
+        <h2 className="text-sub font-bold text-ink2">{t('review.card.whatChanges', 'What changes')}</h2>
         <p className="text-body text-ink">{item.change}</p>
-        <p className="text-micro text-ink3">Worked out from the numbers above. Not a health claim.</p>
+        <p className="text-micro text-ink3">{t('review.card.workedOut', 'Worked out from the numbers above. Not a health claim.')}</p>
       </div>
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-sub font-bold text-ink2">Your rating</h2>
-        {saved && !changed && <StatusPill tone={saved.verdict === 'unsafe' ? 'danger' : saved.verdict === 'reasonable' ? 'ok' : 'warn'} icon={VERDICTS.find((v) => v.value === saved.verdict)?.icon}>You rated this: {VERDICT_WORDS[saved.verdict]}</StatusPill>}
-        <div role="group" aria-label="Rate this suggestion" className="grid gap-2 sm:grid-cols-3">
+        <h2 className="text-sub font-bold text-ink2">{t('review.card.yourRating', 'Your rating')}</h2>
+        {saved && !changed && (
+          <StatusPill tone={saved.verdict === 'unsafe' ? 'danger' : saved.verdict === 'reasonable' ? 'ok' : 'warn'} icon={VERDICTS.find((v) => v.value === saved.verdict)?.icon}>
+            {t('review.card.youRated', 'You rated this: {{word}}', { word: VERDICT_WORDS[saved.verdict] })}
+          </StatusPill>
+        )}
+        <div role="group" aria-label={t('review.card.rateAria', 'Rate this suggestion')} className="grid gap-2 sm:grid-cols-3">
           {VERDICTS.map((v) => {
             const on = verdict === v.value
             const Icon = v.icon
@@ -132,20 +146,24 @@ export function SuggestionCard({ item, source }: { item: ReviewItem; source: Que
         </div>
 
         <Field
-          label={unsafe ? 'Comment (needed for Unsafe)' : 'Comment (optional)'}
+          label={unsafe ? t('review.card.commentNeeded', 'Comment (needed for Unsafe)') : t('review.card.commentOptional', 'Comment (optional)')}
           value={comment}
           onChange={(v) => setComment(v.slice(0, COMMENT_MAX))}
           multiline
-          placeholder={unsafe ? 'Say what could harm someone' : 'Anything the reviewer should know'}
-          hint={`${comment.length} of ${COMMENT_MAX} characters`}
+          placeholder={unsafe ? t('review.card.commentPhUnsafe', 'Say what could harm someone') : t('review.card.commentPh', 'Anything the reviewer should know')}
+          hint={t('review.card.count', '{{n}} of {{max}} characters', { n: comment.length, max: COMMENT_MAX })}
         />
       </div>
 
       {problem && <Alert tone="warn">{problem}</Alert>}
-      {showSaved && <Alert tone="ok" icon={Check}>Saved.</Alert>}
+      {showSaved && (
+        <Alert tone="ok" icon={Check}>
+          {t('review.card.saved', 'Saved.')}
+        </Alert>
+      )}
 
       <Button onClick={save} disabled={rate.isPending || !verdict || (!changed && !!saved)}>
-        {rate.isPending ? 'Saving...' : saved ? 'Update rating' : 'Save rating'}
+        {rate.isPending ? t('review.card.saving', 'Saving...') : saved ? t('review.card.update', 'Update rating') : t('review.card.save', 'Save rating')}
       </Button>
     </Card>
   )

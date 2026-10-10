@@ -1,21 +1,29 @@
 /** Small pieces shared by K3, K4 and K7: the status words, Singapore dates and the plain card for one visit. */
+import { useTranslation } from 'react-i18next'
 import { StatusPill, type Tone } from '@/ui/primitives'
 import { CheckCircle, Clock, Question, WarningCircle, type IconType } from '@/ui/icons'
 import type { Preventive } from './api'
 
-const PREVENTIVE: Record<Preventive['status'], { tone: Tone; word: string; icon: IconType }> = {
-  overdue: { tone: 'danger', word: 'Overdue', icon: WarningCircle },
-  due_soon: { tone: 'warn', word: 'Due soon', icon: Clock },
-  ok: { tone: 'ok', word: 'Up to date', icon: CheckCircle },
-  unknown: { tone: 'neutral', word: 'No date yet', icon: Question },
+const PREVENTIVE_STYLE: Record<Preventive['status'], { tone: Tone; icon: IconType }> = {
+  overdue: { tone: 'danger', icon: WarningCircle },
+  due_soon: { tone: 'warn', icon: Clock },
+  ok: { tone: 'ok', icon: CheckCircle },
+  unknown: { tone: 'neutral', icon: Question },
 }
 
 /** The word and icon say the status; colour only adds emphasis. */
 export function PreventiveStatusPill({ status }: { status: Preventive['status'] }) {
-  const s = PREVENTIVE[status]
+  const { t } = useTranslation()
+  const words: Record<Preventive['status'], string> = {
+    overdue: t('me.care.overdue', 'Overdue'),
+    due_soon: t('me.care.dueSoon', 'Due soon'),
+    ok: t('me.care.upToDate', 'Up to date'),
+    unknown: t('me.care.noDate', 'No date yet'),
+  }
+  const s = PREVENTIVE_STYLE[status]
   return (
     <StatusPill tone={s.tone} icon={s.icon}>
-      {s.word}
+      {words[status]}
     </StatusPill>
   )
 }

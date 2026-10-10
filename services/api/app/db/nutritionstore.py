@@ -18,6 +18,7 @@ from app.agents import food as foodagent
 from app.core.config import settings
 from app.db.logstore import TZ, current_user, tx
 from app.llm import jev
+from app.services import texts
 
 logger = logging.getLogger(__name__)
 EXPLORE = 0.15  # share of suggestions that are tried even if others look better (spec: 15% exploration)
@@ -156,22 +157,23 @@ def swap_outcome(user_id, usual: str, suggested: list[str], anchor: datetime | N
             "sodium": {"usual": avg(use, "sodium_mg"), "swapped": avg(sug, "sodium_mg")}, "rise": rise}
 
 
-def outcome_text(usual: str, o: dict[str, Any]) -> str:
-    """The outcome as a fixed template. Honest when nothing changed or it went the other way."""
-    s = f"Since then you have had {o['swapped']} {o['nSwapped']} {'time' if o['nSwapped'] == 1 else 'times'}."
+def outcome_text(usual: str, o: dict[str, Any], lang: str = "en") -> str:
+    """The outcome as a fixed template. Honest when nothing changed or it went the other way. `lang` only changes the wording."""
+    t = lambda key, **v: texts.tr(lang, key, **v)  # noqa: E731
+    s = t("outcome.since", dish=o["swapped"], n=o["nSwapped"], times=t("word.time.one") if o["nSwapped"] == 1 else t("word.time.many"))
     ku, ks = o["kcal"]["usual"], o["kcal"]["swapped"]
     if ku is not None and ks is not None:
         d = round(ks - ku)
-        s += f" Your logged meals were about {abs(d):,} kcal {'lower' if d < 0 else 'higher' if d > 0 else 'the same'}"
+        s += t("outcome.kcal", kcal=f"{abs(d):,}", dir=t("dir.lower" if d < 0 else "dir.higher" if d > 0 else "dir.same"))
         nu, ns_ = o["sodium"]["usual"], o["sodium"]["swapped"]
         if nu is not None and ns_ is not None and abs(ns_ - nu) >= 100:
-            s += f" and {abs(round(ns_ - nu)):,} mg salt {'lower' if ns_ < nu else 'higher'}"
-        s += f" than your {usual}."
+            s += t("outcome.salt", mg=f"{abs(round(ns_ - nu)):,}", dir=t("dir.lower" if ns_ < nu else "dir.higher"))
+        s += t("outcome.than", usual=usual)
     r = o["rise"]
     if r and r["usual"] is not None and r["swapped"] is not None:
         diff = round(r["swapped"] - r["usual"], 1)
-        s += f" Your glucose rose {r['swapped']} on average after it, against {r['usual']} after {usual} ({r['nSwapped']} and {r['nUsual']} meals), " + (
-            "about the same." if abs(diff) < 0.5 else ("lower, associated with the swap, not proven." if diff < 0 else "higher this time."))
+        s += t("outcome.rise", swapped=r["swapped"], usual_rise=r["usual"], usual=usual, n_swapped=r["nSwapped"], n_usual=r["nUsual"]) + (
+            t("outcome.rise.same") if abs(diff) < 0.5 else (t("outcome.rise.lower") if diff < 0 else t("outcome.rise.higher")))
     return s
 
 
@@ -245,31 +247,46 @@ def food_habits(user_id, anchor: datetime | None = None, days: int = 14) -> list
     return out
 
 
-def saving_phrase(alt: dict[str, Any]) -> str:
+def saving_phrase(alt: dict[str, Any], lang: str = "en") -> str:
     """'saves about 230 kcal and 600 mg salt; protein 31 g to 22 g' from the compared numbers. Code, not model."""
     ch = {c["nutrient"]: c for c in alt["changes"]}
     parts = []
-    for k, label, unit in (("kcal", "kcal", ""), ("sodium_mg", "mg salt", ""), ("carbs_g", "g carbs", ""), ("sugar_g", "g sugar", "")):
+    for k, unit_key in (("kcal", "unit.kcal"), ("sodium_mg", "unit.salt"), ("carbs_g", "unit.carbs"), ("sugar_g", "unit.sugar")):
         c = ch.get(k)
         if c and c["change"] < 0 and abs(c["change"]) >= foodagent._MIN_ABS.get(k, 0):
-            parts.append(f"{abs(round(c['change'])):,} {label}")
+            parts.append(texts.tr(lang, unit_key, n=f"{abs(round(c['change'])):,}"))
     parts = parts[:3]
-    s = ("saves about " + (", ".join(parts[:-1]) + " and " + parts[-1] if len(parts) > 1 else parts[0])) if parts else "is lighter"
+    if parts:
+        joined = (texts.tr(lang, "list.comma").join(parts[:-1]) + texts.tr(lang, "list.and") + parts[-1]) if len(parts) > 1 else parts[0]
+        s = texts.tr(lang, "saving.saves", items=joined)
+    else:
+        s = texts.tr(lang, "saving.lighter")
     p = ch.get("protein_g")
     if p and abs(p["change"]) >= 3:
-        s += f"; protein goes from {round(p['from'])} g to {round(p['to'])} g"
+        s += texts.tr(lang, "saving.protein", a=round(p["from"]), b=round(p["to"]))
     return s
 
 
-def habit_text(h: dict[str, Any]) -> str:
-    """The habit as a fixed template filled with the person's own logged numbers. Never says a food is bad."""
+def _type_label(h: dict[str, Any], lang: str) -> str:
+    """The food type's name in the language; the English label the habit was found with when there is no translation."""
+    key = f"food.type.{h['type']}"
+    return texts.tr(lang, key) if texts.has(key) else h["label"]
+
+
+def habit_text(h: dict[str, Any], lang: str = "en") -> str:
+    """The habit as a fixed template filled with the person's own logged numbers. Never says a food is bad.
+    The guard is run on the English (lang="en") text; a translation is the same template in another language."""
     a = h["avg"]
-    s = f"You have had {h['label']} {h['n']} times in the last 2 weeks, about {round(a['kcal'] or 0):,} kcal and {round(a['sodium_mg'] or 0):,} mg salt each (from your logged meals)."
+    s = texts.tr(lang, "habit.body", label=_type_label(h, lang), n=h["n"], kcal=f"{round(a['kcal'] or 0):,}", salt=f"{round(a['sodium_mg'] or 0):,}")
     if h["alternatives"]:
         alt = h["alternatives"][0]
         t = h["topAvg"]
-        s += f" Your {h['topDish']} ({h['topDishN']} times, about {round(t['kcal'] or 0):,} kcal) is the heaviest. Next time, try {alt['name']} instead: it {saving_phrase(alt)}."
+        s += texts.tr(lang, "habit.swap", dish=h["topDish"], n=h["topDishN"], kcal=f"{round(t['kcal'] or 0):,}", alt=alt["name"], saving=saving_phrase(alt, lang))
     return s
+
+
+def _reflect_text(h: dict[str, Any], lang: str = "en") -> str:
+    return texts.tr(lang, "habit.reflect", label=_type_label(h, lang), n=h["n"], kcal=f"{round(h['avg']['kcal'] or 0):,}", dish=h["topDish"])
 
 
 def reflect_habits(user_id, write: bool = False) -> list[dict[str, Any]]:
@@ -277,13 +294,16 @@ def reflect_habits(user_id, write: bool = False) -> list[dict[str, Any]]:
 
     The fact value holds the type and the usual dish only, so it is not re-versioned every night as the count moves; the count and
     the average live in the evidence. Rejected facts are not proposed again; a changed usual dish supersedes the old version.
+    The guard runs on the English text; the statement shown to the person is in their language.
     """
     from app.agents.adherence import _propose_fact
 
     out = []
+    lang = texts.person_language(user_id)
     for h in food_habits(user_id):
-        text = f"Often eats {h['label']}: {h['n']} meals in the last 2 weeks, about {round(h['avg']['kcal'] or 0):,} kcal each. The heaviest is {h['topDish']}."
-        entry: dict[str, Any] = {"key": f"food.habit.{h['type']}", "statement": text, "guard": "pass" if guarded(user_id, text, f"food_habit:{h['type']}") else "blocked", "result": "dry_run"}
+        text_en = _reflect_text(h)
+        text = _reflect_text(h, lang)
+        entry: dict[str, Any] = {"key": f"food.habit.{h['type']}", "statement": text, "guard": "pass" if guarded(user_id, text_en, f"food_habit:{h['type']}") else "blocked", "result": "dry_run"}
         if entry["guard"] == "pass" and write:
             with tx() as c:
                 entry["result"] = _propose_fact(
@@ -333,10 +353,11 @@ def lunch_options(user_id, limit: int = 3, rng: random.Random | None = None) -> 
     except Exception:
         logger.exception("food habits unavailable; lunch ideas continue without the swap tier")
         habits = []
+    lang = texts.person_language(user_id)
     for h in habits:
         for alt in h["alternatives"][:1]:
             opts.append({"key": f"swap:{alt['foodId']}", "name": alt["name"], "source": "swap", "serving": alt["serving"], "grade": alt["sourceGrade"],
-                         "why": f"Instead of your usual {h['topDish']}: it {saving_phrase(alt)}.",
+                         "why": texts.tr(lang, "lunch.why_swap", dish=h["topDish"], saving=saving_phrase(alt, lang)),
                          "carbs": next((c["to"] for c in alt["changes"] if c["nutrient"] == "carbs_g"), None),
                          "sodium": next((c["to"] for c in alt["changes"] if c["nutrient"] == "sodium_mg"), None)})
     # tier 3: no history yet, so general options from the database, clearly labelled as not personal
@@ -351,7 +372,7 @@ def lunch_options(user_id, limit: int = 3, rng: random.Random | None = None) -> 
         for r in rows:
             f = foodagent._row(r)
             opts.append({"key": f"db:{f.id}", "name": f.name, "source": "general", "serving": f.serving_desc, "grade": f.source_grade,
-                         "why": f"About {round(f.n['carbs_g'])} g carbs and {round(f.n['sodium_mg'])} mg salt per serving. A general idea from the food database, not personalised yet.",
+                         "why": texts.tr(lang, "lunch.why_general", carbs=round(f.n["carbs_g"]), salt=round(f.n["sodium_mg"])),
                          "carbs": f.n["carbs_g"], "sodium": f.n["sodium_mg"]})
     gone = excluded_keys(user_id)
     seen, uniq = set(), []
@@ -414,21 +435,27 @@ def salt_state(user_id, now: datetime | None = None) -> dict[str, Any]:
     return {"day_total": day_total, "worst": worst, "high": high_meal or high_day, "mins_since": mins_since, "gates": gates, "allowed": walk_allowed(gates)}
 
 
-def salt_nudge(user_id, now: datetime | None = None) -> dict[str, Any] | None:
-    """The activity prompt for a high-salt day, or None. The swap for next time always comes first; the walk is gated."""
+def _salt_text(worst: dict[str, Any], alts: list[dict[str, Any]], walk: bool, lang: str) -> tuple[str, str]:
+    body = texts.tr(lang, "salt.body", mg=f"{round(float(worst['sodium_mg'])):,}")
+    if alts:
+        body += texts.tr(lang, "salt.swap", name=alts[0]["name"], saving=saving_phrase(alts[0], lang))
+    if walk:
+        body += texts.tr(lang, "salt.walk")
+    return texts.tr(lang, "salt.title.walk" if walk else "salt.title.no_walk"), body
+
+
+def salt_nudge(user_id, now: datetime | None = None, lang: str = "en") -> dict[str, Any] | None:
+    """The activity prompt for a high-salt day, or None. The swap for next time always comes first; the walk is gated.
+    title and body are in `lang`; title_en and body_en are the English texts the guard checks."""
     s = salt_state(user_id, now)
     if not s["high"] or s["worst"] is None or s["mins_since"] is None or not (20 <= s["mins_since"] <= 180):
         return None
     worst = s["worst"]
-    swap = ""
     base = {k: (float(worst[k]) if worst[k] is not None else None) for k in _MACROS}
     alts = foodagent.better_alternatives(worst["food"], base, limit=1, extra_targets={"sodium_mg"})
-    if alts:
-        swap = f" Next time, try {alts[0]['name']}: it {saving_phrase(alts[0])}."
-    body = f"That meal was high in salt (about {round(float(worst['sodium_mg'])):,} mg).{swap}"
-    if s["allowed"]:
-        body += " For now, an easy 10-minute walk is a good habit after meals. If you are unsure, check with your doctor."
-    return {"title": "A salty meal today" if not s["allowed"] else "A short walk after that meal?", "body": body, "walk": s["allowed"], "gates": s["gates"]}
+    title, body = _salt_text(worst, alts, s["allowed"], lang)
+    title_en, body_en = _salt_text(worst, alts, s["allowed"], "en")
+    return {"title": title, "body": body, "title_en": title_en, "body_en": body_en, "walk": s["allowed"], "gates": s["gates"]}
 
 
 # ----------------------------------------------------------------------------- the nudges the notification list should hold now
@@ -439,19 +466,22 @@ def nutrition_nudges(user_id, have: set[str], meals_today_lunch: int, now: datet
     out: list[tuple[str, str, str, str, str, datetime]] = []
     mins = now.astimezone(TZ).hour * 60 + now.astimezone(TZ).minute
     start, end = lunch_window(user_id)
+    lang = texts.person_language(user_id)
     lk = f"lunch-{today}"
     if len(out) < max_new and lk not in have and start <= mins <= end and meals_today_lunch == 0:
         opts = lunch_options(user_id)
         if opts:
-            body = "Ideas that suit you: " + ", ".join(o["name"] for o in opts[:3]) + "."
-            if guarded(user_id, body, "lunch_ideas"):
-                out.append((lk, "nudge", "Lunch ideas for you", body, "E8", now.astimezone(TZ).replace(hour=end // 60 % 24, minute=end % 60, second=0, microsecond=0)))
+            names = ", ".join(o["name"] for o in opts[:3])
+            # the guard reads the English draft; the stored text is the same template in the person's language
+            if guarded(user_id, texts.tr("en", "lunch.body", names=names), "lunch_ideas"):
+                body = texts.tr(lang, "lunch.body", names=names)
+                out.append((lk, "nudge", texts.tr(lang, "lunch.title"), body, "E8", now.astimezone(TZ).replace(hour=end // 60 % 24, minute=end % 60, second=0, microsecond=0)))
                 for o in opts:
                     policy_try(user_id, "suggestion", o["key"])
     ak = f"activity-{today}"
     if len(out) < max_new and ak not in have:
-        n = salt_nudge(user_id, now)
-        if n and guarded(user_id, n["body"], "salt_activity"):
+        n = salt_nudge(user_id, now, lang)
+        if n and guarded(user_id, n["body_en"], "salt_activity"):
             out.append((ak, "nudge", n["title"], n["body"], "F1" if n["walk"] else "E2", now + timedelta(hours=3)))
             if n["walk"]:
                 policy_try(user_id, "activity", "walk_after_salty_meal")

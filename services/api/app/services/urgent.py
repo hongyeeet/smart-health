@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 import psycopg
 
 from app.agents.trace import audit
+from app.services import texts
 
 logger = logging.getLogger(__name__)
 TZ = ZoneInfo("Asia/Singapore")
@@ -110,14 +111,15 @@ def resolve(now: datetime, reading: dict | None, alert: dict | None) -> dict[str
     return none
 
 
-def contact_message(name: str | None, value: float, at: datetime, demo: bool) -> tuple[str, str]:
-    """The fixed wording of the email to the emergency contact. No advice beyond checking in and the emergency number."""
-    who = (name or "").strip() or "A person who listed you as their emergency contact"
+def contact_message(name: str | None, value: float, at: datetime, demo: bool, lang: str = "en") -> tuple[str, str]:
+    """The fixed wording of the email to the emergency contact. No advice beyond checking in and the emergency number.
+    `lang` is the PERSON's language (the contact is told about the person); the English text is the source."""
+    who = (name or "").strip() or texts.tr(lang, "urgent.contact.unnamed")
     clock = at.astimezone(TZ).strftime("%H:%M")
-    body = f"{who} may have low glucose ({value:.1f} mmol/L at {clock}). Please check on them. If they cannot answer, call {EMERGENCY_NUMBER}."
-    title = f"Possible low glucose: {who}"
+    body = texts.tr(lang, "urgent.contact.body", who=who, value=f"{value:.1f}", clock=clock, number=EMERGENCY_NUMBER)
+    title = texts.tr(lang, "urgent.contact.title", who=who)
     if demo:
-        return f"DEMO. {title}", f"This is a demo test, not a real reading. {body}"
+        return texts.tr(lang, "urgent.demo.title", title=title), texts.tr(lang, "urgent.demo.body", body=body)
     return title, body
 
 
@@ -189,8 +191,10 @@ def insert_contact_request(conn: psycopg.Connection, user: Any, alert_id: str, t
 
 def _insert_alert(conn: psycopg.Connection, user: Any, tier: str, value: float, since: datetime, demo: bool) -> str:
     aid = str(uuid.uuid4())
-    title = ("Demo: " if demo else "") + ("Very low glucose" if tier == "very_low" else "Low glucose")
-    payload = {"key": f"urgent-{aid}", "role": "alert", "title": title, "body": f"Your glucose looks low: {value:.1f} mmol/L.", "to": "J1",
+    lang = texts.person_language(user, conn=conn)
+    title = texts.tr(lang, "urgent.demo_prefix") if demo else ""
+    title += texts.tr(lang, "urgent.title.very_low" if tier == "very_low" else "urgent.title.low")
+    payload = {"key": f"urgent-{aid}", "role": "alert", "title": title, "body": texts.tr(lang, "urgent.alert_body", value=f"{value:.1f}"), "to": "J1",
                "tier": tier, "value": value, "demo": demo, "since": since.isoformat()}
     conn.execute(
         "insert into notifications (id, user_id, kind, scheduled_for, sent_at, channel, payload) values (%s,%s,'urgent'::notification_kind,now(),now(),'in_app',%s::jsonb)",
@@ -265,7 +269,7 @@ def escalate(conn: psycopg.Connection, user: Any, now: datetime) -> tuple[dict, 
     if state["escalated"]:  # already done: do not queue a second email
         return get_state(conn, user, now), events
     contact = load_contact(conn, user)
-    title, body = contact_message(contact["person"], state["value"], state["since"], state["demo"])
+    title, body = contact_message(contact["person"], state["value"], state["since"], state["demo"], texts.person_language(user, conn=conn))
     queued, reason = False, None
     if not contact["email"]:
         reason = "no_contact_email"

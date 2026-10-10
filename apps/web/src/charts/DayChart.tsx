@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import type { DayDose, DayMeal, DaySymptom, DayTimeline, DayWorkout } from '@/data/types'
 import { clock } from '@/lib/format'
@@ -22,6 +23,7 @@ const DAY = 1440
  * symptoms, then heart rate, steps and sleep underneath. Missing data is a labelled gap, never a line.
  */
 export function DayChart({ day, onPick, compact = false }: { day: DayTimeline; onPick?: (p: MarkerPick) => void; compact?: boolean }) {
+  const { t } = useTranslation()
   const [ref, width] = useMeasure<HTMLDivElement>()
   const uid = useId().replace(/:/g, '')
   const gh = compact ? 112 : 224
@@ -60,13 +62,25 @@ export function DayChart({ day, onPick, compact = false }: { day: DayTimeline; o
   const sh = linear(hrMin, hrMax, 52, 4)
   const hrPath = day.hr.map((p, i) => `${i ? 'L' : 'M'}${sx(p.t).toFixed(1)} ${sh(p.v).toFixed(1)}`).join(' ')
   const maxSteps = Math.max(...day.stepsByHour, 1)
+  const stateWord = {
+    missed: t('charts.day.stateMissed', 'missed'),
+    unconfirmed: t('charts.day.stateUnconfirmed', 'unconfirmed'),
+    due: t('charts.day.stateDue', 'due'),
+    taken: t('charts.day.stateTaken', 'taken'),
+  }
 
   const hours = [0, 6, 12, 18]
   const first = true
 
   return (
     <div ref={ref} className="w-full">
-      <svg role="img" aria-label={`Glucose on ${day.weekday} ${day.label}, ${day.inRangePct}% in range`} width={width} height={gh} className="overflow-visible">
+      <svg
+        role="img"
+        aria-label={t('charts.day.glucoseAria', 'Glucose on {{weekday}} {{label}}, {{pct}}% in range', { weekday: day.weekday, label: day.label, pct: day.inRangePct })}
+        width={width}
+        height={gh}
+        className="overflow-visible"
+      >
         <defs>
           <pattern id={`gap-${uid}`} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <line x1="0" y1="0" x2="0" y2="8" stroke="var(--c-ink3)" strokeWidth="1.5" strokeOpacity="0.45" />
@@ -91,7 +105,7 @@ export function DayChart({ day, onPick, compact = false }: { day: DayTimeline; o
             <rect x={sx(a)} y={4} width={sx(b) - sx(a)} height={gh - 28} fill="none" stroke="var(--c-ink3)" strokeOpacity={0.5} strokeDasharray="3 4" rx={6} />
             {!compact && (
               <text x={(sx(a) + sx(b)) / 2} y={gh / 2} textAnchor="middle" fill="var(--c-ink2)" style={{ fontSize: 'calc(13px * var(--ts))', fontWeight: 700 }}>
-                No sensor data
+                {t('charts.noSensor', 'No sensor data')}
               </text>
             )}
           </g>
@@ -108,40 +122,70 @@ export function DayChart({ day, onPick, compact = false }: { day: DayTimeline; o
 
       {!compact && (
         <>
-          <Lane label="Meals">
+          <Lane label={t('charts.day.meals', 'Meals')}>
             {group(day.meals).map((g, i) => (
-              <Marker key={i} x={sx(g[0]!.t)} label={`Meal at ${clock(g[0]!.t)}: ${g.map((m) => m.name).join(', ')}`} onClick={() => onPick?.({ type: 'meal', items: g })} tone="brass">
+              <Marker
+                key={i}
+                x={sx(g[0]!.t)}
+                label={t('charts.day.mealAt', 'Meal at {{clock}}: {{names}}', { clock: clock(g[0]!.t), names: g.map((m) => m.name).join(', ') })}
+                onClick={() => onPick?.({ type: 'meal', items: g })}
+                tone="brass"
+              >
                 <ForkKnife size={18} aria-hidden />
               </Marker>
             ))}
           </Lane>
-          <Lane label="Medicines">
+          <Lane label={t('charts.day.medicines', 'Medicines')}>
             {group(day.doses, 5).map((g, i) => {
               const worst = g.find((d) => d.status === 'missed') ? 'missed' : g.find((d) => d.status === 'unconfirmed') ? 'unconfirmed' : g.find((d) => d.status === 'due') ? 'due' : 'taken'
               const tone = worst === 'missed' ? 'danger' : worst === 'unconfirmed' ? 'hatch' : worst === 'due' ? 'outline' : 'ok'
               const Icon = worst === 'missed' ? X : worst === 'unconfirmed' ? Question : worst === 'due' ? Pill : Check
               return (
-                <Marker key={i} x={sx(g[0]!.t)} label={`${g.length} dose${g.length > 1 ? 's' : ''} at ${clock(g[0]!.t)}, ${worst}`} onClick={() => onPick?.({ type: 'dose', items: g })} tone={tone} badge={g.length > 1 ? g.length : undefined}>
+                <Marker
+                  key={i}
+                  x={sx(g[0]!.t)}
+                  label={
+                    g.length > 1
+                      ? t('charts.day.dosesMany', '{{n}} doses at {{clock}}, {{state}}', { n: g.length, clock: clock(g[0]!.t), state: stateWord[worst] })
+                      : t('charts.day.dosesOne', '{{n}} dose at {{clock}}, {{state}}', { n: g.length, clock: clock(g[0]!.t), state: stateWord[worst] })
+                  }
+                  onClick={() => onPick?.({ type: 'dose', items: g })}
+                  tone={tone}
+                  badge={g.length > 1 ? g.length : undefined}
+                >
                   <Icon size={18} weight="bold" aria-hidden />
                 </Marker>
               )
             })}
           </Lane>
-          <Lane label="Workouts and symptoms">
+          <Lane label={t('charts.day.workoutsSymptoms', 'Workouts and symptoms')}>
             {day.workouts.map((w) => (
-              <Marker key={w.id} x={sx(w.t)} wide={Math.max((w.minutes / DAY) * innerW, 32)} label={`${w.label}, ${w.minutes} minutes at ${clock(w.t)}`} onClick={() => onPick?.({ type: 'workout', items: [w] })} tone="brand">
+              <Marker
+                key={w.id}
+                x={sx(w.t)}
+                wide={Math.max((w.minutes / DAY) * innerW, 32)}
+                label={t('charts.day.workoutAt', '{{label}}, {{min}} minutes at {{clock}}', { label: w.label, min: w.minutes, clock: clock(w.t) })}
+                onClick={() => onPick?.({ type: 'workout', items: [w] })}
+                tone="brand"
+              >
                 <PersonSimpleWalk size={18} aria-hidden />
               </Marker>
             ))}
             {day.symptoms.map((s) => (
-              <Marker key={s.id} x={sx(s.t)} label={`Symptom at ${clock(s.t)}: ${s.label}`} onClick={() => onPick?.({ type: 'symptom', items: [s] })} tone="warn">
+              <Marker
+                key={s.id}
+                x={sx(s.t)}
+                label={t('charts.day.symptomAt', 'Symptom at {{clock}}: {{label}}', { clock: clock(s.t), label: s.label })}
+                onClick={() => onPick?.({ type: 'symptom', items: [s] })}
+                tone="warn"
+              >
                 <Thermometer size={18} aria-hidden />
               </Marker>
             ))}
           </Lane>
 
-          <p className="mt-3 text-sub font-bold text-ink2">Heart rate (beats a minute)</p>
-          <svg width={width} height={60} role="img" aria-label="Heart rate across the day" className="overflow-visible">
+          <p className="mt-3 text-sub font-bold text-ink2">{t('charts.day.hr', 'Heart rate (beats a minute)')}</p>
+          <svg width={width} height={60} role="img" aria-label={t('charts.day.hrAria', 'Heart rate across the day')} className="overflow-visible">
             <line x1={PAD_L} x2={width - PAD_R} y1={sh(70)} y2={sh(70)} stroke="var(--c-line)" strokeDasharray="3 5" />
             <path d={hrPath} fill="none" stroke="var(--c-s3)" strokeWidth={2} strokeLinejoin="round" />
             <text x={PAD_L - 6} y={sh(120) + 10} textAnchor="end" fill="var(--c-ink3)" style={{ fontSize: 'calc(13px * var(--ts))' }}>
@@ -151,16 +195,22 @@ export function DayChart({ day, onPick, compact = false }: { day: DayTimeline; o
               50
             </text>
           </svg>
-          <p className="mt-2 text-sub font-bold text-ink2">Steps each hour</p>
-          <svg width={width} height={56} role="img" aria-label="Steps each hour" className="overflow-visible">
+          <p className="mt-2 text-sub font-bold text-ink2">{t('charts.day.steps', 'Steps each hour')}</p>
+          <svg width={width} height={56} role="img" aria-label={t('charts.day.stepsAria', 'Steps each hour')} className="overflow-visible">
             {day.stepsByHour.map((s, h) => {
               const bw = Math.max(innerW / 24 - 3, 3)
               const bh = (s / maxSteps) * 48
               return <rect key={h} x={sx(h * 60) + 1.5} y={52 - bh} width={bw} height={Math.max(bh, s ? 2 : 0)} rx={2} fill="var(--c-s2)" fillOpacity={0.85} />
             })}
           </svg>
-          <p className="mt-2 text-sub font-bold text-ink2">Sleep</p>
-          <svg width={width} height={30} role="img" aria-label={day.sleep ? `Slept ${day.sleep.label}` : 'No sleep data'} className="overflow-visible">
+          <p className="mt-2 text-sub font-bold text-ink2">{t('charts.day.sleep', 'Sleep')}</p>
+          <svg
+            width={width}
+            height={30}
+            role="img"
+            aria-label={day.sleep ? t('charts.day.slept', 'Slept {{label}}', { label: day.sleep.label }) : t('charts.day.noSleep', 'No sleep data')}
+            className="overflow-visible"
+          >
             <rect x={PAD_L} y={4} width={innerW} height={22} rx={8} fill="var(--c-well)" />
             {day.sleep && <rect x={sx(day.sleep.start)} y={4} width={sx(day.sleep.end) - sx(day.sleep.start)} height={22} rx={8} fill="var(--c-s3)" fillOpacity={0.55} />}
             {day.sleep && (

@@ -24,6 +24,7 @@ from app.agents.trace import audit
 from app.db.logstore import TZ, tx
 from app.db.nutritionstore import guarded
 from app.llm import jev
+from app.services import texts
 from app.services.dose_store import period_word, short_name
 
 logger = logging.getLogger(__name__)
@@ -55,16 +56,25 @@ def due_reasons(totals: dict[str, int]) -> list[str]:
     return [r for r, n in sorted(totals.items(), key=lambda kv: (-kv[1], kv[0])) if n >= MIN_OCCURRENCES]
 
 
-def action_text(reason: str, n: int, most_common: bool) -> str:
+def action_text(reason: str, n: int, most_common: bool, lang: str = "en") -> str:
     """The proposal for one barrier, as a fixed template with the person's own count. 'Most common' is said only when it is true."""
     if reason == "forgot":
-        lead = f"Forgot is your most common reason ({n} times in 4 weeks)." if most_common else f"You forgot {n} doses in the last 4 weeks."
-        return f"{lead} Link your reminder to something you already do, such as breakfast?"
+        lead = texts.tr(lang, "action.forgot.most", n=n) if most_common else texts.tr(lang, "action.forgot.some", n=n)
+        return lead + texts.tr(lang, "action.forgot.tail")
     if reason == "ran_out":
-        return f"You ran out {n} times. Get a refill reminder {REFILL_WARN_DAYS} days before you run out?"
+        return texts.tr(lang, "action.ran_out", n=n, days=REFILL_WARN_DAYS)
     if reason == "away_from_home":
-        return f"You missed {n} doses when you were away. Keep a note on your phone for those days?"
+        return texts.tr(lang, "action.away", n=n)
     raise ValueError(f"no action for {reason}")
+
+
+def anchor_text(part: str, name: str, hits: int, days: int, lang: str = "en") -> str:
+    """The proposal to remind a dose right after a meal it usually follows. The guard reads the English text."""
+    return texts.tr(lang, "anchor.suggest", part=texts.label(lang, "period", part), name=name, minutes=ANCHOR_MINUTES, hits=hits, days=days)
+
+
+def meal_label(meal: str, lang: str = "en") -> str:
+    return texts.tr(lang, f"meal.label.{meal}") if meal in MEAL_LABEL else texts.tr(lang, "meal.label.other")
 
 
 def question_text(reason: str, name: str) -> str:
@@ -207,12 +217,14 @@ def run(user_id: Any, write: bool = False) -> dict[str, Any]:
     most = max(totals.values())
     report: dict[str, Any] = {"window": {"from": lo.isoformat(), "to": hi.isoformat()}, "reasons": totals, "proposals": [], "doctor_questions": [], "routines": []}
 
+    lang = texts.person_language(user_id)
     facts: list[dict[str, Any]] = []
     for reason in due_reasons(totals):
         n = totals[reason]
         if reason in ACTION_KEY:
+            # "text" is the English draft the guard reads; "statement" is what the person sees and what is stored
             facts.append({"key": ACTION_KEY[reason], "category": "routine", "value": {"barrier": reason, "action": ACTION_NAME[reason]},
-                          "text": action_text(reason, n, n == most), "conf": min(0.9, 0.4 + 0.03 * n),
+                          "text": action_text(reason, n, n == most), "statement": action_text(reason, n, n == most, lang), "conf": min(0.9, 0.4 + 0.03 * n),
                           "refs": [{"table": "medication_log", "miss_reason": reason, "n": n, "window_days": WINDOW_DAYS}]})
     questions: list[dict[str, Any]] = []
     for reason in QUESTION_REASONS:   # a question is about one medicine, so it needs the threshold for that medicine
@@ -225,10 +237,10 @@ def run(user_id: Any, write: bool = False) -> dict[str, Any]:
         name = meds.get(a["medication_id"])
         report["routines"].append({"medication": name, "part": a["part"], "days": a["days"], "hits": a["hits"], "holds": a["holds"]})
         if a["holds"] and name:
-            text = (f"Your {a['part']} {name} dose is usually taken within {ANCHOR_MINUTES} minutes of finishing a meal "
-                    f"({a['hits']} of {a['days']} days). Remind you right after that meal?")
+            text = anchor_text(a["part"], name, a["hits"], a["days"])
             facts.append({"key": anchor_key(a["medication_id"], a["part"]), "category": "routine",
                           "value": {"medication_id": a["medication_id"], "part": a["part"]}, "text": text,
+                          "statement": anchor_text(a["part"], name, a["hits"], a["days"], lang),
                           "conf": min(0.95, 0.5 + a["days"] / 400),
                           "refs": [{"table": "medication_log", "n": a["days"]}, {"table": "food_logs", "n": a["hits"]}]})
 
@@ -250,7 +262,7 @@ def run(user_id: Any, write: bool = False) -> dict[str, Any]:
         with tx() as c:
             for f in facts:
                 if f["allowed"]:
-                    f["result"] = adherence._propose_fact(c, user_id, f["key"], f["category"], f["value"], f["text"], f["conf"], f["refs"])
+                    f["result"] = adherence._propose_fact(c, user_id, f["key"], f["category"], f["value"], f["statement"], f["conf"], f["refs"])
             for q in questions:
                 if q["allowed"]:
                     row = c.execute("insert into doctor_questions (user_id, text, origin, status) values (%s, %s, 'agent_suggested', 'open') returning id",
@@ -264,7 +276,7 @@ def run(user_id: Any, write: bool = False) -> dict[str, Any]:
             if q["result"] == "added":
                 audit(user_id, "agent", "doctor_question.added", "doctor_questions", q["id"], {"reason": q["reason"], "medication_id": q["medication_id"]})
 
-    report["proposals"] = [{"key": f["key"], "statement": f["text"], "confidence": round(f["conf"], 2), "guard": "pass" if f["allowed"] else "blocked",
+    report["proposals"] = [{"key": f["key"], "statement": f["statement"], "confidence": round(f["conf"], 2), "guard": "pass" if f["allowed"] else "blocked",
                             "result": f["result"]} for f in facts]
     report["doctor_questions"] = [{"medication": q["name"], "reason": q["reason"], "statement": q["text"], "result": q["result"]} for q in questions]
     return report
@@ -285,6 +297,7 @@ def nudges(user_id: Any, now: datetime, have_keys: set[str], max_new: int) -> li
 def _anchor_reminders(c, user_id, now: datetime, today: date, have_keys: set[str]) -> list[Row]:
     """After the breakfast, lunch or dinner that a confirmed routine follows is logged, the dose is reminded, while it is still in its window."""
     out: list[Row] = []
+    lang = texts.person_language(user_id, conn=c)
     facts = c.execute(
         "select value from memory_facts where user_id=%s and status='active' and user_confirmed_at is not null and key like %s",
         (user_id, "routine.dose_anchor.%"),
@@ -313,10 +326,19 @@ def _anchor_reminders(c, user_id, now: datetime, today: date, have_keys: set[str
         dose = next((d for d in doses if period_word(d["scheduled_at"].astimezone(TZ).hour) == part and dose_due(now, d["scheduled_at"])), None)
         if meal is None or dose is None:
             continue
-        body = f"{MEAL_LABEL.get(meal['meal'], 'Meal')} logged. Time for your {part} {short_name(dose['name'], dose['strength'])}?"
-        if guarded(user_id, body, "dose_anchor"):
-            out.append((key, "dose_reminder", f"Your {part} dose", body, "B1", dose["scheduled_at"] + DOSE_WINDOW))
+        name = short_name(dose["name"], dose["strength"])
+        body_en = texts.tr("en", "dose.anchor.body", meal=meal_label(meal["meal"]), part=part, name=name)
+        if guarded(user_id, body_en, "dose_anchor"):
+            body = texts.tr(lang, "dose.anchor.body", meal=meal_label(meal["meal"], lang), part=texts.label(lang, "period", part), name=name)
+            title = texts.tr(lang, "dose.anchor.title", part=texts.label(lang, "period", part))
+            out.append((key, "dose_reminder", title, body, "B1", dose["scheduled_at"] + DOSE_WINDOW))
     return out
+
+
+def _refill_body(days_left: int, short: str, lang: str) -> str:
+    if days_left == 0:
+        return texts.tr(lang, "refill.used_up")
+    return texts.tr(lang, "refill.days", name=short, days=days_left)
 
 
 def _refill_reminders(user_id, now: datetime, today: date, have_keys: set[str]) -> list[Row]:
@@ -325,6 +347,7 @@ def _refill_reminders(user_id, now: datetime, today: date, have_keys: set[str]) 
     from app.api.routers.medications import list_medications
 
     out: list[Row] = []
+    lang = texts.person_language(user_id)
     with tx() as c:
         if not c.execute("select 1 from memory_facts where user_id=%s and key=%s and status='active' and user_confirmed_at is not null",
                          (user_id, ACTION_KEY["ran_out"])).fetchone():
@@ -339,18 +362,17 @@ def _refill_reminders(user_id, now: datetime, today: date, have_keys: set[str]) 
         if key in have_keys:
             continue
         short = short_name(m.name, None)
-        if m.refill.days_left == 0:
-            body = "Your supply may already be used up. Ask your pharmacy or clinic for a refill."
-        else:
-            body = f"About {m.refill.days_left} days of {short} left at your usual dose times. Ask your pharmacy or clinic for a refill."
-        if guarded(user_id, body, "refill_reminder"):
-            out.append((key, "refill", f"Time to refill {short}", body, "H1", datetime.combine(runout, time(23, 59), tzinfo=TZ)))
+        body_en = _refill_body(m.refill.days_left, short, "en")
+        if guarded(user_id, body_en, "refill_reminder"):
+            body = _refill_body(m.refill.days_left, short, lang)
+            out.append((key, "refill", texts.tr(lang, "refill.title", name=short), body, "H1", datetime.combine(runout, time(23, 59), tzinfo=TZ)))
     return out
 
 
 def _question_reminders(c, user_id, now: datetime, have_keys: set[str]) -> list[Row]:
     """Tells the person a question was added to their doctor list (once, for the two days after it was added)."""
     out: list[Row] = []
+    lang = texts.person_language(user_id, conn=c)
     rows = c.execute(
         """select id::text id, text from doctor_questions where user_id=%s and origin='agent_suggested' and status='open'
            and created_at > %s - interval '2 days' and (text like %s or text like %s)""",
@@ -360,7 +382,9 @@ def _question_reminders(c, user_id, now: datetime, have_keys: set[str]) -> list[
         key = f"question-added-{r['id']}"
         if key in have_keys:
             continue
-        body = f"We added this to your questions for your doctor: {r['text']}"
-        if guarded(user_id, body, "doctor_question_added"):
-            out.append((key, "nudge", "A question for your doctor was added", body, "K3", now + timedelta(days=2)))
+        # the question itself stays as the doctor will read it (English); only the wording around it follows the person's language
+        body_en = texts.tr("en", "question.added.body", text=r["text"])
+        if guarded(user_id, body_en, "doctor_question_added"):
+            body = texts.tr(lang, "question.added.body", text=r["text"])
+            out.append((key, "nudge", texts.tr(lang, "question.added.title"), body, "K3", now + timedelta(days=2)))
     return out

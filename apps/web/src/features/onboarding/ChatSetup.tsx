@@ -20,11 +20,12 @@ import { labelOf, useOptions } from './options'
 import { SafetyAlerts } from './SafetyAlerts'
 import { toProfileBody, useNotifyEmail, usePrefillOnboarding, useSaveNotifyEmail, useSaveProfile, useSavedOnboarding } from './api'
 import { useOnboarding, type OnboardingAnswers } from './useOnboarding'
-import { CHAT_QUESTIONS, answerLabel, choicesFor, replyText, type ChatQuestion } from './chat/steps'
+import { CHAT_QUESTIONS, answerLabel, choicesFor, replyText, type ChatQuestion, type Tr } from './chat/steps'
 import { useChatAnswer } from './chat/api'
 
 export function ChatSetup() {
   const { t } = useTranslation()
+  const tr: Tr = (key, fallback) => t(key, fallback)
   const navigate = useNavigate()
   const locale = useUi((s) => s.locale)
   const a = useOnboarding((s) => s.answers)
@@ -52,7 +53,7 @@ export function ChatSetup() {
     if (stored && !useOnboarding.getState().answers.reminderEmail) set({ reminderEmail: stored })
   }, [notify.data, set])
 
-  const rows = CHAT_QUESTIONS.map((q) => ({ q, label: answerLabel(q.id, a, o) }))
+  const rows = CHAT_QUESTIONS.map((q) => ({ q, label: answerLabel(q.id, a, o, tr) }))
   const pending = rows.find((r) => r.label === '' && !skipped.includes(r.q.id))
   const activeId = editing ?? pending?.q.id ?? null
   const active: ChatQuestion | undefined = activeId ? CHAT_QUESTIONS.find((q) => q.id === activeId) : undefined
@@ -80,7 +81,7 @@ export function ChatSetup() {
         setNotice(res.reply)
       }
     } catch {
-      setNotice(t('onboarding.chat.offline', 'Smart Health could not reach the server just now. Your answer is not lost. Try again in a moment, or use the form.'))
+      setNotice(t('setup.offline', 'Smart Health could not reach the server just now. Your answer is not lost. Try again in a moment, or use the form.'))
     }
   }
 
@@ -122,14 +123,14 @@ export function ChatSetup() {
     <Screen>
       <TopBar />
       <div className="flex flex-col gap-2">
-        <h1 className="break-words font-serif text-h1 font-medium tracking-tight text-ink">{t('onboarding.chat.title', 'Set up by chat')}</h1>
-        <p className="text-sub text-ink2">{t('onboarding.chat.sub', 'Answer in your own words, or tap an answer. Nothing you say is lost if you switch to the form.')}</p>
+        <h1 className="break-words font-serif text-h1 font-medium tracking-tight text-ink">{t('setup.title', 'Set up by chat')}</h1>
+        <p className="text-sub text-ink2">{t('setup.sub', 'Answer in your own words, or tap an answer. Nothing you say is lost if you switch to the form.')}</p>
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <p className="text-sub font-bold text-brand" aria-live="polite">
-            {t('onboarding.chat.progress', '{{done}} of {{total}} answered', { done, total: CHAT_QUESTIONS.length })}
+            {t('setup.progress', '{{done}} of {{total}} answered', { done, total: CHAT_QUESTIONS.length })}
           </p>
           <TextLink icon={ListChecks} onClick={() => navigate(formLink)}>
-            {t('onboarding.chat.useForm', 'Use the form instead')}
+            {t('setup.useForm', 'Use the form instead')}
           </TextLink>
         </div>
         <div className="flex gap-1" aria-hidden>
@@ -140,18 +141,18 @@ export function ChatSetup() {
       </div>
 
       <Card as="section" className="flex flex-col gap-4">
-        <ol className="flex flex-col gap-4" aria-label={t('onboarding.chat.conversation', 'Conversation')}>
+        <ol className="flex flex-col gap-4" aria-label={t('setup.conversation', 'Conversation')}>
           {visible.map(({ q, label }) => (
             <Fragment key={q.id}>
-              <Bubble from="bot">{t(`onboarding.chat.${q.id}`, { defaultValue: q.ask })}</Bubble>
+              <Bubble from="bot">{t(`setup.ask.${q.id}`, q.ask)}</Bubble>
               {label !== '' && (
                 <Bubble
                   from="me"
                   action={
                     editing === q.id ? null : (
                       <TextLink icon={PencilSimple} onClick={() => edit(q.id)} className="self-end">
-                        {t('onboarding.sum.edit', 'Edit')}
-                        <span className="sr-only"> {t(`onboarding.chat.${q.id}`, { defaultValue: q.ask })}</span>
+                        {t('setup.edit', 'Edit')}
+                        <span className="sr-only"> {t(`setup.ask.${q.id}`, q.ask)}</span>
                       </TextLink>
                     )
                   }
@@ -159,14 +160,14 @@ export function ChatSetup() {
                   {label}
                 </Bubble>
               )}
-              {label === '' && skipped.includes(q.id) && <Bubble from="me">{t('onboarding.chat.skipped', 'Skipped')}</Bubble>}
+              {label === '' && skipped.includes(q.id) && <Bubble from="me">{t('setup.skipped', 'Skipped')}</Bubble>}
             </Fragment>
           ))}
           {notice && <Bubble from="bot">{notice}</Bubble>}
           {busy && (
             <Bubble from="bot">
               <span className="inline-flex items-center gap-1.5" role="status">
-                <span className="sr-only">{t('onboarding.chat.reading', 'Reading your answer')}</span>
+                <span className="sr-only">{t('setup.reading', 'Reading your answer')}</span>
                 {[0, 1, 2].map((i) => (
                   <span key={i} className="h-2 w-2 animate-pulse rounded-full bg-ink3" style={{ animationDelay: `${i * 150}ms` }} />
                 ))}
@@ -181,17 +182,17 @@ export function ChatSetup() {
         <Card as="section" className="flex flex-col gap-3" key={active.id}>
           {active.kind === 'flags' ? (
             <>
-              <PickMany stack none="none" label={t('onboarding.red.label', 'Is any of these happening? Tick all that apply.')} options={o.redFlags} value={a.redFlags} onChange={(redFlags) => set({ redFlags })} />
+              <PickMany stack none="none" label={t('setup.redLabel', 'Is any of these happening? Tick all that apply.')} options={o.redFlags} value={a.redFlags} onChange={(redFlags) => set({ redFlags })} />
               <SafetyAlerts flags={a.redFlags} />
               <Button disabled={a.redFlags.length === 0} onClick={keep}>
-                {t('common.continue', 'Continue')}
+                {t('setup.continue', 'Continue')}
               </Button>
             </>
           ) : (
             <>
               {active.kind === 'choice' && (
-                <div className="flex flex-wrap gap-2" role="group" aria-label={t(`onboarding.chat.${active.id}`, { defaultValue: active.ask })}>
-                  {choicesFor(active.id, o).map((c) => (
+                <div className="flex flex-wrap gap-2" role="group" aria-label={t(`setup.ask.${active.id}`, active.ask)}>
+                  {choicesFor(active.id, o, tr).map((c) => (
                     <Button key={c.value} variant="secondary" size="md" className="!w-auto" disabled={busy} onClick={() => send(replyText(c.value))}>
                       {c.label}
                     </Button>
@@ -211,27 +212,27 @@ export function ChatSetup() {
                   inputMode={active.inputMode}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder={active.placeholder}
-                  aria-label={t(`onboarding.chat.${active.id}`, { defaultValue: active.ask })}
+                  placeholder={active.placeholder && t(`setup.ph.${active.id}`, active.placeholder)}
+                  aria-label={t(`setup.ask.${active.id}`, active.ask)}
                   className="min-h-12 min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-card px-3.5 py-3 text-body text-ink placeholder:text-ink3 focus:border-brand focus:outline-none"
                 />
                 <Button type="submit" size="md" className="!w-auto flex-none px-5" disabled={!draft.trim() || busy}>
-                  {t('onboarding.chat.send', 'Send')}
+                  {t('setup.send', 'Send')}
                 </Button>
               </form>
               <div className="flex flex-wrap gap-x-5 gap-y-1">
                 {editing === null && active.optional && (
-                  <TextLink onClick={() => skip(active.id)}>{t('onboarding.chat.skip', 'Skip this question')}</TextLink>
+                  <TextLink onClick={() => skip(active.id)}>{t('setup.skip', 'Skip this question')}</TextLink>
                 )}
-                {editing !== null && <TextLink onClick={keep}>{t('onboarding.chat.keep', 'Keep my answer')}</TextLink>}
+                {editing !== null && <TextLink onClick={keep}>{t('setup.keep', 'Keep my answer')}</TextLink>}
               </div>
             </>
           )}
         </Card>
       ) : (
         <>
-          {emailFailed && <Alert tone="warn">{t('onboarding.email.failed', 'We could not save your email just now. Your answer is kept on this device. You can add it later in Me, Privacy.')}</Alert>}
-          <Dock onNext={finish} nextDisabled={saveProfile.isPending || saveEmail.isPending} nextLabel={emailFailed ? t('onboarding.email.anyway', 'Continue without it') : t('onboarding.toSummary', 'Check my answers')} />
+          {emailFailed && <Alert tone="warn">{t('setup.emailFailed', 'We could not save your email just now. Your answer is kept on this device. You can add it later in Me, Privacy.')}</Alert>}
+          <Dock onNext={finish} nextDisabled={saveProfile.isPending || saveEmail.isPending} nextLabel={emailFailed ? t('setup.emailAnyway', 'Continue without it') : t('setup.toSummary', 'Check my answers')} />
         </>
       )}
     </Screen>
@@ -244,7 +245,7 @@ function Bubble({ from, children, action }: { from: 'bot' | 'me'; children: Reac
   const me = from === 'me'
   return (
     <li className={cn('flex max-w-[90%] flex-col gap-1', me && 'self-end items-end')}>
-      <span className="text-micro font-bold text-ink2">{me ? t('onboarding.chat.you', 'You') : t('onboarding.chat.us', 'Smart Health')}</span>
+      <span className="text-micro font-bold text-ink2">{me ? t('setup.you', 'You') : t('setup.us', 'Smart Health')}</span>
       <div className={cn('break-words rounded-card border-[1.5px] px-3.5 py-2.5 text-body text-ink', me ? 'border-brand bg-brand-soft' : 'border-line bg-card')}>{children}</div>
       {action}
     </li>

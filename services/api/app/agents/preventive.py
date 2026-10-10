@@ -16,6 +16,7 @@ from app.agents.trace import audit
 from app.db import nutritionstore
 from app.db.logstore import TZ, tx
 from app.db.nutritionstore import guarded
+from app.services import texts
 from app.services.care import KIND_LABELS, preventive_status, today_sg
 
 logger = logging.getLogger(__name__)
@@ -32,8 +33,10 @@ def iso_week(d: date) -> str:
     return f"{y}-W{w:02d}"
 
 
-def _name(kind: str) -> str:
-    """The check's name inside a sentence: lower case, except the acronyms."""
+def _name(kind: str, lang: str = "en") -> str:
+    """The check's name inside a sentence: lower case, except the acronyms. Other languages use their own wording as it is."""
+    if lang != "en" and texts.has(f"check.{kind}"):
+        return texts.tr(lang, f"check.{kind}")
     label = KIND_LABELS.get(kind, "Check")
     return label if label[:2] in ("Hb", "GP") else label[0].lower() + label[1:]
 
@@ -42,12 +45,12 @@ def _day(d: date) -> str:
     return f"{d.day} {d:%b} {d.year}"
 
 
-def overdue_statement(kind: str, due: date) -> str:
-    return f"Your {_name(kind)} was due on {_day(due)}. Plan one?"
+def overdue_statement(kind: str, due: date, lang: str = "en") -> str:
+    return texts.tr(lang, "preventive.overdue", name=_name(kind, lang), day=_day(due))
 
 
-def nudge_text(kind: str) -> str:
-    return f"Your {_name(kind)} is due. You can plan it in your care plan."
+def nudge_text(kind: str, lang: str = "en") -> str:
+    return texts.tr(lang, "preventive.due", name=_name(kind, lang))
 
 
 def summarise(rows: list[dict[str, Any]], today: date) -> dict[str, int]:
@@ -82,7 +85,7 @@ def pick_nudge(rows: list[dict[str, Any]], now: datetime, have_keys: set[str], r
     key = NUDGE_KEY.format(item=best["item_id"], week=week)
     if key in have_keys:
         return None
-    return {"key": key, "kind": "nudge", "title": "A check is due", "body": nudge_text(best["kind"]), "route": NUDGE_ROUTE,
+    return {"key": key, "kind": "nudge", "title": "A check is due", "body": nudge_text(best["kind"]), "check": best["kind"], "route": NUDGE_ROUTE,
             "valid_until": now + timedelta(days=NUDGE_VALID_DAYS)}
 
 
@@ -119,14 +122,16 @@ def run(user_id, write: bool = False) -> dict[str, Any]:
     today = today_sg(now)
     rows = _load(user_id, now)["rows"]
     report: dict[str, Any] = {**summarise(rows, today), "checks": len(rows), "proposals": []}
+    lang = texts.person_language(user_id)
     for r in sorted((r for r in rows if preventive_status(r["next_due_on"], today) == "overdue"), key=lambda r: r["next_due_on"]):
         kind, due = r["kind"], r["next_due_on"]
-        text = overdue_statement(kind, due)
+        text_en = overdue_statement(kind, due)
+        text = overdue_statement(kind, due, lang)
         key = f"preventive.{kind}"
         entry: dict[str, Any] = {"key": key, "statement": text, "confidence": FACT_CONFIDENCE, "guard": "not_checked", "result": "dry_run"}
         if write:
             # a dry run makes no writes at all, so the guard (which logs its decision) is only asked when a fact is proposed
-            entry["guard"] = "pass" if guarded(user_id, text, f"preventive_fact:{kind}") else "blocked"
+            entry["guard"] = "pass" if guarded(user_id, text_en, f"preventive_fact:{kind}") else "blocked"
             if entry["guard"] == "pass":
                 with tx() as c:
                     entry["result"] = _propose_fact(
@@ -147,6 +152,7 @@ def nudges(user_id, now: datetime, have_keys: set[str], max_new: int) -> list[tu
     # a dismissed check is a "template" arm (nudge_policy allows slot, template, suggestion, activity), keyed preventive:<item>
     excluded = {k.split(":", 1)[1] for k in nutritionstore.excluded_keys(user_id, "template") if k.startswith("preventive:")}
     n = pick_nudge(data["rows"], now, have_keys, data["recent"], data["planned"], excluded)
-    if n is None or not guarded(user_id, n["body"], "preventive_nudge"):
+    if n is None or not guarded(user_id, n["body"], "preventive_nudge"):   # the guard reads the English text
         return []
-    return [(n["key"], n["kind"], n["title"], n["body"], n["route"], n["valid_until"])]
+    lang = texts.person_language(user_id)
+    return [(n["key"], n["kind"], texts.tr(lang, "nudge.check_due.title"), nudge_text(n["check"], lang), n["route"], n["valid_until"])]

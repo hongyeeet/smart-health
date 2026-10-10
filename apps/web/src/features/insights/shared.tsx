@@ -3,6 +3,7 @@
  * loading, error and empty states. The period is kept in one place so it stays when the person moves between tabs.
  */
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { create } from 'zustand'
 import type { InsightsDays, InsightsPattern, InsightsPeriod, InsightsTab } from '@/data/types'
 import type { RouteId } from '@/app/routeIds'
@@ -16,30 +17,30 @@ export type WhyTopic = 'week' | 'glucose' | 'food' | 'activity' | 'sleep' | 'med
 
 export const useInsightsDays = create<{ days: InsightsDays; setDays: (d: InsightsDays) => void }>((set) => ({ days: 30, setDays: (days) => set({ days }) }))
 
-const TABS: { value: RouteId; label: string }[] = [
-  { value: 'C1', label: 'Overview' },
-  { value: 'C2', label: 'Glucose' },
-  { value: 'C3', label: 'Food' },
-  { value: 'C4', label: 'Activity' },
-  { value: 'C5', label: 'Sleep and stress' },
-  { value: 'C6', label: 'Medication' },
-]
-
 export function InsightsFrame({ tab, period, children, back }: { tab: RouteId; period?: InsightsPeriod; children: ReactNode; back?: RouteId }) {
   const go = useGo()
   const { days, setDays } = useInsightsDays()
+  const { t } = useTranslation()
+  const tabs: { value: RouteId; label: string }[] = [
+    { value: 'C1', label: t('insights.shared.tabOverview', 'Overview') },
+    { value: 'C2', label: t('insights.shared.tabGlucose', 'Glucose') },
+    { value: 'C3', label: t('insights.shared.tabFood', 'Food') },
+    { value: 'C4', label: t('insights.shared.tabActivity', 'Activity') },
+    { value: 'C5', label: t('insights.shared.tabSleep', 'Sleep and stress') },
+    { value: 'C6', label: t('insights.shared.tabMedication', 'Medication') },
+  ]
   return (
     <Screen tabs>
-      <Header title="Insights" back={!!back} backTo={back} />
-      <TabStrip label="Insights sections" tabs={TABS} value={tab} onChange={(v) => go(v)} />
+      <Header title={t('insights.shared.title', 'Insights')} back={!!back} backTo={back} />
+      <TabStrip label={t('insights.shared.tabsLabel', 'Insights sections')} tabs={tabs} value={tab} onChange={(v) => go(v)} />
       <Segmented
-        label="Period"
+        label={t('insights.shared.period', 'Period')}
         value={days}
         onChange={setDays}
         options={[
-          { value: 7, label: '7 days' },
-          { value: 30, label: '30 days' },
-          { value: 90, label: '90 days' },
+          { value: 7, label: t('insights.shared.days', '{{n}} days', { n: 7 }) },
+          { value: 30, label: t('insights.shared.days', '{{n}} days', { n: 30 }) },
+          { value: 90, label: t('insights.shared.days', '{{n}} days', { n: 90 }) },
         ]}
       />
       {period && <p className="-mt-1 text-sub text-ink3">{period.label}</p>}
@@ -50,7 +51,8 @@ export function InsightsFrame({ tab, period, children, back }: { tab: RouteId; p
 
 /** Loading, error and "nothing yet" for a query. Renders `children` only when there is data to show. */
 export function Gate({ data, isError, empty, emptyText, children }: { data: unknown; isError: boolean; empty: boolean; emptyText: string; children: ReactNode }) {
-  if (isError) return <Alert tone="warn">We could not load this just now. Please try again in a moment.</Alert>
+  const { t } = useTranslation()
+  if (isError) return <Alert tone="warn">{t('insights.shared.loadError', 'We could not load this just now. Please try again in a moment.')}</Alert>
   if (!data) return <Skeleton className="h-64" />
   if (empty) return <EmptyState icon={ChartLineUp}>{emptyText}</EmptyState>
   return <>{children}</>
@@ -59,11 +61,12 @@ export function Gate({ data, isError, empty, emptyText, children }: { data: unkn
 /** The plain sentence that goes above a chart, with the "Why am I seeing this?" link under it. */
 export function Plain({ children, why }: { children: ReactNode; why: WhyTopic }) {
   const go = useGo()
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col gap-1">
       <p className="text-body text-ink">{children}</p>
       <button type="button" onClick={() => go('C7', { sheet: { topic: why } })} className="press -ml-1 flex min-h-11 items-center gap-1.5 self-start rounded-chip px-1 text-sub font-bold text-brand">
-        <Info size={18} aria-hidden /> Why am I seeing this?
+        <Info size={18} aria-hidden /> {t('insights.shared.whyLink', 'Why am I seeing this?')}
       </button>
     </div>
   )
@@ -72,18 +75,19 @@ export function Plain({ children, why }: { children: ReactNode; why: WhyTopic })
 /** Findings from the person's own history. Always labelled unverified: they compare two things, they do not prove a cause. */
 export function Findings({ items, onOpen }: { items: InsightsPattern[]; onOpen?: (to: InsightsTab) => void }) {
   const go = useGo()
+  const { t } = useTranslation()
   if (!items.length) return null
   return (
     <section className="flex flex-col gap-2">
-      <SectionTitle>What your history shows</SectionTitle>
+      <SectionTitle>{t('insights.shared.findings', 'What your history shows')}</SectionTitle>
       {items.map((p) => (
         <Card key={p.key} className="flex flex-col gap-2">
           <p className="text-body">{p.text}</p>
-          <p className="num text-sub text-ink3">Based on {p.n} matched events in your own history.</p>
+          <p className="num text-sub text-ink3">{t('insights.shared.basedOn', 'Based on {{n}} matched events in your own history.', { n: p.n })}</p>
           <div className="flex flex-wrap items-center gap-2">
             <UnverifiedTag />
             <button type="button" onClick={() => (onOpen ? onOpen(p.to) : go('C7', { sheet: { topic: 'findings' } }))} className="press min-h-11 rounded-chip px-2 text-sub font-bold text-brand">
-              {onOpen ? 'See more' : 'Why am I seeing this?'}
+              {onOpen ? t('insights.shared.seeMore', 'See more') : t('insights.shared.whyLink', 'Why am I seeing this?')}
             </button>
           </div>
         </Card>

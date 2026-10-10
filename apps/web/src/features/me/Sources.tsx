@@ -2,6 +2,7 @@
  * K4. Connected sources: which devices and feeds this person's data comes from, and how recent the last data is.
  * Read only. There are no connect or disconnect flows yet, so a source that is not connected says so and nothing more.
  */
+import { useTranslation } from 'react-i18next'
 import { useGo } from '@/app/navigation'
 import { Header, Screen } from '@/ui/layout'
 import { Alert, Card, EmptyState, StatusPill, TextLink, Skeleton, type Tone } from '@/ui/primitives'
@@ -18,17 +19,18 @@ const STATUS: Record<ConnectedSource['status'], { tone: Tone; icon: IconType }> 
 }
 
 export function Sources() {
+  const { t } = useTranslation()
   const go = useGo()
   const { data, isError, isLoading } = useConnectedSources()
   const sensorConnected = data?.some((s) => s.key === 'cgm' && (s.status === 'connected' || s.status === 'connected_no_data'))
 
   return (
     <Screen>
-      <Header title="Connected sources" back backTo="K1" sub="Where your data comes from, and how recent the last data is." />
+      <Header title={t('me.sources.title', 'Connected sources')} back backTo="K1" sub={t('me.sources.sub', 'Where your data comes from, and how recent the last data is.')} />
 
-      {isError && <Alert tone="warn">We could not load your sources just now. Please try again in a moment.</Alert>}
+      {isError && <Alert tone="warn">{t('me.sources.loadError', 'We could not load your sources just now. Please try again in a moment.')}</Alert>}
       {isLoading && !data && <Skeleton className="h-64" />}
-      {data && data.length === 0 && <EmptyState icon={LinkBreak}>No sources yet.</EmptyState>}
+      {data && data.length === 0 && <EmptyState icon={LinkBreak}>{t('me.sources.none', 'No sources yet.')}</EmptyState>}
 
       {data && data.length > 0 && (
         <ul className="flex flex-col gap-3">
@@ -58,7 +60,7 @@ export function Sources() {
         </ul>
       )}
 
-      {sensorConnected && <TextLink onClick={() => go('C8')}>Glucose sensor sprint</TextLink>}
+      {sensorConnected && <TextLink onClick={() => go('C8')}>{t('me.sources.sensorSprint', 'Glucose sensor sprint')}</TextLink>}
     </Screen>
   )
 }

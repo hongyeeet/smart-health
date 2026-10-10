@@ -28,6 +28,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.core.config import settings
+from app.services import texts
 
 logger = logging.getLogger(__name__)
 TZ = ZoneInfo("Asia/Singapore")
@@ -630,17 +631,20 @@ def notifications() -> list[dict]:
     now = datetime.now(TZ)
     h = _hour(now)
     today = p["date"]
+    lang = texts.person_language(current_user())   # the wording follows the person's language; keys and routes do not
     want: list[tuple[str, str, str, str, str, datetime]] = []  # key, kind, title, body, route, valid until
     items = {i["key"]: i for i in p["items"]}
     m = items["meals"]
     win = _meal_window(h)
     if m["status"] == "due" and win is not None:
         i, w = win
-        want.append((f"meal-{i}-{today}", "nudge", f"Log your {w[2]}", "Take a photo and tell us when you finish eating. It lands on your timeline.", "E2", _until(now, w[1])))
+        want.append((f"meal-{i}-{today}", "nudge", texts.tr(lang, "nudge.meal.title", meal=texts.label(lang, "meal.word", w[2])),
+                     texts.tr(lang, "nudge.meal.body"), "E2", _until(now, w[1])))
     if items["checkin"]["status"] == "due":
-        want.append((f"checkin-{today}", "checkin", "How did you sleep?", "A thirty-second mood and sleep check-in.", "E5", _until(now, CHECKIN_WINDOW[1])))
+        want.append((f"checkin-{today}", "checkin", texts.tr(lang, "nudge.checkin.title"), texts.tr(lang, "nudge.checkin.body"), "E5", _until(now, CHECKIN_WINDOW[1])))
     if items["workout"]["status"] == "due":
-        want.append((f"workout-{today}", "nudge", "Any movement today?", f"{p['week_activity_min']} of {p['week_activity_goal']} active minutes this week. A walk counts.", "F1", _until(now, WORKOUT_WINDOW[1])))
+        want.append((f"workout-{today}", "nudge", texts.tr(lang, "nudge.workout.title"),
+                     texts.tr(lang, "nudge.workout.body", done=p["week_activity_min"], goal=p["week_activity_goal"]), "F1", _until(now, WORKOUT_WINDOW[1])))
     # nutrition and activity nudges: templates over the person's own data, guarded before they are stored (nutritionstore)
     from app.db import nutritionstore
 
@@ -706,7 +710,7 @@ def notifications() -> list[dict]:
         title, body = p.get("title", ""), p.get("body", "")
         # older records (the seeded history) carry no wording: a refill row names the medicine, anything else with no words is not shown
         if not title and r["kind"] == "refill" and p.get("medication"):
-            return f"Time to refill {p['medication']}", "Your supply is running low. Ask your pharmacy or clinic for a refill."
+            return texts.tr(lang, "refill.title", name=p["medication"]), texts.tr(lang, "refill.low")
         return title, body
 
     out = []

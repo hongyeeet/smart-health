@@ -29,7 +29,7 @@ from app.llm import chat as chat_llm
 from app.llm import jev
 from app.llm.gateway import LLMUnavailable
 from app.schemas.chat import MAX_TEXT
-from app.services import insights, usage
+from app.services import insights, texts, usage
 
 logger = logging.getLogger(__name__)
 
@@ -42,17 +42,17 @@ MAX_STARTERS = 4
 MAX_REPLY_WORDS = 130     # the prompt asks for under 120; a longer reply is cut at a sentence end
 MAX_PASSAGES = 3
 
-URGENT_TEXT = "This sounds urgent. Call 995 now, or ask someone near you to call."
-REFUSED_TEXT = "I cannot advise on medicines or diagnose. This is worth asking your doctor."
-CAUTION_TEXT = "I am not able to answer that here. If you feel unwell, call 995 or contact your doctor."
-UNAVAILABLE_TEXT = "I cannot answer right now. Please try again in a little while. If it is urgent, call 995."
-GUARD_DOWN_TEXT = "I cannot check this question right now, so I will not answer it. Please try again in a little while. If it is urgent, call 995."
-BLOCKED_REPLY_TEXT = "I am not able to share that answer. Please ask your doctor or pharmacist."
-EMPTY_TEXT = "I do not have that in your data yet. Once you log meals, doses or glucose, I can answer questions about them."
-HELP_TEXT = ("I can answer questions about your own data: your glucose, meals, activity, sleep, medicines and doctor questions. "
-             "I cannot give medical advice or diagnose. For emergencies call 995.")
-KIND_OF = {URGENT_TEXT: "urgent", REFUSED_TEXT: "refused", CAUTION_TEXT: "refused", BLOCKED_REPLY_TEXT: "refused", UNAVAILABLE_TEXT: "unavailable",
-           GUARD_DOWN_TEXT: "unavailable", EMPTY_TEXT: "empty", HELP_TEXT: "help"}
+URGENT_TEXT = texts.tr("en", "chat.urgent")       # the English source; other languages come from texts.tr(lang, key)
+REFUSED_TEXT = texts.tr("en", "chat.refused")
+CAUTION_TEXT = texts.tr("en", "chat.caution")
+UNAVAILABLE_TEXT = texts.tr("en", "chat.unavailable")
+GUARD_DOWN_TEXT = texts.tr("en", "chat.guard_down")
+BLOCKED_REPLY_TEXT = texts.tr("en", "chat.blocked_reply")
+EMPTY_TEXT = texts.tr("en", "chat.empty")
+HELP_TEXT = texts.tr("en", "chat.help")
+_KIND_BY_KEY = {"chat.urgent": "urgent", "chat.refused": "refused", "chat.caution": "refused", "chat.blocked_reply": "refused",
+                "chat.unavailable": "unavailable", "chat.guard_down": "unavailable", "chat.empty": "empty", "chat.help": "help"}
+KIND_OF = {texts.tr(lang, key): kind for key, kind in _KIND_BY_KEY.items() for lang in texts.LANGS}   # the stored kind of a fixed reply, in any language
 
 # ----------------------------------------------------------------------------- the urgent rule (runs before any model or JEV call)
 _URGENT = [re.compile(p, re.I) for p in (
@@ -442,6 +442,13 @@ Rules:
 - If the person asks for advice or a decision about their health, say it is worth asking their doctor."""
 
 
+def system_for(lang: str) -> str:
+    """The English prompt for English; for another language the same prompt with one line asking for that language."""
+    if lang == "en" or lang not in texts.LANGS:
+        return SYSTEM
+    return SYSTEM + f"\n\nAnswer in {texts.LANG_NAMES[lang]}. Keep medicine names, dish names and numbers exactly as they appear in the data."
+
+
 def prompt_for(ctx_text: str, text: str) -> str:
     return f"CONTEXT\n{ctx_text}\n\nQUESTION\n{text}"
 
@@ -456,13 +463,13 @@ class Outcome:
     verdict: str | None = None
 
 
-def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today: date) -> Outcome:
+def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today: date, lang: str = "en") -> Outcome:
     if is_urgent_text(text):
         run.step("urgent_rule", "rules", {}, lambda: {"urgent": True})
         _log_guard(uid, "input", "urgent", scrub(text, load_names(uid)), run.id)
-        return Outcome("urgent", URGENT_TEXT, open_urgent=True, verdict="urgent")
+        return Outcome("urgent", texts.tr(lang, "chat.urgent"), open_urgent=True, verdict="urgent")
     if is_help_request(text):
-        return Outcome("help", HELP_TEXT)
+        return Outcome("help", texts.tr(lang, "chat.help"))
 
     names = load_names(uid)
     safe = scrub(text, names)
@@ -471,13 +478,13 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
     _log_guard(uid, "input", verdict, safe, run.id)
     act = classify_message(res)
     if act == "down":
-        return Outcome("unavailable", GUARD_DOWN_TEXT, verdict="blocked_other")
+        return Outcome("unavailable", texts.tr(lang, "chat.guard_down"), verdict="blocked_other")
     if act == "urgent":
-        return Outcome("urgent", URGENT_TEXT, open_urgent=True, verdict="urgent")
+        return Outcome("urgent", texts.tr(lang, "chat.urgent"), open_urgent=True, verdict="urgent")
     if act == "refuse":
-        return Outcome("refused", REFUSED_TEXT, offer_question=True, verdict=verdict)
+        return Outcome("refused", texts.tr(lang, "chat.refused"), offer_question=True, verdict=verdict)
     if act == "caution":
-        return Outcome("refused", CAUTION_TEXT, offer_question=True, verdict=verdict)
+        return Outcome("refused", texts.tr(lang, "chat.caution"), offer_question=True, verdict=verdict)
 
     def route() -> str:
         ch = jev.choice(safe, "Which skill does this message need?", SKILLS)
@@ -496,19 +503,19 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
     ctx = holder[0]
     sent = ctx.only(ROUTE_SECTIONS.get(skill))
     if sent.empty():
-        return Outcome("empty", EMPTY_TEXT, verdict="pass")
+        return Outcome("empty", texts.tr(lang, "chat.empty"), verdict="pass")
 
     out: list[str] = []
 
     def ask() -> dict:
         hist = [(r, scrub(t, ctx.names)) for r, t in history]
-        out.append(chat_llm.generate(SYSTEM, hist, prompt_for(sent.text(), scrub(text, ctx.names))))
+        out.append(chat_llm.generate(system_for(lang), hist, prompt_for(sent.text(), scrub(text, ctx.names))))
         return {"chars": len(out[0])}
 
     try:
         run.step("model", chat_llm.model_name(), {}, ask)
     except LLMUnavailable:
-        return Outcome("unavailable", UNAVAILABLE_TEXT, verdict="pass")
+        return Outcome("unavailable", texts.tr(lang, "chat.unavailable"), verdict="pass")
     reply = tidy(out[0])
 
     def reply_guard() -> dict:
@@ -519,7 +526,7 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
     v = verdict_for(g["res"])
     _log_guard(uid, "output", v, reply, run.id)
     if g["blocked"]:
-        return Outcome("refused", BLOCKED_REPLY_TEXT, offer_question=True, verdict=v)
+        return Outcome("refused", texts.tr(lang, "chat.blocked_reply"), offer_question=True, verdict=v)
     return Outcome("answer", reply, sources=pick_sources(sent.sections, text, reply, _med_names(sent)), verdict="pass")
 
 
@@ -533,6 +540,7 @@ def send(user_key: str, uid: str, raw_text: str, conv_id: str | None) -> dict[st
     text = clean_text(raw_text)
     if not text:
         raise ValueError("Please type a message.")
+    lang = texts.person_language(uid)
     conv = _conversation(uid, conv_id)
     history = _history(conv)
     today = datetime.now(TZ).date()
@@ -543,10 +551,10 @@ def send(user_key: str, uid: str, raw_text: str, conv_id: str | None) -> dict[st
     status, err = "ok", None
     try:
         try:
-            o = decide(uid, text, history, run, today)
+            o = decide(uid, text, history, run, today, lang)
         except Exception as e:  # nothing here may reach the person as a stack trace
             logger.exception("chat turn failed")
-            o, status, err = Outcome("unavailable", UNAVAILABLE_TEXT, verdict=None), "error", str(e)[:300]
+            o, status, err = Outcome("unavailable", texts.tr(lang, "chat.unavailable"), verdict=None), "error", str(e)[:300]
         if status == "ok" and o.kind in ("urgent", "refused"):
             status = "guard_blocked"
         role = "assistant" if o.kind == "answer" else "system_template"

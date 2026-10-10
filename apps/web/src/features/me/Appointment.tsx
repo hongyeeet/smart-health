@@ -3,6 +3,7 @@
  * (its status changes), so the history stays. No calendar is called from here.
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useUi } from '@/state/store'
 import { Header, Screen } from '@/ui/layout'
 import { Alert, Button, Card, Field, SectionTitle, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
@@ -13,6 +14,7 @@ import { singaporeInstant, singaporeStamp } from './care/parts'
 const inputClass = 'min-h-12 w-full rounded-field border-[1.5px] border-line bg-card px-3.5 py-3 text-body text-ink focus:border-brand focus:outline-none'
 
 export function Appointment() {
+  const { t } = useTranslation()
   const { data, isError, isLoading } = useAppointments()
   const [suggestedId, setSuggestedId] = useState<string | null>(null)
   const [kind, setKind] = useState<AppointmentKind>('diabetes_review')
@@ -43,13 +45,13 @@ export function Appointment() {
 
   const submit = () => {
     setFormError(null)
-    if (!date || !time) return setFormError('Pick a date and a time.')
-    if (singaporeInstant(date, time) <= Date.now()) return setFormError('Pick a time in the future.')
+    if (!date || !time) return setFormError(t('me.appt.pickDateTime', 'Pick a date and a time.'))
+    if (singaporeInstant(date, time) <= Date.now()) return setFormError(t('me.appt.pickFuture', 'Pick a time in the future.'))
     save.mutate(
       { kind, scheduledFor: `${date}T${time}`, location: place.trim() || null, suggestedId },
       {
         onSuccess: () => {
-          toast('Visit saved.')
+          toast(t('me.appt.saved', 'Visit saved.'))
           clearForm()
         },
         onError: (e) => setFormError(e.message),
@@ -59,13 +61,13 @@ export function Appointment() {
 
   return (
     <Screen>
-      <Header title="Plan an appointment" back backTo="K3" />
+      <Header title={t('me.appt.title', 'Plan an appointment')} back backTo="K3" />
 
       <section className="flex flex-col gap-2">
-        <SectionTitle>Your upcoming visits</SectionTitle>
-        {isError && <Alert tone="warn">We could not load your visits just now. Please try again in a moment.</Alert>}
+        <SectionTitle>{t('me.appt.upcoming', 'Your upcoming visits')}</SectionTitle>
+        {isError && <Alert tone="warn">{t('me.appt.loadError', 'We could not load your visits just now. Please try again in a moment.')}</Alert>}
         {isLoading && !data && <Skeleton className="h-28" />}
-        {data && data.length === 0 && <p className="text-body text-ink2">No visits yet. Save one below.</p>}
+        {data && data.length === 0 && <p className="text-body text-ink2">{t('me.appt.noVisits', 'No visits yet. Save one below.')}</p>}
         {data && data.length > 0 && (
           <ul className="flex flex-col gap-3">
             {data.map((a) => (
@@ -78,32 +80,32 @@ export function Appointment() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <SectionTitle>{suggestedId ? 'Confirm this visit' : 'Add a visit'}</SectionTitle>
+        <SectionTitle>{suggestedId ? t('me.appt.confirmTitle', 'Confirm this visit') : t('me.appt.addTitle', 'Add a visit')}</SectionTitle>
         <Card className="flex flex-col gap-4">
           {suggestedId && (
             <Alert tone="warn" icon={CalendarCheck}>
-              You are confirming a visit Smart Health suggested. Change the date, time or place if needed.{' '}
-              <TextLink onClick={clearForm}>Stop confirming</TextLink>
+              {t('me.appt.confirming', 'You are confirming a visit Smart Health suggested. Change the date, time or place if needed.')}{' '}
+              <TextLink onClick={clearForm}>{t('me.appt.stopConfirming', 'Stop confirming')}</TextLink>
             </Alert>
           )}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="visit-kind" className="text-sub font-bold text-ink">
-              Kind of visit
+              {t('me.appt.kindOfVisit', 'Kind of visit')}
             </label>
             <select id="visit-kind" className={inputClass} value={kind} onChange={(e) => setKind(e.target.value as AppointmentKind)}>
               {APPOINTMENT_KINDS.map((k) => (
                 <option key={k.value} value={k.value}>
-                  {k.label}
+                  {t(`me.appt.kind.${k.value}`, k.label)}
                 </option>
               ))}
             </select>
           </div>
-          <Field label="Date" type="date" value={date} onChange={setDate} hint="Singapore time." />
-          <Field label="Time" type="time" value={time} onChange={setTime} />
-          <Field label="Place (optional)" value={place} onChange={setPlace} placeholder="For example: Polyclinic, level 2" />
+          <Field label={t('me.appt.date', 'Date')} type="date" value={date} onChange={setDate} hint={t('me.appt.singaporeTime', 'Singapore time.')} />
+          <Field label={t('me.appt.time', 'Time')} type="time" value={time} onChange={setTime} />
+          <Field label={t('me.appt.place', 'Place (optional)')} value={place} onChange={setPlace} placeholder={t('me.appt.placePlaceholder', 'For example: Polyclinic, level 2')} />
           {formError && <Alert tone="danger">{formError}</Alert>}
           <Button icon={Check} disabled={save.isPending} onClick={submit}>
-            {save.isPending ? 'Saving' : suggestedId ? 'Confirm this visit' : 'Save my visit'}
+            {save.isPending ? t('me.appt.saving', 'Saving') : suggestedId ? t('me.appt.confirmTitle', 'Confirm this visit') : t('me.appt.save', 'Save my visit')}
           </Button>
         </Card>
       </section>
@@ -112,6 +114,7 @@ export function Appointment() {
 }
 
 function VisitCard({ appt, onConfirm }: { appt: Appointment; onConfirm: () => void }) {
+  const { t } = useTranslation()
   const [asking, setAsking] = useState(false)
   const cancel = useCancelAppointment()
   const toast = useUi((s) => s.showToast)
@@ -121,12 +124,18 @@ function VisitCard({ appt, onConfirm }: { appt: Appointment; onConfirm: () => vo
     <Card className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-body font-bold">{appt.kindLabel}</span>
-        {planned ? <StatusPill tone="ok" icon={CalendarCheck}>Planned</StatusPill> : <StatusPill tone="brand">Suggested</StatusPill>}
+        {planned ? (
+          <StatusPill tone="ok" icon={CalendarCheck}>
+            {t('me.care.planned', 'Planned')}
+          </StatusPill>
+        ) : (
+          <StatusPill tone="brand">{t('me.appt.suggested', 'Suggested')}</StatusPill>
+        )}
       </div>
-      <p className="text-body text-ink">{appt.scheduledLabel ?? 'No date yet'}</p>
+      <p className="text-body text-ink">{appt.scheduledLabel ?? t('me.appt.noDateYet', 'No date yet')}</p>
       {appt.location && <p className="text-sub text-ink2">{appt.location}</p>}
       {appt.suggestedReason && <p className="text-sub text-ink2">{appt.suggestedReason}</p>}
-      {appt.confirmedAt && <p className="text-sub text-ink3">You confirmed this on {singaporeStamp(appt.confirmedAt)}.</p>}
+      {appt.confirmedAt && <p className="text-sub text-ink3">{t('me.appt.confirmedOn', 'You confirmed this on {{when}}.', { when: singaporeStamp(appt.confirmedAt) })}</p>}
 
       {planned &&
         (asking ? (
@@ -136,22 +145,28 @@ function VisitCard({ appt, onConfirm }: { appt: Appointment; onConfirm: () => vo
               size="md"
               icon={X}
               disabled={cancel.isPending}
-              onClick={() => cancel.mutate(appt.id, { onSuccess: () => toast('Visit cancelled.') })}
+              onClick={() => cancel.mutate(appt.id, { onSuccess: () => toast(t('me.appt.cancelled', 'Visit cancelled.')) })}
             >
-              Yes, cancel this visit
+              {t('me.appt.yesCancel', 'Yes, cancel this visit')}
             </Button>
             <Button variant="secondary" size="md" onClick={() => setAsking(false)}>
-              Keep it
+              {t('me.care.keepIt', 'Keep it')}
             </Button>
           </div>
         ) : (
-          <Button variant="ghost" size="md" icon={X} onClick={() => setAsking(true)} aria-label={`Cancel ${appt.kindLabel} visit`}>
-            Cancel this visit
+          <Button variant="ghost" size="md" icon={X} onClick={() => setAsking(true)} aria-label={t('me.appt.cancelAria', 'Cancel {{kind}} visit', { kind: appt.kindLabel })}>
+            {t('me.appt.cancelThis', 'Cancel this visit')}
           </Button>
         ))}
       {!planned && (
-        <Button variant="secondary" size="md" icon={Check} onClick={onConfirm} aria-label={`Confirm the suggested ${appt.kindLabel} visit`}>
-          Confirm this visit
+        <Button
+          variant="secondary"
+          size="md"
+          icon={Check}
+          onClick={onConfirm}
+          aria-label={t('me.appt.confirmAria', 'Confirm the suggested {{kind}} visit', { kind: appt.kindLabel })}
+        >
+          {t('me.appt.confirmTitle', 'Confirm this visit')}
         </Button>
       )}
     </Card>

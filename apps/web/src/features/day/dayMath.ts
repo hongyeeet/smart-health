@@ -1,3 +1,4 @@
+import i18n from '@/i18n'
 import { clock } from '@/lib/format'
 import type { DayMarker, DoseState } from './api'
 
@@ -12,13 +13,13 @@ export const clockWords = (minute: number) => clock(minute)
 export function doseWords(state: DoseState): string {
   switch (state) {
     case 'taken':
-      return 'taken on time'
+      return i18n.t('day.dose.taken', 'taken on time')
     case 'late':
-      return 'taken late'
+      return i18n.t('day.dose.late', 'taken late')
     case 'not_confirmed':
-      return 'not confirmed yet'
+      return i18n.t('day.dose.notConfirmed', 'not confirmed yet')
     case 'missed':
-      return 'missed'
+      return i18n.t('day.dose.missed', 'missed')
   }
 }
 
@@ -51,7 +52,11 @@ export function timeInRange(values: (number | null)[], low: number, high: number
 export function glucoseSummary(values: (number | null)[], low: number, high: number): string | null {
   const pct = timeInRange(values, low, high)
   if (pct == null) return null
-  return `${pct}% of readings in your range, ${low.toFixed(1)} to ${high.toFixed(1)} mmol/L`
+  return i18n.t('day.glucoseSummary', '{{pct}}% of readings in your range, {{low}} to {{high}} mmol/L', {
+    pct,
+    low: low.toFixed(1),
+    high: high.toFixed(1),
+  })
 }
 
 /** The day before or after, as "Wed 30 Sep", for the date arrows. Parsed as a calendar date, so no time zone shift. */
@@ -64,13 +69,15 @@ export function dayLabel(iso: string): string {
 /** Counts of what was logged, in words: "2 meals, 3 medicine times, 1 symptom". */
 export function loggedSummary(markers: Pick<DayMarker, 'kind'>[]): string {
   const count = (k: DayMarker['kind']) => markers.filter((m) => m.kind === k).length
-  const parts: string[] = []
-  const add = (n: number, one: string, many: string) => {
-    if (n) parts.push(`${n} ${n === 1 ? one : many}`)
-  }
-  add(count('meal'), 'meal', 'meals')
-  add(count('dose'), 'medicine time', 'medicine times')
-  add(count('workout'), 'workout', 'workouts')
-  add(count('symptom'), 'symptom', 'symptoms')
-  return parts.length ? parts.join(', ') : 'Nothing logged'
+  const meals = count('meal')
+  const doses = count('dose')
+  const workouts = count('workout')
+  const symptoms = count('symptom')
+  const parts = [
+    meals === 1 ? i18n.t('day.logged.mealOne', '{{n}} meal', { n: meals }) : meals > 1 ? i18n.t('day.logged.mealMany', '{{n}} meals', { n: meals }) : '',
+    doses === 1 ? i18n.t('day.logged.doseOne', '{{n}} medicine time', { n: doses }) : doses > 1 ? i18n.t('day.logged.doseMany', '{{n}} medicine times', { n: doses }) : '',
+    workouts === 1 ? i18n.t('day.logged.workoutOne', '{{n}} workout', { n: workouts }) : workouts > 1 ? i18n.t('day.logged.workoutMany', '{{n}} workouts', { n: workouts }) : '',
+    symptoms === 1 ? i18n.t('day.logged.symptomOne', '{{n}} symptom', { n: symptoms }) : symptoms > 1 ? i18n.t('day.logged.symptomMany', '{{n}} symptoms', { n: symptoms }) : '',
+  ].filter((p) => p !== '')
+  return parts.length ? parts.join(', ') : i18n.t('day.logged.none', 'Nothing logged')
 }

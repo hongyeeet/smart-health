@@ -1,3 +1,4 @@
+import i18n from '@/i18n'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { create } from 'zustand'
 import { request } from '@/data/repositories/http'
@@ -154,7 +155,7 @@ export function useAddDoctorQuestion() {
         method: 'POST',
         body: JSON.stringify({ text }),
       }),
-    onSuccess: () => showToast('Added to your doctor questions.'),
-    onError: () => showToast('Could not add it. Please try again.'),
+    onSuccess: () => showToast(i18n.t('chat.addedToast', 'Added to your doctor questions.')),
+    onError: () => showToast(i18n.t('chat.addFailed', 'Could not add it. Please try again.')),
   })
 }

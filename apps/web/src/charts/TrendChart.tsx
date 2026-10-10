@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import type { SeriesPoint } from '@/data/types'
 import { shortDate } from '@/lib/format'
@@ -21,7 +22,7 @@ export function TrendChart({
   drawKey,
   yMin,
   yMax,
-  endLabel = 'Today',
+  endLabel,
 }: {
   points: SeriesPoint[]
   baseline?: [number, number]
@@ -35,6 +36,7 @@ export function TrendChart({
   /** what the right-hand end of the axis is called; "Today" unless the data stops earlier */
   endLabel?: string
 }) {
+  const { t } = useTranslation()
   const [ref, width] = useMeasure<HTMLDivElement>()
   const id = useId()
   const [sel, setSel] = useState<number | null>(null)
@@ -85,7 +87,7 @@ export function TrendChart({
     <div ref={ref} className="w-full">
       <div className="mb-1 flex min-h-7 items-baseline justify-between gap-2 text-sub">
         <span className="text-ink2">{sp ? shortDate(sp.date) : ''}</span>
-        <span className="num text-h2 text-ink">{sp?.v != null ? format(sp.v) : 'No data'}</span>
+        <span className="num text-h2 text-ink">{sp?.v != null ? format(sp.v) : t('charts.noData', 'No data')}</span>
       </div>
       <svg
         role="img"
@@ -110,7 +112,7 @@ export function TrendChart({
           {points[0] ? shortDate(points[0].date) : ''}
         </text>
         <text x={width - padR} y={height - 6} textAnchor="end" fill="var(--c-ink3)" style={{ fontSize: 'calc(13px * var(--ts))' }}>
-          {endLabel}
+          {endLabel ?? t('charts.today', 'Today')}
         </text>
         <motion.path
           d={path}

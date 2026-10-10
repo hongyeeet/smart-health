@@ -29,6 +29,7 @@ from app.agents.trace import audit
 from app.db import nutritionstore
 from app.db.logstore import tx
 from app.llm import jev
+from app.services import texts
 from app.services.dose_store import period_word, short_name
 from app.services.insights import LATE_AFTER_MIN
 
@@ -175,18 +176,18 @@ def renudge_due(reminded_at: datetime, at: datetime, now: datetime) -> bool:
 
 
 # ───────────────────────────────────────────────────────────────── fixed wording (pure)
-def reminder_title(name: str) -> str:
-    return f"Time for your {name}"
+def reminder_title(name: str, lang: str = "en") -> str:
+    return texts.tr(lang, "dose.title", name=name)
 
 
-def renudge_title(name: str) -> str:
-    return f"Still time for your {name}"
+def renudge_title(name: str, lang: str = "en") -> str:
+    return texts.tr(lang, "dose.renudge_title", name=name)
 
 
-def reminder_body(directions: str | None, meal: str | None) -> str:
-    """The label's own directions when recorded, else the meal wording when recorded, else nothing extra."""
+def reminder_body(directions: str | None, meal: str | None, lang: str = "en") -> str:
+    """The label's own directions when recorded (never translated: it is the label's text), else the meal wording when recorded, else nothing extra."""
     text = " ".join((directions or "").split())[:200]
-    return text or MEAL_PHRASE.get(meal or "", "")
+    return text or (texts.tr(lang, f"dose.meal.{meal}") if meal in MEAL_PHRASE else "")
 
 
 def period_for(times: set[time]) -> str:
@@ -196,24 +197,30 @@ def period_for(times: set[time]) -> str:
     return PERIOD[period_word(next(iter(times)).hour)]
 
 
-def fact_text(name: str, period: str, usual_min: int, offset: int) -> str:
-    who = f"your {period} {name}" if period else f"your {name}"
-    return f"You usually take {who} about {usual_min} minutes after the set time. We remind you {offset} minutes after it."
+def fact_text(name: str, period: str, usual_min: int, offset: int, lang: str = "en") -> str:
+    if period:
+        return texts.tr(lang, "dose.fact.period", period=texts.label(lang, "period", period), name=name, usual=usual_min, offset=offset)
+    return texts.tr(lang, "dose.fact.plain", name=name, usual=usual_min, offset=offset)
 
 
 def _draft(slot: dict, key: str, renudge: bool, arm: str | None) -> dict[str, Any]:
     name = short_name(slot["name"], slot.get("strength"))
+    # title and body are the English text (the guard reads them); name, directions and meal let _vet give the person's language
     return {"key": key, "kind": "dose_renudge" if renudge else "dose_reminder",
             "title": (renudge_title if renudge else reminder_title)(name), "body": reminder_body(slot.get("directions"), slot.get("meal")),
-            "until": window_end(slot["at"]), "arm": arm, "medication_id": slot["mid"]}
+            "until": window_end(slot["at"]), "arm": arm, "medication_id": slot["mid"],
+            "name": name, "renudge": renudge, "directions": slot.get("directions"), "meal": slot.get("meal")}
 
 
-def _vet(d: dict[str, Any], check: Callable[[str, str], bool]) -> tuple | None:
-    """A reminder row, or None when its title is blocked. A blocked body is dropped and the reminder still goes out without it."""
+def _vet(d: dict[str, Any], check: Callable[[str, str], bool], lang: str = "en") -> tuple | None:
+    """A reminder row, or None when its title is blocked. A blocked body is dropped and the reminder still goes out without it.
+    The guard checks the English text; the row carries the text in `lang`."""
     if not check(d["title"], "dose_reminder_title"):
         return None
-    body = d["body"] if (not d["body"] or check(d["body"], "dose_reminder_body")) else ""
-    return (d["key"], d["kind"], d["title"], body, ROUTE, d["until"])
+    body_ok = not d["body"] or check(d["body"], "dose_reminder_body")
+    title = (renudge_title if d["renudge"] else reminder_title)(d["name"], lang)
+    body = reminder_body(d["directions"], d["meal"], lang) if body_ok else ""
+    return (d["key"], d["kind"], title, body, ROUTE, d["until"])
 
 
 # ───────────────────────────────────────────────────────────────── the decision (pure, no database, no clock but `now`)
@@ -346,9 +353,10 @@ def nudges(user_id, now: datetime, have_keys: set[str], max_new: int) -> list[tu
     with tx() as c:
         g = _gather(c, user_id, now)
     res = plan(g["slots"], g["logs"], g["notes"], g["tries"], g["delays"], have_keys, now, _ranker(user_id), max_new)
+    lang = texts.person_language(user_id)
     out = []
     for d in res["rows"]:
-        row = _vet(d, _check_guard(user_id))
+        row = _vet(d, _check_guard(user_id), lang)
         if row is None:
             continue
         out.append(row)
@@ -379,7 +387,8 @@ def preview(user_id, now: datetime, have_keys: set[str], max_new: int = 99) -> d
     with tx() as c:
         g = _gather(c, user_id, now)
     res = plan(g["slots"], g["logs"], g["notes"], g["tries"], g["delays"], have_keys, now, _ranker(user_id), max_new)
-    rows = [r for r in (_vet(d, _check_dry) for d in res["rows"]) if r is not None]
+    lang = texts.person_language(user_id)
+    rows = [r for r in (_vet(d, _check_dry, lang) for d in res["rows"]) if r is not None]
     return {"rows": rows, "tried": res["tried"], "acts": res["acts"], "rejects": res["rejects"]}
 
 
@@ -397,6 +406,7 @@ def run(user_id, write: bool = False) -> dict[str, Any]:
     excluded, _ = _dismissed(g["notes"])
     today = now.astimezone(TZ).date().isoformat()
     out: dict[str, Any] = {"medicines": len(g["meds"]), "history": {}, "usual_delay_min": {}, "offsets": {}, "facts": []}
+    lang = texts.person_language(user_id)
     for mid, meta in g["meds"].items():
         delays = g["delays"].get(mid, [])
         out["history"][mid] = len(delays)
@@ -406,8 +416,10 @@ def run(user_id, write: bool = False) -> dict[str, Any]:
             continue
         usual = usual_rounded(statistics.median(delays))
         out["usual_delay_min"][mid] = usual
-        text = fact_text(short_name(meta["name"], meta["strength"]), period_for(meta["times"]), usual, off)
-        ok = nutritionstore.guarded(user_id, text, f"dose_timing_fact:{mid}") if write else _check_dry(text, "dose_timing_fact")
+        name, period = short_name(meta["name"], meta["strength"]), period_for(meta["times"])
+        text_en = fact_text(name, period, usual, off)
+        text = fact_text(name, period, usual, off, lang)     # the statement the person sees; the guard reads text_en
+        ok = nutritionstore.guarded(user_id, text_en, f"dose_timing_fact:{mid}") if write else _check_dry(text_en, "dose_timing_fact")
         key = f"routine.dose_timing.{mid}"
         entry = {"key": key, "guard": "pass" if ok else "blocked", "result": "dry_run"}
         if ok and write:

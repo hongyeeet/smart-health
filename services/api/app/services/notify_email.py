@@ -25,6 +25,7 @@ from typing import Any, Callable, Protocol
 
 from app.core.config import settings
 from app.db.logstore import TZ, in_quiet_hours, tx
+from app.services import texts
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,6 @@ BATCH = 25
 
 # where the button in an email opens the app (route id from the notification's `to`)
 PATHS = {"E2": "/log/meal", "E5": "/log/checkin", "F1": "/log/workout", "E8": "/log/ideas", "B1": "/", "H1": "/meds", "J1": "/urgent", "K3": "/me/care", "L1": "/brief"}
-BUTTON = {"E2": "Log my meal", "E5": "Start my check-in", "F1": "Log a workout", "E8": "See my lunch ideas", "H1": "Open my medicines", "J1": "Open Smart Health", "K3": "Open my care plan"}
 
 _EMAIL = re.compile(r"^[^@\s,;<>()\[\]\\\"]+@[^@\s,;<>()\[\]\\\"]+\.[^@\s,;<>()\[\]\\\"]+$")
 
@@ -88,6 +88,7 @@ class Row:
     opt_in: bool
     contact_name: str | None
     contact_email: str | None
+    language: str = "en"          # the PERSON's language (also for the contact's email)
 
 
 def recipient(row: Row) -> str | None:
@@ -124,35 +125,41 @@ def decide(row: Row, now: datetime, sent_today: int) -> tuple[str, str]:
 
 
 # ───────────────────────────────────────────────────────────────── the message
-def _subject(row: Row) -> str:
+def _subject(row: Row, lang: str = "en") -> str:
     key, title = str(row.payload.get("key", "")), str(row.payload.get("title", "")).strip()
     if row.kind == "urgent":
-        return f"Please check on {row.contact_name or 'your contact'}: possible low glucose"
+        return texts.tr(lang, "email.subject.urgent", name=row.contact_name or texts.tr(lang, "email.name.contact_default"))
     if key.startswith("meal-"):
-        return f"{title}? One photo is all it takes"
+        return texts.tr(lang, "email.subject.meal", title=title)
     if key.startswith("checkin-"):
-        return "How did you sleep? It takes thirty seconds"
+        return texts.tr(lang, "email.subject.checkin")
     if key.startswith("workout-"):
-        return "A short walk counts today"
+        return texts.tr(lang, "email.subject.workout")
     if key.startswith("lunch-"):
-        return "Lunch ideas picked for you"
-    return title or "A reminder from Smart Health"
+        return texts.tr(lang, "email.subject.lunch")
+    return title or texts.tr(lang, "email.subject.default")
 
 
 def build_message(row: Row) -> dict[str, Any]:
     """The payload the Workato recipe turns into one email. Plain text and HTML are both sent, so the recipe can use either."""
     p = row.payload
+    lang = row.language if row.language in texts.LANGS else "en"
     title, body = str(p.get("title", "")).strip(), str(p.get("body", "")).strip()
     to_route = str(p.get("to") or "B1")
     link = settings.app_base_url.rstrip("/") + PATHS.get(to_route, "/")
-    greeting = "Hi," if row.delivery_to == "contact" else f"Hi {row.name}," if row.name else "Hi,"
-    button = BUTTON.get(to_route, "Open Smart Health")
+    if row.delivery_to == "contact":
+        greeting = texts.tr(lang, "email.greeting.plain")
+    else:
+        greeting = texts.tr(lang, "email.greeting.named", name=row.name) if row.name else texts.tr(lang, "email.greeting.plain")
+    button_key = f"email.button.{to_route}"
+    button = texts.tr(lang, button_key) if texts.has(button_key) else texts.tr(lang, "email.button.default")
     unsub = unsubscribe_link(row.user_id) if row.delivery_to != "contact" else None
     if row.delivery_to == "contact":
-        foot = "You are getting this because someone added you as their emergency contact in Smart Health."
+        foot = texts.tr(lang, "email.foot.contact")
     else:
-        foot = "You are getting this because you turned on reminder emails. You can turn them off any time in Me, then Privacy."
-    text = "\n\n".join(x for x in (greeting, title, body, f"{button}: {link}", foot, f"Unsubscribe: {unsub}" if unsub else "") if x)
+        foot = texts.tr(lang, "email.foot.person")
+    unsub_label = texts.tr(lang, "email.unsubscribe")
+    text = "\n\n".join(x for x in (greeting, title, body, f"{button}: {link}", foot, texts.tr(lang, "email.unsubscribe.line", url=unsub) if unsub else "") if x)
     esc = html.escape
     page = f"""<!doctype html><html><body style="margin:0;background:#F6F4EE;font-family:Arial,Helvetica,sans-serif;color:#16201B">
 <span style="display:none;max-height:0;overflow:hidden">{esc(body[:110])}</span>
@@ -163,11 +170,11 @@ def build_message(row: Row) -> dict[str, Any]:
 <h1 style="margin:0 0 8px;font-size:24px;line-height:1.25;font-weight:600">{esc(title)}</h1>
 <p style="margin:0 0 24px;font-size:17px;line-height:1.45;color:#46524B">{esc(body)}</p>
 <a href="{esc(link)}" style="display:inline-block;background:#1D4A3C;color:#FBFAF5;text-decoration:none;font-weight:bold;font-size:17px;padding:14px 24px;border-radius:12px">{esc(button)}</a>
-<p style="margin:28px 0 0;font-size:13px;line-height:1.4;color:#5F6B64">{esc(foot)}{f' <a href="{esc(unsub)}" style="color:#5F6B64">Unsubscribe</a>.' if unsub else ''}</p>
+<p style="margin:28px 0 0;font-size:13px;line-height:1.4;color:#5F6B64">{esc(foot)}{f' <a href="{esc(unsub)}" style="color:#5F6B64">{esc(unsub_label)}</a>.' if unsub else ''}</p>
 </td></tr></table></td></tr></table></body></html>"""
     return {
         "to": recipient(row), "toName": (row.contact_name if row.delivery_to == "contact" else row.name) or "",
-        "subject": _subject(row), "preheader": body[:110], "text": text, "html": page,
+        "subject": _subject(row, lang), "preheader": body[:110], "text": text, "html": page,
         "tags": {"kind": row.kind, "key": str(p.get("key", "")), "audience": row.delivery_to},
         "idempotencyKey": row.id,
     }
@@ -190,12 +197,13 @@ def columns_ready(conn: Any = None) -> bool:
 
 # ───────────────────────────────────────────────────────────────── the dispatcher
 _COLS = """n.id, n.user_id, n.kind::text kind, n.scheduled_for, n.acted_at, n.payload, n.delivery_attempts, n.delivery_to,
-           p.display_name, p.notification_email, p.email_opt_in, p.emergency_contact_name, p.emergency_contact_email"""
+           p.display_name, p.notification_email, p.email_opt_in, p.emergency_contact_name, p.emergency_contact_email, p.language::text language"""
 
 
 def _row(r: dict[str, Any]) -> Row:
     return Row(str(r["id"]), str(r["user_id"]), r["kind"], r["scheduled_for"], r["acted_at"], r["payload"] or {}, int(r["delivery_attempts"] or 0), r["delivery_to"] or "person",
-               r["display_name"], r["notification_email"], True if r["email_opt_in"] is None else bool(r["email_opt_in"]), r["emergency_contact_name"], r["emergency_contact_email"])
+               r["display_name"], r["notification_email"], True if r["email_opt_in"] is None else bool(r["email_opt_in"]), r["emergency_contact_name"], r["emergency_contact_email"],
+               r.get("language") or "en")
 
 
 def dispatch(sender: Sender, now_fn: Callable[[], datetime] = lambda: datetime.now(TZ)) -> dict[str, int]:

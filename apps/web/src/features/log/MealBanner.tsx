@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMealSession } from './useMealSession'
 import { useGo } from '@/app/navigation'
 import { CaretRight, ForkKnife } from '@/ui/icons'
@@ -7,6 +8,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, 
 
 /** Shown on Home and the Log hub while a meal has been started but not finished, so the finish tap is never forgotten. */
 export function MealBanner() {
+  const { t } = useTranslation()
   const meal = useMealSession((s) => s.meal)
   const go = useGo()
   const [now, setNow] = useState(() => Date.now())
@@ -23,9 +25,9 @@ export function MealBanner() {
         <ForkKnife size={22} aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-body font-bold text-brand">Eating: {meal.name}</span>
+        <span className="block text-body font-bold text-brand">{t('log.meal.eating', 'Eating: {{name}}', { name: meal.name })}</span>
         <span className="block text-sub text-ink2">
-          {mmss(elapsed)} so far. Tap when you have finished.
+          {t('log.meal.soFar', '{{time}} so far. Tap when you have finished.', { time: mmss(elapsed) })}
         </span>
       </span>
       <CaretRight size={20} className="flex-none text-brand" aria-hidden />

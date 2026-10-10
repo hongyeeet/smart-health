@@ -41,15 +41,18 @@ export const CHAT_QUESTIONS: ChatQuestion[] = [
   { id: 'reminderEmail', kind: 'email', optional: true, formStep: 10, ask: 'Which email should reminders go to? A Gmail address works. You can skip this.', placeholder: 'name@gmail.com', inputMode: 'email' },
 ]
 
-export const HAS_DIABETES: Option<HasDiabetes>[] = [
-  { value: 'yes', label: 'Yes' },
-  { value: 'not_sure', label: 'Not sure' },
+/** Translates a string: (key, English default). Passed in by the screen, so the labels follow the chosen language. */
+export type Tr = (key: string, fallback: string) => string
+
+export const diabetesOptions = (tr: Tr): Option<HasDiabetes>[] => [
+  { value: 'yes', label: tr('setup.diabetes.yes', 'Yes') },
+  { value: 'not_sure', label: tr('setup.diabetes.notSure', 'Not sure') },
 ]
 
 /** The quick replies for a choice question. Tapping one sends its words, exactly as if they had been typed. */
-export function choicesFor(id: string, o: Options): Option<string>[] {
+export function choicesFor(id: string, o: Options, tr: Tr): Option<string>[] {
   if (id === 'gender') return o.gender
-  if (id === 'hasDiabetes') return HAS_DIABETES
+  if (id === 'hasDiabetes') return diabetesOptions(tr)
   if (id === 'workType') return o.work
   return []
 }
@@ -58,7 +61,7 @@ export function choicesFor(id: string, o: Options): Option<string>[] {
 export const replyText = (value: string) => value.replace(/_/g, ' ')
 
 /** What the answer shows as, or '' when the question is still open. */
-export function answerLabel(id: string, a: OnboardingAnswers, o: Options): string {
+export function answerLabel(id: string, a: OnboardingAnswers, o: Options, tr: Tr): string {
   const text = (v: string) => v.trim()
   switch (id) {
     case 'name':
@@ -68,7 +71,7 @@ export function answerLabel(id: string, a: OnboardingAnswers, o: Options): strin
     case 'gender':
       return labelOf(o.gender, a.gender)
     case 'hasDiabetes':
-      return labelOf(HAS_DIABETES, a.hasDiabetes)
+      return labelOf(diabetesOptions(tr), a.hasDiabetes)
     case 'heightCm':
       return text(a.heightCm) ? `${text(a.heightCm)} cm` : ''
     case 'weightKg':

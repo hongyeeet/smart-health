@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { api } from '@/data/repositories'
 import type { Felt, WorkoutExercise, WorkoutSession, WorkoutSummary } from '@/data/types'
 import { Footer, Header, Screen } from '@/ui/layout'
@@ -17,12 +18,7 @@ const LIBRARY: { group: string; items: string[] }[] = [
   { group: 'Cardio', items: ['Treadmill', 'Cycling', 'Rowing machine', 'Cross-trainer'] },
 ]
 const REST_SECONDS = 90
-const FEELS: { id: Felt; label: string }[] = [
-  { id: 'energised', label: 'Energised' },
-  { id: 'fine', label: 'Fine' },
-  { id: 'tired', label: 'Tired' },
-  { id: 'unwell', label: 'Unwell' },
-]
+const FEELS: { id: Felt }[] = [{ id: 'energised' }, { id: 'fine' }, { id: 'tired' }, { id: 'unwell' }]
 
 const mmss = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 const hhmmss = (total: number) => (total >= 3600 ? `${Math.floor(total / 3600)}:${mmss(total % 3600)}` : mmss(total))
@@ -40,6 +36,9 @@ const durationOf = (s: WorkoutSession) => Math.max(0, Math.round(((s.endedAt ? n
  * calculates them. This screen only records.
  */
 export function WorkoutTracker() {
+  const { t } = useTranslation()
+  const feelLabel: Record<Felt, string> = { energised: t('workout.tracker.energised', 'Energised'), fine: t('workout.tracker.fine', 'Fine'), tired: t('workout.tracker.tired', 'Tired'), unwell: t('workout.tracker.unwell', 'Unwell') }
+  const groupName: Record<string, string> = { Legs: t('workout.tracker.legs', 'Legs'), Chest: t('workout.tracker.chest', 'Chest'), Back: t('workout.tracker.back', 'Back'), Shoulders: t('workout.tracker.shoulders', 'Shoulders'), Arms: t('workout.tracker.arms', 'Arms'), Core: t('workout.tracker.core', 'Core'), Cardio: t('workout.tracker.cardio', 'Cardio') }
   const { session, pending, start, addExercise, removeExercise, addSet, removeSet, restUntil, startRest, stopRest, finish, discard, clearPending } = useWorkoutSession()
   const [now, setNow] = useState(Date.now())
   const [finishing, setFinishing] = useState(false)
@@ -59,33 +58,33 @@ export function WorkoutTracker() {
   if (!session)
     return (
       <Screen>
-        <Header title="Workout tracker" back backTo="F1" sub="Track how long you train, what you do and every set." />
+        <Header title={t('workout.tracker.startTitle', 'Workout tracker')} back backTo="F1" sub={t('workout.tracker.startSub', 'Track how long you train, what you do and every set.')} />
         <Card className="flex flex-col gap-3">
-          <p className="text-body">Log each exercise with its reps and weight. A rest timer starts after every set. When you finish, your heart rate from the watch is used to work out how hard the session was.</p>
+          <p className="text-body">{t('workout.tracker.intro', 'Log each exercise with its reps and weight. A rest timer starts after every set. When you finish, your heart rate from the watch is used to work out how hard the session was.')}</p>
           <Button icon={Barbell} onClick={start}>
-            Start workout
+            {t('workout.tracker.start', 'Start workout')}
           </Button>
         </Card>
         {pending.length > 0 && (
           <Card tone="soft" className="flex flex-col gap-2">
-            <p className="text-body font-bold">Waiting to upload</p>
+            <p className="text-body font-bold">{t('workout.tracker.waiting', 'Waiting to upload')}</p>
             {pending.map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-3 text-body">
                 <span>
-                  {clockOf(p.startedAt)}, {totals(p).sets} sets
+                  {t('workout.tracker.pendingItem', '{{time}}, {{n}} sets', { time: clockOf(p.startedAt), n: totals(p).sets })}
                 </span>
-                <Button size="md" variant="secondary" className="!w-auto" onClick={() => setResult({ session: p, summary: null, error: 'Not uploaded yet.' })}>
-                  Open
+                <Button size="md" variant="secondary" className="!w-auto" onClick={() => setResult({ session: p, summary: null, error: t('workout.tracker.notUploaded', 'Not uploaded yet.') })}>
+                  {t('workout.tracker.open', 'Open')}
                 </Button>
               </div>
             ))}
-            <p className="text-sub text-ink3">Saved on this device until it can be uploaded.</p>
+            <p className="text-sub text-ink3">{t('workout.tracker.savedHere', 'Saved on this device until it can be uploaded.')}</p>
           </Card>
         )}
       </Screen>
     )
 
-  const t = totals(session)
+  const tot = totals(session)
   const elapsed = Math.max(0, Math.round((now - new Date(session.startedAt).getTime()) / 1000))
   const restLeft = restUntil ? Math.max(0, Math.round((restUntil - now) / 1000)) : 0
   const used = new Set(session.exercises.map((e) => e.name.toLowerCase()))
@@ -99,39 +98,39 @@ export function WorkoutTracker() {
       clearPending(done.id)
       setResult({ session: done, summary, error: null })
     } catch (e) {
-      setResult({ session: done, summary: null, error: 'It could not be saved just now.' })
+      setResult({ session: done, summary: null, error: t('workout.tracker.saveError', 'It could not be saved just now.') })
     }
   }
 
   return (
     <Screen>
-      <Header title="Workout" back backTo="F1" />
+      <Header title={t('workout.tracker.title', 'Workout')} back backTo="F1" />
       <Card tone="hero" className="flex flex-col gap-3">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-sub font-bold text-ink2">Time</p>
+            <p className="text-sub font-bold text-ink2">{t('workout.tracker.time', 'Time')}</p>
             <p className="num text-display tabular-nums" aria-live="off">
               {hhmmss(elapsed)}
             </p>
           </div>
           <div className="text-right text-sub text-ink2">
-            <p>Started {clockOf(session.startedAt)}</p>
+            <p>{t('workout.tracker.started', 'Started {{time}}', { time: clockOf(session.startedAt) })}</p>
             <p>
-              <b className="text-ink">{t.sets}</b> sets, <b className="text-ink">{Math.round(t.volume).toLocaleString('en-US')}</b> kg lifted
+              <Trans i18nKey="workout.tracker.totals" defaults="<0>{{sets}}</0> sets, <1>{{kg}}</1> kg lifted" values={{ sets: tot.sets, kg: Math.round(tot.volume).toLocaleString('en-US') }} components={[<b key="0" className="text-ink" />, <b key="1" className="text-ink" />]} />
             </p>
           </div>
         </div>
         {restLeft > 0 && (
           <div className="flex items-center justify-between gap-3 rounded-card bg-brand-soft p-3.5">
             <span className="flex items-center gap-2 text-body font-bold text-brand">
-              <Timer size={22} aria-hidden /> Rest <span className="num text-h2">{mmss(restLeft)}</span>
+              <Timer size={22} aria-hidden /> {t('workout.tracker.rest', 'Rest')} <span className="num text-h2">{mmss(restLeft)}</span>
             </span>
             <Button size="md" variant="ghost" className="!w-auto" onClick={stopRest}>
-              Skip rest
+              {t('workout.tracker.skipRest', 'Skip rest')}
             </Button>
           </div>
         )}
-        {restUntil && restLeft === 0 && <StatusPill tone="ok">Rest is over. Ready for the next set.</StatusPill>}
+        {restUntil && restLeft === 0 && <StatusPill tone="ok">{t('workout.tracker.restOver', 'Rest is over. Ready for the next set.')}</StatusPill>}
       </Card>
 
       {session.exercises.map((e) => (
@@ -139,11 +138,11 @@ export function WorkoutTracker() {
       ))}
 
       <section className="flex flex-col gap-3">
-        <SectionTitle>Add an exercise</SectionTitle>
+        <SectionTitle>{t('workout.tracker.addEx', 'Add an exercise')}</SectionTitle>
         <div className="flex flex-col gap-3">
           {LIBRARY.map((g) => (
             <div key={g.group} className="flex flex-col gap-1.5">
-              <p className="text-sub font-bold text-ink3">{g.group}</p>
+              <p className="text-sub font-bold text-ink3">{groupName[g.group] ?? g.group}</p>
               <div className="flex flex-wrap gap-2">
                 {g.items.filter((n) => !used.has(n.toLowerCase())).map((n) => (
                   <Chip key={n} onClick={() => addExercise(n)}>
@@ -154,41 +153,41 @@ export function WorkoutTracker() {
             </div>
           ))}
         </div>
-        <Field label="Something else" value={custom} onChange={setCustom} placeholder="Name the exercise" />
+        <Field label={t('workout.tracker.other', 'Something else')} value={custom} onChange={setCustom} placeholder={t('workout.tracker.otherPh', 'Name the exercise')} />
         <Button variant="secondary" disabled={!custom.trim()} onClick={() => { addExercise(custom.trim()); setCustom('') }}>
-          Add exercise
+          {t('workout.tracker.addButton', 'Add exercise')}
         </Button>
       </section>
 
       {finishing && (
         <Card className="flex flex-col gap-3">
-          <Rating label="How hard was it?" value={intensity} onChange={setIntensity} lowLabel="Very light" highLabel="All-out" />
-          <SectionTitle>How did it feel?</SectionTitle>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="How you felt">
+          <Rating label={t('workout.tracker.hard', 'How hard was it?')} value={intensity} onChange={setIntensity} lowLabel={t('workout.tracker.veryLight', 'Very light')} highLabel={t('workout.tracker.allOut', 'All-out')} />
+          <SectionTitle>{t('workout.tracker.feel', 'How did it feel?')}</SectionTitle>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('workout.tracker.feelLabel', 'How you felt')}>
             {FEELS.map((f) => (
               <Chip key={f.id} on={felt === f.id} onClick={() => setFelt(f.id)}>
-                {f.label}
+                {feelLabel[f.id]}
               </Chip>
             ))}
           </div>
-          <Field label="Note (optional)" value={note} onChange={setNote} multiline />
+          <Field label={t('workout.tracker.note', 'Note (optional)')} value={note} onChange={setNote} multiline />
           <Button icon={CheckCircle} onClick={() => void save()}>
-            Save workout
+            {t('workout.tracker.save', 'Save workout')}
           </Button>
           <Button variant="ghost" onClick={() => setFinishing(false)}>
-            Keep training
+            {t('workout.tracker.keep', 'Keep training')}
           </Button>
         </Card>
       )}
 
       <Footer>
         {!finishing && (
-          <Button icon={CheckCircle} disabled={t.sets === 0} onClick={() => setFinishing(true)}>
-            Finish workout
+          <Button icon={CheckCircle} disabled={tot.sets === 0} onClick={() => setFinishing(true)}>
+            {t('workout.tracker.finish', 'Finish workout')}
           </Button>
         )}
-        <Button variant="ghost" icon={Trash} onClick={() => { if (window.confirm('Discard this workout?')) discard() }}>
-          Discard workout
+        <Button variant="ghost" icon={Trash} onClick={() => { if (window.confirm(t('workout.tracker.discardConfirm', 'Discard this workout?'))) discard() }}>
+          {t('workout.tracker.discard', 'Discard workout')}
         </Button>
       </Footer>
     </Screen>
@@ -196,6 +195,7 @@ export function WorkoutTracker() {
 }
 
 function ExerciseCard({ e, onSet, onRemoveSet, onRemove }: { e: WorkoutExercise; onSet: (reps: number, weightKg: number | null) => void; onRemoveSet: (id: string) => void; onRemove: () => void }) {
+  const { t } = useTranslation()
   const last = e.sets[e.sets.length - 1]
   const [reps, setReps] = useState(last?.reps ?? 10)
   const [weight, setWeight] = useState(last?.weightKg ?? 20)
@@ -207,10 +207,10 @@ function ExerciseCard({ e, onSet, onRemoveSet, onRemove }: { e: WorkoutExercise;
         <div>
           <p className="text-h2 font-bold leading-tight">{e.name}</p>
           <p className="text-sub text-ink2">
-            {e.sets.length} sets{volume > 0 ? `, ${Math.round(volume).toLocaleString('en-US')} kg` : ''}
+            {t('workout.tracker.setCount', '{{n}} sets', { n: e.sets.length })}{volume > 0 ? t('workout.tracker.volumeKg', ', {{kg}} kg', { kg: Math.round(volume).toLocaleString('en-US') }) : ''}
           </p>
         </div>
-        <button type="button" aria-label={`Remove ${e.name}`} onClick={onRemove} className="press flex h-12 w-12 flex-none items-center justify-center rounded-full text-ink3 hover:bg-well">
+        <button type="button" aria-label={t('workout.tracker.removeEx', 'Remove {{name}}', { name: e.name })} onClick={onRemove} className="press flex h-12 w-12 flex-none items-center justify-center rounded-full text-ink3 hover:bg-well">
           <Trash size={22} aria-hidden />
         </button>
       </div>
@@ -219,9 +219,9 @@ function ExerciseCard({ e, onSet, onRemoveSet, onRemove }: { e: WorkoutExercise;
           {e.sets.map((s, i) => (
             <li key={s.id} className="flex items-center justify-between gap-3 py-2.5 text-body">
               <span>
-                <span className="text-ink3">Set {i + 1}</span> <span className="num text-h2">{s.reps}</span> reps {s.weightKg === null ? '(bodyweight)' : `at ${s.weightKg} kg`}
+                <span className="text-ink3">{t('workout.tracker.setN', 'Set {{n}}', { n: i + 1 })}</span> <span className="num text-h2">{s.reps}</span> {t('workout.tracker.reps', 'reps')} {s.weightKg === null ? t('workout.tracker.bodyweightSet', '(bodyweight)') : t('workout.tracker.atKg', 'at {{kg}} kg', { kg: s.weightKg })}
               </span>
-              <button type="button" aria-label={`Remove set ${i + 1}`} onClick={() => onRemoveSet(s.id)} className="press flex h-10 w-10 flex-none items-center justify-center rounded-full text-ink3 hover:bg-well">
+              <button type="button" aria-label={t('workout.tracker.removeSet', 'Remove set {{n}}', { n: i + 1 })} onClick={() => onRemoveSet(s.id)} className="press flex h-10 w-10 flex-none items-center justify-center rounded-full text-ink3 hover:bg-well">
                 <Trash size={18} aria-hidden />
               </button>
             </li>
@@ -229,43 +229,44 @@ function ExerciseCard({ e, onSet, onRemoveSet, onRemove }: { e: WorkoutExercise;
         </ol>
       )}
       <div className="flex flex-col gap-2">
-        <Stepper label="reps" value={reps} onChange={setReps} min={1} max={100} step={1} format={(v) => `${v} reps`} />
-        {!bodyweight && <Stepper label="weight" value={weight} onChange={setWeight} min={0} max={300} step={2.5} format={(v) => `${v} kg`} />}
+        <Stepper label={t('workout.tracker.repsLabel', 'reps')} value={reps} onChange={setReps} min={1} max={100} step={1} format={(v) => t('workout.tracker.repsFmt', '{{n}} reps', { n: v })} />
+        {!bodyweight && <Stepper label={t('workout.tracker.weightLabel', 'weight')} value={weight} onChange={setWeight} min={0} max={300} step={2.5} format={(v) => `${v} kg`} />}
         <Chip on={bodyweight} onClick={() => setBodyweight((b) => !b)} className="self-start">
-          Bodyweight
+          {t('workout.tracker.bodyweight', 'Bodyweight')}
         </Chip>
       </div>
-      <Button onClick={() => onSet(reps, bodyweight ? null : weight)}>Log set</Button>
+      <Button onClick={() => onSet(reps, bodyweight ? null : weight)}>{t('workout.tracker.logSet', 'Log set')}</Button>
     </Card>
   )
 }
 
 function Summary({ r, onDone }: { r: { session: WorkoutSession; summary: WorkoutSummary | null; error: string | null }; onDone: () => void }) {
-  const t = totals(r.session)
+  const { t } = useTranslation()
+  const tot = totals(r.session)
   const s = r.summary
   return (
     <Screen>
-      <Header title="Workout saved" sub={r.error ? 'Kept on this device.' : undefined} />
-      {r.error && <Alert tone="info">{r.error} It stays on this device and can be uploaded again from the workout screen.</Alert>}
+      <Header title={t('workout.tracker.savedTitle', 'Workout saved')} sub={r.error ? t('workout.tracker.keptHere', 'Kept on this device.') : undefined} />
+      {r.error && <Alert tone="info">{t('workout.tracker.staysHere', '{{error}} It stays on this device and can be uploaded again from the workout screen.', { error: r.error })}</Alert>}
       <Card tone="hero" className="grid grid-cols-3 gap-3 text-center [[data-ts='2']_&]:grid-cols-1">
         <div>
-          <p className="text-sub text-ink2">Time</p>
+          <p className="text-sub text-ink2">{t('workout.tracker.timeLabel', 'Time')}</p>
           <p className="num text-xl">{hhmmss(s ? s.durationS : durationOf(r.session))}</p>
         </div>
         <div>
-          <p className="text-sub text-ink2">Sets</p>
-          <p className="num text-xl">{s ? s.setsN : t.sets}</p>
+          <p className="text-sub text-ink2">{t('workout.tracker.setsLabel', 'Sets')}</p>
+          <p className="num text-xl">{s ? s.setsN : tot.sets}</p>
         </div>
         <div>
-          <p className="text-sub text-ink2">Lifted</p>
+          <p className="text-sub text-ink2">{t('workout.tracker.liftedLabel', 'Lifted')}</p>
           <p className="num text-xl">
-            {Math.round(s ? s.volumeKg : t.volume).toLocaleString('en-US')}
+            {Math.round(s ? s.volumeKg : tot.volume).toLocaleString('en-US')}
             <span className="text-sub text-ink3"> kg</span>
           </p>
         </div>
       </Card>
       <Card className="flex flex-col gap-1">
-        <SectionTitle>Exercises</SectionTitle>
+        <SectionTitle>{t('workout.tracker.exercises', 'Exercises')}</SectionTitle>
         <ul className="divide-y divide-line">
           {r.session.exercises.map((e) => {
             const fromServer = s?.exercises.find((x) => x.name === e.name)
@@ -274,13 +275,13 @@ function Summary({ r, onDone }: { r: { session: WorkoutSession; summary: Workout
                 <span>
                   <b>{e.name}</b>
                   <span className="block text-sub text-ink2">
-                    {e.sets.length} sets, {Math.round(volumeOf(e)).toLocaleString('en-US')} kg
+                    {t('workout.tracker.setsKg', '{{n}} sets, {{kg}} kg', { n: e.sets.length, kg: Math.round(volumeOf(e)).toLocaleString('en-US') })}
                   </span>
                 </span>
                 {fromServer?.avgHr != null && (
                   <span className="text-right">
                     <span className="num text-h2">{Math.round(fromServer.avgHr)}</span>
-                    <span className="block text-sub text-ink3">avg bpm</span>
+                    <span className="block text-sub text-ink3">{t('workout.tracker.avgBpm', 'avg bpm')}</span>
                   </span>
                 )}
               </li>
@@ -290,23 +291,23 @@ function Summary({ r, onDone }: { r: { session: WorkoutSession; summary: Workout
       </Card>
       <Card className="flex flex-col gap-2">
         <p className="flex items-center gap-2 text-body font-bold">
-          <Heartbeat size={22} className="text-brand" aria-hidden /> Heart-rate effort
+          <Heartbeat size={22} className="text-brand" aria-hidden /> {t('workout.tracker.hrEffort', 'Heart-rate effort')}
         </p>
         {s && s.effort.quality === 'ok' ? (
           <>
             <p className="text-body">
-              Average {Math.round(s.effort.avgHr ?? 0)} bpm, peak {Math.round(s.effort.maxHr ?? 0)} bpm. Overall effort: <b>{s.effort.intensity}</b>.
+              <Trans i18nKey="workout.tracker.hrSummary" defaults="Average {{avg}} bpm, peak {{peak}} bpm. Overall effort: <0>{{effort}}</0>." values={{ avg: Math.round(s.effort.avgHr ?? 0), peak: Math.round(s.effort.maxHr ?? 0), effort: s.effort.intensity }} components={[<b key="0" />]} />
             </p>
-            {s.glucoseChange2h != null && <p className="text-body">Your glucose changed by {s.glucoseChange2h > 0 ? '+' : ''}{s.glucoseChange2h.toFixed(1)} mmol/L over the next 2 hours (associated with, not proven).</p>}
+            {s.glucoseChange2h != null && <p className="text-body">{t('workout.tracker.glucose', 'Your glucose changed by {{change}} mmol/L over the next 2 hours (associated with, not proven).', { change: `${s.glucoseChange2h > 0 ? '+' : ''}${s.glucoseChange2h.toFixed(1)}` })}</p>}
             {s.narrative && <p className="text-body text-ink2">{s.narrative}</p>}
           </>
         ) : (
-          <p className="text-body text-ink2">{s?.effort.note ?? 'Effort appears here once this is saved to the server and your watch heart rate is available. It is worked out by code from your heart rate and your resting baseline, not guessed.'}</p>
+          <p className="text-body text-ink2">{s?.effort.note ?? t('workout.tracker.effortWait', 'Effort appears here once this is saved to the server and your watch heart rate is available. It is worked out by code from your heart rate and your resting baseline, not guessed.')}</p>
         )}
-        <p className="text-sub text-ink3">Heart rate is an estimate of effort. It is not a medical measurement.</p>
+        <p className="text-sub text-ink3">{t('workout.tracker.hrNote', 'Heart rate is an estimate of effort. It is not a medical measurement.')}</p>
       </Card>
       <Footer>
-        <Button onClick={onDone}>Done</Button>
+        <Button onClick={onDone}>{t('workout.tracker.done', 'Done')}</Button>
       </Footer>
     </Screen>
   )

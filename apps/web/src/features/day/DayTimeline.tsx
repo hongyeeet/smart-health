@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
 import { Check, Clock, ForkKnife, PersonSimpleWalk, Question, Thermometer, X, type IconType } from '@/ui/icons'
 import type { DayMarker, DayView, DoseState } from './api'
@@ -30,7 +31,6 @@ function useWidth<T extends HTMLElement>() {
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
-const hourLabel = (h: number) => (h % 24 === 0 ? '12 am' : h === 12 ? '12 pm' : h < 12 ? `${h} am` : `${h - 12} pm`)
 
 /** Runs of slots with no glucose reading, as [startMinute, endMinute). Short runs (under 15 minutes) are normal sensor noise and are not drawn. */
 function glucoseGaps(series: DayView['series']): [number, number][] {
@@ -71,11 +71,20 @@ function linePath(points: { x: number; y: number | null }[]): string {
  * then heart rate, steps, sleep and mood. Missing data is a hatched gap, never a joined line.
  */
 export function DayTimeline({ day, onPick }: { day: DayView; onPick: (m: DayMarker) => void }) {
+  const { t } = useTranslation()
   const [ref, width] = useWidth<HTMLDivElement>()
   const innerW = Math.max(width - PAD_L - PAD_R, 60)
   const sx = (minute: number) => PAD_L + (clamp(minute, 0, DAY) / DAY) * innerW
   const sy = (v: number) => 8 + (1 - (clamp(v, Y_MIN, Y_MAX) - Y_MIN) / (Y_MAX - Y_MIN)) * (GLUCOSE_H - 30)
   const sh = (bpm: number) => 8 + (1 - (clamp(bpm, HR_MIN, HR_MAX) - HR_MIN) / (HR_MAX - HR_MIN)) * 52
+  const hourLabel = (h: number) =>
+    h % 24 === 0
+      ? t('day.tl.midnight', '12 am')
+      : h === 12
+        ? t('day.tl.noon', '12 pm')
+        : h < 12
+          ? t('day.tl.am', '{{h}} am', { h })
+          : t('day.tl.pm', '{{h}} pm', { h: h - 12 })
 
   const { series, markers, sleep, mood, targetLow, targetHigh } = day
   const glucosePoints = series.map((p) => ({ x: sx(p.minute), y: p.glucoseMmol == null ? null : sy(p.glucoseMmol) }))
@@ -94,16 +103,21 @@ export function DayTimeline({ day, onPick }: { day: DayView; onPick: (m: DayMark
   const hasHr = series.some((p) => p.heartRateBpm != null)
 
   const lanes: { label: string; items: DayMarker[] }[] = [
-    { label: 'Meals', items: markers.filter((m) => m.kind === 'meal') },
-    { label: 'Medicines', items: markers.filter((m) => m.kind === 'dose') },
-    { label: 'Workouts and symptoms', items: markers.filter((m) => m.kind === 'workout' || m.kind === 'symptom') },
+    { label: t('day.tl.lanes.meals', 'Meals'), items: markers.filter((m) => m.kind === 'meal') },
+    { label: t('day.tl.lanes.medicines', 'Medicines'), items: markers.filter((m) => m.kind === 'dose') },
+    { label: t('day.tl.lanes.workouts', 'Workouts and symptoms'), items: markers.filter((m) => m.kind === 'workout' || m.kind === 'symptom') },
   ]
 
   return (
     <div ref={ref} className="w-full">
       <svg
         role="img"
-        aria-label={`Glucose on this day: ${inRange == null ? 'no readings' : `${inRange}% of readings in your range, ${targetLow} to ${targetHigh} mmol/L`}`}
+        aria-label={t('day.tl.glucoseAria', 'Glucose on this day: {{summary}}', {
+          summary:
+            inRange == null
+              ? t('day.tl.noReadings', 'no readings')
+              : t('day.tl.rangeWords', '{{pct}}% of readings in your range, {{low}} to {{high}} mmol/L', { pct: inRange, low: targetLow, high: targetHigh }),
+        })}
         width={width}
         height={GLUCOSE_H}
         className="block overflow-visible"
@@ -131,7 +145,7 @@ export function DayTimeline({ day, onPick }: { day: DayView; onPick: (m: DayMark
             <rect x={sx(a)} y={4} width={Math.max(sx(b) - sx(a), 1)} height={GLUCOSE_H - 26} fill="none" stroke="var(--c-ink3)" strokeOpacity={0.5} strokeDasharray="3 4" rx={6} />
             {sx(b) - sx(a) > 90 && (
               <text x={(sx(a) + sx(b)) / 2} y={(GLUCOSE_H - 26) / 2} textAnchor="middle" fill="var(--c-ink2)" style={{ fontSize: 'calc(13px * var(--ts))', fontWeight: 700 }}>
-                No sensor data
+                {t('day.tl.noSensor', 'No sensor data')}
               </text>
             )}
           </g>
@@ -146,13 +160,13 @@ export function DayTimeline({ day, onPick }: { day: DayView; onPick: (m: DayMark
           </g>
         ))}
       </svg>
-      <p className="mt-1 text-sub text-ink3">Hatched areas have no sensor reading. The line is broken there, never joined.</p>
+      <p className="mt-1 text-sub text-ink3">{t('day.tl.gapNote', 'Hatched areas have no sensor reading. The line is broken there, never joined.')}</p>
 
       {lanes.map((lane) => (
         <div key={lane.label} className="mt-3">
           <p className="text-sub font-bold text-ink2">{lane.label}</p>
           <div className="relative border-b border-line/70" style={{ height: LANE_H }}>
-            {lane.items.length === 0 && <span className="absolute inset-y-0 left-0 flex items-center text-sub text-ink3">Nothing logged</span>}
+            {lane.items.length === 0 && <span className="absolute inset-y-0 left-0 flex items-center text-sub text-ink3">{t('day.tl.nothing', 'Nothing logged')}</span>}
             {lane.items.map((m) => (
               <MarkerButton key={m.id} marker={m} x={sx(m.minute)} span={m.endMinute != null ? sx(m.endMinute) - sx(m.minute) : 0} onClick={() => onPick(m)} />
             ))}
@@ -160,9 +174,9 @@ export function DayTimeline({ day, onPick }: { day: DayView; onPick: (m: DayMark
         </div>
       ))}
 
-      <p className="mt-4 text-sub font-bold text-ink2">Heart rate, beats a minute</p>
+      <p className="mt-4 text-sub font-bold text-ink2">{t('day.tl.hr', 'Heart rate, beats a minute')}</p>
       {hasHr ? (
-        <svg width={width} height={64} role="img" aria-label="Heart rate across the day" className="block overflow-visible">
+        <svg width={width} height={64} role="img" aria-label={t('day.tl.hrAria', 'Heart rate across the day')} className="block overflow-visible">
           <path d={linePath(hrPoints)} fill="none" stroke="var(--c-s3)" strokeWidth={2} strokeLinejoin="round" />
           <text x={PAD_L - 6} y={sh(120) + 4} textAnchor="end" fill="var(--c-ink2)" style={{ fontSize: 'calc(13px * var(--ts))' }}>
             120
@@ -172,12 +186,21 @@ export function DayTimeline({ day, onPick }: { day: DayView; onPick: (m: DayMark
           </text>
         </svg>
       ) : (
-        <p className="text-sub text-ink3">No heart rate recorded for this day.</p>
+        <p className="text-sub text-ink3">{t('day.tl.noHr', 'No heart rate recorded for this day.')}</p>
       )}
 
-      <p className="mt-3 text-sub font-bold text-ink2">Steps each hour{hasSteps ? `, ${totalSteps.toLocaleString('en-US')} in all` : ''}</p>
+      <p className="mt-3 text-sub font-bold text-ink2">
+        {t('day.tl.steps', 'Steps each hour')}
+        {hasSteps ? t('day.tl.stepsTotal', ', {{n}} in all', { n: totalSteps.toLocaleString('en-US') }) : ''}
+      </p>
       {hasSteps ? (
-        <svg width={width} height={56} role="img" aria-label={`Steps each hour, ${totalSteps.toLocaleString('en-US')} in all`} className="block overflow-visible">
+        <svg
+          width={width}
+          height={56}
+          role="img"
+          aria-label={t('day.tl.stepsAria', 'Steps each hour, {{n}} in all', { n: totalSteps.toLocaleString('en-US') })}
+          className="block overflow-visible"
+        >
           {stepsByHour.map((s, h) => {
             const bw = Math.max(innerW / 24 - 3, 3)
             const bh = s == null ? 0 : (s / maxSteps) * 46
@@ -185,26 +208,43 @@ export function DayTimeline({ day, onPick }: { day: DayView; onPick: (m: DayMark
           })}
         </svg>
       ) : (
-        <p className="text-sub text-ink3">No steps recorded for this day.</p>
+        <p className="text-sub text-ink3">{t('day.tl.noSteps', 'No steps recorded for this day.')}</p>
       )}
 
-      <p className="mt-3 text-sub font-bold text-ink2">Sleep</p>
-      <svg width={width} height={30} role="img" aria-label={sleep.length ? `Asleep ${sleep.map((b) => `${clockWords(b.startMinute)} to ${clockWords(b.endMinute)}`).join(', then ')}` : 'No sleep recorded'} className="block overflow-visible">
+      <p className="mt-3 text-sub font-bold text-ink2">{t('day.tl.sleep', 'Sleep')}</p>
+      <svg
+        width={width}
+        height={30}
+        role="img"
+        aria-label={
+          sleep.length
+            ? t('day.tl.asleep', 'Asleep {{times}}', {
+                times: sleep.map((b) => t('day.tl.sleepRange', '{{from}} to {{to}}', { from: clockWords(b.startMinute), to: clockWords(b.endMinute) })).join(t('day.tl.thenJoin', ', then ')),
+              })
+            : t('day.tl.noSleepAria', 'No sleep recorded')
+        }
+        className="block overflow-visible"
+      >
         <rect x={PAD_L} y={4} width={innerW} height={22} rx={8} fill="var(--c-well)" />
         {sleep.map((b) => (
           <rect key={b.startMinute} x={sx(b.startMinute)} y={4} width={Math.max(sx(b.endMinute) - sx(b.startMinute), 2)} height={22} rx={8} fill="var(--c-s3)" fillOpacity={0.55} />
         ))}
       </svg>
-      {!sleep.length && <p className="text-sub text-ink3">No sleep recorded for this day.</p>}
+      {!sleep.length && <p className="text-sub text-ink3">{t('day.tl.noSleep', 'No sleep recorded for this day.')}</p>}
 
-      <p className="mt-3 text-sub font-bold text-ink2">Mood and stress check-ins</p>
+      <p className="mt-3 text-sub font-bold text-ink2">{t('day.tl.mood', 'Mood and stress check-ins')}</p>
       <div className="relative h-11 border-b border-line/70">
-        {mood.length === 0 && <span className="absolute inset-y-0 left-0 flex items-center text-sub text-ink3">No check-ins</span>}
+        {mood.length === 0 && <span className="absolute inset-y-0 left-0 flex items-center text-sub text-ink3">{t('day.tl.noCheckins', 'No check-ins')}</span>}
         {mood.map((d) => (
           <span
             key={d.id}
             role="img"
-            aria-label={`Check-in at ${d.clock}: ${d.mood == null ? 'mood not recorded' : `mood ${d.mood} of 5`}${d.stressSelf == null ? '' : `, stress ${d.stressSelf} of 5`}`}
+            aria-label={
+              t('day.tl.checkinAt', 'Check-in at {{clock}}: {{mood}}', {
+                clock: d.clock,
+                mood: d.mood == null ? t('day.tl.moodNot', 'mood not recorded') : t('day.tl.moodOf', 'mood {{n}} of 5', { n: d.mood }),
+              }) + (d.stressSelf == null ? '' : t('day.tl.stressOf', ', stress {{n}} of 5', { n: d.stressSelf }))
+            }
             className="absolute top-1.5 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-brand/50 bg-brand-soft text-sub font-bold text-brand"
             style={{ left: sx(d.minute) }}
           >
@@ -229,6 +269,7 @@ const TONE: Record<Tone, string> = {
 const STATE_ICON: Record<DoseState, IconType> = { taken: Check, late: Clock, not_confirmed: Question, missed: X }
 
 function MarkerButton({ marker, x, span, onClick }: { marker: DayMarker; x: number; span: number; onClick: () => void }) {
+  const { t } = useTranslation()
   const tone = markerTone(marker)
   const Icon: IconType =
     marker.kind === 'meal' ? ForkKnife : marker.kind === 'workout' ? PersonSimpleWalk : marker.kind === 'symptom' ? Thermometer : STATE_ICON[marker.status ?? 'taken']
@@ -237,7 +278,11 @@ function MarkerButton({ marker, x, span, onClick }: { marker: DayMarker; x: numb
     <button
       type="button"
       onClick={onClick}
-      aria-label={`${marker.title} at ${marker.clock}${marker.kind === 'dose' && marker.status ? `, ${doseWords(marker.status)}` : ''}. Open details`}
+      aria-label={t('day.tl.markerAria', '{{title}} at {{clock}}{{state}}. Open details', {
+        title: marker.title,
+        clock: marker.clock,
+        state: marker.kind === 'dose' && marker.status ? t('day.tl.statePart', ', {{words}}', { words: doseWords(marker.status) }) : '',
+      })}
       className={cn('press absolute top-0 flex h-11 min-w-11 items-center justify-center rounded-field border', TONE[tone])}
       style={{ left: wide ? x : x - 22, width: wide ? span : 44 }}
     >

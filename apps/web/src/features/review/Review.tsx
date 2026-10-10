@@ -5,6 +5,7 @@
  * suggestion or the person's record; a rating is only kept for the score.
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Header, Screen } from '@/ui/layout'
 import { Segmented } from '@/ui/controls'
 import { Alert, Button, Card, EmptyState, Skeleton, StatusPill } from '@/ui/primitives'
@@ -13,7 +14,8 @@ import { useReviewQueue, useReviewScore, type QueueSource, type ReviewScore } fr
 import { SuggestionCard } from './SuggestionCard'
 
 function ScoreCard({ score, isError }: { score: ReviewScore | undefined; isError: boolean }) {
-  if (isError) return <Alert tone="warn">We could not load the review score just now.</Alert>
+  const { t } = useTranslation()
+  if (isError) return <Alert tone="warn">{t('review.score.loadError', 'We could not load the review score just now.')}</Alert>
   if (!score) return <Skeleton className="h-36" />
 
   const target = Math.round(score.target * 100)
@@ -27,38 +29,58 @@ function ScoreCard({ score, isError }: { score: ReviewScore | undefined; isError
 
   let pill: { tone: 'ok' | 'warn' | 'danger' | 'neutral'; icon: IconType; text: string; title: string }
   if (score.status === 'too_few') {
-    pill = { tone: 'neutral', icon: Info, title: 'Too few ratings', text: `Rate at least ${score.minRatings} suggestions to see a result. You have rated ${score.rated} so far.` }
+    pill = {
+      tone: 'neutral',
+      icon: Info,
+      title: t('review.score.tooFewTitle', 'Too few ratings'),
+      text: t('review.score.tooFew', 'Rate at least {{min}} suggestions to see a result. You have rated {{rated}} so far.', { min: score.minRatings, rated: score.rated }),
+    }
   } else if (score.status === 'met') {
-    pill = { tone: 'ok', icon: CheckCircle, title: 'Target met', text: `${pct}% judged reasonable. The aim is ${target}% or more, with no unsafe ratings.` }
+    pill = {
+      tone: 'ok',
+      icon: CheckCircle,
+      title: t('review.score.metTitle', 'Target met'),
+      text: t('review.score.met', '{{pct}}% judged reasonable. The aim is {{target}}% or more, with no unsafe ratings.', { pct, target }),
+    }
   } else if (score.unsafe > 0) {
-    pill = { tone: 'danger', icon: WarningCircle, title: 'Target not met', text: `${score.unsafe} ${score.unsafe === 1 ? 'suggestion is' : 'suggestions are'} rated unsafe. The aim is none.` }
+    pill = {
+      tone: 'danger',
+      icon: WarningCircle,
+      title: t('review.score.notMetTitle', 'Target not met'),
+      text:
+        score.unsafe === 1
+          ? t('review.score.unsafeOne', '{{n}} suggestion is rated unsafe. The aim is none.', { n: score.unsafe })
+          : t('review.score.unsafeMany', '{{n}} suggestions are rated unsafe. The aim is none.', { n: score.unsafe }),
+    }
   } else {
-    pill = { tone: 'warn', icon: WarningCircle, title: 'Target not met', text: `${pct}% judged reasonable. The aim is ${target}% or more.` }
+    pill = {
+      tone: 'warn',
+      icon: WarningCircle,
+      title: t('review.score.notMetTitle', 'Target not met'),
+      text: t('review.score.notMet', '{{pct}}% judged reasonable. The aim is {{target}}% or more.', { pct, target }),
+    }
   }
 
   return (
-    <Card tone="hero" as="section" className="flex flex-col gap-3" aria-label="Review score">
+    <Card tone="hero" as="section" className="flex flex-col gap-3" aria-label={t('review.score.aria', 'Review score')}>
       <div className="flex flex-col gap-2">
-        <h2 className="text-sub font-bold text-ink2">Review score</h2>
+        <h2 className="text-sub font-bold text-ink2">{t('review.score.title', 'Review score')}</h2>
         <StatusPill tone={pill.tone} icon={pill.icon}>
           {pill.title}
         </StatusPill>
         <p className="text-body text-ink">{pill.text}</p>
       </div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        {tile('Reasonable', score.counts.reasonable)}
-        {tile('Not reasonable', score.counts.notReasonable)}
-        {tile('Unsafe', score.unsafe)}
-        {tile('Target', `${target}%`)}
+        {tile(t('review.score.reasonable', 'Reasonable'), score.counts.reasonable)}
+        {tile(t('review.score.notReasonable', 'Not reasonable'), score.counts.notReasonable)}
+        {tile(t('review.score.unsafe', 'Unsafe'), score.unsafe)}
+        {tile(t('review.score.target', 'Target'), `${target}%`)}
       </div>
-      <p className="text-micro text-ink3">Ratings so far: {score.rated}. The target and the count of 20 are placeholders pending review.</p>
+      <p className="text-micro text-ink3">
+        {t('review.score.ratingsSoFar', 'Ratings so far: {{n}}. The target and the count of 20 are placeholders pending review.', { n: score.rated })}
+      </p>
     </Card>
   )
-}
-
-const SOURCE_NOTE: Record<QueueSource, string> = {
-  mine: 'Dishes you have logged more than once, with a lighter swap from the Singapore food database.',
-  sample: 'Typical hawker dishes at their published serving. Not anyone’s logged meals.',
 }
 
 export function Review() {
@@ -66,10 +88,15 @@ export function Review() {
   const [index, setIndex] = useState(0)
   const queue = useReviewQueue(source)
   const score = useReviewScore()
+  const { t } = useTranslation()
 
   const items = queue.data?.items ?? []
   const i = Math.min(index, Math.max(items.length - 1, 0))
   const current = items[i]
+  const SOURCE_NOTE: Record<QueueSource, string> = {
+    mine: t('review.sourceMine', 'Dishes you have logged more than once, with a lighter swap from the Singapore food database.'),
+    sample: t('review.sourceSample', 'Typical hawker dishes at their published serving. Not anyone’s logged meals.'),
+  }
 
   function switchTo(next: QueueSource) {
     setSource(next)
@@ -78,32 +105,35 @@ export function Review() {
 
   return (
     <Screen>
-      <Header title="Review suggestions" back backTo="K1" />
+      <Header title={t('review.title', 'Review suggestions')} back backTo="K1" />
       <p className="text-body text-ink2">
-        Each card shows a dish the app suggested as a lighter swap, with the numbers behind it. Say whether the swap is reasonable. Your ratings feed the review score.
+        {t(
+          'review.intro',
+          'Each card shows a dish the app suggested as a lighter swap, with the numbers behind it. Say whether the swap is reasonable. Your ratings feed the review score.',
+        )}
       </p>
 
       <ScoreCard score={score.data} isError={score.isError} />
 
       <Segmented
-        label="Which dishes to review"
+        label={t('review.whichDishes', 'Which dishes to review')}
         value={source}
         onChange={switchTo}
         options={[
-          { value: 'mine', label: 'My dishes' },
-          { value: 'sample', label: 'Sample dishes' },
+          { value: 'mine', label: t('review.myDishes', 'My dishes') },
+          { value: 'sample', label: t('review.sampleDishes', 'Sample dishes') },
         ]}
       />
       <p className="-mt-2 text-sub text-ink2">{SOURCE_NOTE[source]}</p>
 
       {queue.isLoading && (
         <Card className="flex flex-col gap-3" aria-live="polite">
-          <p className="text-body text-ink">Looking at the dishes and checking lighter swaps. This can take up to a minute.</p>
+          <p className="text-body text-ink">{t('review.loading', 'Looking at the dishes and checking lighter swaps. This can take up to a minute.')}</p>
           <Skeleton className="h-56" />
         </Card>
       )}
 
-      {queue.isError && <Alert tone="warn">We could not load the suggestions just now. Please try again in a moment.</Alert>}
+      {queue.isError && <Alert tone="warn">{t('review.queueError', 'We could not load the suggestions just now. Please try again in a moment.')}</Alert>}
 
       {queue.data && items.length === 0 && (
         <EmptyState
@@ -111,12 +141,12 @@ export function Review() {
           action={
             queue.data.sampleOffered ? (
               <Button variant="secondary" size="md" onClick={() => switchTo('sample')}>
-                Try the sample dishes
+                {t('review.trySample', 'Try the sample dishes')}
               </Button>
             ) : undefined
           }
         >
-          {queue.data.message ?? 'There is nothing to review yet.'}
+          {queue.data.message ?? t('review.nothingYet', 'There is nothing to review yet.')}
         </EmptyState>
       )}
 
@@ -125,25 +155,30 @@ export function Review() {
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3">
               <p className="num text-body font-bold text-ink" aria-live="polite">
-                {queue.data.rated} of {queue.data.total} rated
+                {t('review.ratedOf', '{{rated}} of {{total}} rated', { rated: queue.data.rated, total: queue.data.total })}
               </p>
-              <p className="num text-sub text-ink2">
-                Suggestion {i + 1} of {items.length}
-              </p>
+              <p className="num text-sub text-ink2">{t('review.suggestionOf', 'Suggestion {{i}} of {{n}}', { i: i + 1, n: items.length })}</p>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-chip bg-well" role="progressbar" aria-label="Rated so far" aria-valuemin={0} aria-valuemax={queue.data.total} aria-valuenow={queue.data.rated}>
+            <div
+              className="h-2 w-full overflow-hidden rounded-chip bg-well"
+              role="progressbar"
+              aria-label={t('review.ratedSoFar', 'Rated so far')}
+              aria-valuemin={0}
+              aria-valuemax={queue.data.total}
+              aria-valuenow={queue.data.rated}
+            >
               <div className="h-full rounded-chip bg-brand transition-[width] duration-300" style={{ width: `${queue.data.total ? (queue.data.rated / queue.data.total) * 100 : 0}%` }} />
             </div>
           </div>
 
           <SuggestionCard key={current.suggestionKey} item={current} source={source} />
 
-          <nav aria-label="Move between suggestions" className="grid grid-cols-2 gap-3">
+          <nav aria-label={t('review.moveAria', 'Move between suggestions')} className="grid grid-cols-2 gap-3">
             <Button variant="secondary" icon={ArrowLeft} disabled={i === 0} onClick={() => setIndex(Math.max(0, i - 1))}>
-              Previous
+              {t('review.previous', 'Previous')}
             </Button>
             <Button variant="secondary" icon={ArrowRight} disabled={i >= items.length - 1} onClick={() => setIndex(Math.min(items.length - 1, i + 1))}>
-              Next
+              {t('review.next', 'Next')}
             </Button>
           </nav>
         </>

@@ -17,6 +17,7 @@ from app.agents import food as foodagent
 from app.agents.adherence import _propose_fact
 from app.agents.trace import audit
 from app.db.logstore import tx
+from app.services import texts
 from app.db.nutritionstore import guarded, same_dish
 from app.services.insights import MIN_PATTERN_PAIRS
 
@@ -26,6 +27,7 @@ SIMILAR_BAND = 0.5                  # mmol/L: a smaller difference is reported a
 WALK_PATTERN = "evening_walk__next_morning_fasting"
 DEAD_STATUSES = ("dismissed", "rejected", "retired")
 NOT_PLACED = ("other",)             # a meal JEV could not place with confidence is not compared
+_KIND_KEY = {label: f"food.type.{kind}" for kind, label in foodagent.TYPE_LABEL.items()}   # a food type's English name -> its key
 
 
 def _confidence(n: int) -> float:
@@ -56,30 +58,41 @@ def split_by_anchor(meals: list[tuple[datetime, float]], anchor: datetime) -> tu
     return before, after
 
 
-def swap_observation(dish: str, kind_label: str, before: list[float], after: list[float]) -> dict[str, Any] | None:
-    """Pure rule: the comparison of the rise for this dish kind, or None below 5 meals on either side."""
+def _swap_text(dish: str, kind_label: str, d: str, diff: float, nb: int, na: int, lang: str) -> str:
+    kind = texts.tr(lang, _KIND_KEY[kind_label]) if kind_label in _KIND_KEY else kind_label
+    if d == "same":
+        return texts.tr(lang, "glucose.swap.same", dish=dish, kind=kind, nb=nb, na=na)
+    return texts.tr(lang, "glucose.swap.changed", dish=dish, diff=f"{abs(diff):.1f}", dir=texts.tr(lang, "glucose.less" if d == "lower" else "glucose.more"),
+                    kind=kind, nb=nb, na=na)
+
+
+def swap_observation(dish: str, kind_label: str, before: list[float], after: list[float], lang: str = "en") -> dict[str, Any] | None:
+    """Pure rule: the comparison of the rise for this dish kind, or None below 5 meals on either side.
+    `text` is in `lang`; `text_en` is the English wording the guard reads."""
     if len(before) < MIN_MEALS or len(after) < MIN_MEALS:
         return None
     diff = sum(after) / len(after) - sum(before) / len(before)
     d = _direction(diff)
     nb, na = len(before), len(after)
+    text_en = _swap_text(dish, kind_label, d, diff, nb, na, "en")
+    text = _swap_text(dish, kind_label, d, diff, nb, na, lang)
+    return {"dish": dish, "kind": kind_label, "n_before": nb, "n_after": na, "diff": round(diff, 2), "direction": d, "text": text, "text_en": text_en}
+
+
+def _walk_text(median_delta: float, d: str, n_pairs: int, lang: str) -> str:
     if d == "same":
-        text = f"After you switched to {dish}, your glucose rise after {kind_label} was about the same (based on {nb} meals before and {na} after). This is an observation from your data, not proof."
-    else:
-        text = f"After you switched to {dish}, your glucose rose {abs(diff):.1f} mmol/L {'less' if d == 'lower' else 'more'} on average after {kind_label} (based on {nb} meals before and {na} after). This is an observation from your data, not proof."
-    return {"dish": dish, "kind": kind_label, "n_before": nb, "n_after": na, "diff": round(diff, 2), "direction": d, "text": text}
+        return texts.tr(lang, "glucose.walk.same", n=n_pairs)
+    return texts.tr(lang, "glucose.walk.changed", diff=f"{abs(median_delta):.1f}", dir=texts.tr(lang, f"dir.{d}"), n=n_pairs)
 
 
-def walk_observation(median_delta: float, n_pairs: int) -> dict[str, Any] | None:
-    """Pure rule: the evening-walk finding in the Insights wording, or None below the nightly job's minimum of pairs."""
+def walk_observation(median_delta: float, n_pairs: int, lang: str = "en") -> dict[str, Any] | None:
+    """Pure rule: the evening-walk finding in the Insights wording, or None below the nightly job's minimum of pairs.
+    `text` is in `lang`; `text_en` is the English wording the guard reads."""
     if n_pairs < MIN_PATTERN_PAIRS:
         return None
     d = _direction(median_delta)
-    if d == "same":
-        text = f"On mornings after an evening walk, your fasting glucose was about the same (based on {n_pairs} evenings). This is an observation from your data, not proof."
-    else:
-        text = f"On mornings after an evening walk, your fasting glucose was {abs(median_delta):.1f} mmol/L {d} (based on {n_pairs} evenings). This is an observation from your data, not proof."
-    return {"n": n_pairs, "direction": d, "delta": round(median_delta, 2), "text": text}
+    return {"n": n_pairs, "direction": d, "delta": round(median_delta, 2), "text": _walk_text(median_delta, d, n_pairs, lang),
+            "text_en": _walk_text(median_delta, d, n_pairs, "en")}
 
 
 # ----------------------------------------------------------------------------- reading the rows
@@ -98,6 +111,7 @@ def _swap_observations(user_id) -> list[dict[str, Any]]:
         ).fetchall()
     names = [d["name"] for d in dishes]
     types = foodagent.classify_foods([m["food"] for m in meals] + names)
+    lang = texts.person_language(user_id)
     out = []
     for d in dishes:
         anchor_rows = [m["start_at"] for m in meals if same_dish(m["food"], d["name"])]
@@ -108,7 +122,7 @@ def _swap_observations(user_id) -> list[dict[str, Any]]:
             continue
         of_kind = [(m["start_at"], float(m["rise"])) for m in meals if types.get(foodagent.normalise(m["food"]), "other") == kind]
         before, after = split_by_anchor(of_kind, min(anchor_rows))
-        o = swap_observation(d["name"], foodagent.TYPE_LABEL.get(kind, kind), before, after)
+        o = swap_observation(d["name"], foodagent.TYPE_LABEL.get(kind, kind), before, after, lang)
         if o:
             out.append({**o, "foodId": d["id"], "type": kind})
     return out
@@ -123,7 +137,7 @@ def _walk_observation(user_id) -> dict[str, Any] | None:
     live = [r for r in rows if pattern_is_live(r["status"]) and r["median_delta"] is not None]
     if not live:
         return None
-    return walk_observation(float(live[0]["median_delta"]), int(live[0]["n_pairs"] or 0))
+    return walk_observation(float(live[0]["median_delta"]), int(live[0]["n_pairs"] or 0), texts.person_language(user_id))
 
 
 # ----------------------------------------------------------------------------- reflection
@@ -136,18 +150,18 @@ def run(user_id, write: bool = False) -> dict[str, Any]:
         "walk": {"n": walk["n"], "direction": walk["direction"]} if walk else None,
         "proposals": [],
     }
-    items: list[tuple[str, str, dict, str, float, list]] = []
+    items: list[tuple[str, str, dict, str, str, float, list]] = []   # key, category, value, English text (guard), text (person's language), conf, refs
     for o in swaps:
-        items.append((f"food.swap.{o['foodId']}", "food_response", {"type": o["type"], "direction": o["direction"]}, o["text"],
+        items.append((f"food.swap.{o['foodId']}", "food_response", {"type": o["type"], "direction": o["direction"]}, o["text_en"], o["text"],
                       _confidence(o["n_before"] + o["n_after"]), [{"table": "food_logs", "n_before": o["n_before"], "n_after": o["n_after"]}, {"table": "meal_response", "column": "rise_mmol"}]))
     if walk:
-        items.append(("activity.walk.evening_fasting", "routine", {"direction": walk["direction"]}, walk["text"], _confidence(walk["n"]),
+        items.append(("activity.walk.evening_fasting", "routine", {"direction": walk["direction"]}, walk["text_en"], walk["text"], _confidence(walk["n"]),
                       [{"table": "pattern_candidates", "pattern_key": WALK_PATTERN, "n_pairs": walk["n"]}]))
-    for key, cat, value, text, conf, refs in items:
+    for key, cat, value, text_en, text, conf, refs in items:
         entry: dict[str, Any] = {"key": key, "statement": text, "confidence": conf, "guard": "not_checked", "result": "dry_run"}
         if write:
-            # the guard logs its decision, so it is asked only when a fact is actually proposed
-            entry["guard"] = "pass" if guarded(user_id, text, f"glucose_feedback:{key}") else "blocked"
+            # the guard logs its decision, so it is asked only when a fact is actually proposed; it reads the English text
+            entry["guard"] = "pass" if guarded(user_id, text_en, f"glucose_feedback:{key}") else "blocked"
             if entry["guard"] == "pass":
                 with tx() as c:
                     entry["result"] = _propose_fact(c, user_id, key, cat, value, text, conf, refs)

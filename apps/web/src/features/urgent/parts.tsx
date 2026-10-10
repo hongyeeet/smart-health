@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import i18n from '@/i18n'
 
 /** A clock that ticks every second so countdowns and "minutes ago" stay true between the 15-second polls. */
 export function useNow(everyMs = 1000) {
@@ -17,8 +18,9 @@ export function minutesAgo(since: string | null, now: number): number | null {
 
 export function agoText(min: number | null): string {
   if (min === null) return ''
-  if (min < 1) return 'just now'
-  return `${min} ${min === 1 ? 'minute' : 'minutes'} ago`
+  if (min < 1) return i18n.t('urgent.justNow', 'just now')
+  // Two sentences, not a plural join, so each language can word its own plural.
+  return min === 1 ? i18n.t('urgent.oneMinuteAgo', '1 minute ago') : i18n.t('urgent.minutesAgo', '{{n}} minutes ago', { n: min })
 }
 
 /** Seconds left until a time, never below zero. */

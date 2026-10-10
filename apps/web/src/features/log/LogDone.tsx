@@ -6,6 +6,7 @@
  * insights. If urgent, shows a "Get help now" button.
  */
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useGo } from '@/app/navigation'
 import { href } from '@/app/routeIds'
@@ -14,15 +15,15 @@ import { Screen } from '@/ui/layout'
 import { Alert, Button, Card, SectionTitle, TextLink } from '@/ui/primitives'
 import { CheckCircle, Info } from '@/ui/icons'
 
-const relatedLabel: Record<string, string> = {
-  C2: 'See your glucose insights',
-  C3: 'See your food insights',
-  C4: 'See your activity',
-  C5: 'See your sleep and stress',
-}
-
 export function LogDone() {
+  const { t } = useTranslation()
   const last = useUi((s) => s.lastLog)
+  const relatedLabel: Record<string, string> = {
+    C2: t('log.saved.c2', 'See your glucose insights'),
+    C3: t('log.saved.c3', 'See your food insights'),
+    C4: t('log.saved.c4', 'See your activity'),
+    C5: t('log.saved.c5', 'See your sleep and stress'),
+  }
   const go = useGo()
   const navigate = useNavigate()
   useEffect(() => {
@@ -42,7 +43,7 @@ export function LogDone() {
       </div>
       <Card className="flex flex-col gap-3">
         <div>
-          <p className="text-sub text-ink3">Added to</p>
+          <p className="text-sub text-ink3">{t('log.saved.addedTo', 'Added to')}</p>
           <p className="text-body font-bold">{last.landedIn}</p>
         </div>
         {last.lines.map((l) => (
@@ -58,23 +59,23 @@ export function LogDone() {
       </Card>
       {last.swap && (
         <Card tone="soft" className="flex flex-col gap-1">
-          <SectionTitle>A swap to consider</SectionTitle>
+          <SectionTitle>{t('log.saved.swap', 'A swap to consider')}</SectionTitle>
           <p className="text-body">{last.swap.text}</p>
           <p className="text-sub text-ink3">{last.swap.source}</p>
         </Card>
       )}
       <div className="flex flex-col gap-2">
-        <Button onClick={() => go('D1', { params: { date: last.day } })}>See your day</Button>
+        <Button onClick={() => go('D1', { params: { date: last.day } })}>{t('log.saved.seeDay', 'See your day')}</Button>
         <Button variant="secondary" onClick={() => go(last.related)}>
-          {relatedLabel[last.related] ?? 'See insights'}
+          {relatedLabel[last.related] ?? t('log.saved.seeInsights', 'See insights')}
         </Button>
         {last.urgent && (
           <Button variant="danger" onClick={() => go('J1')}>
-            Get help now
+            {t('log.getHelp', 'Get help now')}
           </Button>
         )}
         <TextLink onClick={() => go('B1')} className="self-center">
-          Done
+          {t('log.saved.done', 'Done')}
         </TextLink>
       </div>
     </Screen>
