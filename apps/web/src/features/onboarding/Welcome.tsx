@@ -12,6 +12,7 @@ import type { Locale } from '@/data/types'
 import { Screen } from '@/ui/layout'
 import { Field, TextLink, Toggle } from '@/ui/primitives'
 import { Dock, Group, PickOne, StepHead, TopBar, useStepNav, type Option } from './parts'
+import { useSavedOnboarding, usePrefillOnboarding } from './api'
 import { useOnboarding } from './useOnboarding'
 
 /** The seeded persona with about 90 days of history (see UserSwitch). */
@@ -25,6 +26,7 @@ export function Welcome() {
   const switchUser = useSwitchUser()
   const a = useOnboarding((s) => s.answers)
   const set = useOnboarding((s) => s.set)
+  usePrefillOnboarding(useSavedOnboarding().data)
 
   const languages: Option<Locale>[] = appConfig.locales.map((l) => ({ value: l.code, label: l.native }))
   const consents = [

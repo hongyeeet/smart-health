@@ -6,6 +6,7 @@
  * the plain arithmetic (age, BMI, unit conversions, with no category attached), a short list of gaps worth raising with
  * the doctor, and the safety messages.
  */
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { href } from '@/app/routeIds'
@@ -19,6 +20,7 @@ import { Dock, TopBar, clock } from './parts'
 import { labelOf, useOptions } from './options'
 import { SafetyAlerts } from './SafetyAlerts'
 import { ABOUT_STEPS } from './AboutYou'
+import { toProfileBody, useCompleteOnboarding, usePrefillOnboarding, useSaveProfile, useSavedOnboarding } from './api'
 import { convert, num, useOnboarding } from './useOnboarding'
 
 interface Row {
@@ -36,6 +38,12 @@ export function Summary() {
   const set = useOnboarding((s) => s.set)
   const reset = useOnboarding((s) => s.reset)
   const o = useOptions()
+  const saved = useSavedOnboarding()
+  usePrefillOnboarding(saved.data)
+  const saveProfile = useSaveProfile()
+  const complete = useCompleteOnboarding()
+  /* null when nothing has gone wrong; otherwise the server's plain reason, or "" when there is none */
+  const [failed, setFailed] = useState<string | null>(null)
 
   const on = t('onboarding.sum.on', 'On')
   const off = t('onboarding.sum.off', 'Off')
@@ -149,11 +157,17 @@ export function Summary() {
     },
     {
       title: t('onboarding.s9.name', 'Safety check'),
-      edit: step(ABOUT_STEPS),
+      edit: step(ABOUT_STEPS - 1),
       rows: [
         { label: t('onboarding.sum.redFlags', 'Happening now'), value: many(o.redFlags, a.redFlags) },
         { label: t('onboarding.sum.contact', 'Emergency contact'), value: list([a.contactName.trim(), a.contactRelation.trim(), a.contactPhone.trim()]) },
+        { label: t('onboarding.sum.contactEmail', 'Emergency contact email'), value: a.contactEmail.trim() },
       ],
+    },
+    {
+      title: t('onboarding.s10.name', 'Reminders'),
+      edit: step(ABOUT_STEPS),
+      rows: [{ label: t('onboarding.sum.reminderEmail', 'Reminder email'), value: a.reminderEmail.trim() }],
     },
   ]
 
@@ -178,11 +192,24 @@ export function Summary() {
   const notGiven = t('onboarding.sum.notGiven', 'Not given')
   const title = a.name.trim() ? t('onboarding.sum.titleFor', 'Your profile summary, {{name}}', { name: a.name.trim() }) : t('onboarding.sum.title', 'Your profile summary')
 
-  const finish = () => {
+  /* Finish saves the profile and records the consent, then goes home. If either fails, the person stays here and can try again. */
+  const finish = async () => {
+    setFailed(null)
+    try {
+      await saveProfile.mutateAsync(toProfileBody(a, locale, (code) => labelOf(o.conditions, code)))
+      await complete.mutateAsync()
+    } catch (err) {
+      setFailed(err instanceof Error ? err.message : '')
+      return
+    }
     set({ completedAt: new Date().toISOString() })
     toast(t('onboarding.sum.done', 'Setup finished'))
     navigate(href('B1'), { replace: true })
   }
+  const savedAt = saved.data?.profile?.updatedAt
+  const savedLine = savedAt
+    ? t('onboarding.sum.savedAt', 'Saved to your Smart Health record on {{date}}.', { date: new Date(savedAt).toLocaleString('en-SG', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) })
+    : t('onboarding.sum.notSaved', 'Not saved to your record yet. Tap Finish to save it.')
 
   const table = (rows: Row[]) => (
     <dl className="flex flex-col divide-y divide-line">
@@ -238,10 +265,19 @@ export function Summary() {
         </Card>
       ))}
 
-      <Alert tone="info">{t('onboarding.sum.local', 'For now your answers stay on this device. They are not yet saved to your Smart Health record.')}</Alert>
+      <Alert tone="info">
+        <p>{savedLine}</p>
+        <p className="mt-1.5">{t('onboarding.sum.local', 'Some answers, such as lab results, medicine kinds, lifestyle and your wake and sleep times, stay on this device for now.')}</p>
+      </Alert>
+      {failed !== null && (
+        <Alert tone="danger">
+          <p>{t('onboarding.sum.failed', 'Setup is not finished yet. Your answers are still on this device. Fix the point below, or check your connection, then tap Finish again.')}</p>
+          {failed && <p className="mt-1.5">{failed}</p>}
+        </Alert>
+      )}
       <p className="text-center text-sub text-ink3">{t('onboarding.sum.fine', 'Smart Health explains, organises and reminds. It is not a diagnosis and does not replace your doctor.')}</p>
 
-      <Dock onBack={back} onNext={finish} nextLabel={t('onboarding.sum.finish', 'Finish')}>
+      <Dock onBack={back} onNext={finish} nextDisabled={saveProfile.isPending || complete.isPending} nextLabel={t('onboarding.sum.finish', 'Finish')}>
         <TextLink
           onClick={() => {
             reset()

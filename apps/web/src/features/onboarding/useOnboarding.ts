@@ -7,8 +7,8 @@ import { persist } from 'zustand/middleware'
  *
  * The answers are kept on this device so that leaving and coming back resumes where the person stopped. They are only
  * written to the device once the data-use consent is on (prd F1: consent before any data is stored); switching it off
- * removes them again. Saving to the backend is not wired yet: there is no profile endpoint (see the session log).
- * Where `user_profile` in docs/specs/data-model-v2.md has a column, the values match it; many answers have no column yet.
+ * removes them again. The answers that have a `user_profile` column are also saved to the record (api.ts); the rest stay
+ * on this device for now. Where `user_profile` in docs/specs/data-model-v2.md has a column, the values match it.
  */
 export type Gender = 'female' | 'male' | 'other' | 'prefer_not_to_say'
 export type HasDiabetes = 'yes' | 'not_sure'
@@ -92,6 +92,9 @@ export interface OnboardingAnswers {
   contactName: string
   contactPhone: string
   contactRelation: string
+  contactEmail: string
+  /* 10 reminders */
+  reminderEmail: string
 
   completedAt: string | null
 }
@@ -151,6 +154,8 @@ export const emptyAnswers: OnboardingAnswers = {
   contactName: '',
   contactPhone: '',
   contactRelation: '',
+  contactEmail: '',
+  reminderEmail: '',
   completedAt: null,
 }
 
@@ -172,6 +177,8 @@ export const useOnboarding = create<OnboardingState>()(
       version: 2,
       /** An older shape is dropped, not converted: nothing was ever saved from it. */
       migrate: () => ({ answers: emptyAnswers }),
+      /* answers stored before a new field existed get the empty value for it */
+      merge: (persisted, current) => ({ ...current, answers: { ...emptyAnswers, ...(persisted as { answers?: Partial<OnboardingAnswers> } | undefined)?.answers } }),
       partialize: (s) => ({ answers: s.answers.consentData ? s.answers : emptyAnswers }),
     },
   ),

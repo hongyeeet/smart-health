@@ -8,8 +8,8 @@ import { Footer } from '@/ui/layout'
 import { Button, Card, StatusPill } from '@/ui/primitives'
 import { Check, Leaf, Lock } from '@/ui/icons'
 
-/** Welcome, eligibility and the nine "about you" steps. The summary (A6) comes after the last one. */
-export const TOTAL_STEPS = 11
+/** Welcome, eligibility and the ten "about you" steps. The summary (A6) comes after the last one. */
+export const TOTAL_STEPS = 12
 
 /* ------------------------------------ frame ------------------------------------ */
 /** Brand row at the top of every onboarding screen, with an honest note about where the answers are kept. */

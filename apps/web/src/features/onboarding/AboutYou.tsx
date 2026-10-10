@@ -1,28 +1,34 @@
 /**
- * A3 — About you. Nine steps on one route (?step=1 to 9), so the browser's back button moves one step at a time.
+ * A3 — About you. Ten steps on one route (?step=1 to 10), so the browser's back button moves one step at a time.
  * The steps and questions follow Damien's clinical onboarding design (Stitch export): body measurements, diabetes history,
- * medicines, lows, conditions, lab results, devices and routine, lifestyle, and a safety check.
+ * medicines, lows, conditions, lab results, devices and routine, lifestyle, a safety check, and where reminders go.
  *
  * The screen records answers and nothing else: no score, stage, category or target, and no comment on any value
  * (rules.md 1.1, 1.6). The checks below only catch typing slips. The kinds of medicine ticked here are background for the
  * doctor brief; the medicines themselves, with their doses, come only from the scan and add-by-hand screens.
+ * The answers with a profile column are saved at the end of this flow (api.ts) and again on the summary.
  */
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { appConfig } from '@/config/app'
 import { href } from '@/app/routeIds'
 import { useBack, useGo } from '@/app/navigation'
 import { useMeds } from '@/data/hooks'
+import { useUi } from '@/state/store'
 import { Screen } from '@/ui/layout'
 import { Segmented } from '@/ui/controls'
 import { Alert, Button, Card, Field, TextLink, Toggle } from '@/ui/primitives'
 import { Camera, Plus, Trash } from '@/ui/icons'
 import { Dock, Group, PickMany, PickOne, Question, Scale, StepHead, TopBar, clock, useStepNav, type Option } from './parts'
-import { REMINDER_TIMES, useOptions } from './options'
+import { REMINDER_TIMES, labelOf, useOptions } from './options'
 import { SafetyAlerts } from './SafetyAlerts'
+import { useNotifyEmail, usePrefillOnboarding, useSaveNotifyEmail, useSaveProfile, useSavedOnboarding, toProfileBody } from './api'
 import { LIMITS, inRange, num, pastDateOk, useOnboarding, yearOk, type GlucoseUnit, type Hba1cUnit, type OnboardingAnswers } from './useOnboarding'
 
-export const ABOUT_STEPS = 9
+export const ABOUT_STEPS = 10
+/** A plain check that an address has the shape name@domain.tld. Providers are not checked; any valid address is accepted. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 /** Welcome and eligibility come first, so "about you" step 1 is step 3 of the whole flow. */
 const OFFSET = 2
 /** Adults only (prd section 3). */
@@ -44,6 +50,19 @@ export function AboutYou() {
   const set = useOnboarding((s) => s.set)
   const opts = useOptions()
   const meds = useMeds()
+  const locale = useUi((s) => s.locale)
+  const saved = useSavedOnboarding()
+  usePrefillOnboarding(saved.data)
+  const saveProfile = useSaveProfile()
+  const notify = useNotifyEmail()
+  const saveEmail = useSaveNotifyEmail()
+  /* the reminder address could not be saved: the person can go on, and the summary says so */
+  const [emailFailed, setEmailFailed] = useState(false)
+  /* an address already stored for reminders fills the box once, when it is still empty */
+  useEffect(() => {
+    const stored = notify.data?.email
+    if (stored && !useOnboarding.getState().answers.reminderEmail) set({ reminderEmail: stored })
+  }, [notify.data, set])
 
   const heads: { name: string; title: string; sub: string }[] = [
     { name: t('onboarding.s1.name', 'Body measurements'), title: t('onboarding.s1.title', 'About you'), sub: t('onboarding.s1.sub', 'A few basics about you. Only the year of birth is needed.') },
@@ -59,6 +78,7 @@ export function AboutYou() {
     { name: t('onboarding.s7.name', 'Devices and routine'), title: t('onboarding.s7.title', 'Your devices and your day'), sub: t('onboarding.s7.sub', 'Which devices you use, and what a usual day looks like.') },
     { name: t('onboarding.s8.name', 'Lifestyle'), title: t('onboarding.s8.title', 'Eating, activity and habits'), sub: t('onboarding.s8.sub', 'Rough answers are fine. There are no right or wrong ones.') },
     { name: t('onboarding.s9.name', 'Safety check'), title: t('onboarding.s9.title', 'A safety check before you start'), sub: t('onboarding.s9.sub', 'Tell us if any of these is happening, and who to contact in an emergency.') },
+    { name: t('onboarding.s10.name', 'Reminders'), title: t('onboarding.s10.title', 'Where should reminders go?'), sub: t('onboarding.s10.sub', 'We email you a gentle reminder when something is due, like logging a meal. You can turn this off any time in Me, Privacy.') },
   ]
   const head = heads[step - 1]!
 
@@ -88,7 +108,11 @@ export function AboutYou() {
     else if (sys !== null && dia !== null && dia >= sys) e.diastolic = t('onboarding.err.bpOrder', 'The bottom number should be lower than the top number.')
   }
 
-  const fieldsByStep: (keyof OnboardingAnswers)[][] = [['birthYear', 'heightCm', 'weightKg', 'waistCm'], ['diagnosedYear'], [], [], [], ['labDate', 'hba1c', 'fastingGlucose', 'fastingInsulin', 'egfr', 'systolic', 'diastolic'], [], [], []]
+  const emailOk = (v: string) => EMAIL.test(v.trim())
+  if (a.contactEmail.trim() && !emailOk(a.contactEmail)) e.contactEmail = t('onboarding.err.email', 'Enter an email address like name@gmail.com, or leave it blank.')
+  if (a.reminderEmail.trim() && !emailOk(a.reminderEmail)) e.reminderEmail = t('onboarding.err.email', 'Enter an email address like name@gmail.com, or leave it blank.')
+
+  const fieldsByStep: (keyof OnboardingAnswers)[][] = [['birthYear', 'heightCm', 'weightKg', 'waistCm'], ['diagnosedYear'], [], [], [], ['labDate', 'hba1c', 'fastingGlucose', 'fastingInsulin', 'egfr', 'systolic', 'diastolic'], [], [], ['contactEmail'], ['reminderEmail']]
   const stepHasError = fieldsByStep[step - 1]!.some((k) => e[k])
   const working = a.workType !== null && a.workType !== 'not_working'
   const workMissing = working && (a.workDays.length === 0 || !a.workStart || !a.workEnd)
@@ -96,8 +120,34 @@ export function AboutYou() {
   const blocked = stepHasError || (step === 1 && !a.birthYear.trim()) || (step === 7 && workMissing) || (step === 9 && (a.redFlags.length === 0 || contactMissing))
   const raceIsSuggestion = opts.race.some((o) => o.value === a.race)
 
-  const onNext = () => next(step < ABOUT_STEPS ? `${href('A3')}?step=${step + 1}` : href('A6'))
-  const nextLabel = review ? t('onboarding.backToSummary', 'Back to summary') : step === ABOUT_STEPS ? t('onboarding.toSummary', 'Check my answers') : t('common.continue', 'Continue')
+  /* the profile is saved without blocking: the answers stay on this device and the summary saves them again on Finish */
+  const saveQuietly = () => saveProfile.mutateAsync(toProfileBody(useOnboarding.getState().answers, locale, (code) => labelOf(opts.conditions, code))).catch(() => undefined)
+  const onNext = async () => {
+    if (step < ABOUT_STEPS) return next(`${href('A3')}?step=${step + 1}`)
+    const email = a.reminderEmail.trim()
+    if (email && !emailFailed) {
+      try {
+        await saveEmail.mutateAsync(email)
+      } catch {
+        setEmailFailed(true)
+        return
+      }
+    }
+    await saveQuietly()
+    next(href('A6'))
+  }
+  const skipEmail = async () => {
+    set({ reminderEmail: '' })
+    await saveQuietly()
+    next(href('A6'))
+  }
+  const nextLabel = review
+    ? t('onboarding.backToSummary', 'Back to summary')
+    : step === ABOUT_STEPS
+      ? emailFailed
+        ? t('onboarding.email.anyway', 'Continue without it')
+        : t('onboarding.toSummary', 'Check my answers')
+      : t('common.continue', 'Continue')
 
   const setAllergy = (i: number, patch: Partial<OnboardingAnswers['allergies'][number]>) => set({ allergies: a.allergies.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
   const reminderOptions: Option<string>[] = REMINDER_TIMES.map((v) => ({ value: v, label: clock(v) }))
@@ -296,11 +346,25 @@ export function AboutYou() {
             <Field label={t('onboarding.contact.name', 'Their name')} value={a.contactName} onChange={(contactName) => set({ contactName })} placeholder={t('onboarding.contact.namePh', 'Next of kin or caregiver')} />
             <Field label={t('onboarding.contact.relation', 'Who they are to you')} value={a.contactRelation} onChange={(contactRelation) => set({ contactRelation })} placeholder={t('onboarding.contact.relationPh', 'For example, wife, son or friend')} />
             <Field label={t('onboarding.contact.phone', 'Their mobile number')} type="tel" inputMode="tel" value={a.contactPhone} onChange={(contactPhone) => set({ contactPhone })} placeholder="+65 9123 4567" hint={contactMissing ? t('onboarding.contact.needed', 'Their name, number and relationship are needed to continue. Used for safety only.') : t('onboarding.contact.hint', 'Used for safety only. You can change this later.')} />
+            <Field label={t('onboarding.contact.email', 'Their email (optional)')} value={a.contactEmail} onChange={(contactEmail) => set({ contactEmail })} placeholder="name@gmail.com" error={e.contactEmail} />
           </Group>
         </>
       )}
 
-      <Dock onBack={review ? () => navigate(href('A6')) : back} onNext={onNext} nextDisabled={blocked} nextLabel={nextLabel} />
+      {step === ABOUT_STEPS && (
+        <Group>
+          <Field label={t('onboarding.email.label', 'Your Gmail address')} value={a.reminderEmail} onChange={(reminderEmail) => set({ reminderEmail })} placeholder="name@gmail.com" error={e.reminderEmail} hint={t('onboarding.email.hint', 'Any email address works. Leave it blank to add it later.')} />
+          {emailFailed && <Alert tone="warn">{t('onboarding.email.failed', 'We could not save your email just now. Your answer is kept on this device. You can add it later in Me, Privacy.')}</Alert>}
+        </Group>
+      )}
+
+      <Dock onBack={review ? () => navigate(href('A6')) : back} onNext={onNext} nextDisabled={blocked || saveProfile.isPending || saveEmail.isPending} nextLabel={nextLabel}>
+        {step === ABOUT_STEPS && !review && (
+          <TextLink onClick={skipEmail} className="self-center">
+            {t('onboarding.email.skip', 'Skip for now')}
+          </TextLink>
+        )}
+      </Dock>
     </Screen>
   )
 }
