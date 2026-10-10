@@ -9,7 +9,7 @@ Both go through the orchestrator, so they are routed, guarded and logged like an
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -49,6 +49,27 @@ def emails() -> None:
         logger.exception("email dispatch failed")
 
 
+def warm_review() -> None:
+    """Fill the reviewer queue's cache for the people the scheduler serves, so the screen opens at once (the first lookup takes about 25 seconds)."""
+    from app.services import review
+
+    for key in _users():
+        try:
+            logstore.set_user(key)
+            uid = str(logstore.current_user())
+            with tx() as c:
+                dishes = review.logged_dishes(c, uid)
+            review.build_queue(dishes, {}, 20)
+        except Exception:
+            logger.exception("warming the review queue failed for %s", key)
+    try:
+        with tx() as c:
+            sample = review.sample_dishes(c)
+        review.build_queue(sample, {}, 20)
+    except Exception:
+        logger.exception("warming the sample review queue failed")
+
+
 def nightly_done_today(key: str) -> bool:
     logstore.set_user(key)
     with tx() as c:
@@ -78,6 +99,7 @@ def start() -> None:
     _scheduler.add_job(tick, IntervalTrigger(seconds=60), id="tick", max_instances=1, coalesce=True)
     _scheduler.add_job(emails, IntervalTrigger(seconds=60), id="emails", max_instances=1, coalesce=True)
     _scheduler.add_job(nightly, CronTrigger(hour=2, minute=0, timezone="Asia/Singapore"), id="nightly", max_instances=1, coalesce=True)
+    _scheduler.add_job(warm_review, id="warm_review", next_run_time=datetime.now(TZ) + timedelta(seconds=30), max_instances=1)
     _scheduler.add_job(lambda: nightly(catch_up=True), id="nightly_catch_up", next_run_time=datetime.now(TZ), max_instances=1)  # after a restart
     _scheduler.start()
     logger.info("scheduler started for %s", _users())
