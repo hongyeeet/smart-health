@@ -8,10 +8,12 @@ import { useTranslation } from 'react-i18next'
 import { useDoctorReport } from '@/data/hooks'
 import type { DoctorReport, ReportDays } from '@/data/types'
 import { href } from '@/app/routeIds'
+import { useGo } from '@/app/navigation'
 import { Footer, Header, Screen } from '@/ui/layout'
 import { Segmented } from '@/ui/controls'
-import { Alert, Button, Card, Skeleton, StatusPill, type Tone } from '@/ui/primitives'
-import { FilePdf, Info, Warning, WarningCircle, type IconType } from '@/ui/icons'
+import { Alert, Button, Card, Skeleton, StatusPill, TextLink, type Tone } from '@/ui/primitives'
+import { FilePdf, Info, ShareNetwork, Warning, WarningCircle, type IconType } from '@/ui/icons'
+import { APPOINTMENT_KIND, formatWhen, useShareContext } from './shareApi'
 
 const TAG: Record<DoctorReport['alerts'][number]['priority'], { tone: Tone; icon: IconType }> = {
   urgent: { tone: 'danger', icon: WarningCircle },
@@ -22,8 +24,10 @@ const TAG: Record<DoctorReport['alerts'][number]['priority'], { tone: Tone; icon
 export function BriefHome() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const go = useGo()
   const [days, setDays] = useState<ReportDays>(14)
   const { data, isError, isLoading } = useDoctorReport(days)
+  const context = useShareContext()
   const label = { urgent: t('brief.tag.urgent', 'Urgent'), interaction: t('brief.tag.interaction', 'Interaction'), review: t('brief.tag.review', 'Review') }
 
   return (
@@ -58,6 +62,38 @@ export function BriefHome() {
           </Card>
 
           <Card as="section" className="flex flex-col gap-3">
+            <h2 className="font-serif text-h2 font-medium tracking-tight">{t('brief.questions', 'Questions you want to ask')}</h2>
+            {context.data && context.data.questions.length > 0 ? (
+              <ul className="flex list-disc flex-col gap-1.5 pl-5 text-body">
+                {context.data.questions.map((q) => (
+                  <li key={q.id} className="break-words">
+                    {q.text}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-body text-ink2">{t('brief.noQuestions', 'You have no open questions yet. Add one from a medicine or from your care plan.')}</p>
+            )}
+          </Card>
+
+          <Card as="section" className="flex flex-col gap-2">
+            <h2 className="font-serif text-h2 font-medium tracking-tight">{t('brief.nextAppointment', 'Your next appointment')}</h2>
+            {context.data?.nextAppointment ? (
+              <p className="text-body">
+                <span className="font-bold">{APPOINTMENT_KIND[context.data.nextAppointment.kind] ?? context.data.nextAppointment.kind}</span>
+                {' · '}
+                {formatWhen(context.data.nextAppointment.scheduledFor)}
+                {context.data.nextAppointment.location ? ` · ${context.data.nextAppointment.location}` : ''}
+              </p>
+            ) : (
+              <p className="text-body text-ink2">{t('brief.noAppointment', 'No appointment is planned yet.')}</p>
+            )}
+            <div>
+              <TextLink onClick={() => go('K3')}>{t('brief.openCare', 'Open my care plan')}</TextLink>
+            </div>
+          </Card>
+
+          <Card as="section" className="flex flex-col gap-3">
             <h2 className="font-serif text-h2 font-medium tracking-tight">{t('brief.alerts', 'Alerts in the report')}</h2>
             {data.alerts.length === 0 ? (
               <p className="text-body text-ink2">{t('brief.noAlerts', 'No alerts were raised from your data in this period. That does not mean nothing needs attention.')}</p>
@@ -77,6 +113,10 @@ export function BriefHome() {
               </ul>
             )}
           </Card>
+
+          <Button variant="secondary" icon={ShareNetwork} onClick={() => go('L2', { sheet: { days } })}>
+            {t('brief.share', 'Share with my doctor')}
+          </Button>
 
           <Alert tone="info">{t('brief.note', 'These are counts from what you and your devices recorded, worked out by fixed rules, not by AI. They are for your doctor to interpret. Smart Health does not diagnose or advise on medicines.')}</Alert>
         </>
