@@ -8,8 +8,8 @@ export function WhySheet({ onClose, topic = 'week' }: { onClose: () => void; top
   const { t } = useTranslation()
   const WHY: Record<WhyTopic, { title: string; shows: string; from: string; limit: string }> = {
     week: {
-      title: t('insights.why.week.title', 'Your week'),
-      shows: t('insights.why.week.shows', 'One square for each of the last 7 days, for glucose in range, meals logged, active minutes, sleep, stress and doses taken. A darker square means more of it.'),
+      title: t('insights.why.week.title', 'Your days'),
+      shows: t('insights.why.week.shows', 'A calendar with one square for each day of the month you pick. Choose one measure at a time: glucose in range, meals logged, active minutes, sleep, stress or doses taken. A darker square means more of it. Tap a day to open it.'),
       from: t('insights.why.week.from', 'Your glucose sensor, your watch, and what you logged in the app.'),
       limit: t('insights.why.week.limit', 'A dash means there was no data that day. It does not mean zero. The colour shows how much, not whether it is good or bad.'),
     },

@@ -63,7 +63,7 @@ function ScoreCard({ score, isError }: { score: ReviewScore | undefined; isError
 
   return (
     <Card tone="hero" as="section" className="flex flex-col gap-3" aria-label={t('review.score.aria', 'Review score')}>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col items-start gap-2">
         <h2 className="text-sub font-bold text-ink2">{t('review.score.title', 'Review score')}</h2>
         <StatusPill tone={pill.tone} icon={pill.icon}>
           {pill.title}
@@ -77,7 +77,7 @@ function ScoreCard({ score, isError }: { score: ReviewScore | undefined; isError
         {tile(t('review.score.target', 'Target'), `${target}%`)}
       </div>
       <p className="text-micro text-ink3">
-        {t('review.score.ratingsSoFar', 'Ratings so far: {{n}}. The target and the count of 20 are placeholders pending review.', { n: score.rated })}
+        {t('review.score.ratingsSoFar', 'Ratings so far: {{n}}. The target and the count of {{min}} are placeholders pending review.', { n: score.rated, min: score.minRatings })}
       </p>
     </Card>
   )

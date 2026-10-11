@@ -1,19 +1,18 @@
 /**
- * A1 — Welcome. Preferred name, language and the consents. Nothing is kept on the device until the data-use consent is on,
- * and the person cannot go further without it (prd F1).
+ * A1 — Welcome (page 1 of 11). Your name, the reminder email (optional, with a reminder on/off switch) and the consents. There is no
+ * language choice. Nothing is kept on the device until the data-use consent is on, and the person cannot go further without it
+ * (prd F1).
  */
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { appConfig } from '@/config/app'
 import { href } from '@/app/routeIds'
 import { useSwitchUser } from '@/data/hooks'
-import { useUi } from '@/state/store'
-import type { Locale } from '@/data/types'
 import { Screen } from '@/ui/layout'
-import { Field, TextLink, Toggle } from '@/ui/primitives'
-import { Dock, Group, PickOne, StepHead, TopBar, useStepNav, type Option } from './parts'
-import { useSavedOnboarding, usePrefillOnboarding } from './api'
-import { useOnboarding } from './useOnboarding'
+import { Alert, Field, TextLink, Toggle } from '@/ui/primitives'
+import { DemoNotice, Dock, Group, Later, LoadNotice, LoadingAnswers, StepHead, TopBar, useStepNav } from './parts'
+import { emailBody, pageBody, useOnboardingSource } from './api'
+import { usePageSave } from './usePageSave'
+import { emailOk, useOnboarding } from './useOnboarding'
 
 /** The seeded persona with about 90 days of history (see UserSwitch). */
 const DEMO_PATIENT = 'mr-tan'
@@ -22,21 +21,49 @@ export function Welcome() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { review, next } = useStepNav()
-  const { locale, setLocale } = useUi()
   const switchUser = useSwitchUser()
   const a = useOnboarding((s) => s.answers)
   const set = useOnboarding((s) => s.set)
-  usePrefillOnboarding(useSavedOnboarding().data)
+  const src = useOnboardingSource()
+  const page = usePageSave(src.loadFailed)
 
-  const languages: Option<Locale>[] = appConfig.locales.map((l) => ({ value: l.code, label: l.native }))
   const consents = [
     { key: 'consentData' as const, title: t('onboarding.consent.data', 'Use my health data'), sub: t('onboarding.consent.dataSub', 'Required. I agree to Smart Health collecting and using the health information I enter and the readings from my devices.') },
     { key: 'consentShare' as const, title: t('onboarding.consent.share', 'Share a doctor brief'), sub: t('onboarding.consent.shareSub', 'Optional. You decide each time.') },
     { key: 'consentResearch' as const, title: t('onboarding.consent.research', 'Use my data for research'), sub: t('onboarding.consent.researchSub', 'Optional. For diabetes research, without my name or contact details.') },
   ]
 
+  if (!src.ready) {
+    return (
+      <Screen narrow>
+        <TopBar />
+        <LoadingAnswers />
+      </Screen>
+    )
+  }
+
+  const emailTyped = a.reminderEmail.trim() !== ''
+  const emailBad = emailTyped && !emailOk(a.reminderEmail)
+  const blocked = !a.consentData || emailBad
+  const stored = src.email.data
+  /* the email and the switch are saved only when they differ from what the server holds */
+  const emailChanged = (a.reminderEmail.trim() || null) !== (stored?.email ?? null) || a.reminderOn !== (stored?.optIn ?? true)
+  const continueAnyway = page.holding
+
+  const onNext = async () => {
+    if (!page.holding) {
+      /* the name is saved once the profile exists (page 3 creates it), so a first save never fails for a missing birth year */
+      const profile = src.saved.data?.profile ? pageBody(1, a, false) : null
+      /* without a profile, an email is sent only when there is an address: a switch alone waits for the first save (page 3) */
+      const emailNow = emailChanged && (src.saved.data?.profile || emailTyped) ? emailBody(a) : null
+      const ok = await page.commit(profile, emailNow)
+      if (!ok) return
+    }
+    next(href('A2'))
+  }
+
   return (
-    <Screen>
+    <Screen narrow>
       <TopBar />
       <StepHead
         step={1}
@@ -44,10 +71,28 @@ export function Welcome() {
         title={t('onboarding.welcome.title', 'Set up Smart Health for you')}
         sub={t('onboarding.welcome.sub', 'It takes about 5 minutes. Your answers help Smart Health follow your days and prepare a clear summary for your doctor. It never gives medical advice and never diagnoses.')}
       />
+      {src.loadFailed && <LoadNotice />}
+      {src.readOnly && <DemoNotice />}
+      {page.error && <Alert tone="danger">{page.error}</Alert>}
+      {page.notice && <Alert tone="info">{page.notice}</Alert>}
 
       <Group>
         <Field label={t('onboarding.name', 'What should we call you?')} value={a.name} onChange={(name) => set({ name })} placeholder={t('onboarding.namePlaceholder', 'For example, Mr Tan')} />
-        <PickOne label={t('onboarding.language', 'Language')} hint={t('onboarding.languageHint', 'Most screens are in English for now.')} options={languages} value={locale} onChange={(v) => v && setLocale(v)} />
+        <Field
+          label={t('onboarding.email.label', 'Email for reminders (optional)')}
+          value={a.reminderEmail}
+          onChange={(reminderEmail) => set({ reminderEmail })}
+          placeholder="name@gmail.com"
+          error={emailBad ? t('onboarding.err.email', 'Enter an email address like name@gmail.com, or leave it blank.') : undefined}
+          hint={emailBad ? undefined : t('onboarding.email.hint', 'We email a gentle reminder when something is due, like logging a meal. Leave it blank to add it later.')}
+        />
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-body font-bold">{t('onboarding.email.on', 'Send me reminder emails')}</p>
+            <p className="text-sub text-ink2">{t('onboarding.email.onSub', 'You can turn this off any time in Me, Privacy.')}</p>
+          </div>
+          <Toggle on={a.reminderOn} onChange={(reminderOn) => set({ reminderOn })} label={t('onboarding.email.on', 'Send me reminder emails')} />
+        </div>
       </Group>
 
       <Group title={t('onboarding.consent.title', 'Privacy and consent')}>
@@ -64,7 +109,7 @@ export function Welcome() {
         </div>
       </Group>
 
-      <Dock onNext={() => next(href('A2'))} nextDisabled={!a.consentData} nextLabel={review ? t('onboarding.backToSummary', 'Back to summary') : t('common.continue', 'Continue')}>
+      <Later label={t('onboarding.goHome', 'Go to Home')}>
         {!review && (
           <TextLink
             onClick={() => {
@@ -76,7 +121,8 @@ export function Welcome() {
             {t('onboarding.demo', 'Start as demo patient')}
           </TextLink>
         )}
-      </Dock>
+      </Later>
+      <Dock onNext={onNext} nextDisabled={blocked || page.saving} nextLabel={continueAnyway ? t('onboarding.continueAnyway', 'Continue anyway') : review ? t('onboarding.backToSummary', 'Back to summary') : t('common.continue', 'Continue')} />
     </Screen>
   )
 }

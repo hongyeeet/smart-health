@@ -2,8 +2,9 @@
 
   GET /brief/report?days=14     the numbers for the printable "Diabetes monitoring report" (7, 14, 30 or 90 days)
 
-Read-only. Every number is computed in code from the person's stored data; no model is called. The person sees exactly what
-the doctor sees: there is one report and this is it.
+Read-only. Every number is computed in code from the person's stored data. The key findings are worded by a model only when its
+wording passes the checks in app/agents/report_insight.py, otherwise the code-written findings are shown. The person sees exactly
+what the doctor sees: there is one report and this is it.
 """
 from __future__ import annotations
 
@@ -28,5 +29,6 @@ async def get_report(days: int = Query(14)) -> DoctorReport:
 
 def _report(user: str, days: int) -> DoctorReport:
     with logstore.tx() as conn:
-        inputs = doctor_report.load(conn, user, days, datetime.now(timezone.utc))
-    return DoctorReport.model_validate(doctor_report.build(inputs))
+        report = doctor_report.read(conn, user, days, datetime.now(timezone.utc))
+    # outside the transaction: the key findings may wait on the model
+    return DoctorReport.model_validate(doctor_report.word_findings(report))

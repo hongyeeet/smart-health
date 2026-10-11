@@ -1,6 +1,6 @@
 # F5 Medicine clash box: how it works and what is open
 
-**Status (2026-10-08): F5 clash flagging done (approved by Joely).** Decided by Joely. It departs from the team's rule that interactions are never decided by an AI (see section 6): Hong Yi has not confirmed that yet.
+**Status (2026-10-08): F5 clash flagging done (approved by Joely).** Updated 2026-10-11: the doctor questions are on K12, the AI calls are counted under `vertex_generate`, and the Meds page checks for the result every 3 seconds only while a check is running (fix wave). Nothing about how a pair is flagged changed. Decided by Joely. It departs from the team's rule that interactions are never decided by an AI (see section 6): Hong Yi has not confirmed that yet.
 
 ## 1. What the person sees (Meds page, H1)
 
@@ -8,13 +8,13 @@ Right below the blue "may run out" box. **No box when nothing may clash.** When 
 
 - Title: "Medicines may clash. Check with your doctor."
 - For each pair: the fixed sentence "Possible interaction between X and Y. Please check with your pharmacist or doctor before continuing.", then one or two plain sentences on why, where it came from (the drug-label link and/or the web pages the AI used), and "Not medical advice".
-- Two buttons: **Add to my doctor questions** (saves "Is it OK to take X and Y together? They may interact." to the doctor-question list; asking twice saves it once, and after it is saved the button turns into "Added to your doctor questions" with a green tick, which stays after a reload. The doctor-question page itself (care plan K3) is not built yet, so the question can only be seen in the database for now) and **I have checked with my doctor** (the box for that pair goes away; the alert is kept as acknowledged).
+- Two buttons: **Add to my doctor questions** (saves "Is it OK to take X and Y together? They may interact." to the doctor-question list; asking twice saves it once, and after it is saved the button turns into "Added to your doctor questions" with a green tick, which stays after a reload. The question shows on the doctor-question page (K12, built 2026-10-11, reached from Me and the care plan K3)) and **I have checked with my doctor** (the box for that pair goes away; the alert is kept as acknowledged).
 - An AI flag with no web page found says so: "No web page was found for this. It is an AI suggestion, so please check it with your pharmacist."
 - While a check runs: "Checking your medicines for clashes…". If the AI half could not finish and nothing else is flagged: "We could not finish checking for clashes. This is not the same as all clear." with a **Check again** button. The box never says to stop a medicine and never says anything is safe. Supplements and herbal products keep their "Not checked" badge.
 
 ## 2. When it runs
 
-Every time a medicine is saved (typed in with `POST /medications`, or confirmed from a scan with `POST /scans/{id}/confirm`), the app runs a check in the background right after the response. The check always looks at **all** the person's saved medicines, not just the new one. It takes about 10 to 45 seconds; the Meds page polls every 5 seconds, so the box appears by itself. `POST /interactions/check` runs one on demand (used by "Check again").
+Every time a medicine is saved (typed in with `POST /medications`, or confirmed from a scan with `POST /scans/{id}/confirm`), the app runs a check in the background right after the response. The check always looks at **all** the person's saved medicines, not just the new one. It takes about 10 to 45 seconds; the Meds page asks for the result every 3 seconds **only while a check is running** (it stops when the check finishes), so the box appears by itself. `POST /interactions/check` runs one on demand (used by "Check again").
 
 ## 3. The two ways a pair is flagged (either is enough)
 
@@ -64,7 +64,7 @@ Checks on what the AI says, in code:
 - A way to un-acknowledge, and a recheck when a medicine's name is edited (there is no edit screen yet). Deleting a medicine removes its alerts, but nothing re-runs the check for the rest.
 - A pharmacist's review of the prompts and a sample of results.
 - The AI is not repeatable: the same medicines can give slightly different flags on different runs. The rules half is repeatable.
-- Cost: each check is one to three Gemini calls with search, counted under the existing `vertex_vision` line of the daily AI limit.
+- Cost: each check is one to three Gemini calls with search, counted under `vertex_generate` (text the person sees, its own daily cap `AI_CAP_VERTEX_GENERATE`, default 500; this kind of call was added to the daily limit on 2026-10-11, migration 0034). Before 2026-10-11 the same calls were counted under `vertex_vision`; older rows are not moved.
 
 ## 9. Alerts page and details page (added 2026-10-09, Damien's alert design)
 

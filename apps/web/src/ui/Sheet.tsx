@@ -43,7 +43,7 @@ export function Sheet({ title, onClose, children, label }: { title: ReactNode; o
         aria-modal="true"
         aria-label={label ?? (typeof title === 'string' ? title : 'Details')}
         tabIndex={-1}
-        className="relative flex max-h-[90%] flex-col rounded-t-sheet border border-b-0 border-line bg-card shadow-sheet outline-none"
+        className="relative mx-auto flex max-h-[90%] w-full flex-col rounded-t-sheet border border-b-0 border-line bg-card shadow-sheet outline-none md:mb-8 md:max-w-[560px] md:rounded-b-sheet md:border-b"
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%', transition: { duration: duration.sheetExit, ease: ease.drawer } }}

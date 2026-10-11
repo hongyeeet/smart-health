@@ -37,7 +37,7 @@ export function Language() {
     <Screen>
       <Header title={t('me.language.title', 'Language and display')} back backTo="K1" />
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3 md:max-w-xl">
         <SectionTitle>{t('me.language.language', 'Language')}</SectionTitle>
         <div role="group" aria-label={t('me.language.language', 'Language')} className="flex flex-wrap gap-2">
           {appConfig.locales.map((l) => (
@@ -58,7 +58,7 @@ export function Language() {
         {!saved.data && saved.isPending && <Skeleton className="h-12" />}
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3 md:max-w-xl">
         <SectionTitle>{t('me.language.textSize', 'Text size')}</SectionTitle>
         <Segmented
           label={t('me.language.textSize', 'Text size')}
@@ -81,7 +81,7 @@ export function Language() {
         </Card>
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3 md:max-w-xl">
         <SectionTitle>{t('me.language.colour', 'Colour')}</SectionTitle>
         <Segmented
           label={t('me.language.colourTheme', 'Colour theme')}

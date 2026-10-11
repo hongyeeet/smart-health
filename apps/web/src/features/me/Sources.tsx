@@ -8,6 +8,7 @@ import { Header, Screen } from '@/ui/layout'
 import { Alert, Card, EmptyState, StatusPill, TextLink, Skeleton, type Tone } from '@/ui/primitives'
 import { Camera, CheckCircle, Clock, Drop, LinkBreak, Watch, type IconType } from '@/ui/icons'
 import { useConnectedSources, type ConnectedSource } from './care/api'
+import { deviceName } from './deviceNames'
 
 const ICON: Record<ConnectedSource['key'], IconType> = { cgm: Drop, watch: Watch, camera: Camera }
 
@@ -33,25 +34,27 @@ export function Sources() {
       {data && data.length === 0 && <EmptyState icon={LinkBreak}>{t('me.sources.none', 'No sources yet.')}</EmptyState>}
 
       {data && data.length > 0 && (
-        <ul className="flex flex-col gap-3">
+        <ul className="grid grid-cols-1 gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr))]">
           {data.map((s) => {
             const Icon = ICON[s.key]
             const st = STATUS[s.status]
             return (
-              <li key={s.key}>
-                <Card className="flex flex-col gap-3">
+              <li key={s.key} className="flex">
+                <Card className="flex h-full flex-col gap-3">
                   <div className="flex items-start gap-3">
                     <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-brand-soft text-brand">
                       <Icon size={24} aria-hidden />
                     </span>
                     <div className="min-w-0 flex-1">
                       <span className="block text-body font-bold">{s.label}</span>
-                      {s.model && <span className="block text-sub text-ink2">{s.model}</span>}
+                      {s.model && <span className="block text-sub text-ink2">{deviceName(s.model)}</span>}
                     </div>
                   </div>
-                  <StatusPill tone={st.tone} icon={st.icon}>
-                    {s.statusLabel}
-                  </StatusPill>
+                  <div>
+                    <StatusPill tone={st.tone} icon={st.icon}>
+                      {s.statusLabel}
+                    </StatusPill>
+                  </div>
                   <p className="text-sub text-ink2">{s.note}</p>
                 </Card>
               </li>

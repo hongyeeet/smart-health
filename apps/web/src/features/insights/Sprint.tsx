@@ -12,7 +12,7 @@ import { TirBar } from '@/charts/small'
 import { Header, Screen, Split } from '@/ui/layout'
 import { Alert, Card, EmptyState, SectionTitle, Skeleton, TextLink } from '@/ui/primitives'
 import { Drop, ForkKnife } from '@/ui/icons'
-import { Plain, Tile, num } from './shared'
+import { Plain, Tile, TileGrid, num } from './shared'
 
 const ORDER: GlucoseLevel[] = ['very_low', 'low', 'in_range', 'high', 'very_high']
 
@@ -66,12 +66,12 @@ export function Sprint() {
             <Card tone="hero">
               <TirBar segments={ORDER.map((k) => ({ level: k, pct: data.bands.find((b) => b.key === k)?.pct ?? 0 }))} />
             </Card>
-            <div className="grid grid-cols-2 gap-2">
+            <TileGrid>
               <Tile label={t('insights.glucose.average', 'Average')} value={num(data.metrics.mean, 1)} unit="mmol/L" />
               <Tile label={t('insights.glucose.gmi', 'Estimated A1c (GMI)')} value={data.metrics.gmi != null ? `${num(data.metrics.gmi, 1)}%` : '–'} />
               <Tile label={t('insights.glucose.cv', 'Ups and downs (CV)')} value={data.metrics.cv != null ? `${num(data.metrics.cv)}%` : '–'} sub={t('insights.glucose.cvSub', 'Lower is steadier')} />
               <Tile label={t('insights.glucose.worn', 'Sensor worn')} value={data.metrics.coverage != null ? `${num(data.metrics.coverage)}%` : '–'} />
-            </div>
+            </TileGrid>
           </section>
           <section className="flex flex-col gap-3">
             <SectionTitle>{t('insights.sprint.yourFoods', 'Your foods in these 14 days')}</SectionTitle>

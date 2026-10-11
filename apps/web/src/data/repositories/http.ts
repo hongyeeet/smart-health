@@ -1,5 +1,6 @@
 import { appConfig } from '@/config/app'
-import type { Api, LogInput } from './types'
+import { MealReadError, type Api, type LogInput, type MealErrorCode } from './types'
+import type { MealAnalysis, ScanResult } from '../types'
 import { useUi } from '@/state/store'
 
 /**
@@ -28,7 +29,50 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const detail = ((await res.json().catch(() => null)) as { detail?: unknown } | null)?.detail
     throw new Error(typeof detail === 'string' ? detail : `${res.status} ${res.statusText}`)
   }
+  // 204 No Content (a delete) has no body; reading it as JSON would fail after the change was already made
+  if (res.status === 204) return undefined as T
   return (await res.json()) as T
+}
+
+/** The server gives up after about 50 s; this is only a backstop for a stalled connection, so the screen always moves on. */
+const MEAL_READ_LIMIT_MS = 75_000
+/** A label photo that gets no answer within this time is given up (the scan screen then says so and offers Retake or Type it in). */
+export const SCAN_UPLOAD_LIMIT_MS = 60_000
+const MEAL_CODES: MealErrorCode[] = ['bad_photo', 'not_food', 'model_unavailable', 'daily_limit', 'timeout', 'bad_response', 'save_failed']
+
+/**
+ * Sends a meal photo to POST /meals/analyze. Every failure becomes a MealReadError with the server's stable `code`
+ * and its plain `detail`. A cancel from the screen (`signal`) is passed on as the browser's AbortError, untouched.
+ */
+async function analyzeMealPhoto(file: File, description: string | undefined, signal?: AbortSignal): Promise<MealAnalysis> {
+  const fd = new FormData()
+  fd.append('file', file)
+  if (description?.trim()) fd.append('description', description.trim())
+  const limit = new AbortController()
+  const stop = () => limit.abort()
+  const timer = setTimeout(stop, MEAL_READ_LIMIT_MS)
+  signal?.addEventListener('abort', stop)
+  try {
+    let res: Response
+    try {
+      res = await fetch(`${appConfig.apiBaseUrl}/meals/analyze`, { method: 'POST', body: fd, credentials: 'include', headers: asUser(), signal: limit.signal })
+    } catch (e) {
+      if (signal?.aborted) throw e
+      if (limit.signal.aborted) throw new MealReadError('timeout', 'Reading the photo took too long. Please try again, or type the meal in.')
+      throw new MealReadError('network', 'We could not reach Smart Health. Check your internet connection, then try again.')
+    }
+    const body = (await res.json().catch(() => null)) as { detail?: unknown; code?: unknown } | null
+    if (!res.ok) {
+      const code = MEAL_CODES.find((c) => c === body?.code) ?? 'model_unavailable'
+      const message = typeof body?.detail === 'string' ? body.detail : 'We could not read the photo just now. Please try again, or type the meal in.'
+      throw new MealReadError(code, message)
+    }
+    if (!body) throw new MealReadError('bad_response', 'We could not make sense of the reading for this photo. Please try again, or type the meal in.')
+    return body as unknown as MealAnalysis
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', stop)
+  }
 }
 
 export const httpApi: Api = {
@@ -45,24 +89,20 @@ export const httpApi: Api = {
   snoozePrompt: todo('snoozePrompt'),
   getInsights: todo('getInsights'),
   getInsightsOverview: (days) => request(`/insights/overview?days=${days}`),
+  getInsightsOverviewDays: (from, to) => request(`/insights/overview/days?from=${from}&to=${to}`),
   getInsightsGlucose: (days) => request(`/insights/glucose?days=${days}`),
   getInsightsFood: (days) => request(`/insights/food?days=${days}`),
   getInsightsActivity: (days) => request(`/insights/activity?days=${days}`),
   getInsightsSleep: (days) => request(`/insights/sleep?days=${days}`),
   getInsightsMedication: (days) => request(`/insights/medication?days=${days}`),
   getInsightsSprint: () => request('/insights/sprint'),
+  getInsightsHeart: (days) => request(`/insights/heart?days=${days}`),
+  getInsightsBloodPressure: (days) => request(`/insights/blood-pressure?days=${days}`),
   getDay: todo('getDay'),
   getDayList: todo('getDayList'),
   logEntry: (input: LogInput) => request('/logs', { method: 'POST', body: JSON.stringify(input) }),
   listRecent: () => request('/logs/recent'),
-  analyzeMeal: async (file: File, description?: string) => {
-    const fd = new FormData()
-    fd.append('file', file)
-    if (description?.trim()) fd.append('description', description.trim())
-    const res = await fetch(`${appConfig.apiBaseUrl}/meals/analyze`, { method: 'POST', body: fd, credentials: 'include', headers: asUser() })
-    if (!res.ok) throw new Error(((await res.json().catch(() => null)) as { detail?: string } | null)?.detail ?? `${res.status} ${res.statusText}`)
-    return res.json()
-  },
+  analyzeMeal: (file: File, description?: string, signal?: AbortSignal) => analyzeMealPhoto(file, description, signal),
   getFoodNote: (food: string) => request(`/meals/response?food=${encodeURIComponent(food)}`),
   getFoodFlags: () => request('/nutrition/flags'),
   getLunchIdeas: () => request('/nutrition/lunch'),
@@ -77,8 +117,12 @@ export const httpApi: Api = {
   getDigest: () => request('/memory/digest'),
   getAudit: () => request('/memory/audit'),
   getProgress: () => request('/memory/progress'),
+  getDietDays: (start, end) => request(`/memory/progress/days?from=${encodeURIComponent(start)}&to=${encodeURIComponent(end)}`),
+  getBarrierSummary: () => request('/memory/barriers/summary'),
   getWeekWorkouts: () => request('/workouts/week'),
   deleteEntry: (id: string) => request<void>(`/logs/${id}`, { method: 'DELETE' }).then(() => undefined),
+  getBloodPressure: (id) => request(`/logs/blood-pressure/${encodeURIComponent(id)}`),
+  updateBloodPressure: (id, input) => request(`/logs/blood-pressure/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(input) }),
   listMedications: () => request('/medications'),
   getMedication: (id) => request(`/medications/${encodeURIComponent(id)}`),
   explainMedication: (id) => request(`/medications/${encodeURIComponent(id)}/explanation`, { method: 'POST' }),
@@ -89,14 +133,22 @@ export const httpApi: Api = {
   removeMedication: async (id) => {
     await request(`/medications/${encodeURIComponent(id)}`, { method: 'DELETE' })
   },
-  uploadScan: (file: File) => {
+  uploadScan: async (file: File, cancel?: AbortSignal) => {
     const fd = new FormData()
     fd.append('file', file)
-    return fetch(`${appConfig.apiBaseUrl}/scans`, { method: 'POST', body: fd, credentials: 'include', headers: asUser() })
-      .then((res) => {
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-        return res.json()
-      })
+    // A stalled upload ends after SCAN_UPLOAD_LIMIT_MS (or when the person cancels): the screen then offers Retake or Type it in.
+    const limit = new AbortController()
+    const timer = setTimeout(() => limit.abort(), SCAN_UPLOAD_LIMIT_MS)
+    const stop = () => limit.abort()
+    cancel?.addEventListener('abort', stop)
+    try {
+      const res = await fetch(`${appConfig.apiBaseUrl}/scans`, { method: 'POST', body: fd, credentials: 'include', headers: asUser(), signal: limit.signal })
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+      return (await res.json()) as ScanResult
+    } finally {
+      clearTimeout(timer)
+      cancel?.removeEventListener('abort', stop)
+    }
   },
   getScanResult: (scanId: string) => request(`/scans/${scanId}`),
   confirmScan: (scanId: string, editedFields: Record<string, string | null>, times: string[], kind?: string, asNeeded?: boolean) =>

@@ -77,9 +77,9 @@ def _check(user_id: str, only_ids: Iterable[str] | None) -> dict[str, Any]:
         db_pairs = store.database_pairs(conn, meds) if len(meds) >= 2 else []
     outcome = ai.ClashOutcome(status="done")
     if len(meds) >= 2:
-        if usage.allowed("vertex_vision"):
+        if usage.allowed("vertex_generate"):
             outcome = _ai([ai.Medicine(m["id"], m["name"], m["strength"], m["kind"]) for m in meds])
-            usage.record("vertex_vision", outcome.input_tokens, outcome.output_tokens)
+            usage.record("vertex_generate", outcome.input_tokens, outcome.output_tokens)
         else:
             outcome = ai.ClashOutcome(status="failed", reason="daily_limit")
     _last_failed[user_id] = outcome.status == "failed"

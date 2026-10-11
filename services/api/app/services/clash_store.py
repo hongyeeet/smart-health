@@ -18,8 +18,9 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from app.core.errors import NotFound
+from app.services.web_sources import OPENFDA_TITLE, clean, is_openfda
 
-DB_SOURCE_TITLE = "Drug label information (openFDA)"
+DB_SOURCE_TITLE = OPENFDA_TITLE                     # the drug-label source: named as data, with no link (see web_sources)
 DB_SUMMARY = "The drug label information for one of these medicines mentions the other."
 GENERIC_SUMMARY = "These two medicines may interact."
 
@@ -101,14 +102,14 @@ def save_alerts(conn: psycopg.Connection, user_id: str, db_pairs: Sequence[DbPai
     for slot in pairs.values():
         a, b = sorted((slot["a"], slot["b"]))
         has_db, has_ai = slot["rule"] is not None, slot["ai"] is not None
-        db_source = [{"title": DB_SOURCE_TITLE, "url": slot["url"]}] if has_db and slot["url"] else []
+        db_source = clean([{"title": DB_SOURCE_TITLE, "url": slot["url"]}]) if has_db and slot["url"] else []
         row = conn.execute(
             "select id, origin, sources from interaction_alerts where user_id = %s and med_b_id is not null "
             "and least(med_a_id::text, med_b_id::text) = %s and greatest(med_a_id::text, med_b_id::text) = %s", (user_id, a, b)).fetchone()
         if row is None:
             origin = "both" if has_db and has_ai else "database" if has_db else "ai"
             summary = slot["ai"] or (DB_SUMMARY if has_db else GENERIC_SUMMARY)
-            sources = db_source + ([dict(s) for s in ai_sources] if has_ai else [])
+            sources = clean(db_source + (list(ai_sources) if has_ai else []))
             r = conn.execute(
                 "insert into interaction_alerts (user_id, med_a_id, med_b_id, interaction_rule_id, status, origin, summary, sources, model_id) "
                 "values (%s, %s, %s, %s, 'open', %s, %s, %s, %s) returning id",
@@ -121,10 +122,10 @@ def save_alerts(conn: psycopg.Connection, user_id: str, db_pairs: Sequence[DbPai
         keep_ai = row[1] in ("ai", "both") or has_ai
         origin = "both" if keep_db and keep_ai else "database" if keep_db else "ai"
         if has_ai:                                    # the model's newest reason and pages replace its older ones; the label link stays
-            kept = [s for s in (row[2] or []) if s.get("title") == DB_SOURCE_TITLE]
+            kept = [s for s in (row[2] or []) if is_openfda(s.get("title"), s.get("url"))]
             conn.execute("update interaction_alerts set origin = %s, interaction_rule_id = coalesce(interaction_rule_id, %s), summary = %s, "
                          "sources = %s, model_id = %s where id = %s",
-                         (origin, slot["rule"], slot["ai"] or (DB_SUMMARY if keep_db else GENERIC_SUMMARY), Jsonb((db_source or kept) + [dict(s) for s in ai_sources]), model_id, row[0]))
+                         (origin, slot["rule"], slot["ai"] or (DB_SUMMARY if keep_db else GENERIC_SUMMARY), Jsonb(clean((db_source or kept) + list(ai_sources))), model_id, row[0]))
         else:                                         # the database found it again: never overwrite what the model said
             conn.execute("update interaction_alerts set origin = %s, interaction_rule_id = coalesce(interaction_rule_id, %s), "
                          "summary = coalesce(summary, %s) where id = %s", (origin, slot["rule"], DB_SUMMARY, row[0]))
@@ -146,7 +147,7 @@ def list_open(conn: psycopg.Connection, user_id: str) -> list[dict[str, Any]]:
     for aid, origin, summary, sources, na, sa, nb, sb, raised_at in rows:
         la, lb = _label(na, sa), _label(nb, sb)
         out.append({"id": str(aid), "med_a": la, "med_b": lb, "text": patient_text(la, lb), "summary": summary or "", "origin": origin,
-                    "sources": list(sources or []), "question_added": question_text(la, lb) in asked or question_text(lb, la) in asked,
+                    "sources": clean(sources), "question_added": question_text(la, lb) in asked or question_text(lb, la) in asked,
                     "raised_at": raised_at})
     return out
 

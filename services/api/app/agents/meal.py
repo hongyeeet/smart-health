@@ -50,11 +50,12 @@ class MealEstimate(BaseModel):
         return v.strip()
 
 
-def analyse_meal(image: bytes, mime_type: str, description: str | None) -> MealEstimate:
+def analyse_meal(image: bytes, mime_type: str, description: str | None, model: str | None = None) -> MealEstimate:
+    """Raises LLMUnavailable (with a code) when the photo cannot be read. `model` is for tests and trials; the default is the setting."""
     prompt = PROMPT
     if description and description.strip():
         prompt += f"\n\nThe person's description: {description.strip()[:500]}"
-    est = vision_json(image, mime_type, prompt, MealEstimate)
+    est = vision_json(image, mime_type, prompt, MealEstimate, model=model)
     # Keep the database constraints true even if the model rounds oddly: sugar and fibre are parts of carbs.
     if est.carbs_g is not None:
         if est.sugar_g is not None:

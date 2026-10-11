@@ -2,22 +2,20 @@
  * E1 — Log hub.
  *
  * One tile per log kind. Each tile shows where today stands (done, due now, or not yet) from the database, so the
- * person can see at a glance what is still worth logging. Tapping a recent entry opens the edit/delete sheet (E7).
+ * person can see at a glance what is still worth logging. The recent entries are on Insights, Food (C3).
  */
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { useLogProgress, useRecent } from '@/data/hooks'
+import { useLogProgress } from '@/data/hooks'
 import { useGo } from '@/app/navigation'
 import { MealBanner } from './MealBanner'
-import type { LogKind, ProgressItem } from '@/data/types'
+import type { ProgressItem } from '@/data/types'
 import type { RouteId } from '@/app/routeIds'
-import { cn } from '@/lib/cn'
 import { Header, Screen, Reveal } from '@/ui/layout'
-import { Card, EmptyState, SectionTitle, Skeleton } from '@/ui/primitives'
+import { Card, TextLink } from '@/ui/primitives'
+import { cn } from '@/lib/cn'
 import { UserSwitch } from '@/features/home/UserSwitch'
-import { Barbell, CaretRight, ForkKnife, PersonSimpleWalk, Smiley, Thermometer, type IconType } from '@/ui/icons'
-
-const kindIcon: Record<LogKind, IconType> = { meal: ForkKnife, workout: Barbell, symptom: Thermometer, checkin: Smiley }
+import { ForkKnife, Heartbeat, PersonSimpleWalk, Smiley, Thermometer, type IconType } from '@/ui/icons'
 
 function chip(i: ProgressItem | undefined, t: TFunction) {
   if (!i) return null
@@ -34,73 +32,49 @@ function chip(i: ProgressItem | undefined, t: TFunction) {
   return null
 }
 
+/** The fifth tile fills the last row on a phone and tablet; its text then sits beside the icon, so the row reads as a deliberate wide tile. */
+const wide = (key: string) => key === 'checkin'
+
 export function LogHub() {
   const { t } = useTranslation()
-  const tiles: { id: RouteId; key: ProgressItem['key']; title: string; sub: string; icon: IconType }[] = [
+  const tiles: { id: RouteId; key: ProgressItem['key'] | 'blood_pressure'; title: string; sub: string; icon: IconType }[] = [
     { id: 'E2', key: 'meals', title: t('log.hub.meal', 'Meal'), sub: t('log.hub.mealSub', 'Photo of your food'), icon: ForkKnife },
     { id: 'F1', key: 'workout', title: t('log.hub.workout', 'Workout'), sub: t('log.hub.workoutSub', 'Walk, strength, yoga'), icon: PersonSimpleWalk },
     { id: 'E4', key: 'symptom', title: t('log.hub.symptom', 'Symptom'), sub: t('log.hub.symptomSub', 'How you feel'), icon: Thermometer },
+    { id: 'E3', key: 'blood_pressure', title: t('log.hub.bp', 'Blood pressure'), sub: t('log.hub.bpSub', 'Top and bottom numbers'), icon: Heartbeat },
     { id: 'E5', key: 'checkin', title: t('log.hub.checkin', 'Mood and sleep'), sub: t('log.hub.checkinSub', 'Thirty seconds'), icon: Smiley },
   ]
   const go = useGo()
-  const { data, isError } = useRecent()
   const { data: progress } = useLogProgress()
   return (
     <Screen tabs>
       <Header title={t('log.hub.title', 'Log')} sub={t('log.hub.sub', 'Add what happened. It all lands on one timeline.')} trailing={<UserSwitch />} />
       <MealBanner />
       <Reveal id="log-tiles">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 [[data-ts='2']_&]:grid-cols-1">
+        {/* phone and tablet: two columns, and the fifth tile ("Mood and sleep") takes its own full row; a laptop shows one even row of five;
+            at 200% text every tile is one column. Titles start at the top of each tile, so they line up when a subtitle wraps. */}
+        <div className="grid grid-cols-2 items-stretch gap-3 lg:grid-cols-5 [[data-ts='2']_&]:grid-cols-1">
           {tiles.map((tile) => {
             const item = progress?.items.find((i) => i.key === tile.key)
             return (
-            <Card key={tile.id} onClick={() => go(tile.id)} className="flex min-h-[124px] flex-col justify-between">
-              <span className="flex items-start justify-between">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-soft text-brand">
-                  <tile.icon size={24} aria-hidden />
-                </span>
-                {chip(item, t)}
+            <Card key={tile.id} onClick={() => go(tile.id)} className={cn('relative flex min-h-[124px] flex-col items-start gap-3 lg:min-h-40', wide(tile.key) && "col-span-2 lg:col-span-1 max-lg:min-h-0 max-lg:flex-row max-lg:items-center max-lg:gap-4 [[data-ts='2']_&]:col-span-1 [[data-ts='2']_&]:min-h-[124px] [[data-ts='2']_&]:flex-col [[data-ts='2']_&]:items-start [[data-ts='2']_&]:gap-3")}>
+              <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-brand-soft text-brand">
+                <tile.icon size={24} aria-hidden />
               </span>
-              <span>
+              <span className="absolute right-4 top-4">{chip(item, t)}</span>
+              <span className="flex min-w-0 flex-col">
                 <span className="block text-body font-bold">{tile.title}</span>
-                <span className="block text-sub text-ink2">{item?.status === 'due' && item.window ? t('log.hub.usually', 'Usually {{window}}', { window: item.window }) : tile.sub}</span>
+                <span className="block text-sub text-ink2">{item?.status === 'due' && item.window ? t('log.hub.usually', 'Usually {{window}}', { window: item.window }) : tile.key === 'blood_pressure' && progress?.bloodPressure.latest ? progress.bloodPressure.latest : tile.sub}</span>
               </span>
             </Card>
             )
           })}
         </div>
       </Reveal>
-      <section className="flex flex-col gap-1">
-        <SectionTitle>{t('log.hub.recent', 'Recent entries')}</SectionTitle>
-        {isError ? (
-          <p className="text-body text-ink2">{t('log.hub.loadError', 'We could not load your entries.')}</p>
-        ) : !data ? (
-          <Skeleton className="h-40" />
-        ) : data.length === 0 ? (
-          <EmptyState icon={ForkKnife}>{t('log.hub.empty', 'Nothing logged yet. Start with a meal or a quick check-in.')}</EmptyState>
-        ) : (
-          <ul className="divide-y divide-line">
-            {data.map((e) => {
-              const Icon = kindIcon[e.kind]
-              return (
-                <li key={e.id}>
-                  <button type="button" onClick={() => go('E7', { sheet: { entry: e } })} className="press flex w-full items-center gap-3 py-3 text-left">
-                    <span className={cn('flex h-11 w-11 flex-none items-center justify-center rounded-full bg-well text-ink2')}>
-                      <Icon size={22} aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-body font-bold leading-snug">{e.title}</span>
-                      <span className="block text-sub text-ink2">{e.detail}</span>
-                    </span>
-                    <span className="flex-none text-sub text-ink3">{e.when}</span>
-                    <CaretRight size={18} className="flex-none text-ink3" aria-hidden />
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
+      <div className="flex flex-col items-start">
+        <p className="text-sub text-ink2">{t('log.hub.seeFoodLead', 'Your recent entries and what you ate are in Insights.')}</p>
+        <TextLink onClick={() => go('C3')}>{t('log.hub.seeFood', 'See what you ate in Insights → Food')}</TextLink>
+      </div>
     </Screen>
   )
 }

@@ -11,7 +11,7 @@ from pydantic import Field
 
 from app.schemas.medicines import Camel
 
-MarkerKind = Literal["meal", "dose", "workout", "symptom"]
+MarkerKind = Literal["meal", "dose", "workout", "symptom", "pressure"]
 DoseState = Literal["taken", "late", "not_confirmed", "missed"]
 
 

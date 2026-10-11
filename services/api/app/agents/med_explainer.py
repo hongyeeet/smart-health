@@ -1,11 +1,14 @@
-"""Medicine explainer (prd F3, docs/specs/f3-explainer.md): what a medicine is for and its common side effects, in plain words.
+"""Medicine explainer (prd F3, docs/specs/f3-explainer.md): what a medicine is for, how it works and what to notice, in plain words.
 
 The model searches the web (Google Search grounding through `VertexClient.generate_grounded`) and writes a short explanation from the
 pages it found. Code, not the model, then decides what may be shown:
 
   - nothing is kept unless at least one web page was used (every explanation cites its sources)
-  - any sentence that gives a dose, a number of tablets or a schedule is dropped (the dose on the page is always the person's own label)
-  - any sentence that tells the person to stop, skip, double, change or swap a medicine, or calls one "safe", is dropped
+  - any sentence that gives a dose, a number of tablets or a schedule (a clock time, "every morning") is dropped: the dose on the page is
+    always the person's own label
+  - any sentence that tells the person to stop, skip, double, change or swap a medicine, or calls one "safe" or "normal", is dropped
+  - the explanation has four labelled parts (prompt version 2): what it is for in the person's diabetes, how it works, what they may
+    notice, why timing matters. Each part is checked the same way; an empty part is shown as "not found", never guessed
   - a product the model could not identify is reported as `not_identified`, never explained from the name alone
 
 Only the medicine's name, strength, type and the label directions are sent. No name, ID, address or other personal detail is ever part of
@@ -20,27 +23,33 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Iterable, Literal
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError, ValidationInfo, field_validator
 
 from app.core.errors import ExternalServiceError
 from app.llm.vertex import VertexClient, WebSource
 from app.services.scan_privacy import scrub_value
+from app.services.web_sources import site_name
 
 log = logging.getLogger(__name__)
 PROMPT_PATH = Path(__file__).parent / "prompts" / "med_explain.md"
 MAX_SIDE_EFFECTS = 6
 MAX_SOURCES = 5
+PARTS = ("for_diabetes", "how_it_works", "what_you_may_notice", "why_timing_matters")
 
-# A sentence that states how much or how often to take it. The person's own label is the only place a dose may come from.
+# A sentence that states how much, how often or when to take it. The person's own label is the only place a dose or a time may come from.
 DOSE_RE = re.compile(
     r"\b\d+(?:\.\d+)?\s?(?:mg|mcg|µg|g|ml|iu|units?|tablets?|tabs?|capsules?|caps?|times)\b"
-    r"|\b(?:once|twice|three times|four times)\s+(?:a|per|each)\s+(?:day|week)\b", re.I)
-# A sentence that tells the person to change their treatment, or says a medicine is safe (rules.md 1, rule 7).
+    r"|\b(?:once|twice|three times|four times)\s+(?:a|per|each)\s+(?:day|week)\b"
+    r"|\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b|\b\d{1,2}:\d{2}\b"
+    r"|\b(?:every|each|per)\s+(?:day|morning|evening|night|meal|week)\b", re.I)
+# A sentence that tells the person to change their treatment, or says a medicine is safe or normal (rules.md 1, rule 7).
 ADVICE_RE = re.compile(
     r"\bstop(?:ping)?\s+(?:taking|the|your|it|this)\b|\bdiscontinu\w*\b|\bskip(?:ping)?\s+(?:a|your|the|any)?\s*doses?\b"
     r"|\bdoubl\w+\s+(?:up|the|your|a)\b|\b(?:increase|reduce|lower|adjust|change)\s+(?:the|your)\s+(?:dose|dosage)\b"
-    r"|\b(?:switch|swap)\w*\s+(?:to|from|with)\b|\b(?:is|are|be|considered|generally)\s+safe\b|\bsafe to\b"
-    r"|\bcan be (?:taken|used)\s+(?:together\s+)?with\b|\bdo not (?:take|use|drink)\b|\bavoid\b", re.I)
+    r"|\b(?:switch|swap)\w*\s+(?:to|from|with)\b|\b(?:is|are|be|considered|generally)\s+safe\b|\bsafe\b|\bunsafe\b|\bsafe to\b"
+    r"|\bcan be (?:taken|used)\s+(?:together\s+)?with\b|\bdo not (?:take|use|drink)\b|\bavoid\b"
+    r"|\bstop(?:s|ped|ping)?\b|\bskip(?:s|ped|ping)?\b|\bchang(?:e|es|ed|ing)\s+(?:the|your|how|dose|dosage|treatment|medicine|medication)\b"
+    r"|\bnormal\b|\babnormal\b|\bcaused by\b", re.I)
 SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
 # Sources worth citing for medicine information: health authorities, public health services, hospitals, makers' patient information and
 # the established drug-information sites. The search returns the page's site name as its title. When at least one source from this list
@@ -57,7 +66,8 @@ TRUSTED_SITES = (
 @dataclass
 class ExplainOutcome:
     status: Literal["ready", "not_identified", "failed"]
-    purpose: str = ""
+    purpose: str = ""                               # the first part (what it is for in the person's diabetes), also used by chat
+    parts: dict[str, str] = field(default_factory=dict)   # the four labelled parts, keys in PARTS (empty for an older answer)
     side_effects: list[str] = field(default_factory=list)
     tell_doctor: str = ""
     sources: list[WebSource] = field(default_factory=list)
@@ -72,9 +82,20 @@ class ExplainOutcome:
 class RawExplanation(BaseModel):
     model_config = ConfigDict(extra="ignore")
     identified: bool = False
-    purpose: str = ""
+    what_it_is_for: str = ""                        # in the person's diabetes, or in general when it is not a diabetes medicine
+    how_it_works: str = ""
+    what_you_may_notice: str = ""
+    why_timing_matters: str = ""
     side_effects: list[str] = []
     tell_doctor: str = ""
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _null_is_empty(cls, v: object, info: ValidationInfo) -> object:
+        """The model sometimes writes null for a part it could not find. That means the same as an empty part, not an unreadable answer."""
+        if v is not None:
+            return v
+        return False if info.field_name == "identified" else [] if info.field_name == "side_effects" else ""
 
 
 def load_prompt() -> tuple[str, str]:
@@ -94,7 +115,7 @@ def parse_answer(text: str) -> RawExplanation:
 
 
 def clean_text(text: str) -> str:
-    """Keep only the sentences that give no dose and no treatment advice."""
+    """Keep only the sentences that give no dose, no time and no treatment advice."""
     kept = [s.strip() for s in SENTENCE_RE.split((text or "").strip()) if s.strip() and not DOSE_RE.search(s) and not ADVICE_RE.search(s)]
     return " ".join(kept)
 
@@ -115,9 +136,16 @@ def clean_effects(items: Iterable[str]) -> list[str]:
 
 def pick_sources(sources: Iterable[WebSource]) -> list[WebSource]:
     """The pages to cite: reliable medical sources first and only those when there are any, otherwise whatever was used."""
-    found = list(sources)
-    trusted = [s for s in found if any(s.title.lower().removeprefix("www.") == d or s.title.lower().endswith("." + d) for d in TRUSTED_SITES)]
-    return (trusted or found)[:MAX_SOURCES]
+    found = [WebSource(site_name(s.title, s.url), s.url) for s in sources]   # the site's name, not a page title or a redirect
+    trusted = [s for s in found if any(s.title == d or s.title.endswith("." + d) for d in TRUSTED_SITES)]
+    out: list[WebSource] = []
+    seen: set[str] = set()
+    for s in trusted or found:                       # the search can return one site twice (two addresses): show it once
+        key = s.title.lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(s)
+    return out[:MAX_SOURCES]
 
 
 def build_prompt(name: str, strength: str | None, kind: str, directions: str | None) -> str:
@@ -163,9 +191,14 @@ def explain(client: VertexClient, *, model: str, name: str, strength: str | None
         return replace(base, status="not_identified", sources=pick_sources(sources))
     if not sources:                                  # no web page behind it: nothing may be shown as fact
         return replace(base, reason="no_sources")
-    purpose = clean_text(raw.purpose)
-    effects = clean_effects(raw.side_effects)
+    purpose = clean_text(raw.what_it_is_for)
     if not purpose:
         return replace(base, reason="unusable_answer")
-    return replace(base, status="ready", purpose=purpose, side_effects=effects, tell_doctor=clean_text(raw.tell_doctor),
-                   sources=pick_sources(sources))
+    parts = {
+        "for_diabetes": purpose,
+        "how_it_works": clean_text(raw.how_it_works),
+        "what_you_may_notice": clean_text(raw.what_you_may_notice),
+        "why_timing_matters": clean_text(raw.why_timing_matters),
+    }
+    return replace(base, status="ready", purpose=purpose, parts=parts, side_effects=clean_effects(raw.side_effects),
+                   tell_doctor=clean_text(raw.tell_doctor), sources=pick_sources(sources))

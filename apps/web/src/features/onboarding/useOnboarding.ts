@@ -1,16 +1,17 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
+import { useUi } from '@/state/store'
 
 /**
- * Onboarding answers (A1 to A6), exactly as the person gave them. The question set follows Damien's clinical onboarding
- * design (Stitch export, 2026-10-09). This store only records answers: nothing here is scored, staged or turned into a target.
+ * Onboarding answers (A1 to A6), exactly as the person gave them. This store only records answers: nothing here is scored,
+ * staged or turned into a target.
  *
- * The answers are kept on this device so that leaving and coming back resumes where the person stopped. They are only
- * written to the device once the data-use consent is on (prd F1: consent before any data is stored); switching it off
- * removes them again. The answers that have a `user_profile` column are also saved to the record (api.ts); the rest stay
- * on this device for now. Where `user_profile` in docs/specs/data-model-v2.md has a column, the values match it.
+ * The database is the source of truth (api.ts reads GET /onboarding and fills these answers from it). The copy kept on this
+ * device is a fallback: it is only used for a field the server has nothing for, and each person has their own copy
+ * (`smart-health-onboarding:<user>`), so one person's answers never show for another. Nothing is kept on the device until the
+ * data-use consent is on; switching it off removes the copy again.
  */
-export type Gender = 'female' | 'male' | 'other' | 'prefer_not_to_say'
+export type Gender = 'female' | 'male'
 export type HasDiabetes = 'yes' | 'not_sure'
 export type YesNo = 'yes' | 'no'
 export type YesNoUnsure = 'yes' | 'no' | 'unsure'
@@ -27,12 +28,14 @@ export interface Allergy {
 export interface OnboardingAnswers {
   /* 1 welcome */
   name: string
+  reminderEmail: string
+  reminderOn: boolean
   consentData: boolean
   consentShare: boolean
   consentResearch: boolean
   /* 2 eligibility */
   hasDiabetes: HasDiabetes | null
-  /* 3 body measurements */
+  /* 3 about you */
   birthYear: string
   gender: Gender | null
   race: string
@@ -41,18 +44,15 @@ export interface OnboardingAnswers {
   waistCm: string
   /* 4 diabetes history */
   diagnosedYear: string
-  familyHistory: YesNoUnsure | null
   careSetting: string | null
-  healthierSg: string | null
-  /* 5 medicines (kinds only; the medicines themselves come from the scan and add-by-hand screens) */
-  diabetesMeds: string[]
-  otherMeds: string[]
-  /* 6 lows */
+  healthierSg: YesNoUnsure | null
+  /* 5 medicines: the medicines come from GET /medications, not from this store */
+  /* 6 low glucose */
   hypo3m: string | null
   severeHypo: YesNo | null
-  /** Gold score, '1' to '7' */
+  /** how well the person notices a hypo coming, '1' (always) to '7' (never) */
   gold: string | null
-  /* 7 conditions, allergies, check-ups */
+  /* 7 other conditions and checks */
   conditions: string[]
   otherConditions: string
   noAllergies: boolean
@@ -66,41 +66,27 @@ export interface OnboardingAnswers {
   fastingGlucose: string
   glucoseUnit: GlucoseUnit
   fastingInsulin: string
-  egfr: string
-  systolic: string
-  diastolic: string
-  /* 9 devices and routine */
-  cgm: string | null
+  /* 9 devices: the choice only, nothing is paired here */
   wearable: string | null
-  wakeTime: string
-  sleepTime: string
+  cgm: string | null
+  /* 10 work week; 1 = Monday ... 7 = Sunday */
   workType: WorkType | null
-  /** 1 = Monday ... 7 = Sunday */
   workDays: number[]
   workStart: string
   workEnd: string
-  fasting: string[]
-  reminderTimes: string[]
-  /* 10 lifestyle */
-  eatOut: string | null
-  sweetDrinks: string | null
-  activeDays: string | null
-  smoking: string | null
-  alcohol: string | null
-  /* 11 safety */
-  redFlags: string[]
+  /* 11 emergency contact */
   contactName: string
-  contactPhone: string
   contactRelation: string
+  contactPhone: string
   contactEmail: string
-  /* 10 reminders */
-  reminderEmail: string
 
   completedAt: string | null
 }
 
 export const emptyAnswers: OnboardingAnswers = {
   name: '',
+  reminderEmail: '',
+  reminderOn: true,
   consentData: false,
   consentShare: false,
   consentResearch: false,
@@ -112,11 +98,8 @@ export const emptyAnswers: OnboardingAnswers = {
   weightKg: '',
   waistCm: '',
   diagnosedYear: '',
-  familyHistory: null,
   careSetting: null,
   healthierSg: null,
-  diabetesMeds: [],
-  otherMeds: [],
   hypo3m: null,
   severeHypo: null,
   gold: null,
@@ -132,63 +115,104 @@ export const emptyAnswers: OnboardingAnswers = {
   fastingGlucose: '',
   glucoseUnit: 'mmol/L',
   fastingInsulin: '',
-  egfr: '',
-  systolic: '',
-  diastolic: '',
-  cgm: null,
   wearable: null,
-  wakeTime: '',
-  sleepTime: '',
+  cgm: null,
   workType: null,
   workDays: [],
   workStart: '',
   workEnd: '',
-  fasting: [],
-  reminderTimes: [],
-  eatOut: null,
-  sweetDrinks: null,
-  activeDays: null,
-  smoking: null,
-  alcohol: null,
-  redFlags: [],
   contactName: '',
-  contactPhone: '',
   contactRelation: '',
+  contactPhone: '',
   contactEmail: '',
-  reminderEmail: '',
   completedAt: null,
 }
 
+/** The per-person device copy. `user` is the key the app acts as (X-User). */
+export const deviceKey = (user: string) => `smart-health-onboarding:${user}`
+const OLD_UNKEYED_KEY = 'smart-health-onboarding'
+
+/** Removes one person's device copy (used by "Start as new person"). A blocked storage is not an error: nothing is kept then. */
+export function clearDeviceCopy(user: string) {
+  try {
+    localStorage.removeItem(deviceKey(user))
+  } catch {
+    /* storage not available */
+  }
+}
+
+/* The old copy had no owner, so it could belong to anyone who used this device. It is removed rather than moved to a person. */
+try {
+  localStorage.removeItem(OLD_UNKEYED_KEY)
+} catch {
+  /* storage not available */
+}
+
+/** Answers from an older copy that are no longer choices (for example sex "other") are treated as not answered. */
+function sanitize(a: Partial<OnboardingAnswers>): OnboardingAnswers {
+  const merged = { ...emptyAnswers, ...a }
+  const gender = merged.gender === 'female' || merged.gender === 'male' ? merged.gender : null
+  return { ...merged, gender }
+}
+
+/** The device copy follows the person: it is read and written under the key of whoever is acting. */
+const deviceStorage = createJSONStorage(() => ({
+  getItem: () => {
+    try {
+      return localStorage.getItem(deviceKey(useUi.getState().userKey))
+    } catch {
+      return null
+    }
+  },
+  setItem: (_name: string, value: string) => {
+    try {
+      localStorage.setItem(deviceKey(useUi.getState().userKey), value)
+    } catch {
+      /* storage not available: the answers stay in memory for this visit */
+    }
+  },
+  removeItem: () => clearDeviceCopy(useUi.getState().userKey),
+}))
+
 interface OnboardingState {
   answers: OnboardingAnswers
+  /** the person whose answers are loaded (from the server, or the device copy when the server is unavailable) */
+  loadedFor: string | null
   set: (patch: Partial<OnboardingAnswers>) => void
-  reset: () => void
+  setLoaded: (patch: Partial<OnboardingAnswers>, user: string) => void
 }
 
 export const useOnboarding = create<OnboardingState>()(
   persist(
     (set) => ({
       answers: emptyAnswers,
+      loadedFor: null,
       set: (patch) => set((s) => ({ answers: { ...s.answers, ...patch } })),
-      reset: () => set({ answers: emptyAnswers }),
+      setLoaded: (patch, user) => set((s) => ({ answers: { ...s.answers, ...patch }, loadedFor: user })),
     }),
     {
       name: 'smart-health-onboarding',
-      version: 2,
-      /** An older shape is dropped, not converted: nothing was ever saved from it. */
-      migrate: () => ({ answers: emptyAnswers }),
-      /* answers stored before a new field existed get the empty value for it */
-      merge: (persisted, current) => ({ ...current, answers: { ...emptyAnswers, ...(persisted as { answers?: Partial<OnboardingAnswers> } | undefined)?.answers } }),
+      storage: deviceStorage,
       partialize: (s) => ({ answers: s.answers.consentData ? s.answers : emptyAnswers }),
+      merge: (persisted, current) => ({
+        ...current,
+        answers: sanitize((persisted as { answers?: Partial<OnboardingAnswers> } | undefined)?.answers ?? {}),
+      }),
     },
   ),
 )
 
+/* A different person: their copy is loaded in place of the last one. The answers are cleared first so nothing is shown for a moment. */
+useUi.subscribe((s, prev) => {
+  if (s.userKey === prev.userKey) return
+  useOnboarding.setState({ answers: emptyAnswers, loadedFor: null })
+  void useOnboarding.persist.rehydrate()
+})
+
 /* ------------------------------- checks on what was typed ------------------------------- */
 /**
  * Plausible ranges for each number field. They only catch typing slips (a height of 900); they are not clinical limits and
- * nothing is said about a value that is inside them. Height, weight, HbA1c in % and blood pressure follow the column limits
- * in docs/specs/schema.md.
+ * nothing is said about a value that is inside them. Height, weight, waist and HbA1c follow the column limits in the database.
  */
 export const LIMITS = {
   heightCm: [100, 250],
@@ -199,9 +223,6 @@ export const LIMITS = {
   glucoseMmol: [1, 35],
   glucoseMgDl: [18, 630],
   fastingInsulin: [0.1, 1000],
-  egfr: [1, 200],
-  systolic: [60, 260],
-  diastolic: [30, 160],
 } as const
 
 const NUMBER = /^\d+(\.\d+)?$/
@@ -229,6 +250,18 @@ export function yearOk(v: string, { required = false, notBefore = 1900 }: { requ
 /** A date field (YYYY-MM-DD) that is empty or not in the future. */
 export function pastDateOk(v: string): boolean {
   return !v || v <= new Date().toLocaleDateString('sv-SE')
+}
+
+/** A plain check that an address has the shape name@domain.tld. Providers are not checked. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const emailOk = (v: string) => EMAIL.test(v.trim())
+
+/** A mobile number: digits with an optional leading +, spaces and dashes allowed, 7 to 15 digits. */
+export function phoneOk(v: string): boolean {
+  const s = v.trim()
+  if (!/^\+?[\d\s-]+$/.test(s)) return false
+  const digits = s.replace(/\D/g, '').length
+  return digits >= 7 && digits <= 15
 }
 
 /* ------------------------------- arithmetic shown on the summary ------------------------------- */

@@ -60,7 +60,43 @@ def test_camera_is_on_this_device_with_nothing_to_connect():
 
 
 def test_every_appointment_kind_has_a_label():
-    assert set(get_args(S.AppointmentKind)) <= set(svc.KIND_LABELS)
+    assert set(get_args(S.StoredAppointmentKind)) <= set(svc.KIND_LABELS)
+    assert set(get_args(S.AppointmentKind)) <= set(svc.APPOINTMENT_KIND_LABELS)
+
+
+def test_vaccination_and_dental_are_no_longer_offered_for_a_visit():
+    offered = set(get_args(S.AppointmentKind))
+    assert "vaccination" not in offered and "dental" not in offered
+    assert offered == set(svc.NEW_APPOINTMENT_KINDS)
+    assert svc.APPOINTMENT_KIND_LABELS["hba1c_test"] == "Blood test"
+
+
+def test_an_old_visit_of_a_removed_kind_still_reads_with_its_old_label():
+    row = {"id": "1", "kind": "dental", "status": "planned", "scheduled_for": NOW + timedelta(days=5), "location": "Clinic",
+           "suggested_reason": None, "confirmed_by_user_at": NOW}
+    out = S.AppointmentOut.model_validate(svc.appointment_out(row))
+    assert out.kind_label == "Dental check" and out.kind == "dental"
+    old = svc.appointment_out({**row, "kind": "vaccination"})
+    assert old["kind_label"] == "Vaccination"
+
+
+def test_a_new_visit_of_a_removed_kind_is_refused_before_any_database_call():
+    future = datetime(2026, 10, 20, 9, 30, tzinfo=svc.TZ)
+    with pytest.raises(ValidationFailed):
+        svc.add_appointment(None, "user", "dental", future, None, NOW)
+    with pytest.raises(ValidationFailed):
+        svc.add_appointment(None, "user", "vaccination", future, None, NOW)
+
+
+def test_the_place_is_no_longer_asked_on_a_new_visit():
+    body = S.NewAppointment(kind="other", scheduled_for=datetime(2026, 10, 20, 9, 30))
+    assert not hasattr(body, "location")
+
+
+def test_question_done_body_is_a_flag():
+    assert S.QuestionDone(done=True).done is True
+    with pytest.raises(ValidationError):
+        S.QuestionDone(done="maybe")
 
 
 def test_suggested_reason_is_a_plain_sentence():
@@ -76,20 +112,52 @@ def test_question_text_is_trimmed_and_cannot_be_blank():
         S.NewQuestion(text="x" * 301)
 
 
-def test_blank_location_is_none():
-    body = S.NewAppointment(kind="other", scheduled_for=datetime(2026, 10, 20, 9, 30), location="   ")
-    assert body.location is None
-
-
 def test_appointment_must_be_in_the_future():
     past = datetime(2026, 10, 1, 9, 0, tzinfo=svc.TZ)
     with pytest.raises(ValidationFailed):
-        svc.add_appointment(None, "user", "gp_review", past, None, None, NOW)   # refused before any database call
+        svc.add_appointment(None, "user", "gp_review", past, None, NOW)   # refused before any database call
 
 
 def test_question_out_labels_the_origin():
     row = {"id": "1", "text": "t", "origin": "agent_suggested", "status": "open", "created_at": NOW}
     out = svc.question_out(row)
     assert out["origin_label"] == "Suggested by Smart Health" and out["can_remove"] is True
-    asked = svc.question_out({**row, "status": "asked"})
-    assert asked["can_remove"] is False
+    done = svc.question_out({**row, "status": "asked"})
+    assert done["can_remove"] is True and done["origin_label"] == "Suggested by Smart Health"
+
+
+# ----------------------------------------------------------------------------------------------- one rule for the next appointment
+def visit(vid: str, status: str, when: datetime | None, kind: str = "diabetes_review") -> dict:
+    return {"id": vid, "kind": kind, "status": status, "scheduled_for": when, "location": None,
+            "suggested_reason": None, "confirmed_by_user_at": NOW}
+
+
+def test_next_visit_is_the_earliest_planned_visit_still_to_come():
+    later, sooner = visit("a", "planned", NOW + timedelta(days=9)), visit("b", "planned", NOW + timedelta(days=2))
+    assert svc.pick_next_visit([later, sooner], NOW)["id"] == "b"
+
+
+def test_a_visit_whose_time_has_passed_is_not_next():
+    past = visit("p", "planned", NOW - timedelta(hours=1))
+    assert svc.pick_next_visit([past], NOW) is None
+    assert svc.is_next_visit("planned", NOW, NOW) is True                    # the same minute is still to come
+
+
+def test_a_cancelled_or_suggested_visit_is_never_next():
+    future = NOW + timedelta(days=3)
+    assert svc.pick_next_visit([visit("c", "cancelled", future), visit("s", "suggested", future)], NOW) is None
+    assert svc.is_next_visit("missed", future, NOW) is False and svc.is_next_visit("completed", future, NOW) is False
+
+
+def test_no_visits_means_no_next_visit():
+    assert svc.pick_next_visit([], NOW) is None
+
+
+def test_past_visits_are_listed_as_past_and_newest_first_and_future_ones_as_upcoming():
+    rows = [visit("old", "planned", NOW - timedelta(days=30)), visit("older", "planned", NOW - timedelta(days=60)),
+            visit("soon", "planned", NOW + timedelta(days=1)), visit("sug", "suggested", None), visit("gone", "planned", NOW - timedelta(days=1))]
+    upcoming, earlier = svc.split_visits(rows, NOW)
+    assert [v["id"] for v in upcoming] == ["soon", "sug"]
+    assert [v["id"] for v in earlier] == ["gone", "old", "older"]
+    assert all(v["status"] == "past" for v in earlier)
+    S.CarePlan.model_validate({"next_appointment": None, "upcoming": upcoming, "earlier": earlier, "preventive": [], "questions": []})

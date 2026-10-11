@@ -15,26 +15,33 @@ import type { ExerciseKind } from '@/data/types'
 import { cn } from '@/lib/cn'
 import { Header, Footer, Screen, Split } from '@/ui/layout'
 import { Rating } from '@/ui/controls'
-import { Alert, Button, Card, Chip, Field, SectionTitle, Skeleton, Stepper } from '@/ui/primitives'
-import { Barbell, CaretRight, Footprints, Heartbeat, Leaf, Lightning, PersonSimpleWalk, Sun, Timer, type IconType } from '@/ui/icons'
+import { Alert, Button, Card, Chip, Field, SectionTitle, Skeleton } from '@/ui/primitives'
+import { Barbell, Broom, CaretRight, DotsThree, FlowerLotus, Lightning, MusicNotes, PersonSimpleBike, PersonSimpleRun, PersonSimpleSwim, PersonSimpleTaiChi, PersonSimpleWalk, SoccerBall, type IconType } from '@/ui/icons'
 
-const KINDS: { id: ExerciseKind; label: string; icon: IconType; names: string[]; defaultMin: number }[] = [
-  { id: 'walking', label: 'Walking', icon: PersonSimpleWalk, names: ['Brisk walk', 'Easy walk', 'Hike'], defaultMin: 30 },
-  { id: 'running', label: 'Running', icon: Footprints, names: ['Jog', 'Run', 'Treadmill'], defaultMin: 30 },
-  { id: 'cycling', label: 'Cycling', icon: Timer, names: ['Outdoor ride', 'Stationary bike'], defaultMin: 30 },
-  { id: 'swimming', label: 'Swimming', icon: Sun, names: ['Laps', 'Water aerobics'], defaultMin: 30 },
-  { id: 'hiit', label: 'HIIT', icon: Lightning, names: ['Circuit', 'Intervals'], defaultMin: 20 },
-  { id: 'sports', label: 'Sports', icon: Heartbeat, names: ['Badminton', 'Basketball', 'Football', 'Tennis', 'Table tennis'], defaultMin: 60 },
-  { id: 'yoga_pilates', label: 'Yoga or pilates', icon: Leaf, names: ['Yoga', 'Pilates', 'Tai chi'], defaultMin: 45 },
-  { id: 'stretching_mobility', label: 'Stretching', icon: Leaf, names: ['Stretching', 'Mobility', 'Balance'], defaultMin: 15 },
-  { id: 'dance', label: 'Dance', icon: Heartbeat, names: ['Zumba', 'Line dance', 'Social dance'], defaultMin: 45 },
-  { id: 'household_gardening', label: 'Housework or gardening', icon: Sun, names: ['Cleaning', 'Gardening', 'Carrying shopping'], defaultMin: 30 },
-  { id: 'strength', label: 'Strength', icon: Barbell, names: ['Weights', 'Resistance bands', 'Bodyweight'], defaultMin: 45 },
-  { id: 'other', label: 'Something else', icon: Lightning, names: [], defaultMin: 30 },
+const KINDS: { id: ExerciseKind; label: string; icon: IconType; names: string[] }[] = [
+  { id: 'walking', label: 'Walking', icon: PersonSimpleWalk, names: ['Brisk walk', 'Easy walk', 'Hike'] },
+  { id: 'running', label: 'Running', icon: PersonSimpleRun, names: ['Jog', 'Run', 'Treadmill'] },
+  { id: 'cycling', label: 'Cycling', icon: PersonSimpleBike, names: ['Outdoor ride', 'Stationary bike'] },
+  { id: 'swimming', label: 'Swimming', icon: PersonSimpleSwim, names: ['Laps', 'Water aerobics'] },
+  { id: 'hiit', label: 'HIIT', icon: Lightning, names: ['Circuit', 'Intervals'] },
+  { id: 'sports', label: 'Sports', icon: SoccerBall, names: ['Badminton', 'Basketball', 'Football', 'Tennis', 'Table tennis'] },
+  { id: 'yoga_pilates', label: 'Yoga or pilates', icon: FlowerLotus, names: ['Yoga', 'Pilates', 'Tai chi'] },
+  { id: 'stretching_mobility', label: 'Stretching', icon: PersonSimpleTaiChi, names: ['Stretching', 'Mobility', 'Balance'] },
+  { id: 'dance', label: 'Dance', icon: MusicNotes, names: ['Zumba', 'Line dance', 'Social dance'] },
+  { id: 'household_gardening', label: 'Housework or gardening', icon: Broom, names: ['Cleaning', 'Gardening', 'Carrying shopping'] },
+  { id: 'strength', label: 'Strength', icon: Barbell, names: ['Weights', 'Resistance bands', 'Bodyweight'] },
+  { id: 'other', label: 'Something else', icon: DotsThree, names: [] },
 ]
 const PRESETS = [15, 20, 30, 45, 60, 90]
+const MIN_MINUTES = 1
+const MAX_MINUTES = 600
 
-const pad = (n: number) => String(n).padStart(2, '0')
+/** A whole number of minutes from 1 to 600, or null: the form has no default length, so the person types or picks one. */
+function minutesFrom(text: string): number | null {
+  if (!/^\d+$/.test(text.trim())) return null
+  const n = Number(text.trim())
+  return n >= MIN_MINUTES && n <= MAX_MINUTES ? n : null
+}
 
 function Bar({ label, value, goal, unit }: { label: string; value: number; goal: number; unit?: string }) {
   const { t } = useTranslation()
@@ -85,24 +92,34 @@ export function LogWorkout() {
   const { save, pending, error } = useFinishLog()
   const [kind, setKind] = useState<ExerciseKind | null>(null)
   const [name, setName] = useState('')
-  const [minutes, setMinutes] = useState(30)
-  const [effort, setEffort] = useState(3)
-  const [feeling, setFeeling] = useState(4)
+  /* empty until the person types or picks a length: there is no default, and Save waits for it */
+  const [minutesText, setMinutesText] = useState('')
+  const minutes = minutesFrom(minutesText)
+  /* null until the person picks 1 to 5, and it may stay null: no default. The server stores null as not rated. */
+  const [effort, setEffort] = useState<number | null>(null)
+  /* null until the person answers, and it may stay null: no default. The server stores null as not answered. */
+  const [feeling, setFeeling] = useState<number | null>(null)
   const [when, setWhen] = useState<'just' | 'at'>('just')
   const [day, setDay] = useState<'today' | 'yesterday'>('today')
-  const [time, setTime] = useState(() => {
-    const d = new Date()
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}`
-  })
+  /* empty until the person picks a start time (only asked for when "Pick a start time" is chosen) */
+  const [time, setTime] = useState('')
   const cfg = KINDS.find((k) => k.id === kind)
+  const timeMissing = when === 'at' && time === ''
+  /** why Save is off, in plain words; null when the form is complete */
+  const saveBlocker = !cfg
+    ? t('workout.log.blockKind', 'Pick what kind of exercise it was.')
+    : minutes == null
+      ? t('workout.log.blockMinutes', 'Enter how many minutes it lasted, from 1 to 600.')
+      : timeMissing
+        ? t('workout.log.blockTime', 'Pick the start time.')
+        : null
 
   const pickKind = (k: (typeof KINDS)[number]) => {
     setKind(k.id)
     setName('')
-    setMinutes(k.defaultMin)
   }
-  const startAt = () => {
-    if (when === 'just') return new Date(Date.now() - minutes * 60_000)
+  const startAt = (mins: number) => {
+    if (when === 'just') return new Date(Date.now() - mins * 60_000)
     const [h, m] = time.split(':').map(Number)
     const d = new Date()
     if (day === 'yesterday') d.setDate(d.getDate() - 1)
@@ -170,10 +187,10 @@ export function LogWorkout() {
                   role="radio"
                   aria-checked={on}
                   onClick={() => pickKind(k)}
-                  className={cn('press flex min-h-[72px] flex-col items-start justify-between gap-1 rounded-card border-[1.5px] p-3 text-left', on ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-card text-ink')}
+                  className={cn('press flex min-h-[72px] min-w-0 flex-col items-start justify-between gap-1 rounded-card border-[1.5px] p-3 text-left', on ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-card text-ink')}
                 >
                   <k.icon size={22} aria-hidden />
-                  <span className="text-sub font-bold leading-tight">{kindLabel[k.id]}</span>
+                  <span className="min-w-0 [overflow-wrap:anywhere] text-sub font-bold leading-tight">{kindLabel[k.id]}</span>
                 </button>
               )
             })}
@@ -201,12 +218,20 @@ export function LogWorkout() {
                 <p className="text-body font-bold">{t('workout.log.howLong', 'How long?')}</p>
                 <div className="flex flex-wrap gap-2">
                   {PRESETS.map((p) => (
-                    <Chip key={p} on={minutes === p} onClick={() => setMinutes(p)}>
+                    <Chip key={p} on={minutes === p} onClick={() => setMinutesText(String(p))}>
                       {p < 60 ? `${p} min` : p === 60 ? t('workout.log.oneHour', '1 hour') : t('workout.log.oneHalfHours', '1.5 hours')}
                     </Chip>
                   ))}
                 </div>
-                <Stepper label="minutes" value={minutes} onChange={setMinutes} min={5} max={600} step={5} format={(v) => `${v} min`} />
+                <Field
+                  label={t('workout.log.minutesLabel', 'Minutes')}
+                  value={minutesText}
+                  onChange={setMinutesText}
+                  inputMode="numeric"
+                  suffix="min"
+                  placeholder={t('workout.log.minutesPh', 'For example 30')}
+                  error={minutesText.trim() !== '' && minutes == null ? t('workout.log.minutesError', 'Use a whole number of minutes, from 1 to 600.') : undefined}
+                />
               </section>
 
               <section className="flex flex-col gap-2">
@@ -227,16 +252,19 @@ export function LogWorkout() {
                     <Chip on={day === 'yesterday'} onClick={() => setDay('yesterday')}>
                       {t('workout.log.yesterday', 'Yesterday')}
                     </Chip>
-                    <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={t('workout.log.startTime', 'Start time')} className="min-h-12 rounded-field border-[1.5px] border-line bg-card px-3.5 text-body text-ink focus:border-brand focus:outline-none" />
+                    <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={t('workout.log.startTime', 'Start time')} aria-invalid={timeMissing} className="min-h-12 rounded-field border-[1.5px] border-line bg-card px-3.5 text-body text-ink focus:border-brand focus:outline-none" />
                   </div>
                 )}
               </section>
 
               <div className="flex flex-col gap-1">
-                <Rating label={t('workout.log.hard', 'How hard was it?')} value={effort} onChange={setEffort} lowLabel={t('workout.log.veryLight', 'Very light')} highLabel={t('workout.log.allOut', 'All-out')} />
-                <p className="text-sub text-ink2">{EFFORT_HELP[effort]}</p>
+                <Rating label={t('workout.log.hard', 'How hard did it feel?')} value={effort} onChange={setEffort} lowLabel={t('workout.log.veryLight', 'Very light')} highLabel={t('workout.log.allOut', 'All-out')} />
+                <p className="text-sub text-ink2">{effort == null ? t('workout.log.optionalEffort', 'Optional. Pick a number from 1 to 5 if you want to note it.') : EFFORT_HELP[effort]}</p>
               </div>
-              <Rating label={t('workout.log.feel', 'How did you feel afterwards?')} value={feeling} onChange={setFeeling} lowLabel={t('workout.log.awful', 'Awful')} highLabel={t('workout.log.great', 'Great')} />
+              <div className="flex flex-col gap-1">
+                <Rating label={t('workout.log.feel', 'How did you feel afterwards?')} value={feeling} onChange={setFeeling} lowLabel={t('workout.log.awful', 'Awful')} highLabel={t('workout.log.great', 'Great')} />
+                <p className="text-sub text-ink2">{t('workout.log.optional', 'Optional')}</p>
+              </div>
               {feeling === 1 && (
                 <Alert tone="warn" onClick={() => go('E4')}>
                   {t('workout.log.unwell', 'Feeling unwell after exercise? Tap to log a symptom.')}
@@ -249,7 +277,8 @@ export function LogWorkout() {
       </Split>
 
       <Footer>
-        <Button disabled={!cfg || pending} onClick={() => cfg && save({ kind: 'workout', type: cfg.id, activity: name.trim() || cfg.label, intensity: effort, startAt: startAt().toISOString(), minutes, feeling })}>
+        {saveBlocker && <p className="text-sub text-ink2">{saveBlocker}</p>}
+        <Button disabled={!!saveBlocker || pending} onClick={() => cfg && minutes != null && save({ kind: 'workout', type: cfg.id, activity: name.trim() || cfg.label, intensity: effort, startAt: startAt(minutes).toISOString(), minutes, feeling })}>
           {pending ? t('workout.log.saving', 'Saving…') : t('workout.log.save', 'Save workout')}
         </Button>
       </Footer>

@@ -15,7 +15,7 @@ export function Urgent() {
 
   if (isError && !data) {
     return (
-      <Screen>
+      <Screen narrow>
         <Header title={t('urgent.title', 'Low glucose alert')} back backTo="B1" />
         <Alert tone="warn" onClick={() => void refetch()}>
           {t('urgent.checkFailed', 'We could not check just now. If you feel unwell or confused, call 995 now. Tap here to try again.')}
@@ -28,7 +28,7 @@ export function Urgent() {
   }
   if (!data) {
     return (
-      <Screen>
+      <Screen narrow>
         <Header title={t('urgent.title', 'Low glucose alert')} back backTo="B1" />
         <Skeleton className="h-48" />
       </Screen>
@@ -36,7 +36,7 @@ export function Urgent() {
   }
   if (data.status === 'none') {
     return (
-      <Screen>
+      <Screen narrow>
         <Header title={t('urgent.title', 'Low glucose alert')} back backTo="B1" />
         <EmptyState icon={CheckCircle} action={<Button onClick={() => go('B1')}>{t('urgent.backHome', 'Back to Home')}</Button>}>
           {t('urgent.none', 'No low glucose right now.')}
@@ -83,7 +83,7 @@ function ActiveAlert({ s }: { s: UrgentState }) {
   const emailable = s.channels.email
 
   return (
-    <Screen tone="urgent">
+    <Screen narrow tone="urgent">
       <Header title={t('urgent.title', 'Low glucose alert')} back backTo="B1" />
       <div role="alert" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -92,7 +92,7 @@ function ActiveAlert({ s }: { s: UrgentState }) {
           </StatusPill>
           {s.demo && <StatusPill tone="info">{t('urgent.demo', 'DEMO, not a real reading')}</StatusPill>}
         </div>
-        <p className="num text-display font-bold" aria-hidden>
+        <p className="num flex flex-wrap items-baseline gap-x-3 text-giant font-bold text-danger" aria-hidden>
           {s.value?.toFixed(1)} <span className="text-h2 font-medium text-ink2">mmol/L</span>
         </p>
         <p className="text-h2 font-bold leading-snug">{sentence}</p>
@@ -141,7 +141,7 @@ function ActiveAlert({ s }: { s: UrgentState }) {
           </CallLink>
         )}
         {!acked && (
-          <Button variant={veryLow ? 'secondary' : 'primary'} icon={CheckCircle} disabled={ack.isPending} onClick={() => ack.mutate()}>
+          <Button size="xl" variant={veryLow ? 'secondary' : 'primary'} icon={CheckCircle} disabled={ack.isPending} onClick={() => ack.mutate()}>
             {t('urgent.imOkay', "I'm okay now")}
           </Button>
         )}

@@ -1,11 +1,14 @@
-"""The chat setup (A4): the plain-rule reader, the checks, the model path with the model faked, and the endpoint.
+"""The chat setup (A4): the plain-rule reader, the checks, the skip rules, the model path with the model faked, and the endpoint.
 
-Nothing here reaches the model or the database. The model client is a fake, the usage counter is replaced, and the
-endpoint runs against a fake connection that records every statement, so the test can show that a chat answer writes nothing.
+Nothing here reaches the model or the database. The model client is a fake, the usage counter is replaced, and the endpoint runs
+against a fake connection that records every statement, so the test can show that a chat answer writes nothing.
+The questions follow the form pages, so the table below covers each question: a valid answer, an invalid one and a skip.
 """
 from __future__ import annotations
 
+import re
 from contextlib import contextmanager
+from datetime import date
 from types import SimpleNamespace
 
 import pytest
@@ -13,7 +16,7 @@ import pytest
 from app.llm import gateway
 from app.services import onboarding as svc
 from app.services import usage
-from app.services.onboarding import FALLBACK_REPLY, answer_step, canonical, chat_step, model_extract
+from app.services.onboarding import CHAT_STEPS, FALLBACK_REPLY, NEEDED_REPLY, UNIT_HINT, answer_step, chat_step, model_extract, read_fields
 
 LABELS = {
     "gender_type": frozenset({"female", "male", "other", "prefer_not_to_say"}),
@@ -22,75 +25,305 @@ LABELS = {
     "yes_no_unsure": frozenset({"yes", "no", "not_sure"}),
 }
 THIS_YEAR = 2026
+TODAY = date(2026, 10, 11)
+# the answers already on the form that an answer depends on: a birth year, a blood test date, the units and a desk job
+KNOWN = {"birthYear": "1968", "labDate": "2026-03-12", "hba1cUnit": "%", "glucoseUnit": "mmol/L", "workType": "desk"}
+REQUIRED = ["name", "hasDiabetes", "birthYear", "gender", "contactName", "contactRelation", "contactPhone", "contactEmail"]
+
+
+def must_not_run(*_):
+    raise AssertionError("the model was called")
+
+
+def ask(step_id: str, text: str, known: dict | None = None, extract=must_not_run):
+    """One answer, with the model off unless the test gives it a fake."""
+    return answer_step(step_id, text, LABELS, THIS_YEAR, extract=extract, known=KNOWN if known is None else known, today=TODAY)
 
 
 def step(step_id: str):
     return chat_step(step_id)
 
 
-# ------------------------------------------------------------------ the plain-rule reader (no model)
-def test_name_is_read_from_a_short_answer_and_a_leading_phrase():
-    assert canonical(step("name"), "Ahmad") == "Ahmad"
-    assert canonical(step("name"), "My name is Mei Ling.") == "Mei Ling"
-    assert canonical(step("name"), "I'm 55 years old") is None            # digits: the rules do not guess a name from a sentence
+# ------------------------------------------------------------------ the order and the required questions
+def test_the_questions_follow_the_form_pages_in_order():
+    # Welcome (name, reminder email), eligibility, about you, diabetes history, low glucose, conditions and checks, labs,
+    # devices, the work week, the emergency contact. Medicines are not asked here (the screen points to Scan a label).
+    assert [s.id for s in CHAT_STEPS] == [
+        "name", "reminderEmail", "hasDiabetes", "birthYear", "gender", "heightCm", "weightKg", "waistCm",
+        "diagnosedYear", "careSetting", "healthierSg", "hypo3m", "severeHypo", "gold", "conditions", "otherConditions",
+        "allergies", "eyeCheck", "footCheck", "labDate", "hba1c", "fastingGlucose", "fastingInsulin", "cgm", "wearable",
+        "workType", "workDays", "workStart", "workEnd", "contactName", "contactRelation", "contactPhone", "contactEmail",
+    ]
+    with pytest.raises(svc.OnboardingError, match="not a question of the chat setup"):
+        chat_step("redFlags")
+    with pytest.raises(svc.OnboardingError, match="not a question of the chat setup"):
+        chat_step("language")
+    with pytest.raises(svc.OnboardingError, match="not a question of the chat setup"):
+        chat_step("medicines")
 
 
-def test_birth_year_needs_a_four_digit_year_and_nothing_else():
-    assert canonical(step("birthYear"), "1968") == "1968"
-    assert canonical(step("birthYear"), "I was born in 1968") == "1968"
-    assert canonical(step("birthYear"), "55") is None                       # an age is not turned into a year
+def test_the_required_questions_are_exactly_the_ones_the_brief_names():
+    # name, birth year, sex, and the four emergency contact fields. hasDiabetes is also needed: the profile cannot be created without it.
+    assert [s.id for s in CHAT_STEPS if not s.optional] == REQUIRED
 
 
-def test_numbers_accept_a_plain_number_with_or_without_the_unit():
-    assert canonical(step("heightCm"), "168") == "168"
-    assert canonical(step("heightCm"), "about 170 cm") == "170"
-    assert canonical(step("weightKg"), "72.5 kg") == "72.5"
-    assert canonical(step("weightKg"), "a bit heavy") is None
+def test_the_work_week_is_asked_only_when_the_person_works():
+    assert [s.id for s in CHAT_STEPS if s.working_only] == ["workDays", "workStart", "workEnd"]
+    assert ask("workType", "retired")["reply"] == "Got it."
+    res = ask("workType", "retired", known={})
+    assert res["fields"] == {"workType": "not_working"} and res["next_step"] == "contactName"
+    res = ask("workType", "mostly sitting", known={})
+    assert res["fields"] == {"workType": "desk"} and res["next_step"] == "workDays"
 
 
-def test_yes_and_not_sure_are_read_only_when_they_are_clear():
-    assert canonical(step("hasDiabetes"), "Yes") == "yes"
-    assert canonical(step("hasDiabetes"), "I do") == "yes"
-    assert canonical(step("hasDiabetes"), "Not sure") == "not_sure"
-    assert canonical(step("hasDiabetes"), "yes, not sure") is None          # two answers at once: not guessed
-    assert canonical(step("hasDiabetes"), "I have no idea") is None         # "i have" alone is not a yes
-    assert canonical(step("hasDiabetes"), "no") is None                     # a no is not a choice on this question
+def test_a_skipped_optional_question_moves_on_to_the_next_question_asked():
+    res = ask("hypo3m", "skip", known={"workType": None})
+    assert res == {"fields": {}, "understood": True, "next_step": "severeHypo", "reply": "Skipped."}
+    res = ask("workType", "skip", known={})
+    assert res["next_step"] == "contactName"
 
 
-def test_work_choices_are_read_from_the_words_the_person_uses():
-    assert canonical(step("workType"), "mostly sitting at a desk") == "desk"
-    assert canonical(step("workType"), "I am retired") == "not_working"
-    assert canonical(step("workType"), "sometimes") is None
+# ------------------------------------------------------------------ table: a valid answer for each question
+VALID = [
+    ("name", "Ahmad", {}, {"name": "Ahmad"}),
+    ("name", "My name is Mei Ling.", {}, {"name": "Mei Ling"}),
+    ("reminderEmail", "my email is mei@gmail.com", {}, {"reminderEmail": "mei@gmail.com"}),
+    ("hasDiabetes", "Yes", {}, {"hasDiabetes": "yes"}),
+    ("hasDiabetes", "Not sure", {}, {"hasDiabetes": "not_sure"}),
+    ("birthYear", "1968", {}, {"birthYear": "1968"}),
+    ("birthYear", "I was born in 1968", {}, {"birthYear": "1968"}),
+    ("gender", "male", {}, {"gender": "male"}),
+    ("gender", "woman", {}, {"gender": "female"}),
+    ("heightCm", "168", {}, {"heightCm": "168"}),
+    ("heightCm", "about 170 cm", {}, {"heightCm": "170"}),
+    ("weightKg", "72.5 kg", {}, {"weightKg": "72.5"}),
+    ("waistCm", "84", {}, {"waistCm": "84"}),
+    ("waistCm", "about 84 cm", {}, {"waistCm": "84"}),
+    ("diagnosedYear", "2016", {}, {"diagnosedYear": "2016"}),
+    ("diagnosedYear", "in 2016", {}, {"diagnosedYear": "2016"}),
+    ("careSetting", "polyclinic", {}, {"careSetting": "polyclinic"}),
+    ("careSetting", "I see a GP", {}, {"careSetting": "gp"}),
+    ("careSetting", "no regular doctor", {}, {"careSetting": "none"}),
+    ("healthierSg", "yes", {}, {"healthierSg": "yes"}),
+    ("healthierSg", "I am enrolled", {}, {"healthierSg": "yes"}),
+    ("healthierSg", "not enrolled", {}, {"healthierSg": "no"}),
+    ("healthierSg", "not sure", {}, {"healthierSg": "unsure"}),
+    ("hypo3m", "none", {}, {"hypo3m": "0"}),
+    ("hypo3m", "1 or 2 times", {}, {"hypo3m": "1-2"}),
+    ("hypo3m", "3 or more", {}, {"hypo3m": "3+"}),
+    ("hypo3m", "not sure", {}, {"hypo3m": "unsure"}),
+    ("severeHypo", "yes", {}, {"severeHypo": "yes"}),
+    ("severeHypo", "No", {}, {"severeHypo": "no"}),
+    ("severeHypo", "I did not need help", {}, {"severeHypo": "no"}),
+    ("gold", "3", {}, {"gold": "3"}),
+    ("gold", "7 never aware", {}, {"gold": "7"}),
+    ("conditions", "none", {}, {"conditions": ["none"]}),
+    ("conditions", "high blood pressure and kidney disease", {}, {"conditions": ["hypertension", "kidney"]}),
+    ("conditions", "heart failure", {}, {"conditions": ["heart_failure"]}),
+    ("otherConditions", "gout", {}, {"otherConditions": "gout"}),
+    ("allergies", "penicillin (rash)", {}, {"allergies": [{"substance": "penicillin", "reaction": "rash"}], "noAllergies": False}),
+    ("allergies", "peanuts", {}, {"allergies": [{"substance": "peanuts", "reaction": ""}], "noAllergies": False}),
+    ("allergies", "none", {}, {"allergies": [], "noAllergies": True}),
+    ("eyeCheck", "in the last year", {}, {"eyeCheck": "within_year"}),
+    ("eyeCheck", "more than a year ago", {}, {"eyeCheck": "over_year"}),
+    ("eyeCheck", "never", {}, {"eyeCheck": "never_unsure"}),
+    ("footCheck", "not sure", {}, {"footCheck": "never_unsure"}),
+    ("labDate", "12 March 2026", {}, {"labDate": "2026-03-12"}),
+    ("labDate", "12/03/2026", {}, {"labDate": "2026-03-12"}),
+    ("labDate", "2026-03-12", {}, {"labDate": "2026-03-12"}),
+    ("hba1c", "7.2%", KNOWN, {"hba1c": "7.2", "hba1cUnit": "%"}),
+    ("hba1c", "55 mmol/mol", KNOWN, {"hba1c": "55", "hba1cUnit": "mmol/mol"}),
+    ("hba1c", "7.2", KNOWN, {"hba1c": "7.2", "hba1cUnit": "%"}),
+    ("fastingGlucose", "7.4 mmol/L", KNOWN, {"fastingGlucose": "7.4", "glucoseUnit": "mmol/L"}),
+    ("fastingGlucose", "133 mg/dL", KNOWN, {"fastingGlucose": "133", "glucoseUnit": "mg/dL"}),
+    ("fastingInsulin", "11.5", KNOWN, {"fastingInsulin": "11.5"}),
+    ("cgm", "Libre", {}, {"cgm": "libre"}),
+    ("cgm", "none", {}, {"cgm": "none"}),
+    ("wearable", "Apple Watch", {}, {"wearable": "apple"}),
+    ("wearable", "Garmin", {}, {"wearable": "garmin"}),
+    ("workType", "mostly sitting at a desk", {}, {"workType": "desk"}),
+    ("workType", "shifts", {}, {"workType": "shift"}),
+    ("workDays", "Mon to Fri", KNOWN, {"workDays": [1, 2, 3, 4, 5]}),
+    ("workDays", "weekdays", KNOWN, {"workDays": [1, 2, 3, 4, 5]}),
+    ("workDays", "Monday, Wednesday and Friday", KNOWN, {"workDays": [1, 3, 5]}),
+    ("workStart", "7.30am", KNOWN, {"workStart": "07:30"}),
+    ("workEnd", "6pm", KNOWN, {"workEnd": "18:00"}),
+    ("workEnd", "19:00", KNOWN, {"workEnd": "19:00"}),
+    ("contactName", "Siti", {}, {"contactName": "Siti"}),
+    ("contactRelation", "son", {}, {"contactRelation": "son"}),
+    ("contactPhone", "+65 9123 4567", {}, {"contactPhone": "+65 9123 4567"}),
+    ("contactEmail", "mei@gmail.com", {}, {"contactEmail": "mei@gmail.com"}),
+]
 
 
-def test_email_and_phone_are_found_in_the_text_when_there_is_exactly_one():
-    assert canonical(step("reminderEmail"), "my email is mei@gmail.com") == "mei@gmail.com"
-    assert canonical(step("reminderEmail"), "a@gmail.com or b@gmail.com") is None
-    assert canonical(step("contactPhone"), "+65 9123 4567") == "+65 9123 4567"
-    assert canonical(step("contactPhone"), "call 999") is None              # too few digits to be a phone number
+@pytest.mark.parametrize(("step_id", "text", "known", "fields"), VALID, ids=[f"{s}:{t}" for s, t, _, _ in VALID])
+def test_a_valid_answer_is_understood_and_fills_the_store_field(step_id, text, known, fields):
+    res = ask(step_id, text, known)
+    assert res["understood"] is True, res
+    assert res["fields"] == fields
 
 
-# ------------------------------------------------------------------ the checks: the same rules as the form and the save
-def test_an_adult_check_and_the_form_ranges_refuse_bad_values_with_a_plain_reason():
-    res = answer_step("birthYear", "2015", LABELS, THIS_YEAR, extract=lambda *_: None)
+# ------------------------------------------------------------------ table: an invalid answer for each question
+INVALID = [
+    ("name", "Mr 123", {}, FALLBACK_REPLY),
+    ("reminderEmail", "mei@gmail", {}, FALLBACK_REPLY),
+    ("birthYear", "2015", {}, "Smart Health is for adults aged 18 or older."),
+    ("birthYear", "55", {}, FALLBACK_REPLY),
+    ("gender", "other", {}, FALLBACK_REPLY),
+    ("gender", "prefer not to say", {}, FALLBACK_REPLY),
+    ("heightCm", "900", {}, "Enter a number from 100 to 250."),
+    ("weightKg", "10", {}, "Enter a number from 25 to 300."),
+    ("waistCm", "30", {}, "Waist must be between 40 and 200 cm."),
+    ("waistCm", "300", {}, "Waist must be between 40 and 200 cm."),
+    ("diagnosedYear", "2030", KNOWN, "The year you were told you have diabetes must be four digits, and not in the future."),
+    ("diagnosedYear", "1960", KNOWN, "The year you were told you have diabetes cannot be before the year you were born."),
+    ("careSetting", "the moon", {}, FALLBACK_REPLY),
+    ("healthierSg", "maybe later", {}, FALLBACK_REPLY),
+    ("hypo3m", "lots", {}, FALLBACK_REPLY),
+    ("severeHypo", "sometimes", {}, FALLBACK_REPLY),
+    ("gold", "9", {}, FALLBACK_REPLY),
+    ("conditions", "my knee hurts", {}, FALLBACK_REPLY),
+    ("otherConditions", "x" * 201, {}, "Keep it to 200 characters or fewer."),
+    ("allergies", "x" * 201, {}, "Keep each allergy to 200 characters or fewer."),
+    ("eyeCheck", "last week", {}, FALLBACK_REPLY),
+    ("footCheck", "sometime", {}, FALLBACK_REPLY),
+    ("labDate", "2030-01-01", KNOWN, "The date of the blood test cannot be in the future."),
+    ("labDate", "31/02/2026", KNOWN, FALLBACK_REPLY),
+    ("hba1c", "7.2", {"hba1cUnit": "%"}, "Enter the date of your blood test."),
+    ("hba1c", "55", KNOWN, "HbA1c must be between 4 and 20 %. " + UNIT_HINT["hba1c"]),
+    ("hba1c", "7.2", {**KNOWN, "hba1cUnit": "mmol/mol"}, "HbA1c must be between 20 and 195 mmol/mol. " + UNIT_HINT["hba1c"]),
+    ("hba1c", "7.2 mg", KNOWN, FALLBACK_REPLY),
+    ("fastingGlucose", "133", KNOWN, "Fasting glucose must be between 1 and 35 mmol/L. " + UNIT_HINT["fastingGlucose"]),
+    ("fastingInsulin", "0", KNOWN, "Fasting insulin must be between 0.1 and 1000 µIU/mL."),
+    ("cgm", "a bicycle", {}, FALLBACK_REPLY),
+    ("wearable", "a bracelet", {}, FALLBACK_REPLY),
+    ("workType", "sometimes", {}, FALLBACK_REPLY),
+    ("workDays", "someday", KNOWN, FALLBACK_REPLY),
+    ("workStart", "7", KNOWN, FALLBACK_REPLY),
+    ("workEnd", "25:00", KNOWN, FALLBACK_REPLY),
+    ("contactRelation", "x" * 101, {}, FALLBACK_REPLY),
+    ("contactPhone", "999", {}, "Enter a mobile number with digits, like +65 9123 4567."),
+    ("contactEmail", "mei@gmail", {}, FALLBACK_REPLY),
+]
+
+
+@pytest.mark.parametrize(("step_id", "text", "known", "reply"), INVALID, ids=[f"{s}:{t[:20]}" for s, t, _, _ in INVALID])
+def test_an_invalid_answer_is_asked_again_with_a_plain_reason_and_stores_nothing(step_id, text, known, reply):
+    res = ask(step_id, text, known, extract=lambda *_: None)
+    assert res["understood"] is False
+    assert res["fields"] == {}
+    assert res["next_step"] == step_id
+    assert res["reply"] == reply
+
+
+# ------------------------------------------------------------------ table: skip (optional) and "needed" (required)
+OPTIONAL = [s.id for s in CHAT_STEPS if s.optional]
+
+
+@pytest.mark.parametrize("step_id", OPTIONAL)
+@pytest.mark.parametrize("words", ["skip", "I do not know"])
+def test_every_optional_question_can_be_skipped(step_id, words):
+    res = ask(step_id, words)                       # the model is not asked: must_not_run
+    assert res["understood"] is True and res["fields"] == {} and res["reply"] == "Skipped."
+    assert res["next_step"] == svc._next_id(step_id, KNOWN)
+
+
+def test_a_none_answer_skips_the_free_text_question():
+    res = ask("otherConditions", "none", {})
+    assert res == {"fields": {}, "understood": True, "next_step": "allergies", "reply": "Skipped."}
+
+
+@pytest.mark.parametrize("step_id", REQUIRED)
+@pytest.mark.parametrize("words", ["skip", "I do not know"])
+def test_a_required_question_cannot_be_skipped(step_id, words):
+    res = ask(step_id, words)                       # the model is not asked for a skip: must_not_run
     assert res["understood"] is False and res["fields"] == {}
-    assert res["reply"] == "Smart Health is for adults aged 18 or older."
-    res = answer_step("heightCm", "900", LABELS, THIS_YEAR, extract=lambda *_: None)
-    assert res["understood"] is False and res["reply"] == "Enter a number from 100 to 250."
+    assert res["next_step"] == step_id
+    assert res["reply"] == NEEDED_REPLY
 
 
-def test_a_good_answer_is_understood_and_points_at_the_next_question():
-    res = answer_step("name", "Ahmad", LABELS, THIS_YEAR, extract=lambda *_: None)
-    assert res == {"fields": {"name": "Ahmad"}, "understood": True, "next_step": "birthYear", "reply": "Thanks, Ahmad."}
-    last = answer_step("reminderEmail", "mei@gmail.com", LABELS, THIS_YEAR, extract=lambda *_: None)
-    assert last["understood"] is True and last["next_step"] is None
+def test_an_empty_answer_asks_the_question_again():
+    res = ask("birthYear", "   ")
+    assert res == {"fields": {}, "understood": False, "next_step": "birthYear", "reply": chat_step("birthYear").ask}
 
 
-def test_a_value_the_database_does_not_list_is_refused_by_the_profile_check():
-    labels = {**LABELS, "yes_no_unsure": frozenset({"yes"})}               # the database has no "not_sure" choice here
-    res = answer_step("hasDiabetes", "not sure", labels, THIS_YEAR, extract=lambda *_: None)
-    assert res["understood"] is False and res["fields"] == {}
-    assert "is not a choice Smart Health knows" in res["reply"]
+def test_a_required_yes_or_no_question_still_reads_its_own_not_sure_answer():
+    res = ask("hasDiabetes", "I don't know")
+    assert res["understood"] is True and res["fields"] == {"hasDiabetes": "not_sure"}
+
+
+# ------------------------------------------------------------------ the lab rules: the date, the unit, the required date
+def test_a_lab_value_needs_the_blood_test_date_first():
+    res = ask("fastingInsulin", "11.5", {"birthYear": "1968"})
+    assert res["understood"] is False and res["reply"] == "Enter the date of your blood test."
+    res = ask("fastingInsulin", "11.5", {"labDate": "2026-03-12"})
+    assert res["understood"] is True
+
+
+def test_a_plain_hba1c_with_no_unit_is_read_in_the_unit_the_form_shows():
+    # the form shows % by default; a value out of that range is asked again with the unit named
+    assert ask("hba1c", "7.2", {**KNOWN, "hba1cUnit": "%"})["fields"] == {"hba1c": "7.2", "hba1cUnit": "%"}
+    assert ask("hba1c", "55", {**KNOWN, "hba1cUnit": "mmol/mol"})["fields"] == {"hba1c": "55", "hba1cUnit": "mmol/mol"}
+
+
+def test_the_model_only_reads_a_sentence_the_rules_cannot_and_its_value_is_checked():
+    calls = []
+
+    def fake(text, st):
+        calls.append(st.id)
+        return {"conditions": "hypertension, heart_failure"}
+
+    res = answer_step("conditions", "my blood pressure runs high and my heart is weak", LABELS, THIS_YEAR, extract=fake, known=KNOWN, today=TODAY)
+    assert calls == ["conditions"]
+    assert res["understood"] is True and sorted(res["fields"]["conditions"]) == ["heart_failure", "hypertension"]
+
+
+def test_the_model_value_for_another_question_is_stored_only_when_it_passes_the_checks():
+    # one message can answer more than the question asked; a value that fails its check is not stored
+    got = {"name": "Ahmad", "birthYear": "2015", "contactPhone": "999"}
+    res = answer_step("name", "I'm Ahmad, born 2015", LABELS, THIS_YEAR, extract=lambda *_: got, known={}, today=TODAY)
+    assert res["understood"] is True and res["fields"] == {"name": "Ahmad"}
+
+
+def test_a_sentence_about_an_allergy_goes_to_the_model_and_the_substance_and_reaction_are_read_from_it():
+    calls = []
+
+    def fake(text, st):
+        calls.append(st.id)
+        return {"allergies": "penicillin (rash)"}
+
+    res = answer_step("allergies", "I react badly to penicillin, it gives me a rash", LABELS, THIS_YEAR, extract=fake, known=KNOWN, today=TODAY)
+    assert calls == ["allergies"]
+    assert res["understood"] is True
+    assert res["fields"] == {"allergies": [{"substance": "penicillin", "reaction": "rash"}], "noAllergies": False}
+
+
+def test_a_long_allergy_sentence_asks_again_when_the_model_is_unavailable():
+    res = ask("allergies", "I react badly to penicillin, it gives me a rash", extract=lambda *_: None)
+    assert res["understood"] is False and res["fields"] == {} and res["reply"] == FALLBACK_REPLY
+
+
+def test_free_text_and_allergies_are_taken_only_from_the_question_asked():
+    got = {"conditions": "hypertension", "otherConditions": "heart is weak", "allergies": "penicillin (rash)"}
+    res = answer_step("conditions", "my blood pressure runs high and my heart is weak", LABELS, THIS_YEAR, extract=lambda *_: got, known=KNOWN, today=TODAY)
+    assert res["understood"] is True and res["fields"] == {"conditions": ["hypertension"]}
+
+
+def test_a_model_problem_for_the_question_asked_is_said_plainly():
+    res = answer_step("birthYear", "born in the year 2015 I think", LABELS, THIS_YEAR, extract=lambda *_: {"birthYear": "2015"}, known={}, today=TODAY)
+    assert res["understood"] is False and res["reply"] == "Smart Health is for adults aged 18 or older."
+
+
+def test_when_the_model_is_unavailable_the_person_is_sent_to_the_form():
+    res = ask("gender", "I am a bloke", extract=lambda *_: None)
+    assert res == {"fields": {}, "understood": False, "next_step": "gender", "reply": FALLBACK_REPLY}
+    res = ask("careSetting", "my clinic is near the bus stop", extract=lambda *_: {})
+    assert res["understood"] is False and res["reply"] == FALLBACK_REPLY
+
+
+def test_the_plain_rules_answer_first_and_the_model_is_not_called():
+    res = ask("birthYear", "1968")
+    assert res["understood"] is True and res["fields"] == {"birthYear": "1968"}
 
 
 def test_an_unknown_question_is_refused():
@@ -98,35 +331,45 @@ def test_an_unknown_question_is_refused():
         answer_step("notAStep", "x", LABELS, THIS_YEAR)
 
 
-def test_the_plain_rules_answer_first_and_the_model_is_not_called():
-    def must_not_run(*_):
-        raise AssertionError("the model was called for a plain answer")
+# ------------------------------------------------------------------ the reader on its own (dates, times, days)
+@pytest.mark.parametrize(
+    ("step_id", "text", "value"),
+    [
+        ("labDate", "31 Feb 2026", None),
+        ("labDate", "March 2026", None),
+        ("workStart", "7pm", "19:00"),
+        ("workStart", "12am", "00:00"),
+        ("workStart", "13:00 pm", None),
+        ("workDays", "every day", [1, 2, 3, 4, 5, 6, 7]),
+        ("workDays", "weekends", [6, 7]),
+        ("workDays", "Fri to Mon", [1, 5, 6, 7]),
+    ],
+)
+def test_the_plain_readers_for_dates_times_and_days(step_id, text, value):
+    got = read_fields(step(step_id), text, KNOWN)
+    if value is None:
+        assert got is None
+    else:
+        assert got == {step_id: value}
 
-    res = answer_step("birthYear", "1968", LABELS, THIS_YEAR, extract=must_not_run)
-    assert res["understood"] is True and res["fields"] == {"birthYear": "1968"}
+
+# ------------------------------------------------------------------ no advice wording
+FORBIDDEN = re.compile(r"\b(stop|safe|normal|abnormal|caused by|you should|dose|increase|decrease|treatment|take|change|diagnos\w*)\b", re.I)
+
+
+def test_no_question_or_reply_gives_advice_or_judges_a_value():
+    texts = [s.ask for s in CHAT_STEPS] + [FALLBACK_REPLY, NEEDED_REPLY, *UNIT_HINT.values(), "Skipped.", "Got it.", "Thanks, Ahmad."]
+    texts += [reply for *_, reply in INVALID]
+    texts += [svc.CHAT_PROMPT.split("\n")[0]]
+    for text in texts:
+        assert not FORBIDDEN.search(text), text
 
 
 # ------------------------------------------------------------------ the model path, with the model faked
 def test_an_unknown_enum_from_the_model_is_not_guessed():
-    res = answer_step("gender", "I am a robot", LABELS, THIS_YEAR, extract=lambda *_: {"gender": "robot"})
+    res = answer_step("gender", "I am a robot", LABELS, THIS_YEAR, extract=lambda *_: {"gender": "robot"}, known={}, today=TODAY)
     assert res["understood"] is False and res["fields"] == {}
-    assert res["next_step"] == "gender" and res["reply"] == chat_step("gender").ask
-
-
-def test_a_sentence_the_model_reads_is_checked_like_any_other_answer():
-    res = answer_step("gender", "I am a bloke", LABELS, THIS_YEAR, extract=lambda *_: {"gender": "male"})
-    assert res["understood"] is True and res["fields"] == {"gender": "male"}
-
-
-def test_one_message_can_answer_more_than_the_question_asked_and_each_part_is_checked():
-    got = {"name": "Ahmad", "birthYear": "2015"}                           # the year breaks the adult check
-    res = answer_step("name", "I'm Ahmad, born 2015", LABELS, THIS_YEAR, extract=lambda *_: got)
-    assert res["understood"] is True and res["fields"] == {"name": "Ahmad"}
-
-
-def test_when_the_model_is_unavailable_the_person_is_sent_to_the_form():
-    res = answer_step("gender", "I am a bloke", LABELS, THIS_YEAR, extract=lambda *_: None)
-    assert res == {"fields": {}, "understood": False, "next_step": "gender", "reply": FALLBACK_REPLY}
+    assert res["next_step"] == "gender" and res["reply"] == FALLBACK_REPLY
 
 
 class _FakeModels:
@@ -161,7 +404,7 @@ def test_the_model_is_not_called_once_the_daily_ai_cap_is_reached(monkeypatch):
     monkeypatch.setattr(usage, "allowed", lambda provider: False)
     assert model_extract("I am Ahmad", step("name")) is None
     assert client.models.contents == []
-    res = answer_step("name", "I am Ahmad, born in 1968", LABELS, THIS_YEAR)     # a sentence the rules cannot read: cap reached, so the form is offered
+    res = answer_step("name", "I am Ahmad, born in 1968", LABELS, THIS_YEAR, known={}, today=TODAY)   # a sentence the rules cannot read
     assert res["understood"] is False and res["reply"] == FALLBACK_REPLY
 
 
@@ -246,8 +489,23 @@ def test_mr_tan_is_refused_the_same_way_as_the_other_onboarding_writes(client):
 def test_the_demo_user_gets_an_answer_and_nothing_is_written(client):
     res = client.post("/api/v1/onboarding/chat", json={"text": "Ahmad", "step": "name"})
     assert res.status_code == 200
-    assert res.json() == {"fields": {"name": "Ahmad"}, "understood": True, "nextStep": "birthYear", "reply": "Thanks, Ahmad."}
+    assert res.json() == {"fields": {"name": "Ahmad"}, "understood": True, "nextStep": "reminderEmail", "reply": "Thanks, Ahmad."}
     assert client.state["conn"].writes() == []
+
+
+def test_the_known_answers_from_the_form_are_used_for_a_lab_value(client):
+    body = {"text": "7.2%", "step": "hba1c", "known": {"labDate": "", "hba1cUnit": "%"}}
+    res = client.post("/api/v1/onboarding/chat", json=body)
+    assert res.json()["understood"] is False and res.json()["reply"] == "Enter the date of your blood test."
+    body["known"]["labDate"] = "2026-03-12"
+    res = client.post("/api/v1/onboarding/chat", json=body)
+    assert res.json()["understood"] is True and res.json()["fields"] == {"hba1c": "7.2", "hba1cUnit": "%"}
+    assert client.state["conn"].writes() == []
+
+
+def test_a_list_answer_comes_back_as_a_list(client):
+    res = client.post("/api/v1/onboarding/chat", json={"text": "none", "step": "allergies"})
+    assert res.json() == {"fields": {"allergies": [], "noAllergies": True}, "understood": True, "nextStep": "eyeCheck", "reply": "Got it."}
 
 
 def test_the_demo_user_with_a_refused_answer_gets_the_question_again_and_nothing_is_written(client):

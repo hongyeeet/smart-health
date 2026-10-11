@@ -26,6 +26,7 @@ from app.services import notify_email as svc
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/notify", tags=["notify"])
+NOT_STORED_YET = "We could not save your reminder email yet, because your profile is not created. Save your first answers, and the email is saved then."
 
 
 class EmailSetting(Camel):
@@ -53,6 +54,10 @@ def _put(user: str, body: EmailSetting) -> EmailState:
     if not svc.columns_ready():
         raise HTTPException(503, "Email reminders are not ready yet. Please try again later.")
     with logstore.tx() as c:
+        # The email lives on the profile row, which the first onboarding save creates. Without it there is nothing to update, so
+        # the email is refused (409) instead of reported as saved. The web keeps it and saves it once the profile exists.
+        if c.execute("select 1 from user_profile where user_id = %s", (user,)).fetchone() is None:
+            raise HTTPException(409, NOT_STORED_YET)
         c.execute("update user_profile set notification_email = %s, email_opt_in = %s, updated_at = now() where user_id = %s", (email, body.opt_in, user))
         c.execute("insert into event_log (user_id, actor, event, entity_table, entity_id, payload) values (%s, 'user', 'notify.email_changed', 'user_profile', %s, %s::jsonb)",
                   (user, user, '{"set": %s, "opt_in": %s}' % ("true" if email else "false", "true" if body.opt_in else "false")))

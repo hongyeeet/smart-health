@@ -3,7 +3,7 @@ import { request } from '@/data/repositories/http'
 
 /** Wire types for the Day view (services/api/app/schemas/day.py). Times are minutes after local midnight, Singapore. */
 
-export type MarkerKind = 'meal' | 'dose' | 'workout' | 'symptom'
+export type MarkerKind = 'meal' | 'dose' | 'workout' | 'symptom' | 'pressure'
 export type DoseState = 'taken' | 'late' | 'not_confirmed' | 'missed'
 
 export interface DayPoint {

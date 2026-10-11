@@ -32,7 +32,7 @@ export function LogDone() {
   if (!last) return null
   const tone = last.flag?.level === 'in_range' ? 'ok' : last.flag?.level === 'info' ? 'warn' : 'warn'
   return (
-    <Screen>
+    <Screen narrow>
       <div className="h-2" aria-hidden />
       <div className="flex flex-col items-center gap-3 pb-1 pt-6 text-center">
         <span className="flex h-16 w-16 items-center justify-center rounded-full bg-ok-soft text-ok">
@@ -59,7 +59,7 @@ export function LogDone() {
       </Card>
       {last.swap && (
         <Card tone="soft" className="flex flex-col gap-1">
-          <SectionTitle>{t('log.saved.swap', 'A swap to consider')}</SectionTitle>
+          <SectionTitle>{t('log.saved.swap', 'For next time')}</SectionTitle>
           <p className="text-body">{last.swap.text}</p>
           <p className="text-sub text-ink3">{last.swap.source}</p>
         </Card>

@@ -39,6 +39,11 @@ MISS_LABELS = {
 
 
 # ───────────────────────────────────────────────────────────────── small helpers (pure)
+def _minutes_rated(rows: list[dict[str, Any]], lo: int, hi: int | None = None) -> float:
+    """Minutes of sessions whose effort rating is from lo to hi (hi None: no upper limit). An unrated session (null) counts nowhere."""
+    return sum(float(r["mins"]) for r in rows if r["intensity"] is not None and r["intensity"] >= lo and (hi is None or r["intensity"] <= hi))
+
+
 def _f(x: Any) -> float | None:
     return None if x is None else float(x)
 
@@ -158,7 +163,7 @@ def dose_cell(statuses: list[dict[str, Any]], now: datetime) -> str:
     return "none"
 
 
-# ── The week grid ──
+# ── The day grid (the overview calendar) ──
 def _level(row: str, v: float | None) -> int:
     if v is None:
         return 0
@@ -177,60 +182,66 @@ def _level(row: str, v: float | None) -> int:
     return 1 + sum(v >= c for c in cuts) if row != "stress" else 1 + sum(v > c for c in cuts)
 
 
-def week_grid(daily: dict[date, dict[str, Any]], end: date) -> list[dict[str, Any]]:
-    days = [end - timedelta(days=6 - i) for i in range(7)]
+def measure_grid(daily: dict[date, dict[str, Any]], days: list[date], logged: dict[str, dict[date, float]]) -> list[dict[str, Any]]:
+    """One cell per day for each measure. A day with no stored value is a dash (no data), never zero.
+
+    Meals and active minutes come from the logs (`logged`: date to count or minutes, only for days with a log), because the stored
+    daily row carries a 0 for every day, logged or not. So a day with no meal log is a dash, and a day whose logged workouts add to
+    zero minutes is a real 0."""
+    def from_row(column: str) -> Any:
+        return lambda d, row: _f(row.get(column))
+
+    def from_log(key: str) -> Any:
+        return lambda d, row: _f(logged.get(key, {}).get(d))
+
     spec = [
-        ("glucose", "Glucose in range", lambda d: _f(d.get("tir_pct")), lambda v: f"{v:.0f}%"),
-        ("meals", "Meals logged", lambda d: float(d["meals_n"]) if d.get("meals_n") is not None else None, lambda v: f"{v:.0f}"),
-        ("activity", "Active minutes", lambda d: float(d["exercise_min"]) if d.get("exercise_min") is not None else None, lambda v: f"{v:.0f}"),
-        ("sleep", "Sleep (hours)", lambda d: _f(d.get("sleep_hours")), lambda v: f"{v:.1f}"),
-        ("stress", "Stress (1 to 5)", lambda d: _f(d.get("stress_self_avg")), lambda v: f"{v:.1f}"),
-        ("doses", "Doses taken", lambda d: (100.0 * d["doses_taken"] / d["doses_scheduled"]) if d.get("doses_scheduled") else None, lambda v: f"{v:.0f}%"),
+        ("glucose", lambda d, row: _f(row.get("tir_pct")), lambda v: f"{v:.0f}%"),
+        ("meals", from_log("meals"), lambda v: f"{v:.0f}"),
+        ("activity", from_log("activity"), lambda v: f"{v:.0f}"),
+        ("sleep", from_row("sleep_hours"), lambda v: f"{v:.1f}"),
+        ("stress", from_row("stress_self_avg"), lambda v: f"{v:.1f}"),
+        ("doses", lambda d, row: (100.0 * row["doses_taken"] / row["doses_scheduled"]) if row.get("doses_scheduled") else None, lambda v: f"{v:.0f}%"),
     ]
     rows = []
-    for key, label, get, fmt in spec:
+    for key, get, fmt in spec:
         cells = []
         for d in days:
-            v = get(daily.get(d, {}))
-            if v is None and key in ("meals", "activity") and d not in daily:
-                v = 0.0                 # nothing stored for the day means nothing was logged
-            cells.append({"date": d.isoformat(), "weekday": d.strftime("%a"), "value": _r1(v), "label": "–" if v is None else fmt(v), "level": _level(key, v)})
-        rows.append({"key": key, "label": label, "cells": cells})
+            v = get(d, daily.get(d, {}))
+            cells.append({"date": d.isoformat(), "value": _r1(v), "label": "–" if v is None else fmt(v), "level": _level(key, v)})
+        rows.append({"key": key, "cells": cells})
     return rows
 
 
 # ── "What changed" ──
-def changes(cur: dict[str, float | None], prev: dict[str, float | None], days: int) -> list[dict[str, Any]]:
-    """The biggest moves against the same number of days before, as plain sentences. No verdict and no advice."""
-    span = f"the {days} days before"
-    out: list[tuple[float, dict[str, Any]]] = []
+CHANGE_RULES: list[tuple[str, str, str, Any]] = [
+    # id, screen the line opens, unit (the screen writes the words), moved when ...
+    ("tir", "C2", "points", lambda c, p: abs(c - p) >= 5),
+    ("fasting", "C2", "mmol", lambda c, p: abs(c - p) >= 0.5),
+    ("steps", "C4", "steps", lambda c, p: abs(c - p) >= 0.15 * p if p else abs(c - p) > 0),
+    ("exercise", "C4", "minutes", lambda c, p: abs(c - p) >= 20 and (abs(c - p) >= 0.3 * p if p else True)),
+    ("sleep", "C5", "hours", lambda c, p: abs(c - p) >= 0.5),
+    ("stress", "C5", "score", lambda c, p: abs(c - p) >= 0.5),
+    ("doses", "C6", "points", lambda c, p: abs(c - p) >= 10),
+]
 
-    def add(key: str, mag: float, text: str, to: str) -> None:
-        out.append((mag, {"id": key, "text": text, "to": to}))
 
-    c, p = cur.get("fasting"), prev.get("fasting")
-    if c is not None and p is not None and abs(c - p) >= 0.5:
-        add("fasting", abs(c - p) / 0.5, f"Your morning (fasting) glucose averaged {c:.1f} mmol/L, {abs(c - p):.1f} {'higher' if c > p else 'lower'} than {span}.", "C2")
-    c, p = cur.get("tir"), prev.get("tir")
-    if c is not None and p is not None and abs(c - p) >= 5:
-        add("tir", abs(c - p) / 5, f"Time in range was {c:.0f}%, {abs(c - p):.0f} points {'more' if c > p else 'less'} than {span}.", "C2")
-    c, p = cur.get("steps"), prev.get("steps")
-    if c is not None and p and abs(c - p) / p >= 0.15:
-        add("steps", abs(c - p) / p / 0.15, f"You averaged {c:,.0f} steps a day, {abs(c - p) / p * 100:.0f}% {'more' if c > p else 'fewer'} than {span}.", "C4")
-    c, p = cur.get("exercise"), prev.get("exercise")
-    if c is not None and p is not None and abs(c - p) >= 20 and p and abs(c - p) / p >= 0.3:
-        add("exercise", abs(c - p) / p / 0.3, f"You logged {c:.0f} active minutes, {abs(c - p):.0f} {'more' if c > p else 'fewer'} than {span}.", "C4")
-    c, p = cur.get("sleep"), prev.get("sleep")
-    if c is not None and p is not None and abs(c - p) >= 0.5:
-        add("sleep", abs(c - p) / 0.5, f"You slept {c:.1f} hours a night on average, {abs(c - p):.1f} {'more' if c > p else 'fewer'} than {span}.", "C5")
-    c, p = cur.get("stress"), prev.get("stress")
-    if c is not None and p is not None and abs(c - p) >= 0.5:
-        add("stress", abs(c - p) / 0.5, f"Your stress rating averaged {c:.1f} out of 5, {'up' if c > p else 'down'} {abs(c - p):.1f} on {span}.", "C5")
-    c, p = cur.get("doses"), prev.get("doses")
-    if c is not None and p is not None and abs(c - p) >= 10:
-        add("doses", abs(c - p) / 10, f"You took {c:.0f}% of your scheduled doses, {'up' if c > p else 'down'} from {p:.0f}% over {span}.", "C6")
-    out.sort(key=lambda x: -x[0])
-    return [o[1] for o in out[:3]]
+def changes(cur: dict[str, float | None], prev: dict[str, float | None]) -> list[dict[str, Any]]:
+    """Every measure against the same number of days before, with the direction it moved. A measure with no value in either
+    period is "none" and is never called unchanged. The screen writes the sentence, so it names both ranges and never says good or bad."""
+    out = []
+    for key, to, unit, moved in CHANGE_RULES:
+        c, p = cur.get(key), prev.get(key)
+        if c is None or p is None:
+            direction = "none"
+        elif not moved(c, p):
+            direction = "same"
+        else:
+            direction = "up" if c > p else "down"
+        out.append({
+            "id": key, "to": to, "unit": unit, "direction": direction,
+            "current": _r1(c), "previous": _r1(p), "delta": _r1(c - p) if c is not None and p is not None else None,
+        })
+    return out
 
 
 # ── Findings from pattern_candidates ──
@@ -349,10 +360,33 @@ def overview(conn: psycopg.Connection[Any], user: str, days: int, today: date) -
 
     return {
         "period": _period(end, days, has),
-        "grid": week_grid(daily, end),
-        "changes": changes(agg(start, end), agg(p_start, p_end), days) if has else [],
+        "changes": changes(agg(start, end), agg(p_start, p_end)) if has else [],
         "patterns": patterns_for(_patterns(conn, user))[:3],
     }
+
+
+MAX_DAY_RANGE = 92
+
+
+def _logged_per_day(conn: psycopg.Connection[Any], user: str, lo: date, hi: date) -> dict[str, dict[date, float]]:
+    """Meals logged (count) and workout minutes (sum) per local day, only for days that have a log."""
+    lo_b, hi_b = _bounds(lo)[0], _bounds(hi)[1]
+    meals = conn.execute(
+        """select (start_at at time zone 'Asia/Singapore')::date d, count(*) n from food_logs
+           where user_id=%s and deleted_at is null and start_at >= %s and start_at < %s group by 1""", (user, lo_b, hi_b)).fetchall()
+    workouts = conn.execute(
+        """select (start_at at time zone 'Asia/Singapore')::date d, coalesce(sum(extract(epoch from end_at - start_at)/60), 0) mins from exercise_logs
+           where user_id=%s and deleted_at is null and start_at >= %s and start_at < %s group by 1""", (user, lo_b, hi_b)).fetchall()
+    return {"meals": {r["d"]: float(r["n"]) for r in meals}, "activity": {r["d"]: float(round(float(r["mins"]))) for r in workouts}}
+
+
+def overview_days(conn: psycopg.Connection[Any], user: str, lo: date, hi: date, today: date) -> dict[str, Any]:
+    """The overview calendar: one cell per day, from `lo` to `hi`. Days after today are never returned (no future data)."""
+    hi = min(hi, today)
+    days = [lo + timedelta(days=i) for i in range((hi - lo).days + 1)] if lo <= hi else []
+    daily = _daily(conn, user, lo, hi) if days else {}
+    logged = _logged_per_day(conn, user, lo, hi) if days else {}
+    return {"start": lo.isoformat(), "end": hi.isoformat(), "today": today.isoformat(), "rows": measure_grid(daily, days, logged)}
 
 
 def glucose(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> dict[str, Any]:
@@ -444,8 +478,8 @@ def activity(conn: psycopg.Connection[Any], user: str, days: int, today: date) -
         ws = wk_start - timedelta(weeks=k)
         inw = [r for r in rows if ws <= r["d"] < ws + timedelta(days=7)]
         weeks.append({"label": f"Week of {_short(ws)}",
-                      "light": round(sum(float(r["mins"]) for r in inw if r["intensity"] <= 2)), "moderate": round(sum(float(r["mins"]) for r in inw if r["intensity"] == 3)),
-                      "vigorous": round(sum(float(r["mins"]) for r in inw if r["intensity"] >= 4))})
+                      "light": round(_minutes_rated(inw, 1, 2)), "moderate": round(_minutes_rated(inw, 3, 3)),
+                      "vigorous": round(_minutes_rated(inw, 4))})
     inp = [r for r in rows if start <= r["d"] <= end]
     mix: dict[str, dict[str, Any]] = {}
     for r in inp:
@@ -461,7 +495,7 @@ def activity(conn: psycopg.Connection[Any], user: str, days: int, today: date) -
     s_prior = [float(v["steps_total"]) for d, v in daily.items() if d < start and v.get("steps_total") is not None]
     return {
         "period": _period(end, days, bool(inp) or bool(s_in)),
-        "moderate_min": round(sum(float(r["mins"]) for r in wk if r["intensity"] >= 3)), "moderate_goal": GOAL_MODERATE_MIN,
+        "moderate_min": round(_minutes_rated(wk, 3)), "moderate_goal": GOAL_MODERATE_MIN,
         "strength": sum(r["t"] == "strength" for r in wk), "strength_goal": GOAL_STRENGTH,
         "weeks": weeks, "mix": sorted(mix.values(), key=lambda m: -m["count"]), "workouts": workouts,
         "steps": steps, "steps_avg": round(_mean([float(s) for s in s_in])) if s_in else None, "steps_baseline": round(statistics.median(s_prior)) if len(s_prior) >= 7 else None,
@@ -499,32 +533,40 @@ def medication(conn: psycopg.Connection[Any], user: str, days: int, today: date,
     logs = conn.execute(
         """select medication_id, scheduled_at, taken_at, status::text status, miss_reason::text reason from medication_log
            where user_id=%s and coalesce(scheduled_at, taken_at) >= %s and coalesce(scheduled_at, taken_at) < %s""", (user, _bounds(start)[0], _bounds(end)[1])).fetchall()
+    prescribed = {m["id"] for m in meds if m["kind"] == "prescription"}      # adherence and reasons count prescription medicines only
     by: dict[Any, dict[date, list[dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
     reasons: Counter[str] = Counter()
     for r in logs:
         d = (r["scheduled_at"] or r["taken_at"]).astimezone(TZ).date()
         by[r["medication_id"]][d].append(dict(r))
-        if r["status"] == "missed" and r["reason"]:
+        if r["status"] == "missed" and r["reason"] and r["medication_id"] in prescribed:
             reasons[r["reason"]] += 1
-    rows, taken_all, sched_all, unconf_all = [], 0, 0, 0
+    rows, taken_all, missed_all, sched_all, unconf_all = [], 0, 0, 0, 0
     for m in meds:
         per = by.get(m["id"], {})
         flat = [x for v in per.values() for x in v]
         if not flat:
             continue
+        counts = m["id"] in prescribed
         taken = sum(x["status"] == "taken" for x in flat)
-        counted = sum(x["status"] in ("taken", "missed") or (x["status"] == "pending" and x["scheduled_at"] and x["scheduled_at"] < now - timedelta(minutes=LATE_AFTER_MIN)) for x in flat)
-        if m["kind"] == "prescription":                 # adherence counts prescription medicines only
+        missed = sum(x["status"] == "missed" for x in flat)
+        unconf = sum(x["status"] == "pending" and bool(x["scheduled_at"]) and x["scheduled_at"] < now - timedelta(minutes=LATE_AFTER_MIN) for x in flat)
+        scheduled = taken + missed + unconf
+        if counts:
             taken_all += taken
-            sched_all += counted
-            unconf_all += sum(x["status"] == "pending" and bool(x["scheduled_at"]) and x["scheduled_at"] < now - timedelta(minutes=LATE_AFTER_MIN) for x in flat)
+            missed_all += missed
+            sched_all += scheduled
+            unconf_all += unconf
+        # No percent until a dose has been answered (taken or missed): 0 of 3 with nothing answered is "not confirmed yet", not 0%.
         rows.append({"id": str(m["id"]), "name": m["name"], "regimen": {1: "Once a day", 2: "Twice a day", 3: "Three times a day"}.get(m["frequency"], f"{m['frequency']} times a day" if m["frequency"] else "As scheduled"),
-                     "taken": taken, "scheduled": counted, "adherence_pct": round(100 * taken / counted) if counted else None,
+                     "counted": counts, "taken": taken if counts else None, "missed": missed if counts else None,
+                     "unconfirmed": unconf if counts else None, "scheduled": scheduled if counts else None,
+                     "adherence_pct": round(100 * taken / scheduled) if counts and taken + missed else None,
                      "cells": [dose_cell(per.get(d, []), now) for d in dates]})
-    fasting = _fasting(conn, user, dates[0], dates[-1])
     return {
-        "period": _period(end, days, bool(rows)), "dates": [d.isoformat() for d in dates], "meds": rows, "fasting": [_r1(fasting.get(d)) for d in dates],
-        "taken": taken_all, "scheduled": sched_all, "unconfirmed": unconf_all, "adherence_pct": round(100 * taken_all / sched_all) if sched_all else None,
+        "period": _period(end, days, bool(rows)), "dates": [d.isoformat() for d in dates], "meds": rows,
+        "taken": taken_all, "missed": missed_all, "scheduled": sched_all, "unconfirmed": unconf_all,
+        "adherence_pct": round(100 * taken_all / sched_all) if sched_all and taken_all + missed_all else None,
         "reasons": [{"key": k, "label": MISS_LABELS.get(k, k), "count": c} for k, c in reasons.most_common()],
         "patterns": patterns_for(_patterns(conn, user), "C6"), "shown_days": shown,
     }

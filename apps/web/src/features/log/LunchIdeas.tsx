@@ -11,7 +11,7 @@ import { useAcceptSuggestion, useDismissSuggestion, useLunchIdeas } from '@/data
 import { useGo } from '@/app/navigation'
 import { useUi } from '@/state/store'
 import type { LunchOption } from '@/data/types'
-import { Header, Screen } from '@/ui/layout'
+import { Header, Screen, TileGrid } from '@/ui/layout'
 import { Alert, Button, Card, EmptyState, Skeleton, TextLink } from '@/ui/primitives'
 import { CheckCircle, ForkKnife } from '@/ui/icons'
 
@@ -35,11 +35,11 @@ export function LunchIdeas() {
       {data && data.options.length === 0 && <EmptyState icon={ForkKnife}>{t('log.lunch.empty', 'No ideas yet. Log a few meals and they will appear here.')}</EmptyState>}
       {data && data.options.length > 0 && (
         <>
-          <ul className="flex flex-col gap-3">
+          <TileGrid>
             {data.options.map((o) => (
-              <li key={o.key}>
-                <Card className="flex flex-col gap-2">
-                  <p className="text-micro font-bold uppercase tracking-wide text-ink3">{SOURCE[o.source]}</p>
+              <li key={o.key} className="flex">
+                <Card className="flex h-full flex-col gap-2">
+                  <p className="text-sub font-bold text-ink3">{SOURCE[o.source]}</p>
                   <p className="text-h2 font-bold leading-snug">{o.name}</p>
                   <p className="text-body text-ink2">{o.why}</p>
                   <p className="text-sub text-ink3">
@@ -49,6 +49,7 @@ export function LunchIdeas() {
                     {o.grade ? ` · ${GRADE[o.grade] ?? o.grade}` : ''}
                   </p>
                   <Button
+                    className="mt-auto"
                     size="md"
                     variant={chosen === o.key ? 'secondary' : 'primary'}
                     icon={chosen === o.key ? CheckCircle : undefined}
@@ -72,7 +73,7 @@ export function LunchIdeas() {
                 </Card>
               </li>
             ))}
-          </ul>
+          </TileGrid>
           <p className="text-sub text-ink3">
             {t('log.lunch.typical', 'Typical values for one serving from the Singapore food database, or from your own sensor and meals. Ideas only, not medical advice.')}
           </p>

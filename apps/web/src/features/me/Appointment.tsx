@@ -1,5 +1,5 @@
 /**
- * K7. Plan an appointment: save a visit the person has agreed, or confirm one Smart Health suggested. Cancelling keeps the row
+ * K7. Log an appointment: save a visit the person has agreed, or confirm one Smart Health suggested. Cancelling keeps the row
  * (its status changes), so the history stays. No calendar is called from here.
  */
 import { useState } from 'react'
@@ -8,7 +8,15 @@ import { useUi } from '@/state/store'
 import { Header, Screen } from '@/ui/layout'
 import { Alert, Button, Card, Field, SectionTitle, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
 import { CalendarCheck, Check, X } from '@/ui/icons'
-import { APPOINTMENT_KINDS, useAppointments, useCancelAppointment, useSaveAppointment, type Appointment, type AppointmentKind } from './care/api'
+import {
+  APPOINTMENT_KINDS,
+  RETIRED_KIND_LABELS,
+  useAppointments,
+  useCancelAppointment,
+  useSaveAppointment,
+  type Appointment,
+  type StoredAppointmentKind,
+} from './care/api'
 import { singaporeInstant, singaporeStamp } from './care/parts'
 
 const inputClass = 'min-h-12 w-full rounded-field border-[1.5px] border-line bg-card px-3.5 py-3 text-body text-ink focus:border-brand focus:outline-none'
@@ -17,10 +25,9 @@ export function Appointment() {
   const { t } = useTranslation()
   const { data, isError, isLoading } = useAppointments()
   const [suggestedId, setSuggestedId] = useState<string | null>(null)
-  const [kind, setKind] = useState<AppointmentKind>('diabetes_review')
+  const [kind, setKind] = useState<StoredAppointmentKind>('diabetes_review')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
-  const [place, setPlace] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const save = useSaveAppointment()
   const toast = useUi((s) => s.showToast)
@@ -28,7 +35,6 @@ export function Appointment() {
   const confirmSuggested = (a: Appointment) => {
     setSuggestedId(a.id)
     setKind(a.kind)
-    setPlace(a.location ?? '')
     setDate(a.scheduledFor ? singaporeDay(a.scheduledFor) : '')
     setTime(a.scheduledFor ? singaporeClock(a.scheduledFor) : '')
     setFormError(null)
@@ -39,7 +45,6 @@ export function Appointment() {
     setKind('diabetes_review')
     setDate('')
     setTime('')
-    setPlace('')
     setFormError(null)
   }
 
@@ -48,7 +53,7 @@ export function Appointment() {
     if (!date || !time) return setFormError(t('me.appt.pickDateTime', 'Pick a date and a time.'))
     if (singaporeInstant(date, time) <= Date.now()) return setFormError(t('me.appt.pickFuture', 'Pick a time in the future.'))
     save.mutate(
-      { kind, scheduledFor: `${date}T${time}`, location: place.trim() || null, suggestedId },
+      { kind, scheduledFor: `${date}T${time}`, suggestedId },
       {
         onSuccess: () => {
           toast(t('me.appt.saved', 'Visit saved.'))
@@ -59,15 +64,20 @@ export function Appointment() {
     )
   }
 
+  // A suggested visit may hold a kind the form no longer offers; it is shown as its old label so the person sees what they confirm.
+  const retired = RETIRED_KIND_LABELS[kind]
+
   return (
     <Screen>
-      <Header title={t('me.appt.title', 'Plan an appointment')} back backTo="K3" />
+      <Header title={t('me.appt.title', 'Log an appointment')} back backTo="K3" />
 
+      {/* the list of visits on the left and the form on the right from a laptop up */}
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6 [&>*]:min-w-0">
       <section className="flex flex-col gap-2">
         <SectionTitle>{t('me.appt.upcoming', 'Your upcoming visits')}</SectionTitle>
         {isError && <Alert tone="warn">{t('me.appt.loadError', 'We could not load your visits just now. Please try again in a moment.')}</Alert>}
         {isLoading && !data && <Skeleton className="h-28" />}
-        {data && data.length === 0 && <p className="text-body text-ink2">{t('me.appt.noVisits', 'No visits yet. Save one below.')}</p>}
+        {data && data.length === 0 && <p className="text-body text-ink2">{t('me.appt.noVisits', 'No visits yet. Log one below.')}</p>}
         {data && data.length > 0 && (
           <ul className="flex flex-col gap-3">
             {data.map((a) => (
@@ -84,7 +94,7 @@ export function Appointment() {
         <Card className="flex flex-col gap-4">
           {suggestedId && (
             <Alert tone="warn" icon={CalendarCheck}>
-              {t('me.appt.confirming', 'You are confirming a visit Smart Health suggested. Change the date, time or place if needed.')}{' '}
+              {t('me.appt.confirming', 'You are confirming a visit Smart Health suggested. Change the date or time if needed.')}{' '}
               <TextLink onClick={clearForm}>{t('me.appt.stopConfirming', 'Stop confirming')}</TextLink>
             </Alert>
           )}
@@ -92,23 +102,26 @@ export function Appointment() {
             <label htmlFor="visit-kind" className="text-sub font-bold text-ink">
               {t('me.appt.kindOfVisit', 'Kind of visit')}
             </label>
-            <select id="visit-kind" className={inputClass} value={kind} onChange={(e) => setKind(e.target.value as AppointmentKind)}>
+            <select id="visit-kind" className={inputClass} value={kind} onChange={(e) => setKind(e.target.value as StoredAppointmentKind)}>
               {APPOINTMENT_KINDS.map((k) => (
                 <option key={k.value} value={k.value}>
                   {t(`me.appt.kind.${k.value}`, k.label)}
                 </option>
               ))}
+              {retired && <option value={kind}>{retired}</option>}
             </select>
           </div>
-          <Field label={t('me.appt.date', 'Date')} type="date" value={date} onChange={setDate} hint={t('me.appt.singaporeTime', 'Singapore time.')} />
-          <Field label={t('me.appt.time', 'Time')} type="time" value={time} onChange={setTime} />
-          <Field label={t('me.appt.place', 'Place (optional)')} value={place} onChange={setPlace} placeholder={t('me.appt.placePlaceholder', 'For example: Polyclinic, level 2')} />
+          <div className="grid gap-4 sm:grid-cols-2 [[data-ts='2']_&]:sm:grid-cols-1 [&>*]:min-w-0">
+            <Field label={t('me.appt.date', 'Date')} type="date" value={date} onChange={setDate} hint={t('me.appt.singaporeTime', 'Singapore time.')} />
+            <Field label={t('me.appt.time', 'Time')} type="time" value={time} onChange={setTime} />
+          </div>
           {formError && <Alert tone="danger">{formError}</Alert>}
           <Button icon={Check} disabled={save.isPending} onClick={submit}>
             {save.isPending ? t('me.appt.saving', 'Saving') : suggestedId ? t('me.appt.confirmTitle', 'Confirm this visit') : t('me.appt.save', 'Save my visit')}
           </Button>
         </Card>
       </section>
+      </div>
     </Screen>
   )
 }
@@ -133,7 +146,6 @@ function VisitCard({ appt, onConfirm }: { appt: Appointment; onConfirm: () => vo
         )}
       </div>
       <p className="text-body text-ink">{appt.scheduledLabel ?? t('me.appt.noDateYet', 'No date yet')}</p>
-      {appt.location && <p className="text-sub text-ink2">{appt.location}</p>}
       {appt.suggestedReason && <p className="text-sub text-ink2">{appt.suggestedReason}</p>}
       {appt.confirmedAt && <p className="text-sub text-ink3">{t('me.appt.confirmedOn', 'You confirmed this on {{when}}.', { when: singaporeStamp(appt.confirmedAt) })}</p>}
 

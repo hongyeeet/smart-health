@@ -75,7 +75,8 @@ def test_the_label_directions_are_kept_word_for_word(conn, user):
 def test_the_event_log_gets_the_three_events_and_no_name(conn, user):
     api.create_medication(conn, user, body(name="Private Name Pill"))
     rows = conn.execute("select event, payload::text from event_log where user_id = %s order by id", (user,)).fetchall()
-    assert [r[0] for r in rows] == ["medication.created", "dose.schedule.generated"]
+    # a known pack size also writes a stock event (counts only); it is not part of what this test is about
+    assert [r[0] for r in rows if not r[0].startswith("medication.stock.")] == ["medication.created", "dose.schedule.generated"]
     assert all("Private Name Pill" not in r[1] for r in rows)
 
 

@@ -67,8 +67,15 @@ class Settings(BaseSettings):
     habit_sugar_g: int = 25
     food_flag_min_excess_rise: float = 1.0
 
-    # AI use per day (all providers together). Cost is only known for JEV; Gemini is not priced yet, so the call cap does the work.
+    # AI use per day, one cap per kind of call (services/usage.py): photo and label reads, text generation, embeddings and JEV.
+    # Each kind is counted and blocked on its own, so one kind used up never blocks another.
+    ai_cap_vertex_vision: int = 300      # photo and label reads
+    ai_cap_vertex_generate: int = 500    # text the person sees: brief findings, medicine explainer, clash checker, chat, onboarding answers
+    ai_cap_vertex_embed: int = 2000      # background embeddings for food search (fall back to text search when blocked)
+    ai_cap_jev: int = 500                # JEV typed decisions (guards and checks)
+    # Any AI provider without a cap of its own above uses this call cap.
     ai_daily_call_cap: int = 500
+    # Cost limit in USD, checked per provider against that provider's own cost (only JEV reports cost today).
     ai_daily_budget_usd: float = 5.0
 
     # How much the app may say (docs/specs/learning-loop.md 12.4): at most this many new extras a day (food swaps, lunch ideas, the walk,

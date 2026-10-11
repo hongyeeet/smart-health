@@ -104,7 +104,7 @@ ReviewMode = Literal["confirm", "manual"]
 class ScanOutcome(BaseModel):
     status: Literal["needs_review", "failed"]
     review_mode: ReviewMode          # "confirm": every value is clear, the user still confirms. "manual": the user types the form.
-    reasons: list[str]               # stable codes: low_confidence, missing_required, unreadable, not_a_medicine, invalid_json, service_unavailable, ocr_empty
+    reasons: list[str]               # stable codes, see app/services/scan_api.py REASON_TEXT (ocr_empty, model_unavailable, low_confidence_all, ...)
     items: list[ScoredItem] = []
     prompt_version: str | None = None
     model_id: str | None = None

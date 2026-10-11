@@ -133,7 +133,7 @@ def test_one_alert_per_pair_whichever_order_and_the_ai_reason_is_not_overwritten
     row = conn.execute("select origin, summary, interaction_rule_id is not null, model_id, sources from interaction_alerts where user_id = %s", (user,)).fetchall()
     assert again == {"new": 0, "updated": 1} and len(row) == 1
     assert row[0][:4] == ("both", "Clarithromycin raises the level of Atorvastatin.", True, "m")
-    assert [s["title"] for s in row[0][4]] == ["Drug label information (openFDA)", "drugs.com"]
+    assert [s["title"] for s in row[0][4]] == ["Drug label data (openFDA)", "drugs.com"]
 
 
 def test_an_ai_only_flag_is_saved_with_its_pages_and_a_neutral_reason_when_empty(conn, user):
@@ -239,7 +239,7 @@ def test_the_status_route_lists_open_alerts_and_the_question_and_acknowledge_but
     fake_ai(monkeypatch, ok())
     pipe.check_user(user)
     s = route._status(user)
-    assert s.checking is False and len(s.alerts) == 1 and s.alerts[0].origin == "database" and s.alerts[0].sources[0].url.startswith("https://")
+    assert s.checking is False and len(s.alerts) == 1 and s.alerts[0].origin == "database" and s.alerts[0].sources[0].title == "Drug label data (openFDA)" and s.alerts[0].sources[0].url == ""
     q = route._ask(user, s.alerts[0].id)
     row = conn.execute("select text, origin, status from doctor_questions where id = %s", (q.id,)).fetchone()
     assert row[1:] == ("agent_suggested", "open") and "Atorvastatin 20 mg" in row[0] and "Clarithromycin 500 mg" in row[0] and "together" in row[0]

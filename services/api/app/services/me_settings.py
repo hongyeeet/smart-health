@@ -17,7 +17,9 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-KINDS = ("data_processing", "brief_sharing", "calendar_access", "caregiver_view", "research_use")
+from app.services import blood_pressure as BP
+
+KINDS =("data_processing", "brief_sharing", "calendar_access", "caregiver_view", "research_use")
 CONSENT_VERSION = "v1"             # the consent text version; matches the rows already in the database
 DELETE_CONFIRM = "DELETE"
 DELETE_PROMISE_DAYS = 30
@@ -46,7 +48,44 @@ PROFILE_COLUMNS = (
     "work_start", "work_end", "watch_model", "cgm_model", "timezone", "glucose_target_low", "glucose_target_high",
     "allergies_note", "conditions_note", "emergency_contact_name", "emergency_contact_relation", "emergency_contact_phone",
 )
-OPTIONAL_PROFILE_COLUMNS = ("emergency_contact_email", "notification_email", "email_opt_in")
+OPTIONAL_PROFILE_COLUMNS = (
+    "emergency_contact_email", "notification_email", "email_opt_in",
+    # the onboarding answers (migration 0032): diagnosis year, care setting, Healthier SG, low glucose history
+    "diagnosed_year", "care_setting", "healthier_sg", "hypo_last_3m", "hypo_symptoms",
+)
+
+# Everything else the app stores about the person, one section each. Each entry names the table and the columns its query reads.
+# When the table or one of those columns is missing (an older database), the section is an empty list, never an error.
+# Deleted rows are left out (deleted_at). A doctor question removed on the list has status 'archived', and that is left out too.
+# The blood pressure section is read by blood_pressure.recent_bp, which knows both table layouts (see _blood_pressure).
+EXTRA_SECTIONS: dict[str, tuple[str, tuple[str, ...], str]] = {
+    "body_measurements": ("body_measurements", ("measured_at", "weight_kg", "waist_cm", "source", "deleted_at"),
+                          "select measured_at, weight_kg, waist_cm, source::text as source from body_measurements "
+                          "where user_id=%s and deleted_at is null order by measured_at"),
+    "conditions": ("conditions", ("name", "code", "source", "created_at", "deleted_at"),
+                   "select name, code, source::text as source, created_at from conditions "
+                   "where user_id=%s and deleted_at is null order by created_at, name"),
+    "allergies": ("allergies", ("substance", "reaction", "source", "created_at", "deleted_at"),
+                  "select substance, reaction, source::text as source, created_at from allergies "
+                  "where user_id=%s and deleted_at is null order by created_at, substance"),
+    "devices": ("devices", ("kind", "label", "status", "source", "created_at", "deleted_at"),
+                "select kind, label, status, source::text as source, created_at from devices "
+                "where user_id=%s and deleted_at is null order by created_at"),
+    "lab_results": ("lab_results", ("test", "value", "unit", "measured_at", "source", "deleted_at"),
+                    "select test::text as test, value, unit, measured_at, source::text as source from lab_results "
+                    "where user_id=%s and deleted_at is null order by measured_at, test"),
+    "medicine_stock": ("medications", ("name", "stock_count", "stock_unit", "stock_updated_at", "deleted_at"),
+                       "select name as medicine, stock_count, stock_unit, stock_updated_at from medications "
+                       "where user_id=%s and deleted_at is null and stock_count is not null order by name"),
+    "doctor_questions": ("doctor_questions", ("text", "origin", "status", "created_at"),
+                         "select text, origin, status, created_at from doctor_questions "
+                         "where user_id=%s and status <> 'archived' order by created_at"),
+    "appointments": ("appointments", ("kind", "status", "scheduled_for", "location", "suggested_reason", "confirmed_by_user_at", "created_at"),
+                     "select kind::text as kind, status::text as status, scheduled_for, location, suggested_reason, "
+                     "confirmed_by_user_at, created_at from appointments where user_id=%s order by created_at"),
+}
+# blood_pressure.recent_bp takes a window in days; this window is wide enough to read every reading the person has
+ALL_READINGS_DAYS = 36500
 
 
 class ProfileMissing(Exception):
@@ -130,10 +169,13 @@ _COLUMNS: dict[str, frozenset[str]] = {}
 
 
 def _columns(conn: Any, table: str) -> frozenset[str]:
-    if table not in _COLUMNS:
-        rows = conn.execute("select column_name from information_schema.columns where table_schema='public' and table_name=%s", (table,)).fetchall()
-        _COLUMNS[table] = frozenset(r["column_name"] for r in rows)
-    return _COLUMNS[table]
+    if table in _COLUMNS:
+        return _COLUMNS[table]
+    rows = conn.execute("select column_name from information_schema.columns where table_schema='public' and table_name=%s", (table,)).fetchall()
+    cols = frozenset(r["column_name"] for r in rows)
+    if cols:  # no columns means the table is not there yet; that is not remembered, so a later migration shows up
+        _COLUMNS[table] = cols
+    return cols
 
 
 def reset_column_cache() -> None:
@@ -204,10 +246,30 @@ def set_consent(conn: Any, user: UUID, kind: str, granted: bool) -> dict[str, li
 
 
 # ───────────────────────────────────────────────────────────────── export and deletion request (K8)
+def _rows_if_present(conn: Any, user: UUID, table: str, needs: tuple[str, ...], sql: str) -> list[dict[str, Any]]:
+    """The rows of one extra section, or [] when the table or a column the query reads is not there."""
+    have = _columns(conn, table)
+    if not have or not set(needs) <= have:
+        return []
+    return [_plain(r) for r in conn.execute(sql, (user,)).fetchall()]
+
+
+def _blood_pressure(conn: Any, user: UUID) -> list[dict[str, Any]]:
+    """Every live reading, oldest first: when, systolic, diastolic, pulse and note. The entry id is left out, as in the other sections."""
+    have = _columns(conn, "blood_pressure_readings")
+    if not {"user_id", "recorded_at", "systolic_mmhg", "diastolic_mmhg", "deleted_at"} <= have:
+        return []
+    readings = BP.recent_bp(conn, user, ALL_READINGS_DAYS)
+    return [{k: v for k, v in _plain(r).items() if k != "id"} for r in reversed(readings)]
+
+
 def export_for(conn: Any, user: UUID, now: datetime) -> dict[str, Any]:
     profile_cols = list(PROFILE_COLUMNS) + [c for c in OPTIONAL_PROFILE_COLUMNS if c in _columns(conn, "user_profile")]
     prof = conn.execute(f"select {', '.join(profile_cols)} from user_profile where user_id=%s", (user,)).fetchone()
     sections = {name: [_plain(r) for r in conn.execute(sql, (user,)).fetchall()] for name, sql in EXPORT_SECTIONS.items()}
+    sections["blood_pressure"] = _blood_pressure(conn, user)
+    for name, (table, needs, sql) in EXTRA_SECTIONS.items():
+        sections[name] = _rows_if_present(conn, user, table, needs, sql)
     consents = [_plain(c) for c in list_consents(conn, user)["history"]]
     return build_export(_plain(prof) if prof else None, sections, consents, now)
 

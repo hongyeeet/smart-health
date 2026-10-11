@@ -62,6 +62,7 @@ class MedicationOut(Camel):
     purpose: str = ""
     badge: Literal["interaction", "not_checked"] | None = None
     refill: Refill | None = None
+    refill_source: Literal["stock", "estimate"] | None = None    # 'stock': from the count in hand; 'estimate': from the pack date
     side_effects: list[str] = []
 
 
@@ -70,14 +71,30 @@ class WebSourceOut(Camel):
     url: str
 
 
+class ExplanationPartsOut(Camel):
+    """The four labelled parts (prompt version 2). Each is a short text; a part the pages did not cover is an empty string."""
+    for_diabetes: str = ""              # what it is for in the person's diabetes (or in general, when it is not a diabetes medicine)
+    how_it_works: str = ""              # one sentence
+    what_you_may_notice: str = ""
+    why_timing_matters: str = ""
+
+
 class ExplanationOut(Camel):
-    """The plain-language explanation of a medicine and the web pages it came from (docs/specs/f3-explainer.md)."""
+    """The plain-language explanation of a medicine and the web pages it came from (docs/specs/f3-explainer.md).
+
+    `parts` is null for an explanation made before the four parts existed: the page then shows the older layout (`purpose`)."""
     status: Literal["ready", "not_identified"]
     purpose: str = ""
+    parts: ExplanationPartsOut | None = None
     side_effects: list[str] = []
     tell_doctor: str = ""
     sources: list[WebSourceOut] = []
     generated_at: datetime
+
+
+class MedicineScopeOut(Camel):
+    """Whether a typed or scanned name is outside what the app is for. A gentle note only: it never blocks a save."""
+    out_of_scope: bool
 
 
 class MedicationDetailOut(MedicationOut):

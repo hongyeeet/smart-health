@@ -1,9 +1,7 @@
-/** C6 — Medication. Day by day for each medicine, adherence for prescription medicines, why doses were missed, and the morning glucose beside it. */
+/** C6 — Medication. Day by day for each medicine, adherence for prescription medicines, and why doses were missed. */
 import { useTranslation } from 'react-i18next'
 import { useInsightsMedication } from '@/data/hooks'
-import { shortDate } from '@/lib/format'
 import { useGo } from '@/app/navigation'
-import { TrendChart } from '@/charts/TrendChart'
 import { Split } from '@/ui/layout'
 import { Card, SectionTitle, TextLink } from '@/ui/primitives'
 import { Pill } from '@/ui/icons'
@@ -18,51 +16,64 @@ export function MedicationTab() {
   const totalMissed = data?.reasons.reduce((a, r) => a + r.count, 0) ?? 0
   const maxReason = Math.max(1, ...(data?.reasons.map((r) => r.count) ?? [1]))
   return (
-    <InsightsFrame tab="C6" period={data?.period}>
+    <InsightsFrame tab="C6" period={data?.period} why="medication">
       <Gate data={data} isError={isError} empty={!!data && data.meds.length === 0} emptyText={t('insights.medication.empty', 'Add a medicine and your doses show up here, day by day.')}>
         {data && (
-          <Split>
-            <div className="flex flex-col gap-4">
-              <section className="flex flex-col gap-3">
-                <SectionTitle>{t('insights.medication.yourDoses', 'Your doses')}</SectionTitle>
-                <Plain why="medication">
-                  {data.adherencePct != null
-                    ? data.unconfirmed > 0
-                      ? data.unconfirmed === 1
-                        ? t('insights.medication.tookNotConfirmedOne', 'You took {{pct}}% of your prescription doses ({{taken}} of {{scheduled}}). {{n}} was not confirmed.', {
-                            pct: data.adherencePct,
-                            taken: data.taken,
-                            scheduled: data.scheduled,
-                            n: data.unconfirmed,
-                          })
-                        : t('insights.medication.tookNotConfirmedMany', 'You took {{pct}}% of your prescription doses ({{taken}} of {{scheduled}}). {{n}} were not confirmed.', {
-                            pct: data.adherencePct,
-                            taken: data.taken,
-                            scheduled: data.scheduled,
-                            n: data.unconfirmed,
-                          })
-                      : t('insights.medication.took', 'You took {{pct}}% of your prescription doses ({{taken}} of {{scheduled}}).', {
+          <>
+            <section className="flex flex-col gap-3">
+              <SectionTitle>{t('insights.medication.yourDoses', 'Your doses')}</SectionTitle>
+              <Plain>
+                {data.adherencePct != null
+                  ? data.unconfirmed > 0
+                    ? data.unconfirmed === 1
+                      ? t('insights.medication.tookNotConfirmedOne', 'You took {{pct}}% of your prescription doses ({{taken}} of {{scheduled}}). {{n}} was not confirmed.', {
                           pct: data.adherencePct,
                           taken: data.taken,
                           scheduled: data.scheduled,
+                          n: data.unconfirmed,
                         })
+                      : t('insights.medication.tookNotConfirmedMany', 'You took {{pct}}% of your prescription doses ({{taken}} of {{scheduled}}). {{n}} were not confirmed.', {
+                          pct: data.adherencePct,
+                          taken: data.taken,
+                          scheduled: data.scheduled,
+                          n: data.unconfirmed,
+                        })
+                    : t('insights.medication.took', 'You took {{pct}}% of your prescription doses ({{taken}} of {{scheduled}}).', {
+                        pct: data.adherencePct,
+                        taken: data.taken,
+                        scheduled: data.scheduled,
+                      })
+                  : data.unconfirmed > 0
+                    ? t('insights.medication.notConfirmedYet', 'Not confirmed yet. {{n}} prescription doses are waiting for an answer.', { n: data.unconfirmed })
                     : t('insights.medication.noDoses', 'There are no prescription doses to count in this period.')}
-                  {data.shownDays < data.period.days && <> {t('insights.medication.gridShows', 'The grid shows the last {{n}} days.', { n: data.shownDays })}</>}
-                </Plain>
-                <Card tone="hero">
-                  <DoseGrid dates={data.dates} rows={data.meds} />
-                </Card>
-              </section>
+                {data.shownDays < data.period.days && <> {t('insights.medication.gridShows', 'The grid shows the last {{n}} days.', { n: data.shownDays })}</>}
+              </Plain>
+              <Card tone="hero">
+                <DoseGrid dates={data.dates} rows={data.meds} />
+              </Card>
+            </section>
+            <Split>
+            <div className="flex flex-col gap-4">
               <section className="flex flex-col gap-1">
                 <SectionTitle>{t('insights.medication.eachMedicine', 'Each medicine')}</SectionTitle>
                 <div className="divide-y divide-line rounded-card border border-line bg-card px-4">
                   {data.meds.map((m) => (
-                    <div key={m.id} className="flex items-baseline justify-between gap-3 py-3">
+                    <div key={m.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-3">
                       <span className="min-w-0">
                         <span className="block text-body font-bold">{m.name}</span>
                         <span className="block text-sub text-ink2">{m.regimen}</span>
                       </span>
-                      <span className="num flex-none text-body">{m.adherencePct != null ? `${m.adherencePct}%` : '–'}</span>
+                      <span className="max-w-full text-right">
+                        {!m.counted ? (
+                          <span className="block text-sub text-ink3">{t('insights.medication.notCounted', 'Not counted in adherence')}</span>
+                        ) : m.adherencePct != null ? (
+                          <span className="num block text-body">{`${m.adherencePct}%`}</span>
+                        ) : (
+                          <span className="block text-sub text-ink2">
+                            <span className="num text-body">–</span> {t('insights.medication.notConfirmedYetShort', 'Not confirmed yet')}
+                          </span>
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -75,7 +86,7 @@ export function MedicationTab() {
               {data.reasons.length > 0 && (
                 <section className="flex flex-col gap-3">
                   <SectionTitle>{t('insights.medication.whyMissed', 'Why doses were missed')}</SectionTitle>
-                  <Plain why="medication">{t('insights.medication.reasons', 'The reasons you gave for {{n}} missed doses.', { n: totalMissed })}</Plain>
+                  <Plain>{t('insights.medication.reasons', 'The reasons you gave for {{n}} missed prescription doses.', { n: totalMissed })}</Plain>
                   <Card tone="hero" className="flex flex-col gap-3">
                     {data.reasons.map((r) => (
                       <div key={r.key} className="flex flex-col gap-1">
@@ -91,31 +102,13 @@ export function MedicationTab() {
                   </Card>
                 </section>
               )}
-              {data.fasting.some((v) => v != null) && (
-                <section className="flex flex-col gap-3">
-                  <SectionTitle>{t('insights.medication.morningSame', 'Morning glucose over the same days')}</SectionTitle>
-                  <Plain why="medication">
-                    {t(
-                      'insights.medication.fastingPlain',
-                      'Your fasting glucose on the days shown in the grid, so you can look at the two side by side. Looking at them together does not show that one causes the other.',
-                    )}
-                  </Plain>
-                  <Card tone="hero">
-                    <TrendChart
-                      label={t('insights.medication.fastingChart', 'Fasting glucose by day, mmol/L')}
-                      points={data.dates.map((d, i) => ({ date: d, v: data.fasting[i] ?? null }))}
-                      endLabel={shortDate(data.dates[data.dates.length - 1]!)}
-                      drawKey={`medfast-${days}`}
-                    />
-                  </Card>
-                </section>
-              )}
-              <Findings items={data.patterns} />
+              <Findings items={data.patterns} whyLink={false} />
               <p className="text-sub text-ink3">
                 {t('insights.medication.adherenceNote', 'Adherence counts prescription medicines only. A dose that was not answered is counted as not taken.')}
               </p>
             </div>
-          </Split>
+            </Split>
+          </>
         )}
       </Gate>
     </InsightsFrame>

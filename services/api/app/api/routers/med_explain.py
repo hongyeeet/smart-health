@@ -1,9 +1,11 @@
-"""The medicine page (H6, prd F3, docs/specs/f3-explainer.md):
+"""The medicine page (H6, prd F3, docs/specs/f3-explainer.md) and the name check for the add screens:
 
+  GET  /medications/scope              is a typed or scanned name outside what the app is for (a gentle note, never a block)
   GET  /medications/{id}               the medicine as saved, plus its explanation if one has been made
   POST /medications/{id}/explanation   make the explanation (a web search and a short summary, about 10 to 30 seconds), or return the
-                                       saved one. It is made once and kept; it is made again only when the medicine's name, strength,
-                                       type or label text changes (or `?refresh=true`).
+                                       saved one. It is made once and kept; it is made again when the medicine's name, strength,
+                                       type or label text changes, when the saved one is in the older layout (no four parts), or
+                                       with `?refresh=true`.
   POST /medications/{id}/questions     a question for the doctor, saved to the doctor-question list
 
 Nothing here writes or suggests a dose: the dose shown on the page is the person's own label.
@@ -14,7 +16,7 @@ import logging
 import threading
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from psycopg.rows import tuple_row
 
@@ -24,13 +26,16 @@ from app.core.errors import NotFound
 from app.db import logstore
 from app.schemas.medicines import (
     ExplanationOut,
+    ExplanationPartsOut,
     MedicationDetailOut,
+    MedicineScopeOut,
     QuestionIn,
     QuestionOut,
     WebSourceOut,
 )
 from app.services import med_explain_store as store
-from app.services import usage
+from app.services import medicine_scope, usage
+from app.services.web_sources import clean as clean_sources
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/medications", tags=["medicine page"])
@@ -39,7 +44,8 @@ _locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
 
 CANNOT_LOOK_UP = "We could not look this medicine up right now. Please try again in a moment."
-NO_RELIABLE_INFO = "We could not find reliable information about this medicine. Please ask your pharmacist."
+NO_RELIABLE_PAGE = "We could not find a reliable page for this medicine yet. Please ask your pharmacist."
+INVALID_ANSWER = "We could not read the information for this medicine just now. Please try again."
 CAP_REACHED = "The daily limit for looking things up has been reached. Please try again tomorrow."
 
 
@@ -50,14 +56,29 @@ def _lock_for(med_id: str) -> threading.Lock:
 
 
 def to_out(saved: dict[str, Any]) -> ExplanationOut:
+    parts = saved.get("parts")
     return ExplanationOut(
-        status=saved["status"], purpose=saved["purpose"] or "", side_effects=list(saved["side_effects"] or []),
-        tell_doctor=saved["tell_doctor"] or "", sources=[WebSourceOut(title=s["title"], url=s["url"]) for s in saved["sources"] or []],
-        generated_at=saved["generated_at"])
+        status=saved["status"], purpose=saved["purpose"] or "",
+        parts=ExplanationPartsOut(for_diabetes=parts.get("for_diabetes", ""), how_it_works=parts.get("how_it_works", ""),
+                                  what_you_may_notice=parts.get("what_you_may_notice", ""),
+                                  why_timing_matters=parts.get("why_timing_matters", "")) if parts else None,
+        side_effects=list(saved["side_effects"] or []), tell_doctor=saved["tell_doctor"] or "",
+        sources=[WebSourceOut(title=s["title"], url=s["url"]) for s in clean_sources(saved["sources"])], generated_at=saved["generated_at"])
 
 
 def _input_key(med: dict[str, Any]) -> str:
     return store.input_hash(med["name"], med["strength"], med["kind"], med["description"])
+
+
+@router.get("/scope", response_model=MedicineScopeOut, response_model_by_alias=True)
+async def medicine_scope_check(name: str = Query("", max_length=200), kind: str = Query("prescription", max_length=20)) -> MedicineScopeOut:
+    return await run_in_threadpool(_scope, name, kind)
+
+
+def _scope(name: str, kind: str) -> MedicineScopeOut:
+    with logstore.tx() as conn:
+        conn.row_factory = tuple_row
+        return MedicineScopeOut(out_of_scope=medicine_scope.out_of_scope(conn, name, kind))
 
 
 @router.get("/{med_id}", response_model=MedicationDetailOut, response_model_by_alias=True)
@@ -97,25 +118,33 @@ def _explain(med_id: str, refresh: bool) -> ExplanationOut:
             except NotFound as e:
                 raise HTTPException(404, str(e)) from None
             saved = store.load(conn, user, med_id)
+            parts_ok = store.parts_column_present(conn)
             names = [r[0] for r in conn.execute("select display_name from user_profile where user_id = %s", (user,)).fetchall() if r[0]]
         input_key = _input_key(med)
-        if saved and saved["input_hash"] == input_key and not refresh:
+        # Kept unless it is for another version of the medicine, or asked to refresh. An explanation in the older layout (no four parts)
+        # is made again, but only when the database can keep the four parts (migration 0033); until then the saved one is returned.
+        if saved and saved["input_hash"] == input_key and not refresh and (not store.is_old_shape(saved) or not parts_ok):
             return to_out(saved)
-        if not usage.allowed("vertex_vision"):
+        if not usage.allowed("vertex_generate"):
             raise HTTPException(429, CAP_REACHED)
         outcome = med_explain_pipeline.run(name=med["name"], strength=med["strength"], kind=med["kind"], directions=med["description"],
                                            known_names=names)
-        usage.record("vertex_vision", outcome.input_tokens, outcome.output_tokens)
+        usage.record("vertex_generate", outcome.input_tokens, outcome.output_tokens)
         if outcome.status == "failed":
             logger.warning("explanation not made: %s", outcome.reason)
-            raise HTTPException(503 if outcome.reason == "service_unavailable" else 502,
-                                CANNOT_LOOK_UP if outcome.reason == "service_unavailable" else NO_RELIABLE_INFO)
+            # 503: the model could not be reached. 404: the search found no page we can rely on (or the answer had nothing usable in
+            # it): a plain answer the screen explains. 502: the model answered, but in a shape that could not be read.
+            if outcome.reason == "service_unavailable":
+                raise HTTPException(503, CANNOT_LOOK_UP)
+            if outcome.reason in ("no_sources", "unusable_answer"):
+                raise HTTPException(404, NO_RELIABLE_PAGE)
+            raise HTTPException(502, INVALID_ANSWER)
         with logstore.tx() as conn:
             conn.row_factory = tuple_row
             store.save(conn, user, med_id, status=outcome.status, purpose=outcome.purpose, side_effects=outcome.side_effects,
                        tell_doctor=outcome.tell_doctor, sources=[{"title": s.title, "url": s.url} for s in outcome.sources],
                        input_key=input_key, model_id=outcome.model_id, prompt_version=outcome.prompt_version,
-                       tokens_in=outcome.input_tokens, tokens_out=outcome.output_tokens)
+                       tokens_in=outcome.input_tokens, tokens_out=outcome.output_tokens, parts=outcome.parts or None)
             saved = store.load(conn, user, med_id)
     logger.info("explanation made status=%s sources=%d side_effects=%d", outcome.status, len(outcome.sources), len(outcome.side_effects))
     if saved is None:

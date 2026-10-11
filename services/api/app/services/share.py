@@ -17,7 +17,7 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
-from app.services import doctor_report
+from app.services import care, doctor_report
 from app.services.me_settings import set_consent
 
 ALLOWED_HOURS = (24, 72, 168)
@@ -150,22 +150,17 @@ def public_report(conn: Any, token: str, user_agent: str | None, now: datetime) 
         "insert into brief_share_access (brief_share_id, accessed_at, user_agent) values (%s, %s, %s)",
         (row["id"], now, (user_agent or "")[:200] or None),
     )
-    inputs = doctor_report.load(conn, str(row["user_id"]), int(row["days"]), now)
-    return doctor_report.build(inputs)
+    return doctor_report.read(conn, str(row["user_id"]), int(row["days"]), now)
 
 
 def context(conn: Any, user: UUID, now: datetime) -> dict[str, Any]:
-    """What the L1 brief shows next to the findings: open doctor questions and the next planned appointment."""
+    """What the L1 brief shows next to the findings: open doctor questions and the next appointment, by the one rule in
+    `care.next_appointment` (the same rule K3 uses)."""
     questions = conn.execute(
         "select id, text from doctor_questions where user_id = %s and status = 'open' order by created_at, id", (user,)
     ).fetchall()
-    appointment = conn.execute(
-        "select id, kind::text as kind, scheduled_for, location from appointments "
-        "where user_id = %s and status = 'planned' and scheduled_for >= %s order by scheduled_for, id limit 1",
-        (user, now),
-    ).fetchone()
     return {
         "questions": [{"id": q["id"], "text": q["text"]} for q in questions],
-        "next_appointment": dict(appointment) if appointment else None,
+        "next_appointment": care.next_appointment(conn, str(user), now),
     }
 

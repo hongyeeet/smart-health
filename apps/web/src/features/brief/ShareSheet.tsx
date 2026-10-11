@@ -5,9 +5,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { appConfig } from '@/config/app'
-import { Segmented } from '@/ui/controls'
+import { useGo } from '@/app/navigation'
 import { Sheet } from '@/ui/Sheet'
 import { Alert, Button, Skeleton, StatusPill, type Tone } from '@/ui/primitives'
+import { ChoiceGrid } from './ChoiceGrid'
 import { formatWhen, shareAddress, useCreateShare, useRevokeShare, useShares, type ShareCreated, type ShareDays, type ShareHours, type ShareStatus } from './shareApi'
 
 export function ShareSheet({ onClose, days: fromScreen }: { onClose: () => void; days?: ShareDays } & Record<string, unknown>) {
@@ -16,6 +17,8 @@ export function ShareSheet({ onClose, days: fromScreen }: { onClose: () => void;
   const [hours, setHours] = useState<ShareHours>(appConfig.shareLinkHours as ShareHours)
   const [made, setMade] = useState<ShareCreated | null>(null)
   const [copied, setCopied] = useState<'yes' | 'no' | null>(null)
+  const [offLast, setOffLast] = useState(false)          // the last active link was just turned off
+  const go = useGo()
   const create = useCreateShare()
   const revoke = useRevokeShare()
   const shares = useShares()
@@ -43,7 +46,8 @@ export function ShareSheet({ onClose, days: fromScreen }: { onClose: () => void;
           {t('share.intro', 'Make a link your doctor can open on any device. It needs no sign-in. You can turn it off at any time.')}
         </p>
 
-        <Segmented
+        <ChoiceGrid
+          showLabel
           label={t('share.period', 'Period to share')}
           value={days}
           onChange={setDays}
@@ -54,7 +58,8 @@ export function ShareSheet({ onClose, days: fromScreen }: { onClose: () => void;
             { value: 90, label: t('share.days', '{{n}} days', { n: 90 }) },
           ]}
         />
-        <Segmented
+        <ChoiceGrid
+          showLabel
           label={t('share.howLong', 'How long the link works')}
           value={hours}
           onChange={setHours}
@@ -70,15 +75,18 @@ export function ShareSheet({ onClose, days: fromScreen }: { onClose: () => void;
           <p className="text-body text-ink2">
             {t(
               'share.seeReport',
-              'The same report as your doctor brief for the period above: a summary of your glucose readings, symptoms with the glucose reading nearby, your medicines and how often you took them, activity and wellbeing, the alerts, and your open questions.',
+              'The same report as your doctor brief for the period above: a health summary from your answers, the key findings (an AI may have worded them from the numbers, and the report says so), your glucose readings with the first 14 days as a baseline, symptoms with the glucose reading nearby and your latest values, blood pressure readings, your medicines and how often you took them, activity and wellbeing, the alerts, and your open questions.',
             )}
           </p>
           <p className="text-body text-ink2">
-            {t('share.seeIdentity', 'Your name, sex and age, and your diagnosis. Nothing else: not your chat, your photos or your emergency contact.')}
+            {t('share.seeIdentity', 'Your name, sex and age, and your diagnosis. The health answers in the summary, and nothing else: not your chat, your photos or your emergency contact.')}
           </p>
           <p className="text-body text-ink2">{t('share.seeAnyone', 'Anyone with the link can read the report until it stops working. Send it only to your doctor.')}</p>
         </section>
 
+        <p className="text-sub text-ink2">
+          {t('share.consentLine', "Creating a link turns on 'Share my doctor brief' in Privacy. You can turn it off there.")}
+        </p>
         {create.isError && (
           <Alert tone="warn">
             {create.error instanceof Error ? create.error.message : t('share.makeFailed', 'We could not make the link. Please try again.')}
@@ -93,6 +101,7 @@ export function ShareSheet({ onClose, days: fromScreen }: { onClose: () => void;
                 onSuccess: (res) => {
                   setMade(res)
                   setCopied(null)
+                  setOffLast(false)
                 },
               },
             )
@@ -128,6 +137,23 @@ export function ShareSheet({ onClose, days: fromScreen }: { onClose: () => void;
           {shares.isLoading && <Skeleton className="h-24" />}
           {shares.isError && <Alert tone="warn">{t('share.loadFailed', 'We could not load your links just now.')}</Alert>}
           {shares.data && shares.data.length === 0 && <p className="text-body text-ink2">{t('share.none', 'No links yet.')}</p>}
+          {offLast && (
+            <Alert tone="info">
+              <p>{t('share.offLast', 'That was your last active link. Sharing stays on in Privacy until you turn it off there.')}</p>
+              <div className="mt-2">
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => {
+                    onClose()
+                    go('K6')
+                  }}
+                >
+                  {t('share.turnOffInPrivacy', 'Turn off sharing in Privacy')}
+                </Button>
+              </div>
+            </Alert>
+          )}
           {shares.data && shares.data.length > 0 && (
             <ul className="flex flex-col divide-y divide-line">
               {shares.data.map((s) => (
@@ -156,6 +182,8 @@ export function ShareSheet({ onClose, days: fromScreen }: { onClose: () => void;
                         revoke.mutate(s.id, {
                           onSuccess: () => {
                             if (made?.id === s.id) setMade(null)
+                            const otherActive = shares.data?.some((o) => o.id !== s.id && o.status === 'active') ?? false
+                            setOffLast(!otherActive)
                           },
                         })
                       }

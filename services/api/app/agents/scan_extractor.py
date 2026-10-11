@@ -25,9 +25,28 @@ from app.schemas.medicine_scan import (
 )
 from app.services import scan_confidence as conf
 from app.services import scan_privacy as privacy
+from app.services import usage
 
 log = logging.getLogger(__name__)
 PROMPT_FILE = Path(__file__).parent / "prompts" / "scan_label.md"
+VISION_PROVIDER = "vertex_vision"   # photo and label reads share one daily cap (services/usage.py)
+
+
+def _call_allowed() -> bool:
+    """The photo-read cap. A broken counter never stops a scan: the call is allowed (usage.allowed does the same)."""
+    try:
+        return usage.allowed(VISION_PROVIDER)
+    except Exception:  # noqa: BLE001 - accounting must never break a scan
+        log.warning("scan usage check failed, the read goes ahead")
+        return True
+
+
+def _count(input_tokens: int | None, output_tokens: int | None) -> None:
+    """Count one model call that returned. A failed count is logged and ignored."""
+    try:
+        usage.record(VISION_PROVIDER, input_tokens or 0, output_tokens or 0)
+    except Exception:  # noqa: BLE001 - accounting must never break a scan
+        log.warning("scan usage could not be recorded")
 
 
 # The model "thinks" before it answers and that counts against the limit: a dense label used 3,500 of the old 4,096 and the
@@ -99,20 +118,29 @@ def extract_scan(
         masked = privacy.mask_photo(image_bytes, ocr=ocr, known_names=names)
     except ValidationFailed as e:
         return ScanOutcome(status="failed", review_mode="manual", reasons=[e.code], prompt_version=version), None
+    except Exception as e:  # noqa: BLE001 - the local text reader crashed: say so, never a server error (log the type only)
+        log.warning("scan text reader failed: %s", type(e).__name__)
+        return ScanOutcome(status="failed", review_mode="manual", reasons=["ocr_unavailable"], prompt_version=version), None
 
     summary = dict(masked.masked)
     raw: RawExtraction | None = None
     result: GenerationResult | None = None
     in_tokens = out_tokens = latency = 0
     for attempt in range(2):          # invalid JSON is retried once, then it fails safe
+        if not _call_allowed():       # the daily photo-read cap is used up: no model call, the person types it in
+            log.warning("scan refused: daily photo-read limit reached")
+            return ScanOutcome(status="failed", review_mode="manual", reasons=["daily_limit"], prompt_version=version,
+                               model_id=model, input_tokens=in_tokens, output_tokens=out_tokens, latency_ms=latency,
+                               mask_summary=summary), masked
         try:
             result = client.generate_json(model=model, system=system, parts=[ImagePart(masked.image, masked.mime_type),
                                           "Read this item and return the JSON."], response_schema=response_schema(),
                                           max_output_tokens=MAX_OUTPUT_TOKENS)
         except ExternalServiceError as e:
             log.warning("scan model call failed: %s", e.code)
-            return ScanOutcome(status="failed", review_mode="manual", reasons=["service_unavailable"], prompt_version=version,
+            return ScanOutcome(status="failed", review_mode="manual", reasons=["model_unavailable"], prompt_version=version,
                                model_id=model, mask_summary=summary), masked
+        _count(result.input_tokens, result.output_tokens)
         in_tokens += result.input_tokens or 0
         out_tokens += result.output_tokens or 0
         latency += result.latency_ms

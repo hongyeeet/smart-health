@@ -18,6 +18,7 @@ import psycopg
 
 from app.core.config import settings
 
+from app.services import blood_pressure as BP
 from app.services import insights as I
 
 TZ = I.TZ
@@ -28,6 +29,7 @@ USUAL_BAND_MMOL = 0.5                  # within half a mmol/L of the usual media
 SALT_FLAG_MG = settings.meal_high_sodium_mg    # the same limits Home, Food and Insights use, so a meal is flagged the same everywhere
 SUGAR_FLAG_G = settings.meal_high_sugar_g
 SYMPTOM_GLUCOSE_WINDOW = timedelta(minutes=15)
+PRESSURE_GLUCOSE_WINDOW_MIN = 30        # a glucose reading within this many minutes of a blood pressure reading is "logged together with" it
 DOSE_RANK = {"missed": 3, "not_confirmed": 2, "late": 1, "taken": 0}
 
 MEAL_LABELS = {"breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner", "snack": "Snack", "drink": "Drink"}
@@ -208,6 +210,26 @@ def glucose_near(series: list[dict[str, Any]], minute: int) -> float | None:
     return best[1] if best else None
 
 
+def nearest_glucose(series: list[dict[str, Any]], minute: int, window_min: int) -> tuple[int, float] | None:
+    """The glucose reading closest in time to `minute` within `window_min` minutes: (its minute, its value), or None."""
+    best: tuple[int, int, float] | None = None
+    for p in series:
+        if p["glucose_mmol"] is None:
+            continue
+        gap = abs(p["minute"] - minute)
+        if gap <= window_min and (best is None or gap < best[0]):
+            best = (gap, p["minute"], p["glucose_mmol"])
+    return (best[1], best[2]) if best else None
+
+
+def pressure_outcome(glucose: tuple[int, float] | None) -> str:
+    """The sentence for a blood pressure marker. It names the glucose logged with it and never judges the reading (no normal, high or low)."""
+    if glucose is None:
+        return f"No glucose reading was logged within {PRESSURE_GLUCOSE_WINDOW_MIN} minutes of this reading."
+    minute, value = glucose
+    return f"Logged together with a glucose reading of {value:.1f} mmol/L at {clock(minute)}."
+
+
 def neighbours(days: list[date], day: date) -> tuple[str | None, str | None]:
     """The closest day with data before and after `day` (days is any order)."""
     before = max((d for d in days if d < day), default=None)
@@ -235,6 +257,7 @@ def dated(conn: psycopg.Connection[Any], user: str, lo: date, hi: date) -> list[
               union select {SG_DATE % 'start_at'} from exercise_logs where user_id=%(u)s and deleted_at is null
               union select {SG_DATE % 'occurred_at'} from symptom_logs where user_id=%(u)s and deleted_at is null
               union select {SG_DATE % 'recorded_at'} from wellbeing_logs where user_id=%(u)s and deleted_at is null
+              union select {SG_DATE % 'recorded_at'} from blood_pressure_readings where user_id=%(u)s and deleted_at is null
             ) t where d between %(lo)s and %(hi)s order by d""",
         {"u": user, "lo": lo, "hi": hi},
     ).fetchall()
@@ -304,6 +327,11 @@ def _moods(conn: psycopg.Connection[Any], user: str, day: date) -> list[dict[str
     ).fetchall()
 
 
+def _pressure(conn: psycopg.Connection[Any], user: str, day: date) -> list[dict[str, Any]]:
+    """The blood pressure readings taken on this day in Singapore, newest first (blood_pressure.reading_on_day handles both table layouts)."""
+    return BP.reading_on_day(conn, user, day)
+
+
 def _sleep_hours(conn: psycopg.Connection[Any], user: str, day: date) -> float | None:
     r = conn.execute("select sleep_hours from daily_summary where user_id=%s and local_date=%s", (user, day)).fetchone()
     return _num(r["sleep_hours"]) if r else None
@@ -358,8 +386,7 @@ def _workout_marker(w: dict[str, Any]) -> dict[str, Any]:
         end = None
     label = I.EXERCISE_LABELS.get(w["type"], str(w["type"]).replace("_", " ").capitalize())
     rows = [{"label": "Type", "value": label}]
-    if w["intensity"] is not None:
-        rows.append({"label": "Intensity", "value": str(w["intensity"])})
+    rows.append({"label": "Intensity", "value": str(w["intensity"]) if w["intensity"] is not None else "Not rated"})
     rows.append({"label": "Length", "value": f"{end - minute} min" if end is not None else _not_recorded()})
     if w["hr_avg_bpm"] is not None:
         rows.append({"label": "Average heart rate", "value": f"{w['hr_avg_bpm']} beats a minute"})
@@ -385,6 +412,27 @@ def _symptom_marker(s: dict[str, Any], series: list[dict[str, Any]]) -> dict[str
     }
 
 
+def _pressure_marker(r: dict[str, Any], series: list[dict[str, Any]]) -> dict[str, Any]:
+    minute = minute_of(r["measured_at"])
+    reading = f"{r['systolic']} over {r['diastolic']} mmHg"
+    rows = [{"label": "Reading", "value": reading}]
+    if r["pulse"] is not None:
+        rows.append({"label": "Pulse", "value": f"{r['pulse']} beats a minute"})
+    if r["note"]:
+        rows.append({"label": "Note", "value": r["note"]})
+    subtitle = reading if r["pulse"] is None else f"{reading}, pulse {r['pulse']}"
+    return {
+        "id": str(r["id"]), "kind": "pressure", "minute": minute, "end_minute": None, "clock": clock(minute),
+        "title": "Blood pressure", "subtitle": subtitle, "status": None, "flags": [], "rows": rows,
+        "outcome": pressure_outcome(nearest_glucose(series, minute, PRESSURE_GLUCOSE_WINDOW_MIN)),
+    }
+
+
+def _pressure_markers(readings: list[dict[str, Any]], series: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One marker per reading. No readings on the day means no markers, so the screen shows no blood pressure lane."""
+    return [_pressure_marker(r, series) for r in readings]
+
+
 def day_view(conn: psycopg.Connection[Any], user: str, day: date, today: date) -> dict[str, Any]:
     lo, hi = I._targets(conn, user)
     series = build_series(_timeline(conn, user, day))
@@ -393,6 +441,7 @@ def day_view(conn: psycopg.Connection[Any], user: str, day: date, today: date) -
     markers += _dose_markers(_doses(conn, user, day))
     markers += [_workout_marker(w) for w in _workouts(conn, user, day)]
     markers += [_symptom_marker(s, series) for s in _symptoms(conn, user, day)]
+    markers += _pressure_markers(_pressure(conn, user, day), series)
     markers.sort(key=lambda mk: (mk["minute"], mk["kind"]))
     moods = [{
         "id": str(r["id"]), "minute": minute_of(r["recorded_at"]), "clock": clock(minute_of(r["recorded_at"])),

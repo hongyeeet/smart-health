@@ -1,7 +1,9 @@
 """The doctor report (prd F12): every number on the printable "Diabetes monitoring report", computed in code.
 
-Layout and sections follow Damien's report design (2026-10-09). Nothing here calls a model: the report is counts, percentages
-and percentiles of the person's own stored data (rules.md 1.2), and its sentences are fixed templates filled with those numbers.
+Layout and sections follow Damien's report design (2026-10-09). Every number is counted or calculated here from the person's own
+stored data. The sentences are fixed templates filled with those numbers, except the "Key findings", which an AI may word from the
+computed facts (owner decision, 2026-10-11; see `app/agents/report_insight.py`). If the AI is not used or its wording is not
+accepted, the fixed sentences below are shown.
 
 What the report does not do, on purpose:
   - it does not say why something happened. A symptom is shown next to the glucose reading and the last dose that came before
@@ -9,11 +11,14 @@ What the report does not do, on purpose:
   - it does not advise on any medicine (rules.md 1.1);
   - it does not call anything normal, safe or validated (rules.md 1.7, 1.15).
 
-`build()` is pure (lists in, a dict out) so it can be tested without a database. `load()` reads the rows for one person.
+`build()` is pure (lists in, a dict out) so it can be tested without a database. `load()` reads the rows for one person, and
+`assemble()` is the one entry point the API and the share link use: load, build, then the key findings.
 """
 from __future__ import annotations
 
+import re
 import statistics
+import uuid
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -23,7 +28,10 @@ from zoneinfo import ZoneInfo
 
 import psycopg
 
+from app.agents import report_insight
+from app.services.blood_pressure import recent_bp
 from app.services.insights import MISS_LABELS, patterns_for
+from app.services.onboarding import onboarding_report_fields
 
 # clinical validation pending
 # Reference values printed in the "Reference" columns. They are the international consensus figures for CGM reports as used in
@@ -50,12 +58,19 @@ HIGH_STRESS = 4                           # self-rated stress (1 to 5) counted a
 WORTH_MAX = 5                             # "Worth discussing" shows at most this many observations
 FACT_CATEGORIES = ("barrier", "routine", "food_response")   # memory fact categories shown there (the enum has no "activity")
 FACT_LABELS = {"barrier": "Barrier", "routine": "Routine", "food_response": "Food response"}
+BASELINE_DAYS = 14                        # the first days of sensor data on record are the reference
+BASELINE_TOLERANCE = {"mean": 0.25, "gmi": 0.2, "in_range": 2.0, "wear": 2.0}   # "about the same as" within these (mmol/L, %, points)
+BP_LOOKBACK_DAYS = 3650                   # blood pressure "on record": how far back the latest reading is looked for
+BP_MAX_ROWS = 30                          # the table shows at most this many readings; the count and ranges use all of them
 
 SYMPTOM_LABELS = {
     "numbness": "Numbness", "tingling": "Tingling", "blurred_vision": "Blurred vision", "fatigue": "Fatigue", "thirst": "Thirst",
     "frequent_urination": "Passing urine often", "dizziness": "Dizziness", "headache": "Headache", "shaky_sweaty": "Shaky or sweaty",
     "nausea": "Nausea", "foot_pain": "Foot pain", "slow_healing_wound": "Slow-healing wound", "other": "Other",
 }
+STRENGTH_TAIL = re.compile(r"\s+\d+(?:[.,]\d+)?\s*(?:mg|mcg|µg|ug|g|ml|iu|units?|%)$", re.I)
+CARE_LABELS = {"polyclinic": "Polyclinic", "gp": "Family doctor (GP)", "hospital": "Hospital clinic", "none": "No regular care"}
+LAB_LABELS = {"hba1c": "HbA1c", "fasting_glucose": "Fasting glucose", "fasting_insulin": "Fasting insulin"}
 
 
 @dataclass
@@ -64,7 +79,7 @@ class Inputs:
     tz: ZoneInfo
     start: date                                     # first local day of the period
     end: date                                       # last local day of the period (inclusive)
-    profile: dict[str, Any] | None = None           # display_name, birth_year, gender, has_diabetes, glucose_target_low/high
+    profile: dict[str, Any] | None = None           # display_name, birth_year, gender, has_diabetes, glucose_target_low/high, weight_kg
     cgm: list[tuple[datetime, float]] = field(default_factory=list)                 # quality_ok readings only
     symptoms: list[dict[str, Any]] = field(default_factory=list)                    # occurred_at, symptom_type, severity, note
     medicines: list[dict[str, Any]] = field(default_factory=list)                   # id, name, strength, frequency, as_needed
@@ -75,6 +90,12 @@ class Inputs:
     questions: list[str] = field(default_factory=list)                              # open doctor questions
     patterns: list[dict[str, Any]] = field(default_factory=list)                    # pattern_key, n_pairs, median_delta (status open)
     facts: list[dict[str, Any]] = field(default_factory=list)                       # statement, category, confidence (confirmed)
+    bp: list[dict[str, Any]] = field(default_factory=list)                          # blood pressure: measured_at, systolic, diastolic, pulse, all on record
+    onboarding: dict[str, Any] = field(default_factory=dict)                        # onboarding_report_fields(): the onboarding answers allowed in the report
+    sensor_first: date | None = None                                                # local day of the first sensor reading on record
+    sensor_last: date | None = None                                                 # local day of the latest sensor reading on record
+    baseline_cgm: list[tuple[datetime, float]] = field(default_factory=list)        # readings in the first BASELINE_DAYS days on record
+    simulated: bool = False                                                         # True only when the person's data is the demo dataset (source demo_dataset)
 
 
 # ----------------------------------------------------------------------------------------------- small helpers
@@ -126,6 +147,13 @@ def _label(name: str, strength: str | None) -> str:
 
 def _origin(origin: str | None) -> str:
     return {"database": "drug-label rules", "ai": "AI web search", "both": "drug-label rules and AI web search"}.get(origin or "", "medicine check")
+
+
+def _compare(period: float, base: float, tolerance: float) -> str:
+    """The words for the difference from the baseline. Never good or bad."""
+    if abs(period - base) <= tolerance:
+        return "about the same as"
+    return "higher than" if period > base else "lower than"
 
 
 # ----------------------------------------------------------------------------------------------- the sections
@@ -181,8 +209,49 @@ def _glucose(i: Inputs, low: float, high: float) -> dict[str, Any]:
             profile.append({"hour": hour, "p5": _r1(_percentile(vals, 5)), "p25": _r1(_percentile(vals, 25)), "p50": _r1(_percentile(vals, 50)),
                             "p75": _r1(_percentile(vals, 75)), "p95": _r1(_percentile(vals, 95))})
     return {"has_data": True, "sufficient": active >= REFERENCE["cgm_active_min_pct"], "bands": bands, "metrics": metrics, "profile": profile,
-            "active_pct": float(round(active)), "readings": n, "in_range_pct": _r1(share["in_range"]), "below_pct": _r1(below), "very_low_pct": _r1(share["very_low"]),
-            "cv_pct": round(cv), "low": low, "high": high, "very_low": vl, "very_high": vh}
+            "active_pct": float(round(active)), "readings": n, "in_range_pct": _r1(share["in_range"]), "below_pct": _r1(below), "above_pct": _r1(above),
+            "very_low_pct": _r1(share["very_low"]), "cv_pct": round(cv), "mean": mean, "gmi": gmi, "low": low, "high": high, "very_low": vl, "very_high": vh}
+
+
+def _baseline(i: Inputs, low: float, high: float, period: dict[str, Any]) -> dict[str, Any]:
+    """The first BASELINE_DAYS days of sensor data on record, beside the chosen period. Needs a full baseline; otherwise a plain note."""
+    empty: dict[str, Any] = {"available": False, "note": None, "period_label": None, "baseline_label": None, "rows": []}
+    if i.sensor_first is None or i.sensor_last is None:
+        return {**empty, "note": "No sensor data is on record yet, so there is no baseline to compare with."}
+    span = (i.sensor_last - i.sensor_first).days + 1
+    if span < BASELINE_DAYS:
+        return {**empty, "note": f"Fewer than {BASELINE_DAYS} days of sensor data are on record ({span} so far), so the baseline is not shown."}
+    start = i.sensor_first
+    end = start + timedelta(days=BASELINE_DAYS - 1)
+    base_inputs = Inputs(now=i.now, tz=i.tz, start=start, end=end, profile=i.profile, cgm=sorted(i.baseline_cgm))
+    base = _glucose(base_inputs, low, high)
+    if not base["has_data"]:
+        return {**empty, "note": f"No sensor readings in the first {BASELINE_DAYS} days on record, so there is no baseline."}
+    notes = []
+    if not base["sufficient"]:
+        notes.append(f"The sensor was active for {base['active_pct']:.0f}% of the baseline days, so the baseline may not be representative.")
+    shared = (min(end, i.end) - max(start, i.start)).days + 1
+    if shared > 0:
+        notes.append(f"The baseline and the period share {shared} day{'s' if shared != 1 else ''}.")
+    if not period["has_data"]:
+        notes.append("There is no sensor data in the period to compare.")
+    rows = [
+        ("Average glucose (mmol/L)", f"{base['mean']:.1f}", f"{period['mean']:.1f}" if period["has_data"] else "—",
+         _compare(period["mean"], base["mean"], BASELINE_TOLERANCE["mean"]) if period["has_data"] else "—"),
+        ("GMI, estimated (%)", f"{base['gmi']:.1f}", f"{period['gmi']:.1f}" if period["has_data"] else "—",
+         _compare(period["gmi"], base["gmi"], BASELINE_TOLERANCE["gmi"]) if period["has_data"] else "—"),
+        ("Time in range (%)", f"{base['in_range_pct']:.0f}", f"{period['in_range_pct']:.0f}" if period["has_data"] else "—",
+         _compare(period["in_range_pct"], base["in_range_pct"], BASELINE_TOLERANCE["in_range"]) if period["has_data"] else "—"),
+        ("Sensor worn (%)", f"{base['active_pct']:.0f}", f"{period['active_pct']:.0f}" if period["has_data"] else "—",
+         _compare(period["active_pct"], base["active_pct"], BASELINE_TOLERANCE["wear"]) if period["has_data"] else "—"),
+    ]
+    return {
+        "available": True,
+        "note": " ".join(notes) or None,
+        "period_label": f"{_day(i.start)} – {_day(i.end)} {i.end.year}",
+        "baseline_label": f"{_day(start)} – {_day(end)} {end.year} (first {BASELINE_DAYS} days of sensor data)",
+        "rows": [{"metric": m, "baseline": b, "period": p, "comparison": c} for m, b, p, c in rows],
+    }
 
 
 def _episodes(i: Inputs, low: float, high: float) -> list[dict[str, Any]]:
@@ -237,7 +306,7 @@ def _medicines(i: Inputs) -> tuple[list[dict[str, Any]], str | None]:
     by_med: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for d in i.doses:
         by_med[str(d["medication_id"])].append(d)
-    rows, missed_notes = [], []
+    rows = []
     for m in i.medicines:
         mid = str(m["id"])
         due = [d for d in by_med.get(mid, []) if d.get("scheduled_at") and d["scheduled_at"] <= i.now]
@@ -246,6 +315,7 @@ def _medicines(i: Inputs) -> tuple[list[dict[str, Any]], str | None]:
         missed = [d for d in due if d["status"] == "missed"]
         not_logged = sum(d["status"] == "pending" for d in due)
         counted = [d for d in due if d["status"] != "skipped"]
+        answered = taken + len(missed)                  # doses with an answer; with none, adherence is not worked out (a dash, never 0%)
         freq = int(m.get("frequency") or 0)
         regimen = "Only when needed" if m.get("as_needed") else {1: "Once a day", 2: "Twice a day", 3: "3 times a day"}.get(freq, f"{freq} times a day" if freq else "—")
         if not due and not extra and m.get("as_needed") is None and not freq:
@@ -253,15 +323,12 @@ def _medicines(i: Inputs) -> tuple[list[dict[str, Any]], str | None]:
         rows.append({
             "name": _label(str(m["name"]), m.get("strength")), "regimen": regimen, "scheduled": len(counted) if counted else None,
             "taken": taken + extra if (counted or extra) else None, "missed": len(missed) if counted else None, "not_logged": not_logged if counted else None,
-            "adherence_pct": round(100.0 * taken / len(counted)) if counted else None, "interaction": mid in flagged,
+            "adherence_pct": round(100.0 * taken / len(counted)) if answered else None, "interaction": mid in flagged,
         })
-        if missed:
-            when = ", ".join(f"{_day(d['scheduled_at'].astimezone(i.tz).date())} {d['scheduled_at'].astimezone(i.tz).strftime('%H:%M')}" for d in sorted(missed, key=lambda x: x["scheduled_at"])[:8])
-            missed_notes.append(f"{_label(str(m['name']), m.get('strength'))}: {when}{' and more' if len(missed) > 8 else ''}")
     note = None
     if rows:
-        note = ("Doses marked missed: " + "; ".join(missed_notes) + ". " if missed_notes else "") + \
-            '"Not logged" means no answer was recorded; it is counted separately from doses marked missed. Adherence is doses marked taken out of doses scheduled.'
+        # the dates of missed doses are not shown; the counts and the reasons are (Worth discussing)
+        note = '"Not logged" means no answer was recorded; it is counted separately from doses marked missed. Adherence is doses marked taken out of doses scheduled.'
     return rows, note
 
 
@@ -285,25 +352,6 @@ def _nights(i: Inputs) -> dict[str, dict[date, list[float]]]:
         if w.get("spo2_pct") is not None:
             o2[morning].append(float(w["spo2_pct"]))
     return {"hr": hr, "o2": o2}
-
-
-def _overnight(i: Inputs) -> list[dict[str, Any]]:
-    """One column per morning: fasting glucose (05:00 to 07:00, the insights definition) beside the night's heart rate and SpO2.
-    A morning with no reading is None, never zero."""
-    fasting: dict[date, list[float]] = defaultdict(list)
-    for t, v in i.cgm:
-        local = t.astimezone(i.tz)
-        if local.hour in (5, 6):
-            fasting[local.date()].append(v)
-    nights = _nights(i)
-    out = []
-    for m in _mornings(i):
-        f = fasting.get(m)
-        hr = nights["hr"].get(m)
-        o2 = nights["o2"].get(m)
-        out.append({"day": _day(m), "fasting": None if not f else _r1(statistics.fmean(f)),
-                    "heart_rate": None if not hr else round(statistics.fmean(hr)), "spo2": None if not o2 else round(statistics.fmean(o2))})
-    return out
 
 
 def _worth_discussing(i: Inputs, days: int) -> list[dict[str, Any]]:
@@ -355,6 +403,86 @@ def _activity(i: Inputs) -> list[dict[str, Any]]:
     return cells
 
 
+def _blood_pressure(i: Inputs) -> dict[str, Any]:
+    """Readings in the period, newest first. Only the count, the ranges and the readings: no label such as high, low or normal."""
+    rows = sorted((r for r in i.bp if i.start <= r["measured_at"].astimezone(i.tz).date() <= i.end), key=lambda r: r["measured_at"], reverse=True)
+    if not rows:
+        return {"count": 0, "systolic_range": None, "diastolic_range": None, "pulse_range": None, "readings": [], "readings_total": 0}
+    sys_v = [int(r["systolic"]) for r in rows]
+    dia_v = [int(r["diastolic"]) for r in rows]
+    pulses = [int(r["pulse"]) for r in rows if r.get("pulse") is not None]
+    readings = []
+    for r in rows[:BP_MAX_ROWS]:
+        local = r["measured_at"].astimezone(i.tz)
+        readings.append({"when": f"{_day(local.date())} {local.strftime('%H:%M')}", "systolic": int(r["systolic"]), "diastolic": int(r["diastolic"]),
+                         "pulse": None if r.get("pulse") is None else int(r["pulse"])})
+    return {
+        "count": len(rows), "systolic_range": _span(min(sys_v), max(sys_v), "d"), "diastolic_range": _span(min(dia_v), max(dia_v), "d"),
+        "pulse_range": _span(min(pulses), max(pulses), "d") if pulses else None, "readings": readings, "readings_total": len(rows),
+    }
+
+
+def _iso_day(text: str | None) -> str | None:
+    return _day(date.fromisoformat(text)) + f" {date.fromisoformat(text).year}" if text else None
+
+
+def _summary(i: Inputs) -> list[dict[str, str]]:
+    """The onboarding answers in the patient summary. A row appears only when there is an answer: never a dash, never zero."""
+    ob = i.onboarding or {}
+    rows: list[dict[str, str]] = []
+    waist = ob.get("waist")
+    if waist and waist.get("cm") is not None:
+        rows.append({"label": "Waist", "value": f"{float(waist['cm']):g} cm, measured {_iso_day(waist.get('measured_on'))}"})
+    if ob.get("diagnosed_year"):
+        year = int(ob["diagnosed_year"])
+        years = i.now.astimezone(i.tz).year - year
+        ago = f" ({years} years ago)" if years >= 2 else " (1 year ago)" if years == 1 else " (this year)" if years == 0 else ""
+        rows.append({"label": "Year diagnosed", "value": f"{year}{ago}"})
+    if ob.get("care_setting") in CARE_LABELS:
+        rows.append({"label": "Who looks after the diabetes", "value": CARE_LABELS[str(ob["care_setting"])]})
+    names = [str(c["name"]) for c in ob.get("conditions") or [] if c.get("name")]
+    if names:
+        rows.append({"label": "Other conditions", "value": ", ".join(names)})
+    allergies = [f"{a['substance']} ({a['reaction']})" if a.get("reaction") else str(a["substance"]) for a in ob.get("allergies") or [] if a.get("substance")]
+    if allergies:
+        rows.append({"label": "Allergies", "value": "; ".join(allergies)})
+    for lab in ob.get("labs") or []:
+        unit = str(lab.get("unit") or "")
+        value = f"{float(lab['value']):g}{unit if unit == '%' else ' ' + unit if unit else ''}"
+        rows.append({"label": LAB_LABELS.get(str(lab["test"]), str(lab["test"])), "value": f"{value}, taken {_iso_day(lab.get('taken_on'))}"})
+    devices = [str(d.get("label") or d.get("kind")) for d in ob.get("devices") or [] if d.get("label") or d.get("kind")]
+    if devices:
+        rows.append({"label": "Devices", "value": ", ".join(devices)})
+    return rows
+
+
+def _symptom_latest(i: Inputs, symptoms: list[dict[str, Any]]) -> dict[str, Any]:
+    """The symptoms in the period, each beside the latest HbA1c, blood pressure, weight and waist on record. A fixed template."""
+    ob = i.onboarding or {}
+    latest: list[dict[str, str]] = []
+    hba1c = next((lab for lab in ob.get("labs") or [] if lab.get("test") == "hba1c"), None)
+    if hba1c:
+        unit = str(hba1c.get("unit") or "%")
+        latest.append({"label": "HbA1c", "value": f"{float(hba1c['value']):g}{unit if unit == '%' else ' ' + unit}", "on": _iso_day(hba1c.get("taken_on")) or ""})
+    if i.bp:
+        last = max(i.bp, key=lambda r: r["measured_at"])
+        local = last["measured_at"].astimezone(i.tz).date()
+        latest.append({"label": "Blood pressure", "value": f"{int(last['systolic'])}/{int(last['diastolic'])} mmHg", "on": f"{_day(local)} {local.year}"})
+    if i.profile and i.profile.get("weight_kg") is not None:
+        latest.append({"label": "Weight", "value": f"{float(i.profile['weight_kg']):g} kg", "on": ""})
+    waist = ob.get("waist")
+    if waist and waist.get("cm") is not None:
+        latest.append({"label": "Waist", "value": f"{float(waist['cm']):g} cm", "on": _iso_day(waist.get("measured_on")) or ""})
+
+    def phrase(item: dict[str, str]) -> str:
+        return f"{item['label']} {item['value']}" + (f" ({item['on']})" if item["on"] else "")
+
+    together = "; ".join(phrase(x) for x in latest) if latest else "no HbA1c, blood pressure, weight or waist on record yet"
+    rows = [{"symptom": s["symptom"], "logged": int(s["logged"]),
+             "text": f"{s['symptom']} was logged {s['logged']} time{'s' if s['logged'] != 1 else ''}. Logged together with: {together}."} for s in symptoms]
+    return {"latest": latest, "rows": rows, "note": "Latest means the most recent on record, which may be outside the period. Logged together with means recorded in your data at the same time; it does not show a cause."}
+
+
 def _alerts(i: Inputs, glucose: dict[str, Any], episodes: list[dict[str, Any]], symptoms: list[dict[str, Any]], meds: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     vl = REFERENCE["very_low_mmol"]
@@ -395,6 +523,7 @@ def _alerts(i: Inputs, glucose: dict[str, Any], episodes: list[dict[str, Any]], 
 
 
 def _findings(glucose: dict[str, Any], episodes: list[dict[str, Any]], meds: list[dict[str, Any]], n_interactions: int) -> list[str]:
+    """The code-written key findings. They are shown when the AI wording is not used (report_insight.py)."""
     out: list[str] = []
     if glucose["has_data"]:
         out.append(f"Time in range {glucose['in_range_pct']:.0f}% (reference >{REFERENCE['in_range_min_pct']:g}%); time below range {glucose['below_pct']:.0f}% "
@@ -422,6 +551,45 @@ def _findings(glucose: dict[str, Any], episodes: list[dict[str, Any]], meds: lis
     return out
 
 
+def _fact_lines(i: Inputs, glucose: dict[str, Any], episodes: list[dict[str, Any]], symptoms: list[dict[str, Any]], meds: list[dict[str, Any]],
+                alerts: list[dict[str, Any]], activity: list[dict[str, Any]]) -> list[str]:
+    """The computed facts the AI may word (report_insight.py). Only numbers and counts the report already shows, never a BP reading."""
+    days = (i.end - i.start).days + 1
+    cgm_days = len({t.astimezone(i.tz).date() for t, _ in i.cgm})
+    out = [f"Days in the period: {days}", f"Days with sensor data in the period: {cgm_days} of {days}" if cgm_days else "No days with sensor data in this period"]
+    if glucose["has_data"]:
+        vl, low, high = glucose["very_low"], glucose["low"], glucose["high"]
+        out.append(f"Time in range: {glucose['in_range_pct']:.0f}% of readings, target range {low:g} to {high:.1f} mmol/L")
+        out.append(f"Time below range: {glucose['below_pct']:.0f}%, including {glucose['very_low_pct']:.1f}% below {vl:.1f} mmol/L (reference below {REFERENCE['low_max_pct']:g}%)")
+        out.append(f"Time above range: {glucose['above_pct']:.0f}% (reference below {REFERENCE['high_max_pct']:g}%)")
+        out.append(f"Average glucose: {glucose['mean']:.1f} mmol/L; variability (CV) {glucose['cv_pct']}% (reference {REFERENCE['cv_max_pct']:g}% or less)")
+        out.append(f"Sensor active for {glucose['active_pct']:.0f}% of the period (reference {REFERENCE['cgm_active_min_pct']:g}% or more)")
+    lows = [e for e in episodes if e["zone"] in ("low", "very_low")]
+    if episodes:
+        out.append(f"Symptom entries logged: {len(episodes)}")
+    if lows:
+        clock = sorted(e["at"].strftime("%H:%M") for e in lows)
+        out.append(f"Symptom entries with glucose below {glucose.get('low', 3.9):g} mmol/L: {len(lows)}, between {clock[0]} and {clock[-1]}")
+    for s in symptoms[:4]:
+        out.append(f"{s['symptom']}: logged {s['logged']}, with low glucose {s['low']}, in range {s['in_range']}, no reading nearby {s['no_reading']}")
+    for m in [m for m in meds if m["adherence_pct"] is not None][:4]:
+        # the name only: the strength is a dose, and the model must not be given one (report_insight.py)
+        name = STRENGTH_TAIL.sub("", m["name"]).strip()
+        out.append(f"{name}: {m['taken']} of {m['scheduled']} scheduled times marked taken ({m['adherence_pct']}%)")
+    missed = sum(m["missed"] or 0 for m in meds)
+    if missed:
+        out.append(f"Scheduled times marked missed in total: {missed}")
+    n_urgent = sum(a["priority"] == "urgent" for a in alerts)
+    if n_urgent:
+        out.append(f"Urgent alerts: {n_urgent}")
+    if i.alerts:
+        out.append(f"Possible medicine interactions flagged: {len(i.alerts)}")
+    for c in activity:
+        if c["value"] != "No data" and c["label"] in ("Steps", "Heart rate while asleep", "SpO2 while asleep"):
+            out.append(f"{c['label']}: {c['value']} on average")
+    return out
+
+
 def build(i: Inputs) -> dict[str, Any]:
     p = i.profile or {}
     low = float(p.get("glucose_target_low") or 3.9)
@@ -434,28 +602,37 @@ def build(i: Inputs) -> dict[str, Any]:
     symptoms = _symptom_table(episodes)
     meds, med_note = _medicines(i)
     alerts = _alerts(i, glucose, episodes, symptoms, meds)
+    activity = _activity(i)
     days = (i.end - i.start).days + 1
     sources = [s for s, has in (("CGM", bool(i.cgm)), ("wrist wearable", bool(i.watch)), ("patient logs", bool(i.symptoms or i.doses or i.stress))) if has]
     birth = p.get("birth_year")
     gender = {"female": "Female", "male": "Male", "other": "Other"}.get(str(p.get("gender") or ""), "")
     age = f"{i.now.astimezone(i.tz).year - int(birth)}" if birth else ""
     diabetes = {"yes": "Diabetes (self-reported)", "not_sure": "Diabetes: not sure (self-reported)", "no": "No diabetes (self-reported)"}.get(str(p.get("has_diabetes") or ""), "Not recorded")
+    findings = _findings(glucose, episodes, meds, len(i.alerts))
+    period = {"start": i.start.isoformat(), "end": i.end.isoformat(), "days": days, "label": f"{_day(i.start)} – {_day(i.end)} {i.end.year} ({days} days)"}
     return {
         "generated_on": _day(i.now.astimezone(i.tz).date()) + f" {i.now.astimezone(i.tz).year}",
-        "period": {"start": i.start.isoformat(), "end": i.end.isoformat(), "days": days, "label": f"{_day(i.start)} – {_day(i.end)} {i.end.year} ({days} days)"},
+        "simulated": i.simulated,
+        "period": period,
         "patient": {"name": str(p.get("display_name") or "Not recorded"), "sex_age": ", ".join(x for x in (gender, age) if x) or "Not recorded", "diagnosis": diabetes},
+        "summary": _summary(i),
         "cgm_wear": f"{glucose['active_pct']:.0f}% of period" if glucose["has_data"] else "No sensor data",
         "sources": " · ".join(sources) if sources else "No data in this period",
-        "key_findings": _findings(glucose, episodes, meds, len(i.alerts)),
+        "key_findings": findings,
+        "key_findings_source": "rules",
+        "_facts": _fact_lines(i, glucose, episodes, symptoms, meds, alerts, activity),
         "alerts": alerts,
         "glucose": {k: glucose.get(k) for k in ("has_data", "sufficient", "bands", "metrics", "profile", "low", "high", "very_low", "very_high")},
+        "baseline": _baseline(i, low, high, glucose),
         "symptoms": symptoms,
+        "symptom_latest": _symptom_latest(i, symptoms),
         "episodes": [{k: v for k, v in e.items() if k not in ("at", "type")} for e in episodes[-MAX_EPISODES:]],
         "episodes_total": len(episodes),
         "medicines": meds,
         "medicines_note": med_note,
-        "activity": _activity(i),
-        "overnight": _overnight(i),
+        "activity": activity,
+        "blood_pressure": _blood_pressure(i),
         "worth_discussing": _worth_discussing(i, days),
         "questions": i.questions[:12],
     }
@@ -465,7 +642,7 @@ def build(i: Inputs) -> dict[str, Any]:
 def load(conn: psycopg.Connection[Any], user_id: str, days: int, now: datetime) -> Inputs:
     """The rows for one person and one period. The period ends on the day of their latest sensor reading (today if there is none),
     so a loaded demo patient whose data stops earlier still gets a full report."""
-    prof = conn.execute("select display_name, birth_year, gender, has_diabetes, glucose_target_low, glucose_target_high, timezone from user_profile where user_id = %s",
+    prof = conn.execute("select display_name, birth_year, gender, has_diabetes, glucose_target_low, glucose_target_high, timezone, weight_kg from user_profile where user_id = %s",
                         (user_id,)).fetchone()
     profile = dict(prof) if prof else None
     tz = ZoneInfo(str(profile["timezone"])) if profile and profile.get("timezone") else ZoneInfo("Asia/Singapore")
@@ -490,6 +667,11 @@ def load(conn: psycopg.Connection[Any], user_id: str, days: int, now: datetime) 
     watch = [dict(r) for r in conn.execute(
         "select recorded_at, heart_rate_bpm, spo2_pct, steps, sleep_minutes from watch_readings where user_id = %s and recorded_at >= %s and recorded_at < %s",
         (user_id, lo - timedelta(days=1), hi))]
+    # simulated: the person's sensor or watch rows come from the demo dataset (the source column, enum entry_source)
+    sim = conn.execute(
+        "select exists (select 1 from cgm_readings where user_id = %s and source = 'demo_dataset') "
+        "or exists (select 1 from watch_readings where user_id = %s and source = 'demo_dataset') as simulated", (user_id, user_id)).fetchone()
+    simulated = bool(sim and sim["simulated"])
     stress = [(r["recorded_at"], int(r["stress_self"])) for r in conn.execute(
         "select recorded_at, stress_self from wellbeing_logs where user_id = %s and deleted_at is null and stress_self is not null and recorded_at >= %s and recorded_at < %s", span)]
     alerts = [{"med_a_id": r["med_a_id"], "med_b_id": r["med_b_id"], "med_a": _label(r["a_name"], r["a_strength"]), "med_b": _label(r["b_name"], r["b_strength"]),
@@ -503,5 +685,48 @@ def load(conn: psycopg.Connection[Any], user_id: str, days: int, now: datetime) 
     facts = [dict(r) for r in conn.execute(
         "select statement, category::text as category, confidence from memory_facts where user_id = %s and status = 'active' "
         "and category::text = any(%s) order by confidence desc nulls last, updated_at desc", (user_id, list(FACT_CATEGORIES)))]
+    bp = recent_bp(conn, uuid.UUID(str(user_id)), BP_LOOKBACK_DAYS)
+    onboarding = onboarding_report_fields(conn, user_id)
+    # the whole sensor record, for the baseline: its first and last day, and the readings of the first BASELINE_DAYS days
+    record = conn.execute("select min(recorded_at) as first, max(recorded_at) as last from cgm_readings where user_id = %s and quality_ok and recorded_at <= %s",
+                          (user_id, now)).fetchone()
+    sensor_first = sensor_last = None
+    baseline_cgm: list[tuple[datetime, float]] = []
+    if record and record["first"] and record["last"]:
+        sensor_first, sensor_last = record["first"].astimezone(tz).date(), record["last"].astimezone(tz).date()
+        if (sensor_last - sensor_first).days + 1 >= BASELINE_DAYS:
+            b_lo = datetime.combine(sensor_first, time.min, tz)
+            b_hi = datetime.combine(sensor_first + timedelta(days=BASELINE_DAYS), time.min, tz)
+            baseline_cgm = [(r["recorded_at"], float(r["glucose_mmol"])) for r in conn.execute(
+                "select recorded_at, glucose_mmol from cgm_readings where user_id = %s and quality_ok and recorded_at >= %s and recorded_at < %s order by recorded_at",
+                (user_id, b_lo, b_hi))]
     return Inputs(now=now, tz=tz, start=start, end=end, profile=profile, cgm=cgm, symptoms=symptoms, medicines=medicines, doses=doses, watch=watch,
-                  stress=stress, alerts=alerts, questions=questions, patterns=patterns, facts=facts)
+                  stress=stress, alerts=alerts, questions=questions, patterns=patterns, facts=facts, bp=bp, onboarding=onboarding,
+                  sensor_first=sensor_first, sensor_last=sensor_last, baseline_cgm=baseline_cgm, simulated=simulated)
+
+
+def read(conn: psycopg.Connection[Any], user_id: str, days: int, now: datetime) -> dict[str, Any]:
+    """The report from the database, with the code-written key findings. Reads only. Call `word_findings` after the transaction
+    closes, so no database connection is held while the model answers."""
+    report = build(load(conn, user_id, days, now))
+    report["_owner"] = str(user_id)          # internal: used by word_findings for the cache, removed there
+    report["_days"] = days
+    return report
+
+
+def word_findings(report: dict[str, Any]) -> dict[str, Any]:
+    """Replaces the key findings with the AI wording when it passes the checks in report_insight.py; otherwise keeps the
+    code-written ones. Changes `report` in place and returns it. Uses no database connection. Takes the output of `read`."""
+    facts = report.pop("_facts", [])
+    owner = str(report.pop("_owner", ""))
+    days = int(report.pop("_days", 0) or 0)
+    period = report["period"]
+    lines, source = report_insight.key_findings(facts, report["key_findings"], user_key=owner, days=days, start=period["start"], end=period["end"])
+    report["key_findings"] = lines
+    report["key_findings_source"] = source
+    return report
+
+
+def assemble(conn: psycopg.Connection[Any], user_id: str, days: int, now: datetime) -> dict[str, Any]:
+    """The whole report in one call (read, then word). Use `read` and `word_findings` when a connection is open."""
+    return word_findings(read(conn, user_id, days, now))

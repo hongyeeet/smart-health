@@ -45,19 +45,20 @@ export function Button({
   children,
   className,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: 'lg' | 'md'; icon?: IconType }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: 'xl' | 'lg' | 'md'; icon?: IconType }) {
   return (
     <button
       type="button"
       {...rest}
       className={cn(
-        'press flex w-full items-center justify-center gap-2 rounded-[14px] border-2 border-transparent text-center font-bold',
-        size === 'lg' ? 'min-h-14 px-4 py-3 text-body' : 'min-h-12 px-3.5 py-2 text-sub',
-        variant === 'primary' && 'bg-brand text-on-brand hover:bg-brand-press',
+        'press flex w-full items-center justify-center gap-2 rounded-[14px] border-2 text-center font-bold',
+        size === 'xl' ? 'min-h-16 px-4 py-3 text-btn' : size === 'lg' ? 'min-h-14 px-4 py-3 text-btn' : 'min-h-12 px-3.5 py-2 text-btn-sm',
+        variant === 'primary' && 'border-transparent bg-brand text-on-brand hover:bg-brand-press',
         variant === 'secondary' && 'border-brand bg-card text-brand hover:bg-brand-soft',
-        variant === 'ghost' && 'text-brand hover:bg-brand-soft',
-        variant === 'danger' && 'bg-danger text-card',
-        'disabled:opacity-45 disabled:pointer-events-none',
+        variant === 'ghost' && 'border-transparent text-brand hover:bg-brand-soft',
+        variant === 'danger' && 'border-transparent bg-danger text-card',
+        // a disabled button keeps a readable pair in both themes (ink2 on well is about 6.9:1 light, 8.2:1 dark); opacity would wash it out
+        'disabled:pointer-events-none disabled:border-line disabled:bg-well disabled:text-ink2 disabled:hover:bg-well',
         className,
       )}
     >
@@ -218,6 +219,7 @@ export function Field({
   type = 'text',
   suffix,
   error,
+  large,
 }: {
   label: string
   value: string
@@ -231,10 +233,13 @@ export function Field({
   suffix?: string
   /** shown instead of the hint, with the field outlined, when the value cannot be used */
   error?: string
+  /** a big number-entry field (for example a blood pressure reading) */
+  large?: boolean
 }) {
   const id = useId()
   const cls = cn(
     'min-h-12 w-full rounded-field border-[1.5px] bg-card px-3.5 py-3 text-body text-ink placeholder:text-ink3 focus:border-brand focus:outline-none',
+    large && 'min-h-16 text-xl font-bold tabular-nums',
     error ? 'border-danger' : 'border-line',
     suffix && 'pr-14',
   )

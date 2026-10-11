@@ -46,7 +46,9 @@ export function DataAccount() {
     <Screen>
       <Header title={t('me.data.title', 'Data and account')} back backTo="K1" />
 
-      <Card as="section" className="flex flex-col gap-3">
+      {/* the two cards side by side, equal height, from a laptop up */}
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-6 [&>*]:min-w-0">
+      <Card as="section" className="flex h-full flex-col gap-3">
         <SectionTitle>{t('me.data.download', 'Download my data')}</SectionTitle>
         <p className="text-body text-ink2">
           {t(
@@ -59,12 +61,12 @@ export function DataAccount() {
             {t('me.data.downloadFailed', 'The file could not be downloaded.')} {downloadError}
           </Alert>
         )}
-        <Button variant="secondary" icon={Download} disabled={downloading} onClick={download}>
+        <Button variant="secondary" icon={Download} disabled={downloading} onClick={download} className="mt-auto">
           {downloading ? t('me.data.preparing', 'Preparing your file') : t('me.data.downloadButton', 'Download my data')}
         </Button>
       </Card>
 
-      <Card as="section" className="flex flex-col gap-3 border-danger/40">
+      <Card as="section" className="flex h-full flex-col gap-3 border-danger/40">
         <SectionTitle>{t('me.data.deleteTitle', 'Delete my account and data')}</SectionTitle>
 
         {requested ? (
@@ -109,6 +111,7 @@ export function DataAccount() {
           </div>
         )}
       </Card>
+      </div>
 
       <p className="text-sub text-ink3">{t('me.data.log', 'Requests and changes to your settings are kept in an activity log that cannot be changed.')}</p>
     </Screen>

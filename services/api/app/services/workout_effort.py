@@ -11,6 +11,9 @@ intensity is reported.
 """
 from __future__ import annotations
 
+import itertools
+import re
+import statistics
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Iterable, Optional, Sequence
@@ -18,7 +21,15 @@ from typing import Iterable, Optional, Sequence
 # clinical validation pending: percent of maximum heart rate. Placeholders, never shown as advice.
 BAND_EDGES = (("rest_or_very_light", 0.0), ("light", 57.0), ("moderate", 64.0), ("vigorous", 77.0), ("near_maximal", 96.0))
 MIN_COVERAGE = 0.70  # share of the expected samples that must exist, otherwise "insufficient" (schema consistency rule 12)
-EXPECTED_INTERVAL_S = 60  # heart rate is downsampled to 1 minute on import (schema consistency rule 11)
+EXPECTED_INTERVAL_S = 60  # fallback sampling interval when the window has too few samples to measure one
+MIN_INTERVAL_S = 60  # the measured interval is kept between these two bounds
+MAX_INTERVAL_S = 600
+
+# PLACEHOLDER list pending clinical review (questions-for-damien.md, G1). Generic names of beta-blockers only.
+# drug_reference.atc_code is empty for every row today, so the medicine name is the only signal. Brand names are not listed.
+BETA_BLOCKER_NAMES = ("atenolol", "bisoprolol", "metoprolol", "propranolol", "carvedilol", "nebivolol", "labetalol", "sotalol")
+_BETA_BLOCKER_RE = re.compile(r"\b(?:" + "|".join(BETA_BLOCKER_NAMES) + r")\b", re.IGNORECASE)
+BETA_BLOCKER_NOTE = "Your medicine can change how your heart rate responds to effort, so heart rate is not a reliable sign of how hard you worked, and no effort label is shown."
 
 
 def max_heart_rate(age: float) -> float:
@@ -63,8 +74,26 @@ class Effort:
     note: Optional[str] = None
 
 
+def takes_beta_blocker(medicine_names: Iterable[str]) -> bool:
+    """True when any medicine name contains a beta-blocker generic name as a whole word (any case)."""
+    return any(_BETA_BLOCKER_RE.search(name or "") for name in medicine_names)
+
+
 def _in_window(samples: Iterable[Sample], start: datetime, end: datetime) -> list[Sample]:
     return [s for s in samples if start <= s.at <= end]
+
+
+def sampling_interval_s(samples: Sequence[Sample]) -> float:
+    """The person's own sampling interval: the median gap between consecutive samples, kept between 60 and 600 seconds.
+
+    Watch heart rate is stored in 5-minute buckets, so a 1-minute assumption would expect five times too many samples.
+    With fewer than 3 samples there is no gap to measure, so the old 1-minute constant is used.
+    """
+    if len(samples) < 3:
+        return float(EXPECTED_INTERVAL_S)
+    ats = sorted(s.at for s in samples)
+    gaps = [(b - a).total_seconds() for a, b in itertools.pairwise(ats)]
+    return min(float(MAX_INTERVAL_S), max(float(MIN_INTERVAL_S), statistics.median(gaps)))
 
 
 def effort_between(
@@ -78,24 +107,26 @@ def effort_between(
     """Average and peak heart rate, minutes in each band, and an intensity label for one window.
 
     Returns `quality='insufficient'` and no intensity when there are too few samples. Unknown stays unknown.
+    The expected sample count comes from the interval the samples actually have (see `sampling_interval_s`).
     """
     if end <= start:
         return Effort(None, None, None, quality="insufficient", note="The window has no length.")
     window = _in_window(samples, start, end)
-    expected = max((end - start).total_seconds() / EXPECTED_INTERVAL_S, 1.0)
     if not window:
         return Effort(None, None, None, quality="insufficient", note="No heart rate data for this time.")
+    interval = sampling_interval_s(window)
+    expected = max((end - start).total_seconds() / interval, 1.0)
     coverage = len(window) / expected
     avg = sum(s.bpm for s in window) / len(window)
     peak = max(s.bpm for s in window)
     minutes: dict[str, float] = {}
     for s in window:
         band = band_for_percent(percent_of_max(s.bpm, age))
-        minutes[band] = minutes.get(band, 0.0) + EXPECTED_INTERVAL_S / 60.0
+        minutes[band] = minutes.get(band, 0.0) + interval / 60.0
     if coverage < MIN_COVERAGE:
         return Effort(round(avg, 1), peak, None, minutes, "insufficient", "Heart rate was missing for too much of this time to judge effort.")
     if beta_blocker:
-        return Effort(round(avg, 1), peak, None, minutes, "insufficient", "Heart rate is not a reliable effort signal on this medicine.")
+        return Effort(round(avg, 1), peak, None, minutes, "insufficient", BETA_BLOCKER_NOTE)
     dominant_pct = percent_of_max(avg, age)
     return Effort(round(avg, 1), peak, intensity_for_band(band_for_percent(dominant_pct)), minutes, "ok")
 

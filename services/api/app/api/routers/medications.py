@@ -23,6 +23,7 @@ from app.core.errors import InvalidTransition, NotFound
 from app.db import logstore
 from app.schemas.medicine_scan import ConfirmedMedication, DoseTime
 from app.schemas.medicines import MedicationOut, NewMedicationIn, Refill
+from app.services import medication_stock
 from app.services.medication_remove import remove_medication
 from app.services.scan_store import confirm_medication
 
@@ -54,6 +55,17 @@ def refill_for(total: int | None, per_day: Decimal, start: date, source: str, to
     return Refill(days_left=floor(left / per_day), units_left=floor(left))
 
 
+def refill_with_stock(stock: Decimal | None, per_day: Decimal, estimate: Refill | None) -> tuple[Refill | None, str | None]:
+    """The "may run out in about N days" figure. From the real stock when the count is set ('stock'); otherwise the estimate from the
+    pack date ('estimate'), as before. A count with no doses per day to divide by gives no figure."""
+    if stock is not None:
+        days = medication_stock.days_left_of(stock, per_day)
+        if days is None:
+            return None, None
+        return Refill(days_left=days, units_left=floor(stock)), "stock"
+    return (estimate, "estimate") if estimate is not None else (None, None)
+
+
 def badge_for(kind: str) -> Literal["not_checked"] | None:
     """Supplements and herbal products are never checked for interactions, so they say so, never 'safe' (rules.md 1, rule 7).
     Nothing is matched to a medicine list yet: understanding the medicine, and any interaction check, comes later (F5)."""
@@ -70,8 +82,10 @@ def to_confirmed(body: NewMedicationIn) -> ConfirmedMedication:
 
 def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> list[MedicationOut]:
     """The person's current medicines, oldest first, as the Meds page shows them."""
+    # the stock column is read only once migration 0032 is applied; until then it is NULL and the estimate is used
+    stock_col = "stock_count" if medication_stock.stock_ready(conn) else "null::numeric"
     meds = conn.execute(
-        "select id, name, strength, kind::text, total_quantity, start_date, source::text, pack_started_on, created_at, as_needed "
+        f"select id, name, strength, kind::text, total_quantity, start_date, source::text, pack_started_on, created_at, as_needed, {stock_col} "
         "from medications where user_id = %s and deleted_at is null order by created_at, name", (user_id,)).fetchall()
     doses: dict[Any, list[tuple[time | None, Decimal, str]]] = defaultdict(list)
     for mid, t, q, rel in conn.execute(
@@ -79,14 +93,16 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
             "where user_id = %s and deleted_at is null order by dose_time", (user_id,)):
         doses[mid].append((t, q, rel))
     out = []
-    for mid, name, strength, kind, total, start, source, pack_start, created, flagged in meds:
+    for mid, name, strength, kind, total, start, source, pack_start, created, flagged, stock in meds:
         ds = doses.get(mid, [])
         as_needed = bool(flagged) or any(t is None for t, _, _ in ds)      # the column is the answer; an empty dose time still counts for older rows
         per_day = Decimal(0) if as_needed else sum((q for _, q, _ in ds), Decimal(0))    # how much is used when needed is not known
+        estimate = refill_for(total, per_day, start or today, source, today, pack_start, created.astimezone(logstore.TZ).date())
+        refill, refill_source = (None, None) if as_needed else refill_with_stock(stock, per_day, estimate)
         out.append(MedicationOut(
             id=str(mid), name=name, strength=strength or "Strength not entered", kind=kind, as_needed=as_needed,
             times=[clock12(t) for t, _, _ in ds if t is not None], with_food=any(rel != "na" for _, _, rel in ds),
-            badge=badge_for(kind), refill=refill_for(total, per_day, start or today, source, today, pack_start, created.astimezone(logstore.TZ).date()),
+            badge=badge_for(kind), refill=refill, refill_source=refill_source,
         ))
     return out
 
@@ -94,11 +110,12 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
 def medication_out(conn: psycopg.Connection, med_id: str, entry: ConfirmedMedication, today: date, source: str = "manual") -> MedicationOut:
     """A saved medicine as the app shows it."""
     per_day = Decimal(0) if entry.as_needed else sum((d.quantity for d in entry.doses), Decimal(0))
+    estimate = refill_for(entry.total_quantity, per_day, entry.start_date or today, source, today, None, today)
+    refill, refill_source = (None, None) if entry.as_needed else refill_with_stock(medication_stock.count_of(conn, med_id), per_day, estimate)
     return MedicationOut(
         id=med_id, name=entry.name, strength=entry.strength or "Strength not entered", kind=entry.kind, as_needed=entry.as_needed,
         times=[clock12(d.dose_time) for d in entry.doses if d.dose_time is not None], with_food=any(d.meal_relation != "na" for d in entry.doses),
-        badge=badge_for(entry.kind),
-        refill=refill_for(entry.total_quantity, per_day, entry.start_date or today, source, today, None, today),
+        badge=badge_for(entry.kind), refill=refill, refill_source=refill_source,
     )
 
 

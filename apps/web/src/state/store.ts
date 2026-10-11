@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { Locale, LogResult } from '@/data/types'
 import type { ThemeName } from '@/theme/palettes'
 
-export type SheetId = 'C7' | 'D2' | 'E7' | 'H7' | 'L2'
+export type SheetId = 'C7' | 'D2' | 'E7' | 'H7' | 'H9' | 'L2'
 
 export interface SheetState {
   id: SheetId
@@ -17,6 +17,9 @@ interface UiState {
   /** who the app acts as: sent to the API as the X-User header */
   userKey: string
   setUserKey: (k: string) => void
+  /** people started on this device with "Start as new person", so the switcher can list them again */
+  people: { key: string; label: string }[]
+  addPerson: (p: { key: string; label: string }) => void
   setTheme: (t: ThemeName) => void
   setTextScale: (s: 1 | 2) => void
   setLocale: (l: Locale) => void
@@ -48,6 +51,8 @@ export const useUi = create<UiState>()(
       locale: 'en',
       userKey: 'demo',
       setUserKey: (userKey) => set({ userKey }),
+      people: [],
+      addPerson: (p) => set((s) => ({ people: [...s.people.filter((x) => x.key !== p.key), p] })),
       setTheme: (theme) => set({ theme }),
       setTextScale: (textScale) => set({ textScale }),
       setLocale: (locale) => set({ locale }),
@@ -71,7 +76,7 @@ export const useUi = create<UiState>()(
     }),
     {
       name: 'smart-health-ui',
-      partialize: (s) => ({ theme: s.theme, textScale: s.textScale, locale: s.locale, userKey: s.userKey }),
+      partialize: (s) => ({ theme: s.theme, textScale: s.textScale, locale: s.locale, userKey: s.userKey, people: s.people }),
     },
   ),
 )

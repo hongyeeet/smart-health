@@ -111,7 +111,8 @@ def test_doses_count_scheduled_taken_missed_and_not_logged_and_future_doses_are_
     assert (met["name"], met["regimen"], met["scheduled"], met["taken"], met["missed"], met["not_logged"], met["adherence_pct"]) == \
         ("Metformin 500 mg", "Twice a day", 4, 2, 1, 1, 50)
     assert (para["regimen"], para["scheduled"], para["taken"], para["adherence_pct"]) == ("Only when needed", None, 1, None)
-    assert "Metformin 500 mg: 1 Oct 20:00" in r["medicines_note"]
+    assert "1 Oct" not in (r["medicines_note"] or "") and "Missed" not in (r["medicines_note"] or "")   # dates of missed doses are not shown
+    assert met["missed"] == 1                                                                             # the count is
     assert any(a["title"] == "Missed doses: Metformin 500 mg" for a in r["alerts"])
 
 
@@ -182,21 +183,58 @@ def test_worth_discussing_is_ordered_capped_and_only_uses_the_rules_in_the_brief
     assert not any(w in text for w in BANNED)
 
 
-def test_no_data_gives_an_empty_worth_list_and_empty_overnight_columns_not_zeros() -> None:
+def test_no_data_gives_an_empty_worth_list() -> None:
     r = dr.build(inputs())
     assert r["worth_discussing"] == []
-    assert [(n["day"], n["fasting"], n["heart_rate"], n["spo2"]) for n in r["overnight"]] == [("1 Oct", None, None, None), ("2 Oct", None, None, None)]
 
 
-def test_overnight_pairs_each_morning_fasting_glucose_with_the_night_that_ends_on_it() -> None:
-    watch = [{"recorded_at": at(1, 0), "heart_rate_bpm": 90, "spo2_pct": 97.0, "steps": 0, "sleep_minutes": 5},       # night of 30 Sep
-             {"recorded_at": at(1, 23), "heart_rate_bpm": 58, "spo2_pct": 96.0, "steps": 0, "sleep_minutes": 5},      # night ending 2 Oct
-             {"recorded_at": at(2, 2), "heart_rate_bpm": 62, "spo2_pct": 94.0, "steps": 0, "sleep_minutes": 5},       # night ending 2 Oct
-             {"recorded_at": at(2, 14), "heart_rate_bpm": 75, "spo2_pct": 98.0, "steps": 0, "sleep_minutes": 0}]      # awake: not a night
-    r = dr.build(inputs(cgm=cgm([6.2], start=at(2, 5, 30)) + cgm([6.6], start=at(2, 6)), watch=watch))
-    assert r["overnight"] == [{"day": "1 Oct", "fasting": None, "heart_rate": 90, "spo2": 97},
-                              {"day": "2 Oct", "fasting": 6.4, "heart_rate": 60, "spo2": 95}]
-    out = DoctorReport.model_validate(r)
-    dumped = out.model_dump(by_alias=True)
-    assert dumped["overnight"][1] == {"day": "2 Oct", "fasting": 6.4, "heartRate": 60, "spo2": 95}
-    assert dumped["worthDiscussing"] == []
+def test_the_overnight_section_is_removed_but_heart_rate_and_spo2_stay_under_activity() -> None:
+    watch = [{"recorded_at": at(1, 0), "heart_rate_bpm": 90, "spo2_pct": 97.0, "steps": 0, "sleep_minutes": 5},
+             {"recorded_at": at(2, 2), "heart_rate_bpm": 62, "spo2_pct": 94.0, "steps": 0, "sleep_minutes": 5}]
+    r = dr.build(inputs(cgm=cgm([6.2], start=at(2, 5, 30)), watch=watch))
+    assert "overnight" not in r and "overnight" not in str(sorted(r))
+    cells = {c["label"]: c["value"] for c in r["activity"]}
+    assert cells["Heart rate while asleep"] == "76 bpm" and cells["SpO2 while asleep"] == "96%"
+    assert DoctorReport.model_validate(r).model_dump(by_alias=True).get("overnight") is None
+
+
+
+def test_adherence_is_a_dash_when_no_dose_was_answered_never_zero_percent():
+    meds = [{"id": "m1", "name": "Crestor", "strength": "10 mg", "frequency": 1, "as_needed": False}]
+    doses = [{"medication_id": "m1", "scheduled_at": at(1, 8), "taken_at": None, "status": "pending"},
+             {"medication_id": "m1", "scheduled_at": at(2, 8), "taken_at": None, "status": "pending"},
+             {"medication_id": "m1", "scheduled_at": at(2, 20), "taken_at": None, "status": "skipped"}]
+    r = dr.build(inputs(medicines=meds, doses=doses))
+    [row] = r["medicines"]
+    assert (row["scheduled"], row["taken"], row["missed"], row["not_logged"]) == (2, 0, 0, 2)
+    assert row["adherence_pct"] is None
+    assert not any("0%" in k for k in r["key_findings"])                 # the findings do not quote an adherence of 0
+
+
+def test_adherence_is_worked_out_once_one_dose_is_answered():
+    meds = [{"id": "m1", "name": "Crestor", "strength": "10 mg", "frequency": 1, "as_needed": False}]
+    doses = [{"medication_id": "m1", "scheduled_at": at(1, 8), "taken_at": at(1, 8, 5), "status": "taken"},
+             {"medication_id": "m1", "scheduled_at": at(2, 8), "taken_at": None, "status": "pending"}]
+    [row] = dr.build(inputs(medicines=meds, doses=doses))["medicines"]
+    assert row["adherence_pct"] == 50
+
+
+def test_no_sensor_days_say_so_and_the_facts_never_say_days_were_recorded():
+    r = dr.build(inputs())
+    facts = r["_facts"]
+    assert "No days with sensor data in this period" in facts
+    assert not any("recorded" in f for f in facts)
+    r2 = dr.build(inputs(cgm=cgm([6.0] * 96, start=at(1, 0))))             # readings on 1 Oct only
+    assert "Days with sensor data in the period: 1 of 2" in r2["_facts"]
+
+
+def test_the_report_is_simulated_only_when_the_data_is_the_demo_dataset():
+    assert dr.build(inputs())["simulated"] is False
+    assert dr.build(inputs(simulated=True))["simulated"] is True
+    assert DoctorReport.model_validate({**_minimal_report(), "simulated": True}).simulated is True
+
+
+def _minimal_report() -> dict:
+    r = dr.build(inputs())
+    r.pop("_facts", None)
+    return r

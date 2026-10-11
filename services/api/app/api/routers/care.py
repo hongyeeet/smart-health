@@ -54,6 +54,14 @@ async def add_question(body: S.NewQuestion) -> S.QuestionOut:
     return S.QuestionOut.model_validate(await _run(svc.add_question, body.text))
 
 
+@router.post("/questions/{question_id}/done", response_model=S.QuestionOut, response_model_by_alias=True)
+async def mark_question_done(question_id: UUID, body: S.QuestionDone) -> S.QuestionOut:
+    try:
+        return S.QuestionOut.model_validate(await _run(svc.set_question_done, str(question_id), body.done))
+    except DomainError as e:
+        raise _domain(e) from None
+
+
 @router.delete("/questions/{question_id}", response_model=S.QuestionRemoved, response_model_by_alias=True)
 async def remove_question(question_id: UUID) -> S.QuestionRemoved:
     try:
@@ -71,7 +79,7 @@ async def appointments() -> list[S.AppointmentOut]:
 async def plan_appointment(body: S.NewAppointment) -> S.AppointmentOut:
     suggested = str(body.suggested_id) if body.suggested_id else None
     try:
-        out = await _run(svc.add_appointment, body.kind, body.scheduled_for, body.location, suggested, _now())
+        out = await _run(svc.add_appointment, body.kind, body.scheduled_for, suggested, _now())
     except DomainError as e:
         raise _domain(e) from None
     return S.AppointmentOut.model_validate(out)

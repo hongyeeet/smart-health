@@ -12,7 +12,7 @@ import { Screen } from '@/ui/layout'
 import { Segmented } from '@/ui/controls'
 import { Alert } from '@/ui/primitives'
 import { ShieldCheck } from '@/ui/icons'
-import { Dock, Group, StepHead, TopBar } from './parts'
+import { Dock, Group, Later, StepHead, TopBar } from './parts'
 import { useOnboarding } from './useOnboarding'
 
 type YN = 'yes' | 'no'
@@ -34,7 +34,7 @@ export function Eligibility() {
   const q3 = t('onboarding.elig.pregnant', 'Are you pregnant?')
 
   return (
-    <Screen>
+    <Screen narrow>
       <TopBar />
       <StepHead step={2} name={t('onboarding.elig.step', 'A quick check')} title={t('onboarding.elig.title', 'Is this app right for you?')} sub={t('onboarding.elig.sub', 'Smart Health is made for adults living with type 2 diabetes.')} />
       <Group>
@@ -58,13 +58,14 @@ export function Eligibility() {
       ) : t2 === 'unsure' ? (
         <Alert tone="info">{t('onboarding.elig.unsure', 'If you are not sure, ask your doctor first. You can still carry on and look around.')}</Alert>
       ) : null}
+      <Later />
       <Dock
         onBack={back}
         nextDisabled={out}
         nextLabel={t('common.continue', 'Continue')}
         onNext={() => {
           set({ hasDiabetes: t2 === 'unsure' ? 'not_sure' : 'yes' })
-          navigate(`${href('A3')}?step=1`)
+          navigate(`${href('A3')}?step=3`)
         }}
       />
     </Screen>

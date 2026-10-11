@@ -10,21 +10,27 @@ import type {
   Insights,
   InsightsDays,
   InsightsOverview,
+  InsightsOverviewDays,
   InsightsGlucose,
   InsightsFood,
   InsightsActivity,
   InsightsSleep,
   InsightsMedication,
   InsightsSprint,
+  InsightsHeart,
+  InsightsBloodPressure,
   ExerciseKind,
   AiUsage,
   AuditRun,
   FoodHabit,
   Learned,
   Progress,
+  DietDays,
+  BarrierSummary,
   WeekDigest,
   FoodNote,
   LunchIdeas,
+  BloodPressureEntry,
   LogContext,
   LogProgress,
   MealAnalysis,
@@ -48,6 +54,19 @@ import type {
   WeekCompare,
 } from '../types'
 
+/** The stable codes the meal photo endpoint returns (services/api/app/api/routers/meals.py); `network` and `timeout` are set by the app itself. */
+export type MealErrorCode = 'bad_photo' | 'not_food' | 'model_unavailable' | 'daily_limit' | 'timeout' | 'bad_response' | 'save_failed' | 'network'
+
+/** A meal photo could not be read. `message` is the plain sentence to show; `code` decides the next step the screen offers. */
+export class MealReadError extends Error {
+  code: MealErrorCode
+  constructor(code: MealErrorCode, message: string) {
+    super(message)
+    this.name = 'MealReadError'
+    this.code = code
+  }
+}
+
 export type LogInput =
   | {
       kind: 'meal'
@@ -68,7 +87,8 @@ export type LogInput =
       /** which numbers were saved */
       valuesFrom: 'ai' | 'user'
     }
-  | { kind: 'workout'; type: ExerciseKind; activity: string; intensity: number; startAt: string; minutes: number; feeling?: number }
+  /** null when the workout was not rated; feeling is null when the question was not answered */
+  | { kind: 'workout'; type: ExerciseKind; activity: string; intensity: number | null; startAt: string; minutes: number; feeling?: number | null }
   | {
       kind: 'symptom'
       label: string
@@ -81,7 +101,21 @@ export type LogInput =
       feel?: string
       note?: string
     }
-  | { kind: 'checkin'; mood: number; stress: number; sleep: number; energy: number }
+  /** each answer is omitted when the person did not answer that question; at least one is needed */
+  | { kind: 'checkin'; mood?: number; stress?: number; sleep?: number; energy?: number }
+  | {
+      kind: 'blood_pressure'
+      systolic: number
+      diastolic: number
+      /** beats a minute; omitted when not measured */
+      pulse?: number
+      /** ISO time taken; omitted means now */
+      measuredAt?: string
+      note?: string
+    }
+
+/** A blood pressure reading as sent for save or edit (screen E3). */
+export type BloodPressureLogInput = Extract<LogInput, { kind: 'blood_pressure' }>
 
 /** A medicine added by hand (screen H8). Times are 24-hour clock text ("08:00"), the person's own local time. */
 export interface NewMedicationDose {
@@ -121,19 +155,22 @@ export interface Api {
 
   getInsights(period: Period): Promise<Insights>
   getInsightsOverview(days: InsightsDays): Promise<InsightsOverview>
+  getInsightsOverviewDays(from: string, to: string): Promise<InsightsOverviewDays>
   getInsightsGlucose(days: InsightsDays): Promise<InsightsGlucose>
   getInsightsFood(days: InsightsDays): Promise<InsightsFood>
   getInsightsActivity(days: InsightsDays): Promise<InsightsActivity>
   getInsightsSleep(days: InsightsDays): Promise<InsightsSleep>
   getInsightsMedication(days: InsightsDays): Promise<InsightsMedication>
   getInsightsSprint(): Promise<InsightsSprint>
+  getInsightsHeart(days: InsightsDays): Promise<InsightsHeart>
+  getInsightsBloodPressure(days: InsightsDays): Promise<InsightsBloodPressure>
   getDay(date: string): Promise<DayTimeline>
   getDayList(): Promise<{ date: string; short: string; weekday: string }[]>
 
   logEntry(input: LogInput): Promise<LogResult>
   listRecent(): Promise<RecentEntry[]>
   /** Photo (and an optional description) to estimated nutrients, read by the vision model */
-  analyzeMeal(file: File, description?: string): Promise<MealAnalysis>
+  analyzeMeal(file: File, description?: string, signal?: AbortSignal): Promise<MealAnalysis>
   getFoodNote(food: string): Promise<FoodNote>
   getFoodFlags(): Promise<FoodHabit[]>
   getLunchIdeas(): Promise<LunchIdeas>
@@ -147,8 +184,15 @@ export interface Api {
   getDigest(): Promise<WeekDigest>
   getAudit(): Promise<AuditRun[]>
   getProgress(): Promise<Progress>
+  /** Diet tracking calendar: each Singapore day from `start` to `end` (YYYY-MM-DD, at most 62 days). */
+  getDietDays(start: string, end: string): Promise<DietDays>
+  getBarrierSummary(): Promise<BarrierSummary>
   getWeekWorkouts(): Promise<WeekWorkouts>
   deleteEntry(id: string): Promise<void>
+  /** One saved blood pressure reading, for the edit sheet (E7). */
+  getBloodPressure(id: string): Promise<BloodPressureEntry>
+  /** Edit a blood pressure reading: the old one is removed and the new one saved (the entry gets a new id). */
+  updateBloodPressure(id: string, input: BloodPressureLogInput): Promise<LogResult>
 
   listMedications(): Promise<Medication[]>
   getMedication(id: string): Promise<MedicationDetail>
@@ -160,7 +204,7 @@ export interface Api {
   /** Remove one of the person's medicines (its deleted_at is filled in; the dose history is kept). */
   removeMedication(id: string): Promise<void>
   /** Upload a label photo and start AI extraction. Returns the scan with extracted fields. */
-  uploadScan(file: File): Promise<ScanResult>
+  uploadScan(file: File, cancel?: AbortSignal): Promise<ScanResult>
   /** Re-fetch a scan by id (for polling while extracting, or re-reviewing). */
   getScanResult(scanId: string): Promise<ScanResult>
   /** User confirms the reviewed/edited fields → saves the medication (E3-2 does the full save). */

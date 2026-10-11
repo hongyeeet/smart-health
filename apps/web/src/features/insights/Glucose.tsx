@@ -9,7 +9,7 @@ import { TrendChart } from '@/charts/TrendChart'
 import { Split } from '@/ui/layout'
 import { Alert, Card, SectionTitle, TextLink } from '@/ui/primitives'
 import { Drop } from '@/ui/icons'
-import { Findings, Gate, InsightsFrame, Plain, Tile, num, useInsightsDays } from './shared'
+import { Findings, Gate, InsightsFrame, Plain, Tile, TileGrid, num, useInsightsDays } from './shared'
 
 const ORDER: GlucoseLevel[] = ['very_low', 'low', 'in_range', 'high', 'very_high']
 
@@ -22,20 +22,20 @@ export function GlucoseTab() {
   const segments = data ? ORDER.map((k) => ({ level: k, pct: data.bands.find((b) => b.key === k)?.pct ?? 0 })) : []
   const end = data ? shortDate(data.period.end) : ''
   return (
-    <InsightsFrame tab="C2" period={data?.period}>
+    <InsightsFrame tab="C2" period={data?.period} why="glucose">
       <Gate data={data} isError={isError} empty={!!data && !data.hasData} emptyText={t('insights.glucose.empty', 'There are no sensor readings in this period. Once a glucose sensor is connected, your readings appear here.')}>
         {data && (
           <Split>
             <div className="flex flex-col gap-4">
               <section className="flex flex-col gap-3">
                 <SectionTitle>{t('insights.glucose.timeInRange', 'Time in range')}</SectionTitle>
-                <Plain why="glucose">
+                <Plain>
                   {inRange != null ? t('insights.glucose.inRange', '{{pct}}% of your readings were between {{low}} and {{high}} mmol/L.', { pct: Math.round(inRange), low: data.low, high: data.high }) : ''}
                 </Plain>
                 <Card tone="hero">
                   <TirBar segments={segments} />
                 </Card>
-                <div className="grid grid-cols-2 gap-2">
+                <TileGrid>
                   <Tile label={t('insights.glucose.average', 'Average')} value={num(data.metrics.mean, 1)} unit="mmol/L" />
                   <Tile
                     label={t('insights.glucose.gmi', 'Estimated A1c (GMI)')}
@@ -44,7 +44,7 @@ export function GlucoseTab() {
                   />
                   <Tile label={t('insights.glucose.cv', 'Ups and downs (CV)')} value={data.metrics.cv != null ? `${num(data.metrics.cv)}%` : '–'} sub={t('insights.glucose.cvSub', 'Lower is steadier')} />
                   <Tile label={t('insights.glucose.worn', 'Sensor worn')} value={data.metrics.coverage != null ? `${num(data.metrics.coverage)}%` : '–'} sub={t('insights.glucose.wornSub', 'of this period')} />
-                </div>
+                </TileGrid>
               </section>
               <Card tone="soft" className="flex flex-col gap-1">
                 <p className="text-body font-bold">{t('insights.glucose.inThisPeriod', 'In this period')}</p>
@@ -63,11 +63,11 @@ export function GlucoseTab() {
             <div className="flex flex-col gap-4">
               <section className="flex flex-col gap-3">
                 <SectionTitle>{t('insights.glucose.fastingTitle', 'Morning (fasting) glucose')}</SectionTitle>
-                <Plain why="glucose">
+                <p className="text-body text-ink">
                   {data.baseline
                     ? t('insights.glucose.fastingPlainBand', 'The average of your readings between 5 and 7 am each day. The shaded band is your usual range from the 60 days before.')
                     : t('insights.glucose.fastingPlain', 'The average of your readings between 5 and 7 am each day.')}
-                </Plain>
+                </p>
                 {data.drift && (
                   <Alert tone="info">
                     {data.drift.text} {t('insights.glucose.worthDoctor', 'Worth mentioning to your doctor.')}
@@ -95,7 +95,7 @@ export function GlucoseTab() {
                   />
                 </Card>
               </section>
-              <Findings items={data.patterns} />
+              <Findings items={data.patterns} whyLink={false} />
             </div>
           </Split>
         )}

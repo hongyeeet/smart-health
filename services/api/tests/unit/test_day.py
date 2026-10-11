@@ -132,3 +132,93 @@ def test_has_data_is_false_for_an_empty_day_and_true_with_any_reading():
     assert D.has_data(empty, [{"kind": "dose", "status": "not_confirmed"}], []) is False
     assert D.has_data(empty, [{"kind": "meal", "status": None}], []) is True
     assert D.has_data(D.build_series([{"bucket_start": at(9), "glucose_mmol": 5.0, "heart_rate_bpm": None, "steps": None, "sleep_minutes": 0}]), [], []) is True
+
+
+def test_an_unrated_workout_says_not_rated_and_has_no_subtitle():
+    w = {"id": "w1", "start_at": at(18), "end_at": at(18, 40), "type": "strength", "intensity": None,
+         "hr_avg_bpm": None, "hr_peak_bpm": None, "glucose_pre_mmol": None, "glucose_min_during_mmol": None}
+    marker = D._workout_marker(w)
+    assert marker["subtitle"] is None
+    assert {"label": "Intensity", "value": "Not rated"} in marker["rows"]
+    w["intensity"] = 3
+    assert {"label": "Intensity", "value": "3"} in D._workout_marker(w)["rows"]
+
+
+# ───────────────────────────────────────────────────────────────── blood pressure on the day
+def bp_row(minute: int, systolic=120, diastolic=80, pulse=None, note=None, id_="bp-1") -> dict:
+    return {"id": id_, "measured_at": at(minute // 60, minute % 60), "systolic": systolic, "diastolic": diastolic, "pulse": pulse, "note": note}
+
+
+def test_pressure_marker_reads_as_words_with_pulse_and_note_when_present():
+    m = D._pressure_marker(bp_row(8 * 60 + 30, pulse=72, note="after a walk"), [])
+    assert m["kind"] == "pressure" and m["clock"] == "08:30" and m["title"] == "Blood pressure"
+    assert m["subtitle"] == "120 over 80 mmHg, pulse 72"
+    assert {"label": "Reading", "value": "120 over 80 mmHg"} in m["rows"]
+    assert {"label": "Pulse", "value": "72 beats a minute"} in m["rows"]
+    assert {"label": "Note", "value": "after a walk"} in m["rows"]
+    assert m["flags"] == [] and m["status"] is None and m["end_minute"] is None
+
+
+def test_pressure_marker_leaves_out_a_pulse_or_note_that_was_not_entered():
+    m = D._pressure_marker(bp_row(9 * 60, systolic=135, diastolic=84), [])
+    assert m["subtitle"] == "135 over 84 mmHg"
+    assert [r["label"] for r in m["rows"]] == ["Reading"]
+
+
+def test_pressure_outcome_names_the_glucose_logged_with_it_and_never_judges_the_reading():
+    series = D.build_series([{"bucket_start": at(8, 10), "glucose_mmol": 6.84, "heart_rate_bpm": None, "steps": None, "sleep_minutes": 0}])
+    near = D._pressure_marker(bp_row(8 * 60 + 15), series)
+    assert near["outcome"] == "Logged together with a glucose reading of 6.8 mmol/L at 08:10."
+    for word in ("normal", "high", "low", "raised", "safe", "caused"):
+        assert word not in near["outcome"].lower()
+
+
+def test_pressure_outcome_without_a_glucose_reading_nearby_says_so():
+    series = D.build_series([{"bucket_start": at(12, 0), "glucose_mmol": 9.0, "heart_rate_bpm": None, "steps": None, "sleep_minutes": 0}])
+    far = D._pressure_marker(bp_row(8 * 60), series)
+    assert far["outcome"] == "No glucose reading was logged within 30 minutes of this reading."
+    # 30 minutes is the edge: 31 minutes away is not logged together
+    edge = D.build_series([{"bucket_start": at(8, 30), "glucose_mmol": 5.5, "heart_rate_bpm": None, "steps": None, "sleep_minutes": 0}])
+    assert "Logged together" in D._pressure_marker(bp_row(8 * 60), edge)["outcome"]
+    late = D.build_series([{"bucket_start": at(8, 35), "glucose_mmol": 5.5, "heart_rate_bpm": None, "steps": None, "sleep_minutes": 0}])
+    assert "No glucose reading" in D._pressure_marker(bp_row(8 * 60), late)["outcome"]
+
+
+# day_view reads through small loaders, and each one is replaced here, so the builder runs with no database (conn is never used)
+NO_DB = None
+
+
+def stub_day_loaders(monkeypatch, readings: list[dict]) -> None:
+    monkeypatch.setattr(D.I, "_targets", lambda conn, user: (4.0, 10.0))
+    monkeypatch.setattr(D, "_timeline", lambda conn, user, day: [])
+    monkeypatch.setattr(D, "_own_rises", lambda conn, user: [])
+    monkeypatch.setattr(D, "_meals", lambda conn, user, day: [])
+    monkeypatch.setattr(D, "_doses", lambda conn, user, day: [])
+    monkeypatch.setattr(D, "_workouts", lambda conn, user, day: [])
+    monkeypatch.setattr(D, "_symptoms", lambda conn, user, day: [])
+    monkeypatch.setattr(D, "_moods", lambda conn, user, day: [])
+    monkeypatch.setattr(D, "_sleep_hours", lambda conn, user, day: None)
+    monkeypatch.setattr(D, "dated", lambda conn, user, lo, hi: [])
+    monkeypatch.setattr(D, "_pressure", lambda conn, user, day: readings)
+
+
+def test_a_day_with_a_reading_has_a_pressure_marker_and_data(monkeypatch):
+    stub_day_loaders(monkeypatch, [bp_row(8 * 60 + 30, pulse=70)])
+    view = D.day_view(NO_DB, "u", date(2026, 9, 30), date(2026, 10, 1))
+    pressure = [m for m in view["markers"] if m["kind"] == "pressure"]
+    assert len(pressure) == 1 and pressure[0]["clock"] == "08:30" and pressure[0]["subtitle"] == "120 over 80 mmHg, pulse 70"
+    assert view["has_data"] is True
+
+
+def test_a_day_without_readings_has_no_pressure_marker(monkeypatch):
+    stub_day_loaders(monkeypatch, [])
+    view = D.day_view(NO_DB, "u", date(2026, 9, 30), date(2026, 10, 1))
+    assert not [m for m in view["markers"] if m["kind"] == "pressure"]
+    assert view["has_data"] is False
+
+
+def test_the_day_builder_reads_readings_for_the_singapore_day(monkeypatch):
+    seen = []
+    monkeypatch.setattr(D.BP, "reading_on_day", lambda conn, user, day, tz="Asia/Singapore": seen.append((user, day, tz)) or [])
+    D._pressure(NO_DB, "u-1", date(2026, 9, 30))
+    assert seen == [("u-1", date(2026, 9, 30), "Asia/Singapore")]

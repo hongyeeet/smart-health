@@ -66,6 +66,8 @@ export function Privacy() {
       <Header title={t('me.privacy.title', 'Privacy and consent')} back backTo="K1" />
       <p className="text-body text-ink2">{t('me.privacy.intro', 'You can change any of these at any time. Turning one off does not delete your data.')}</p>
 
+      {/* the choices on the left and the history and email switch on the right from a laptop up */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-6 [&>*]:min-w-0">
       <section className="flex flex-col gap-3">
         <SectionTitle>{t('me.privacy.choices', 'Your choices')}</SectionTitle>
         {consents.isPending && <Skeleton className="h-64" />}
@@ -128,6 +130,7 @@ export function Privacy() {
         )}
       </section>
 
+      <div className="flex flex-col gap-4">
       {history.length > 0 && (
         <section className="flex flex-col gap-3">
           <SectionTitle>{t('me.privacy.history', 'History')}</SectionTitle>
@@ -147,6 +150,8 @@ export function Privacy() {
       )}
 
       <EmailCard />
+      </div>
+      </div>
     </Screen>
   )
 }

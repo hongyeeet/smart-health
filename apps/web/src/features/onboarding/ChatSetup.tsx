@@ -1,41 +1,36 @@
 /**
- * A4 — Set up by chat. The conversational route to the same profile as the About-you form (A3): one question at a time, in the
+ * A4 — Set up by chat. The conversational route to the same profile as the About-you pages (A3): one question at a time, in the
  * person's own words or a tap. The server reads each answer and checks it the same way the form does (POST /onboarding/chat);
- * nothing is saved until the person finishes, and the save uses the form's own request.
+ * nothing is saved until the person finishes, and Finish saves through the same requests as the form.
  *
  * The transcript and the next question are read from the answers store, so the chat and the form always agree, and a person
- * can switch between them. Nothing here scores, stages or judges an answer (rules.md 1.1, 1.6).
+ * can switch between them. Medicines are not asked here: the screen points to Scan a label. Nothing here scores, stages or
+ * judges an answer (rules.md 1.1, 1.6).
  */
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { href } from '@/app/routeIds'
-import { useUi } from '@/state/store'
 import { cn } from '@/lib/cn'
 import { Screen } from '@/ui/layout'
 import { Alert, Button, Card, TextLink } from '@/ui/primitives'
-import { ListChecks, PencilSimple } from '@/ui/icons'
-import { Dock, PickMany, TopBar } from './parts'
-import { labelOf, useOptions } from './options'
-import { SafetyAlerts } from './SafetyAlerts'
-import { toProfileBody, useNotifyEmail, usePrefillOnboarding, useSaveNotifyEmail, useSaveProfile, useSavedOnboarding } from './api'
+import { Camera, ListChecks, PencilSimple } from '@/ui/icons'
+import { DemoNotice, Dock, Later, LoadNotice, LoadingAnswers, TopBar } from './parts'
+import { useOptions } from './options'
+import { allPagesBody, emailBody, useOnboardingSource, useSaveStep } from './api'
 import { useOnboarding, type OnboardingAnswers } from './useOnboarding'
-import { CHAT_QUESTIONS, answerLabel, choicesFor, replyText, type ChatQuestion, type Tr } from './chat/steps'
-import { useChatAnswer } from './chat/api'
+import { CHAT_QUESTIONS, answerLabel, choicesFor, isAsked, replyText, type ChatQuestion, type Tr } from './chat/steps'
+import { useChatAnswer, type ChatKnown } from './chat/api'
 
 export function ChatSetup() {
   const { t } = useTranslation()
   const tr: Tr = (key, fallback) => t(key, fallback)
   const navigate = useNavigate()
-  const locale = useUi((s) => s.locale)
   const a = useOnboarding((s) => s.answers)
   const set = useOnboarding((s) => s.set)
   const o = useOptions()
-  const saved = useSavedOnboarding()
-  usePrefillOnboarding(saved.data)
-  const saveProfile = useSaveProfile()
-  const notify = useNotifyEmail()
-  const saveEmail = useSaveNotifyEmail()
+  const src = useOnboardingSource()
+  const save = useSaveStep()
   const chat = useChatAnswer()
   /* optional questions skipped on this visit; not kept after leaving the screen */
   const [skipped, setSkipped] = useState<string[]>([])
@@ -43,28 +38,38 @@ export function ChatSetup() {
   const [editing, setEditing] = useState<string | null>(null)
   /* the clarifying question, or a plain problem, for the last answer */
   const [notice, setNotice] = useState<string | null>(null)
+  /* an answer the server could not read: it is shown as the person's message, then the reply above */
+  const [unread, setUnread] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
-  const [emailFailed, setEmailFailed] = useState(false)
+  /* the last Finish failed: the reason, shown in plain words */
+  const [failed, setFailed] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
-  /* an address already stored for reminders fills the box once, when it is still empty (as on the form) */
-  useEffect(() => {
-    const stored = notify.data?.email
-    if (stored && !useOnboarding.getState().answers.reminderEmail) set({ reminderEmail: stored })
-  }, [notify.data, set])
-
-  const rows = CHAT_QUESTIONS.map((q) => ({ q, label: answerLabel(q.id, a, o, tr) }))
+  /* only the questions this person is asked (the work week only when they work), in the form's order */
+  const questions = CHAT_QUESTIONS.filter((q) => isAsked(q, a))
+  const rows = questions.map((q) => ({ q, label: answerLabel(q.id, a, o, tr) }))
   const pending = rows.find((r) => r.label === '' && !skipped.includes(r.q.id))
   const activeId = editing ?? pending?.q.id ?? null
-  const active: ChatQuestion | undefined = activeId ? CHAT_QUESTIONS.find((q) => q.id === activeId) : undefined
+  const active: ChatQuestion | undefined = activeId ? questions.find((q) => q.id === activeId) : undefined
   /* show the questions up to the one being asked; once everything is answered, the whole conversation */
-  const visible = active ? rows.slice(0, CHAT_QUESTIONS.indexOf(active) + 1) : rows
+  const visible = active ? rows.slice(0, questions.indexOf(active) + 1) : rows
   const done = rows.filter((r) => r.label !== '' || skipped.includes(r.q.id)).length
   const busy = chat.isPending
+  /* what the checks depend on, from the form: sent with each answer, and never saved by the chat */
+  const known: ChatKnown = { birthYear: a.birthYear, labDate: a.labDate, hba1cUnit: a.hba1cUnit, glucoseUnit: a.glucoseUnit, workType: a.workType }
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' })
   }, [visible.length, notice, busy])
+
+  if (!src.ready) {
+    return (
+      <Screen narrow>
+        <TopBar />
+        <LoadingAnswers />
+      </Screen>
+    )
+  }
 
   /* Sends one answer. The server reads it; the answers it found go into the store, which the form reads too. */
   const send = async (text: string) => {
@@ -72,12 +77,19 @@ export function ChatSetup() {
     if (!active || !value || busy) return
     setNotice(null)
     try {
-      const res = await chat.mutateAsync({ text: value, step: active.id })
-      if (Object.keys(res.fields).length) set(res.fields as unknown as Partial<OnboardingAnswers>)
+      const res = await chat.mutateAsync({ text: value, step: active.id, known })
+      const found = Object.keys(res.fields)
+      if (found.length) set(res.fields as unknown as Partial<OnboardingAnswers>)
       if (res.understood) {
+        /* understood with nothing to store is a skip ("skip", "I do not know", or "none" for free text) */
+        if (found.length === 0) setSkipped((s) => [...s, active.id])
         setDraft('')
+        setUnread(null)
         setEditing(null)
       } else {
+        /* the words the person typed stay in the conversation, above the reply that asks again */
+        setUnread(value)
+        setDraft('')
         setNotice(res.reply)
       }
     } catch {
@@ -88,57 +100,78 @@ export function ChatSetup() {
   const skip = (id: string) => {
     setSkipped((s) => [...s, id])
     setNotice(null)
+    setUnread(null)
     setDraft('')
   }
   const edit = (id: string) => {
     setEditing(id)
     setNotice(null)
+    setUnread(null)
     setDraft('')
   }
   const keep = () => {
     setEditing(null)
     setNotice(null)
+    setUnread(null)
     setDraft('')
   }
 
-  /* Same as the form's last step: the reminder address first, then the profile. A failed address does not block the person. */
+  /* Same as the form's Finish: every page and the reminder email are saved, then the summary. A failure keeps the person here. */
   const finish = async () => {
-    const email = a.reminderEmail.trim()
-    if (email && !emailFailed) {
-      try {
-        await saveEmail.mutateAsync(email)
-      } catch {
-        setEmailFailed(true)
+    if (src.readOnly) return navigate(href('A6'))
+    if (src.loadFailed) {
+      setFailed(t('setup.noRead', 'Your saved answers could not be read, so nothing is saved right now. Check your connection, then try again.'))
+      return
+    }
+    setFailed(null)
+    try {
+      const email = src.email.isSuccess || a.reminderEmail.trim() ? emailBody(a) : null
+      const res = await save.mutateAsync({ profile: allPagesBody(a, !src.saved.data?.profile), email })
+      if (res.email === 'waiting') {
+        setFailed(t('onboarding.email.waiting', 'We will save your email when your profile is created. It is kept on this device until then.'))
         return
       }
+    } catch (err) {
+      setFailed(err instanceof Error ? err.message : '')
+      return
     }
-    await saveProfile.mutateAsync(toProfileBody(useOnboarding.getState().answers, locale, (code) => labelOf(o.conditions, code))).catch(() => undefined)
     navigate(href('A6'))
   }
 
-  const formLink = active ? (active.formStep === null ? href('A2') : `${href('A3')}?step=${active.formStep}`) : href('A3')
+  const formLink = active ? (active.formStep === null ? href('A2') : `${href('A3')}?step=${active.formStep}`) : `${href('A3')}?step=3`
   const inputType = active?.kind === 'email' ? 'email' : active?.kind === 'phone' ? 'tel' : 'text'
+  const choices = active ? choicesFor(active.id, o, tr) : []
 
   return (
-    <Screen>
+    <Screen narrow>
       <TopBar />
       <div className="flex flex-col gap-2">
         <h1 className="break-words font-serif text-h1 font-medium tracking-tight text-ink">{t('setup.title', 'Set up by chat')}</h1>
         <p className="text-sub text-ink2">{t('setup.sub', 'Answer in your own words, or tap an answer. Nothing you say is lost if you switch to the form.')}</p>
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <p className="text-sub font-bold text-brand" aria-live="polite">
-            {t('setup.progress', '{{done}} of {{total}} answered', { done, total: CHAT_QUESTIONS.length })}
+            {t('setup.progress', '{{done}} of {{total}} answered', { done, total: questions.length })}
           </p>
           <TextLink icon={ListChecks} onClick={() => navigate(formLink)}>
             {t('setup.useForm', 'Use the form instead')}
           </TextLink>
         </div>
         <div className="flex gap-1" aria-hidden>
-          {CHAT_QUESTIONS.map((q, i) => (
+          {questions.map((q, i) => (
             <span key={q.id} className={cn('h-1.5 flex-1 rounded-full', i < done ? 'bg-brand' : 'bg-line')} />
           ))}
         </div>
       </div>
+
+      <Alert tone="info">
+        <p>{t('setup.meds', 'Medicines are not asked here. Scan the label of each medicine you take instead.')}</p>
+        <TextLink icon={Camera} onClick={() => navigate(href('H2'))} className="mt-1.5 self-start">
+          {t('setup.scan', 'Scan a label')}
+        </TextLink>
+      </Alert>
+
+      {src.loadFailed && <LoadNotice />}
+      {src.readOnly && <DemoNotice />}
 
       <Card as="section" className="flex flex-col gap-4">
         <ol className="flex flex-col gap-4" aria-label={t('setup.conversation', 'Conversation')}>
@@ -163,6 +196,7 @@ export function ChatSetup() {
               {label === '' && skipped.includes(q.id) && <Bubble from="me">{t('setup.skipped', 'Skipped')}</Bubble>}
             </Fragment>
           ))}
+          {unread !== null && <Bubble from="me">{unread}</Bubble>}
           {notice && <Bubble from="bot">{notice}</Bubble>}
           {busy && (
             <Bubble from="bot">
@@ -180,59 +214,51 @@ export function ChatSetup() {
 
       {active ? (
         <Card as="section" className="flex flex-col gap-3" key={active.id}>
-          {active.kind === 'flags' ? (
-            <>
-              <PickMany stack none="none" label={t('setup.redLabel', 'Is any of these happening? Tick all that apply.')} options={o.redFlags} value={a.redFlags} onChange={(redFlags) => set({ redFlags })} />
-              <SafetyAlerts flags={a.redFlags} />
-              <Button disabled={a.redFlags.length === 0} onClick={keep}>
-                {t('setup.continue', 'Continue')}
-              </Button>
-            </>
-          ) : (
-            <>
-              {active.kind === 'choice' && (
-                <div className="flex flex-wrap gap-2" role="group" aria-label={t(`setup.ask.${active.id}`, active.ask)}>
-                  {choicesFor(active.id, o, tr).map((c) => (
-                    <Button key={c.value} variant="secondary" size="md" className="!w-auto" disabled={busy} onClick={() => send(replyText(c.value))}>
-                      {c.label}
-                    </Button>
-                  ))}
-                </div>
-              )}
-              <form
-                className="flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  send(draft)
-                }}
-              >
-                <input
-                  autoFocus
-                  type={inputType}
-                  inputMode={active.inputMode}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder={active.placeholder && t(`setup.ph.${active.id}`, active.placeholder)}
-                  aria-label={t(`setup.ask.${active.id}`, active.ask)}
-                  className="min-h-12 min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-card px-3.5 py-3 text-body text-ink placeholder:text-ink3 focus:border-brand focus:outline-none"
-                />
-                <Button type="submit" size="md" className="!w-auto flex-none px-5" disabled={!draft.trim() || busy}>
-                  {t('setup.send', 'Send')}
+          {choices.length > 0 && (
+            <div className="flex flex-wrap gap-2" role="group" aria-label={t(`setup.ask.${active.id}`, active.ask)}>
+              {choices.map((c) => (
+                <Button key={c.value} variant="secondary" size="md" className="!w-auto" disabled={busy} onClick={() => send(replyText(c.value))}>
+                  {c.label}
                 </Button>
-              </form>
-              <div className="flex flex-wrap gap-x-5 gap-y-1">
-                {editing === null && active.optional && (
-                  <TextLink onClick={() => skip(active.id)}>{t('setup.skip', 'Skip this question')}</TextLink>
-                )}
-                {editing !== null && <TextLink onClick={keep}>{t('setup.keep', 'Keep my answer')}</TextLink>}
-              </div>
-            </>
+              ))}
+            </div>
           )}
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              send(draft)
+            }}
+          >
+            <input
+              autoFocus
+              type={inputType}
+              inputMode={active.inputMode}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={active.placeholder && t(`setup.ph.${active.id}`, active.placeholder)}
+              aria-label={t(`setup.ask.${active.id}`, active.ask)}
+              className="min-h-12 min-w-0 flex-1 rounded-field border-[1.5px] border-line bg-card px-3.5 py-3 text-body text-ink placeholder:text-ink3 focus:border-brand focus:outline-none"
+            />
+            <Button type="submit" size="md" className="!w-auto flex-none px-5" disabled={!draft.trim() || busy}>
+              {t('setup.send', 'Send')}
+            </Button>
+          </form>
+          <div className="flex flex-wrap gap-x-5 gap-y-1">
+            {editing === null && active.optional && <TextLink onClick={() => skip(active.id)}>{t('setup.skip', 'Skip this question')}</TextLink>}
+            {editing !== null && <TextLink onClick={keep}>{t('setup.keep', 'Keep my answer')}</TextLink>}
+          </div>
         </Card>
       ) : (
         <>
-          {emailFailed && <Alert tone="warn">{t('setup.emailFailed', 'We could not save your email just now. Your answer is kept on this device. You can add it later in Me, Privacy.')}</Alert>}
-          <Dock onNext={finish} nextDisabled={saveProfile.isPending || saveEmail.isPending} nextLabel={emailFailed ? t('setup.emailAnyway', 'Continue without it') : t('setup.toSummary', 'Check my answers')} />
+          {failed !== null && (
+            <Alert tone="danger">
+              <p>{t('setup.failed', 'Setup is not finished yet. Your answers are still on this device. Check your connection, then tap Check my answers again.')}</p>
+              {failed && <p className="mt-1.5">{failed}</p>}
+            </Alert>
+          )}
+          <Later />
+          <Dock onNext={finish} nextDisabled={save.isPending} nextLabel={t('setup.toSummary', 'Check my answers')} />
         </>
       )}
     </Screen>

@@ -278,7 +278,8 @@ def client(monkeypatch):
 def test_get_returns_camel_case_and_no_profile_for_a_new_person(client):
     client.state["rules"] = rules(exists=False, profile=None, consent=None, email_column=False)
     body = client.get("/api/v1/onboarding").json()
-    assert body == {"profile": None, "dataConsent": False, "emailColumn": False}
+    assert {k: body[k] for k in ("profile", "dataConsent", "emailColumn")} == {"profile": None, "dataConsent": False, "emailColumn": False}
+    assert body["historyReady"] is False and body["history"]["conditions"] == [] and body["history"]["waistCm"] is None
 
 
 def test_put_profile_refuses_an_unknown_choice_with_a_plain_422(client):

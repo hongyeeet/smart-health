@@ -1,5 +1,6 @@
 """API shape of the doctor report (prd F12). camelCase on the wire, like the other routers. Every value is computed in
-`app/services/doctor_report.py`; the screen only lays it out."""
+`app/services/doctor_report.py`; the key findings may be worded by an AI (`app/agents/report_insight.py`), which `keyFindingsSource`
+says. The screen only lays it out."""
 from __future__ import annotations
 
 from typing import Literal
@@ -18,6 +19,11 @@ class Patient(Camel):
     name: str
     sex_age: str
     diagnosis: str
+
+
+class SummaryRow(Camel):
+    label: str
+    value: str                     # only rows with an answer are sent
 
 
 class ReportAlert(Camel):
@@ -63,6 +69,21 @@ class Glucose(Camel):
     very_high: float | None = None
 
 
+class BaselineRow(Camel):
+    metric: str
+    baseline: str
+    period: str
+    comparison: str                # "higher than", "lower than", "about the same as" or "—"
+
+
+class Baseline(Camel):
+    available: bool                # false: the note says why (fewer than 14 days, or no sensor data)
+    note: str | None = None
+    period_label: str | None = None
+    baseline_label: str | None = None
+    rows: list[BaselineRow] = []
+
+
 class SymptomRow(Camel):
     symptom: str
     logged: int
@@ -70,6 +91,24 @@ class SymptomRow(Camel):
     high: int
     in_range: int
     no_reading: int
+    note: str
+
+
+class LatestValue(Camel):
+    label: str
+    value: str
+    on: str                        # the day it was recorded, or empty when there is no date
+
+
+class SymptomLine(Camel):
+    symptom: str
+    logged: int
+    text: str                      # the fixed template sentence
+
+
+class SymptomLatest(Camel):
+    latest: list[LatestValue] = []
+    rows: list[SymptomLine] = []
     note: str
 
 
@@ -103,34 +142,48 @@ class ActivityCell(Camel):
     sub: str
 
 
+class BpReading(Camel):
+    when: str                      # day and time, local
+    systolic: int
+    diastolic: int
+    pulse: int | None = None
+
+
+class BloodPressure(Camel):
+    count: int                     # readings in the period; 0 means none were logged
+    systolic_range: str | None = None
+    diastolic_range: str | None = None
+    pulse_range: str | None = None
+    readings: list[BpReading] = []
+    readings_total: int = 0
+
+
 class WorthItem(Camel):
     text: str                      # one plain observation, never advice
     evidence: str                  # what it is based on
     kind: Literal["clash", "adherence", "pattern", "fact"]
 
 
-class OvernightNight(Camel):
-    day: str                       # the morning the night ends on
-    fasting: float | None = None   # glucose 05:00 to 07:00 that morning
-    heart_rate: int | None = None  # average while asleep
-    spo2: int | None = None        # average while asleep
-
-
 class DoctorReport(Camel):
     generated_on: str
+    simulated: bool = False         # true only for the demo dataset; the report then says its data is simulated
     period: Period
     patient: Patient
+    summary: list[SummaryRow] = []
     cgm_wear: str
     sources: str
     key_findings: list[str]
+    key_findings_source: Literal["ai", "rules"] = "rules"
     alerts: list[ReportAlert]
     glucose: Glucose
+    baseline: Baseline
     symptoms: list[SymptomRow]
+    symptom_latest: SymptomLatest
     episodes: list[Episode]
     episodes_total: int
     medicines: list[MedicineRow]
     medicines_note: str | None = None
     activity: list[ActivityCell]
-    overnight: list[OvernightNight] = []
+    blood_pressure: BloodPressure
     worth_discussing: list[WorthItem] = []
     questions: list[str]

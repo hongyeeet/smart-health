@@ -1,21 +1,16 @@
 /**
- * Data for the Me care screens (K3, K4, K7). Own types and hooks, as the other feature folders do. Every key includes the user, so
+ * Data for the Me care screens (K3, K4, K7, K12). Own types and hooks, as the other feature folders do. Every key includes the user, so
  * switching between the demo user and Mr Tan never shows the other person's visits or questions.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { request } from '@/data/repositories/http'
 import { useUi } from '@/state/store'
 
-export type AppointmentKind =
-  | 'gp_review'
-  | 'diabetes_review'
-  | 'eye_screening'
-  | 'foot_screening'
-  | 'kidney_test'
-  | 'hba1c_test'
-  | 'vaccination'
-  | 'dental'
-  | 'other'
+/** The kinds the Log an appointment form offers. */
+export type AppointmentKind = 'gp_review' | 'diabetes_review' | 'eye_screening' | 'foot_screening' | 'kidney_test' | 'hba1c_test' | 'other'
+
+/** Older visits can still hold a kind the form no longer offers; they keep their old label. */
+export type StoredAppointmentKind = AppointmentKind | 'vaccination' | 'dental'
 
 export const APPOINTMENT_KINDS: { value: AppointmentKind; label: string }[] = [
   { value: 'gp_review', label: 'GP review' },
@@ -23,26 +18,32 @@ export const APPOINTMENT_KINDS: { value: AppointmentKind; label: string }[] = [
   { value: 'eye_screening', label: 'Eye screening' },
   { value: 'foot_screening', label: 'Foot check' },
   { value: 'kidney_test', label: 'Kidney test' },
-  { value: 'hba1c_test', label: 'HbA1c blood test' },
-  { value: 'vaccination', label: 'Vaccination' },
-  { value: 'dental', label: 'Dental check' },
+  { value: 'hba1c_test', label: 'Blood test' },
   { value: 'other', label: 'Other visit' },
 ]
 
+/** Labels for the kinds no longer offered, used only when an older visit or a suggested visit has one of them. */
+export const RETIRED_KIND_LABELS: Partial<Record<StoredAppointmentKind, string>> = {
+  vaccination: 'Vaccination',
+  dental: 'Dental check',
+}
+
 export interface Appointment {
   id: string
-  kind: AppointmentKind
+  kind: StoredAppointmentKind
   kindLabel: string
-  status: 'suggested' | 'planned' | 'completed' | 'cancelled' | 'missed'
+  /** 'past' is a planned visit whose time has passed; it is listed under Earlier visits, never as Planned. */
+  status: 'suggested' | 'planned' | 'completed' | 'cancelled' | 'missed' | 'past'
   scheduledFor: string | null
   scheduledLabel: string | null
+  /** Kept on the record for older visits; the screens no longer show it. */
   location: string | null
   suggestedReason: string | null
   confirmedAt: string | null
 }
 
 export interface Preventive {
-  kind: AppointmentKind
+  kind: string
   label: string
   status: 'ok' | 'due_soon' | 'overdue' | 'unknown'
   lastDoneOn: string | null
@@ -55,23 +56,26 @@ export interface DoctorQuestion {
   text: string
   origin: 'user' | 'refused_chat' | 'checkin' | 'agent_suggested' | null
   originLabel: string
+  /** open: on the list. asked: marked done. */
   status: 'open' | 'asked'
   createdAt: string
   canRemove: boolean
 }
 
 export interface CarePlan {
+  /** the earliest planned visit whose time is still to come (the one rule shared with the L1 brief), or null */
   nextAppointment: Appointment | null
   upcoming: Appointment[]
+  /** planned visits whose time has passed, newest first, with status 'past' */
+  earlier: Appointment[]
   preventive: Preventive[]
   questions: DoctorQuestion[]
 }
 
 export interface NewAppointment {
-  kind: AppointmentKind
+  kind: StoredAppointmentKind
   /** Local Singapore time, without a zone: "2026-10-20T09:30" */
   scheduledFor: string
-  location: string | null
   suggestedId?: string | null
 }
 
@@ -121,6 +125,15 @@ export function useAddQuestion() {
   const invalidate = useInvalidateCare()
   return useMutation({
     mutationFn: (text: string) => request<DoctorQuestion>('/care/questions', { method: 'POST', body: JSON.stringify({ text }) }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useSetQuestionDone() {
+  const invalidate = useInvalidateCare()
+  return useMutation({
+    mutationFn: ({ id, done }: { id: string; done: boolean }) =>
+      request<DoctorQuestion>(`/care/questions/${encodeURIComponent(id)}/done`, { method: 'POST', body: JSON.stringify({ done }) }),
     onSuccess: invalidate,
   })
 }

@@ -50,17 +50,23 @@ _UNSAVED_MAX = 200
 
 
 def to_result(scan_id: str, status: str, extraction: dict | None, error: str | None = None, model_id: str | None = None) -> ScanResult:
-    """The shape the app reads, from a stored scan. A field the model left empty is never invented."""
+    """The shape the app reads, from a stored scan. A field the model left empty is never invented. A failed scan carries a plain
+    sentence in `error` and its stable code in `errorCode`; a scan that needs typing carries the same pair in `notice` / `errorCode`."""
     mode, reasons = scan_api.review_mode(extraction)
+    if not reasons and error:                       # a stored failed scan keeps its code(s) in the error column
+        reasons = [c for c in error.split(",") if c]
+    failed = status == "failed"
     fields = scan_api.api_fields(extraction)
     name = next((f["value"] for f in fields if f["key"] == "name" and f["value"]), "")
     item = scan_api.first_item(extraction)
     return ScanResult(
         scanId=scan_id, itemType=(item or {}).get("item_type") or "unknown",
-        status=ScanStatus.failed if status == "failed" else ScanStatus.extracted,
+        status=ScanStatus.failed if failed else ScanStatus.extracted,
         drug=name, fields=[ScanFieldSchema(**f) for f in fields],
         schedule=[ScanScheduleItem(**s) for s in scan_api.api_schedule(extraction)],
-        modelId=model_id, error=error, reviewMode=mode, reasons=reasons, asNeeded=scan_api.is_as_needed(extraction),
+        modelId=model_id, error=scan_api.reason_text(reasons) if failed else None,
+        errorCode=scan_api.reason_code(reasons) if failed or mode == "manual" else None,
+        reviewMode=mode, reasons=reasons, asNeeded=scan_api.is_as_needed(extraction),
         symptomHint=scan_api.symptom_hint(extraction),
         notice=scan_api.reason_text(reasons) if mode == "manual" else None,
     )
@@ -88,7 +94,7 @@ def _upload(image: bytes) -> ScanResult:
             scan_id = save_scan(conn, user, masked, outcome)
         except ExternalServiceError as e:                    # storage down: do not pretend it was saved
             logger.warning("scan could not be stored: %s", e.code)
-            failed = ScanOutcome(status="failed", review_mode="manual", reasons=["service_unavailable"])
+            failed = ScanOutcome(status="failed", review_mode="manual", reasons=["storage_unavailable"])
             return _remember_unsaved(failed, outcome_json(failed))
     logger.info("scan stored status=%s mode=%s reasons=%s items=%d", outcome.status, outcome.review_mode, outcome.reasons, len(outcome.items))
     return to_result(scan_id, outcome.status, extraction, model_id=outcome.model_id)

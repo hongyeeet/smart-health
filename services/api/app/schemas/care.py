@@ -13,10 +13,13 @@ from pydantic import Field, field_validator
 
 from app.schemas.medicines import Camel
 
-AppointmentKind = Literal[
+# The visit kinds a person can log now. "vaccination" and "dental" were removed from the form (they stay in the database, see below).
+AppointmentKind = Literal["gp_review", "diabetes_review", "eye_screening", "foot_screening", "kidney_test", "hba1c_test", "other"]
+# Every kind the database can hold. Old visits with a removed kind are still read and shown.
+StoredAppointmentKind = Literal[
     "gp_review", "diabetes_review", "eye_screening", "foot_screening", "kidney_test", "hba1c_test", "vaccination", "dental", "other",
 ]
-AppointmentStatus = Literal["suggested", "planned", "completed", "cancelled", "missed"]
+AppointmentStatus = Literal["suggested", "planned", "completed", "cancelled", "missed", "past"]   # "past": a planned visit whose time has passed (K3 Earlier visits)
 PreventiveStatus = Literal["ok", "due_soon", "overdue", "unknown"]
 QuestionOrigin = Literal["user", "refused_chat", "checkin", "agent_suggested"]
 QuestionStatus = Literal["open", "asked"]
@@ -27,18 +30,18 @@ Freshness = Literal["up_to_date", "old", "none"]
 
 class AppointmentOut(Camel):
     id: str
-    kind: AppointmentKind
+    kind: StoredAppointmentKind
     kind_label: str
     status: AppointmentStatus
     scheduled_for: datetime | None
     scheduled_label: str | None          # "Sat 11 Oct, 10:00 am", Singapore time
-    location: str | None
+    location: str | None                 # kept for visits saved before the Place field was removed; not shown on the cards
     suggested_reason: str | None         # plain sentence, from the rule that suggested it
     confirmed_at: datetime | None
 
 
 class PreventiveOut(Camel):
-    kind: AppointmentKind
+    kind: str
     label: str
     status: PreventiveStatus
     last_done_on: date | None
@@ -59,6 +62,7 @@ class QuestionOut(Camel):
 class CarePlan(Camel):
     next_appointment: AppointmentOut | None
     upcoming: list[AppointmentOut]
+    earlier: list[AppointmentOut] = []    # planned visits whose time has passed, newest first; status "past"
     preventive: list[PreventiveOut]
     questions: list[QuestionOut]
 
@@ -76,16 +80,9 @@ class NewQuestion(Camel):
 
 
 class NewAppointment(Camel):
-    kind: AppointmentKind
+    kind: StoredAppointmentKind          # the service refuses a removed kind unless it confirms a suggested visit of that kind
     scheduled_for: datetime              # a naive time is Singapore time, as the form sends it
-    location: str | None = Field(default=None, max_length=200)
     suggested_id: UUID | None = None     # confirming a visit Smart Health suggested, rather than adding a new one
-
-    @field_validator("location")
-    @classmethod
-    def _place(cls, v: str | None) -> str | None:
-        v = (v or "").strip()
-        return v or None
 
 
 class SourceOut(Camel):
@@ -101,6 +98,10 @@ class SourceOut(Camel):
 
 class Sources(Camel):
     sources: list[SourceOut]
+
+
+class QuestionDone(Camel):
+    done: bool                           # true marks it done (asked at the visit); false puts it back on the open list
 
 
 class QuestionRemoved(Camel):

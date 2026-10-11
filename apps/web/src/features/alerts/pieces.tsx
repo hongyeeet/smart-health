@@ -80,7 +80,7 @@ export function NotAdviceNote() {
   return (
     <div className="flex items-start gap-2.5 rounded-field bg-info-soft p-3">
       <Info size={20} className="mt-0.5 flex-none text-info" aria-hidden />
-      <p className="text-sub text-ink">{t('alerts.note', 'This alert does not mean the two medicines are unsafe together. Smart Health cannot advise on your medicines; your pharmacist or doctor can.')}</p>
+      <p className="text-sub text-ink">{t('alerts.note', 'This alert is not a diagnosis. Your pharmacist or doctor can review your medicines.')}</p>
     </div>
   )
 }

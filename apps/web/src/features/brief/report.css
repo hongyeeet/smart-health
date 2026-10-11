@@ -19,6 +19,7 @@
 .rp-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 24px; }
 .rp-facts b, .rp-cells b { display: block; font-weight: 700; }
 .rp-box { border: 1px solid #d0d5dd; border-radius: 8px; padding: 12px 16px; background: #f8f9fb; }
+.rp-sheet ul { list-style: disc outside; }
 .rp-box ul { margin: 0; padding-left: 18px; }
 .rp-box li + li { margin-top: 3px; }
 
@@ -29,6 +30,8 @@
 .rp-strong { font-weight: 700; }
 .rp-out { font-weight: 700; color: #b42318; }
 .rp-row-urgent td { background: #fef3f2; }
+.rp-ai { margin: 8px 0 0; padding: 8px 10px; border-left: 3px solid #1d4a3c; background: #eef6f2; font-size: 12px; color: #1d2939; }
+.rp-baseline-note { margin: 0; }
 
 .rp-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
 .rp-tag-urgent { background: #b42318; color: #fff; }
@@ -54,6 +57,29 @@
   .rp-facts, .rp-two { grid-template-columns: 1fr; }
   .rp-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rp-head { flex-direction: column; align-items: flex-start; }
+}
+
+/*
+ * Phones, on screen only: the wide tables (alerts, symptoms, symptom entries, medications) become one block per row, each value with its
+ * column name in front of it, so nothing runs off the sheet and nothing scrolls sideways. The printed page keeps the real tables.
+ */
+@media screen and (max-width: 700px) {
+  .rp-sheet { overflow-x: hidden; }
+  .rp-stack, .rp-stack tbody, .rp-stack tr, .rp-stack td { display: block; width: auto; }
+  .rp-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .rp-stack tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid #eaecf0; }
+  .rp-stack td { border: 0; padding: 0 !important; white-space: normal !important; text-align: left !important; min-width: 0; overflow-wrap: anywhere; }
+  .rp-stack td:not([data-label]) { grid-column: 1 / -1; }
+  .rp-stack td:first-child { font-weight: 700; }
+  .rp-stack td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 400; color: #475467; }
+  .rp-stack td[data-label="Note"], .rp-stack td[data-label="Last dose taken before"] { grid-column: 1 / -1; }
+  .rp-row-urgent td { background: transparent; }
+  .rp-stack.rp-row-urgent, .rp-stack tr.rp-row-urgent { background: #fef3f2; }
+  /* alerts: the tag and the title on one line, the detail under them */
+  .rp-alerts tr { grid-template-columns: auto minmax(0, 1fr); align-items: baseline; }
+  .rp-alerts td:nth-child(-n+2) { grid-column: auto; }
+  .rp-alerts td:nth-child(3) { grid-column: 1 / -1; }
+  .rp-alerts td:nth-child(2) { font-weight: 700; }
 }
 
 @page { size: A4; margin: 12mm; }

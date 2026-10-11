@@ -32,6 +32,8 @@ export function Contact() {
     <Screen>
       <Header title={t('me.contact.title', 'Emergency contact')} back backTo="K1" sub={t('me.contact.sub', 'Someone who can check on you if your glucose is very low.')} />
 
+      {/* the explanation on the left and the form on the right from a laptop up */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-6 [&>*]:min-w-0">
       <Card as="section" tone="soft" className="flex flex-col gap-2">
         <p className="text-body font-bold">{t('me.contact.explain', 'If your glucose looks very low and you do not answer, we email this person.')}</p>
         <p className="text-sub text-ink2">
@@ -39,6 +41,7 @@ export function Contact() {
         </p>
       </Card>
 
+      <div className="flex flex-col gap-4">
       {q.isPending && <Skeleton className="h-72" />}
       {q.isError && <Alert tone="warn">{t('me.contact.loadError', 'We could not load your emergency contact just now. Please try again in a moment.')}</Alert>}
 
@@ -46,6 +49,7 @@ export function Contact() {
         <>
           <section className="flex flex-col gap-4">
             <SectionTitle>{t('me.contact.details', 'Their details')}</SectionTitle>
+            <div className="grid gap-4 sm:grid-cols-2 [[data-ts='2']_&]:sm:grid-cols-1 [&>*]:min-w-0">
             <Field label={t('me.contact.name', 'Name')} value={form.name} onChange={set('name')} placeholder={t('me.contact.namePlaceholder', 'For example, Mdm Lim')} />
             <Field
               label={t('me.contact.relation', 'Relationship to you')}
@@ -70,6 +74,7 @@ export function Contact() {
               error={emailError(form.email)}
               hint={t('me.contact.emailHint', 'The alert is sent to this address.')}
             />
+            </div>
           </section>
 
           {problem && <Alert tone="warn">{problem}</Alert>}
@@ -100,6 +105,8 @@ export function Contact() {
           </Footer>
         </>
       )}
+      </div>
+      </div>
     </Screen>
   )
 }

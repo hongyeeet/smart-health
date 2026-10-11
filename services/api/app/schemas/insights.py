@@ -27,14 +27,18 @@ class Pattern(Camel):
 
 
 class Change(Camel):
+    """One measure against the same number of days before. `direction` is "none" when either period has no value."""
     id: str
-    text: str
     to: Literal["C2", "C3", "C4", "C5", "C6"]
+    unit: Literal["points", "mmol", "steps", "minutes", "hours", "score"]
+    direction: Literal["up", "down", "same", "none"]
+    current: float | None
+    previous: float | None
+    delta: float | None
 
 
 class GridCell(Camel):
     date: str
-    weekday: str
     value: float | None
     label: str
     level: int                      # 0 no data, 1 to 4 how much (a shade, not a verdict)
@@ -42,15 +46,21 @@ class GridCell(Camel):
 
 class GridRow(Camel):
     key: Literal["glucose", "meals", "activity", "sleep", "stress", "doses"]
-    label: str
     cells: list[GridCell]
 
 
 class Overview(Camel):
     period: Period
-    grid: list[GridRow]
     changes: list[Change]
     patterns: list[Pattern]
+
+
+class OverviewDays(Camel):
+    """The overview calendar: one cell per day in [start, end]. Days after `today` are never included."""
+    start: str
+    end: str
+    today: str
+    rows: list[GridRow]
 
 
 # ── Glucose ────────────────────────────────────────────────────────────────
@@ -166,7 +176,7 @@ class WorkoutRow(Camel):
     date: str
     label: str
     type: str
-    intensity: int
+    intensity: int | None  # None means not rated; never counted as moderate
     minutes: int
     glucose_change_2h: float | None
 
@@ -221,9 +231,12 @@ class MedRow(Camel):
     id: str
     name: str
     regimen: str
-    taken: int
-    scheduled: int
-    adherence_pct: int | None
+    counted: bool                   # prescription medicines count towards adherence; the others are listed only, with no numbers
+    taken: int | None               # null when not counted
+    missed: int | None
+    unconfirmed: int | None
+    scheduled: int | None
+    adherence_pct: int | None       # null until a dose is answered (taken or missed), and for medicines not counted
     cells: list[DoseCell]
 
 
@@ -237,11 +250,11 @@ class MedicationInsights(Camel):
     period: Period
     dates: list[str]
     meds: list[MedRow]
-    fasting: list[float | None]     # the same dates, so the line can sit over the grid
     taken: int
+    missed: int
     scheduled: int
     unconfirmed: int                # doses whose window passed and nobody answered (counted as not taken)
-    adherence_pct: int | None
+    adherence_pct: int | None       # null when no prescription dose has been answered yet
     reasons: list[Reason]
     patterns: list[Pattern]
     shown_days: int

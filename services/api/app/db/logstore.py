@@ -15,6 +15,7 @@ import json
 import re
 import logging
 import math
+import secrets
 import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -28,7 +29,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.core.config import settings
-from app.services import texts
+from app.services import blood_pressure, texts
 
 logger = logging.getLogger(__name__)
 TZ = ZoneInfo("Asia/Singapore")
@@ -44,10 +45,23 @@ USERS: dict[str, dict] = {
 _current: ContextVar[str] = ContextVar("app_user", default="demo")
 
 
+# A person started in the app ("Start as new person") has a key of this shape. The user id is derived from the key, so the same key
+# always means the same person, and no lookup table is needed. The row itself is created by POST /users (routers/users.py).
+PERSON_KEY = re.compile(r"person-[0-9a-f]{12}")
+
+
+def person_id(key: str) -> uuid.UUID:
+    return uuid.uuid5(NAMESPACE, f"user:{key}")
+
+
+def new_person_key() -> str:
+    return f"person-{secrets.token_hex(6)}"
+
+
 def set_user(key: str | None) -> str:
     """Choose who the rest of this request acts as. Unknown keys raise KeyError so a typo never silently falls back."""
     key = (key or "demo").strip().lower()
-    if key not in USERS:
+    if key not in USERS and not PERSON_KEY.fullmatch(key):
         raise KeyError(key)
     _current.set(key)
     return key
@@ -58,7 +72,8 @@ def current_user_key() -> str:
 
 
 def current_user() -> uuid.UUID:
-    return USERS[_current.get()]["id"]
+    key = _current.get()
+    return USERS[key]["id"] if key in USERS else person_id(key)
 BUCKET = timedelta(minutes=5)
 
 # Daily goals. Placeholders from the owner (appConfig.goals); clinical review pending, never shown as advice.
@@ -244,9 +259,16 @@ def save_meal_analysis(payload: dict) -> str:
 def create_meal(i: Any) -> dict:
     with tx() as c:
         payload = i.model_dump(mode="json", by_alias=True)
-        bronze_id = uuid.UUID(i.analysis_id) if i.analysis_id else _bronze(c, "bronze_food", payload)
         end = max(_aware(i.end_at), _aware(i.start_at))
         estimated_by = "user" if (i.edited or i.values_from == "user" or not i.analysis_id) else "llm_photo"
+        if i.analysis_id and estimated_by == "user":
+            # the person changed the photo's numbers: this meal's own Bronze row keeps what they typed (food_logs has no kcal column,
+            # so a typed kcal lives only in the payload). Its analysisId links back to the photo's Bronze row, which is kept as it was.
+            analysis = uuid.UUID(i.analysis_id)
+            bronze_id = _bronze(c, "bronze_food", payload)
+            _processed(c, "bronze_food", analysis)
+        else:
+            bronze_id = uuid.UUID(i.analysis_id) if i.analysis_id else _bronze(c, "bronze_food", payload)
         row = c.execute(
             """insert into food_logs (user_id, start_at, end_at, meal_type, food, protein_g, carbs_g, fat_g, sugar_g, fibre_g, sodium_mg,
                                       estimated_by, source, bronze_id)
@@ -264,6 +286,34 @@ def create_meal(i: Any) -> dict:
         _processed(c, "bronze_food", bronze_id)
         refresh_day(c, _local_date(i.start_at))
         return {"id": str(fid), "day": _local_date(i.start_at).isoformat(), "meal_type": _meal_type_for(i.start_at)}
+
+
+# The "How hard did it feel?" rating is optional once migration 0036 has made exercise_logs.intensity nullable.
+# Until that migration is applied the API still asks for it, with this message (the app shows the same sentence).
+RATING_REQUIRED = "Pick a number from 1 to 5 to save this workout."
+_rating_optional_known = False  # cached once the column reads nullable (it cannot go back); a "no" is checked every time
+
+
+def _intensity_nullable(c: psycopg.Connection) -> bool:
+    row = c.execute(
+        "select is_nullable from information_schema.columns where table_schema = current_schema() and table_name = 'exercise_logs' and column_name = 'intensity'"
+    ).fetchone()
+    return row is not None and row["is_nullable"] == "YES"
+
+
+def rating_optional(c: psycopg.Connection | None = None) -> bool:
+    """True when exercise_logs.intensity allows null (migration 0036 applied). A yes is remembered; a no is read again each time."""
+    global _rating_optional_known
+    if _rating_optional_known:
+        return True
+    if c is None:
+        with tx() as conn:
+            nullable = _intensity_nullable(conn)
+    else:
+        nullable = _intensity_nullable(c)
+    if nullable:
+        _rating_optional_known = True
+    return nullable
 
 
 def create_workout(i: Any, sets: list[dict] | None = None, note: str | None = None, payload: dict | None = None) -> dict:
@@ -315,6 +365,7 @@ def create_symptom(i: Any) -> dict:
 
 
 def create_checkin(i: Any) -> dict:
+    """A mood and sleep check-in. Each question may be left unanswered (stored as null); at least one answer is required."""
     now = datetime.now(timezone.utc)
     with tx() as c:
         bronze_id = _bronze(c, "bronze_wellbeing", i.model_dump(mode="json", by_alias=True))
@@ -323,10 +374,176 @@ def create_checkin(i: Any) -> dict:
                values (%s,%s,%s,%s,%s,%s,'manual',%s) returning id""",
             (current_user(), now, i.mood, i.stress, i.sleep, i.energy, bronze_id),
         ).fetchone()
-        _upsert_timeline(c, [_floor(now)], {"mood": i.mood, "stress_self": i.stress, "sleep_quality": i.sleep, "energy": i.energy})
+        # only the answers given go to the timeline, so a partial check-in never blanks an answer already in that 5-minute bucket
+        answers = {"mood": i.mood, "stress_self": i.stress, "sleep_quality": i.sleep, "energy": i.energy}
+        _upsert_timeline(c, [_floor(now)], {k: v for k, v in answers.items() if v is not None})
         _processed(c, "bronze_wellbeing", bronze_id)
         refresh_day(c, _local_date(now))
         return {"id": str(row["id"]), "day": _local_date(now).isoformat()}
+
+
+# ----------------------------------------------------------------------------------------------- blood pressure
+class DuplicateReading(Exception):
+    """A live reading is already saved for that exact time. The router answers 409 with a plain sentence."""
+
+
+def _bp_time(i: Any) -> datetime:
+    return _aware(i.measured_at).astimezone(timezone.utc) if i.measured_at else datetime.now(timezone.utc)
+
+
+def _bp_payload(i: Any, when: datetime) -> dict:
+    """The entry as received, with the time filled in and the note tidied. The time is in the payload so two readings never
+    share one Bronze row by accident (Bronze is unique per person and content). The pulse and note stay here as received; the
+    Silver row has them as columns from migration 0035, and before it they were only here."""
+    payload = i.model_dump(mode="json", by_alias=True)
+    payload["measuredAt"] = when.isoformat()
+    payload["note"] = (i.note or "").strip() or None
+    return payload
+
+
+def _bp_note(i: Any) -> str | None:
+    return (i.note or "").strip() or None
+
+
+def _write_bp(c: psycopg.Connection, i: Any, when: datetime, payload: dict) -> uuid.UUID:
+    """Bronze, then the Silver row. Returns the entry id. A live reading at the same time raises DuplicateReading."""
+    bronze_id = _bronze(c, "bronze_blood_pressure", payload)
+    if blood_pressure.columns_ready(c):
+        entry_id = _insert_bp(c, i, when, bronze_id)
+    else:
+        entry_id = _insert_bp_bronze(c, i, when, bronze_id)
+    _processed(c, "bronze_blood_pressure", bronze_id)
+    return entry_id
+
+
+def _insert_bp(c: psycopg.Connection, i: Any, when: datetime, bronze_id: uuid.UUID) -> uuid.UUID:
+    """The Silver row after migration 0035: its own id, pulse and note. Silver allows one row per person and time, so a soft-deleted
+    reading at the same time is brought back as a new reading (a new id) with the new values; a live one raises DuplicateReading."""
+    row = c.execute(
+        """insert into blood_pressure_readings (user_id, recorded_at, systolic_mmhg, diastolic_mmhg, pulse, note, source, bronze_id)
+           values (%s,%s,%s,%s,%s,%s,'manual',%s)
+           on conflict (user_id, recorded_at) do update set id=gen_random_uuid(), systolic_mmhg=excluded.systolic_mmhg,
+             diastolic_mmhg=excluded.diastolic_mmhg, pulse=excluded.pulse, note=excluded.note, source=excluded.source,
+             bronze_id=excluded.bronze_id, updated_at=null, deleted_at=null
+           where blood_pressure_readings.deleted_at is not null
+           returning id""",
+        (current_user(), when, i.systolic, i.diastolic, i.pulse, _bp_note(i), bronze_id),
+    ).fetchone()
+    if row is None:
+        raise DuplicateReading()
+    return row["id"]
+
+
+def _insert_bp_bronze(c: psycopg.Connection, i: Any, when: datetime, bronze_id: uuid.UUID) -> uuid.UUID:
+    """The Silver row before migration 0035 (no id, pulse or note columns). The entry id is the Bronze row's id. A soft-deleted reading
+    at the same time is brought back with the new numbers; a live one raises DuplicateReading."""
+    row = c.execute(
+        """insert into blood_pressure_readings (user_id, recorded_at, systolic_mmhg, diastolic_mmhg, source, bronze_id)
+           values (%s,%s,%s,%s,'manual',%s)
+           on conflict (user_id, recorded_at) do update set systolic_mmhg=excluded.systolic_mmhg, diastolic_mmhg=excluded.diastolic_mmhg,
+             source=excluded.source, bronze_id=excluded.bronze_id, deleted_at=null
+           where blood_pressure_readings.deleted_at is not null
+           returning bronze_id""",
+        (current_user(), when, i.systolic, i.diastolic, bronze_id),
+    ).fetchone()
+    if row is None:
+        raise DuplicateReading()
+    return row["bronze_id"]
+
+
+def _edit_bp_in_place(c: psycopg.Connection, old: uuid.UUID, i: Any, when: datetime, payload: dict) -> uuid.UUID | None:
+    """Edit after migration 0035: the same row is updated, so the entry keeps its id. None when there is no live reading with that id.
+
+    A new time that a live reading already holds is refused (DuplicateReading). A new time that only a soft-deleted reading holds
+    is taken over: that deleted row takes this entry's id and the new values, and this row is soft-deleted under a fresh id, so the
+    entry's id never changes and no reading is lost (the Bronze rows keep every version as received)."""
+    row = c.execute(
+        "select recorded_at from blood_pressure_readings where id=%s and user_id=%s and deleted_at is null for update",
+        (old, current_user()),
+    ).fetchone()
+    if row is None:
+        return None
+    bronze_id = _bronze(c, "bronze_blood_pressure", payload)
+    values = (i.systolic, i.diastolic, i.pulse, _bp_note(i), bronze_id)
+    if when != row["recorded_at"]:
+        holder = c.execute(
+            "select id, deleted_at from blood_pressure_readings where user_id=%s and recorded_at=%s", (current_user(), when),
+        ).fetchone()
+        if holder is not None and holder["deleted_at"] is None:
+            raise DuplicateReading()
+        if holder is not None:
+            c.execute("update blood_pressure_readings set id=gen_random_uuid(), deleted_at=now() where id=%s and user_id=%s", (old, current_user()))
+            c.execute(
+                """update blood_pressure_readings set id=%s, systolic_mmhg=%s, diastolic_mmhg=%s, pulse=%s, note=%s, source='manual',
+                   bronze_id=%s, deleted_at=null, updated_at=now() where id=%s""",
+                (old, *values, holder["id"]),
+            )
+            _processed(c, "bronze_blood_pressure", bronze_id)
+            return old
+    try:
+        c.execute(
+            """update blood_pressure_readings set recorded_at=%s, systolic_mmhg=%s, diastolic_mmhg=%s, pulse=%s, note=%s, source='manual',
+               bronze_id=%s, updated_at=now() where id=%s and user_id=%s""",
+            (when, *values, old, current_user()),
+        )
+    except psycopg.errors.UniqueViolation:
+        # another reading took this time between the check and the update
+        raise DuplicateReading()
+    _processed(c, "bronze_blood_pressure", bronze_id)
+    return old
+
+
+def _log_event(c: psycopg.Connection, event: str, entry_id: uuid.UUID) -> None:
+    """The event log records that something happened: the kind and the id, never the values."""
+    c.execute(
+        "insert into event_log (user_id, actor, event, entity_table, entity_id, payload) values (%s,'user',%s,'blood_pressure_readings',%s,%s::jsonb)",
+        (current_user(), event, entry_id, json.dumps({"kind": "blood_pressure"})),
+    )
+
+
+def _bp_entry(r: dict) -> dict:
+    return {"id": str(r["id"]), "measured_at": r["measured_at"].isoformat(), "systolic": r["systolic"], "diastolic": r["diastolic"],
+            "pulse": r["pulse"], "note": r["note"]}
+
+
+def create_blood_pressure(i: Any) -> dict:
+    when = _bp_time(i)
+    with tx() as c:
+        entry_id = _write_bp(c, i, when, _bp_payload(i, when))
+        _log_event(c, "log.blood_pressure.saved", entry_id)
+    return {"id": str(entry_id), "day": _local_date(when).isoformat(), "measured_at": when}
+
+
+def update_blood_pressure(entry_id: str, i: Any) -> dict | None:
+    """Edit a reading. The entry keeps its id after migration 0035 (the row is updated in place). Before 0035 the old reading is
+    soft-deleted and the new one saved, so the entry gets its new Bronze id, as it always did.
+    None when there is no such live reading. Raises ValueError for a malformed id."""
+    old = uuid.UUID(entry_id)
+    when = _bp_time(i)
+    payload = _bp_payload(i, when)
+    with tx() as c:
+        if blood_pressure.columns_ready(c):
+            kept = _edit_bp_in_place(c, old, i, when, payload)
+        else:
+            gone = c.execute(
+                "update blood_pressure_readings set deleted_at=now() where bronze_id=%s and user_id=%s and deleted_at is null returning 1",
+                (old, current_user()),
+            ).fetchone()
+            kept = None if gone is None else _write_bp(c, i, when, payload)
+        if kept is None:
+            return None
+        _log_event(c, "log.blood_pressure.edited", kept)
+    return {"id": str(kept), "day": _local_date(when).isoformat(), "measured_at": when}
+
+
+def get_blood_pressure(entry_id: str) -> dict | None:
+    try:
+        eid = uuid.UUID(entry_id)
+    except ValueError:
+        return None
+    with tx() as c:
+        row = blood_pressure.get_reading(c, current_user(), eid)
+    return _bp_entry(row) if row else None
 
 
 def delete_entry(entry_id: str) -> bool:
@@ -369,6 +586,14 @@ def delete_entry(entry_id: str) -> bool:
             )
             refresh_day(c, _local_date(r["recorded_at"]))
             return True
+        # a blood pressure entry's id is its Silver id (after migration 0035) or its Bronze row's id (before it); its Bronze row stays as received
+        r = c.execute(
+            f"update blood_pressure_readings set deleted_at=now() where {blood_pressure.id_column(c)}=%s and user_id=%s and deleted_at is null returning recorded_at",
+            (eid, current_user()),
+        ).fetchone()
+        if r:
+            _log_event(c, "log.blood_pressure.deleted", eid)
+            return True
     return False
 
 
@@ -386,15 +611,18 @@ def _when_label(dt: datetime) -> str:
 
 def recent(limit: int = 30) -> list[dict]:
     with tx() as c:
+        bp = blood_pressure.recent_select(c)
         rows = c.execute(
             """select * from (
-                 select id, 'meal' kind, start_at at, food title, carbs_g n1, null::numeric n2, null::text t1 from food_logs where user_id=%(u)s and deleted_at is null
+                 select id, 'meal' kind, start_at at, food title, carbs_g n1, null::numeric n2, estimated_by::text t1 from food_logs where user_id=%(u)s and deleted_at is null
                  union all
                  select id, 'workout', start_at, type::text, intensity, extract(epoch from end_at-start_at)/60, note from exercise_logs where user_id=%(u)s and deleted_at is null
                  union all
                  select id, 'symptom', occurred_at, symptom_type::text, severity, duration_min, note from symptom_logs where user_id=%(u)s and deleted_at is null
                  union all
                  select id, 'checkin', recorded_at, 'checkin', mood, stress_self, null from wellbeing_logs where user_id=%(u)s and deleted_at is null
+                 union all
+                 """ + bp + """
                ) x order by at desc limit %(l)s""",
             {"u": current_user(), "l": limit},
         ).fetchall()
@@ -403,18 +631,27 @@ def recent(limit: int = 30) -> list[dict]:
         k, at = r["kind"], r["at"]
         if k == "meal":
             title = r["title"]
-            detail = f"Estimated {round(_num(r['n1']))} g carbs" if r["n1"] is not None else "Logged"
+            # the person's own numbers are labelled "Your numbers"; photo-reading numbers are labelled "Estimated"
+            typed = r["t1"] == "user"
+            if typed:
+                detail = f"Your numbers, {round(_num(r['n1']))} g carbs" if r["n1"] is not None else "Your numbers"
+            else:
+                detail = f"Estimated {round(_num(r['n1']))} g carbs" if r["n1"] is not None else "Logged"
         elif k == "workout":
             mins = round(_num(r["n2"]))
             title = f"{r['t1'] or EXERCISE_WORD.get(r['title'], 'Exercise')}, {mins} min"
-            detail = INTENSITY_WORD.get(int(r["n1"]), "")
+            detail = INTENSITY_WORD.get(int(r["n1"]), "") if r["n1"] is not None else "Not rated"
         elif k == "symptom":
             title = (r["t1"] or r["title"]).split(" · ")[0]
             dur = f", {r['n2']} min" if r["n2"] else ""
-            detail = f"Strength {r['n1']} of 5{dur}"
+            detail = f"Severity {r['n1']} of 5{dur}"
+        elif k == "blood_pressure":
+            title = f"{r['title']} over {round(_num(r['n1']))} mmHg"
+            detail = f"Pulse {round(_num(r['n2']))} a minute" if r["n2"] is not None else "No pulse entered"
         else:
             title = "Mood and sleep check-in"
-            detail = f"Mood {r['n1']}, stress {r['n2']}"
+            answers = [f"Mood {r['n1']}" if r["n1"] is not None else None, f"stress {r['n2']}" if r["n2"] is not None else None]
+            detail = ", ".join(a for a in answers if a) or "No answers recorded"
         out.append({"id": str(r["id"]), "kind": k, "title": title, "detail": detail, "when": _when_label(at), "date": _local_date(at).isoformat()})
     return out
 
@@ -457,6 +694,17 @@ def _until(now: datetime, end_hour: float) -> datetime:
     return now.replace(hour=int(end_hour), minute=int(round((end_hour % 1) * 60)), second=0, microsecond=0)
 
 
+def _clock(dt: datetime) -> str:
+    return _aware(dt).astimezone(TZ).strftime("%I:%M %p").lstrip("0").lower()
+
+
+def _bp_today(c: psycopg.Connection, day: date) -> dict:
+    """Today's blood pressure readings, newest first, with the latest one in plain words for the Log hub."""
+    rows = blood_pressure.reading_on_day(c, current_user(), day)
+    latest = f"{rows[0]['systolic']} over {rows[0]['diastolic']} at {_clock(rows[0]['measured_at'])}" if rows else None
+    return {"count": len(rows), "latest": latest, "readings": [_bp_entry(r) for r in rows]}
+
+
 def progress() -> dict:
     now = datetime.now(TZ)
     today = now.date()
@@ -469,6 +717,7 @@ def progress() -> dict:
                from exercise_logs where user_id=%(u)s and deleted_at is null and (start_at at time zone 'Asia/Singapore')::date >= %(s)s""",
             {"u": current_user(), "s": wk_start},
         ).fetchone()
+        bp = _bp_today(c, today)
         days = c.execute(
             """select d from (
                  select (start_at at time zone 'Asia/Singapore')::date d from food_logs where user_id=%(u)s and deleted_at is null
@@ -538,7 +787,7 @@ def progress() -> dict:
     return {
         "date": today.isoformat(), "items": items, "done": sum(1 for i in core if i["done"]), "total": len(core),
         "streak_days": streak, "week_activity_min": mod_min, "week_activity_goal": GOAL_MODERATE_MIN,
-        "week_strength_sessions": strength, "week_strength_goal": GOAL_STRENGTH, "next_up": nxt,
+        "week_strength_sessions": strength, "week_strength_goal": GOAL_STRENGTH, "next_up": nxt, "blood_pressure": bp,
     }
 
 
@@ -566,6 +815,17 @@ def heart_rate_and_age(start: datetime, end: datetime) -> tuple[list[tuple[datet
         prof = c.execute("select birth_year from user_profile where user_id=%s", (current_user(),)).fetchone()
     age = float(datetime.now(TZ).year - prof["birth_year"]) if prof and prof["birth_year"] else None
     return [(r["recorded_at"], float(r["heart_rate_bpm"])) for r in rows], age
+
+
+def medicine_names(c: psycopg.Connection, user_id: Any) -> list[str]:
+    """Names of the person's medicines that are not deleted. Read only; used for the beta-blocker rule in workout effort."""
+    rows = c.execute("select name from medications where user_id=%s and deleted_at is null", (user_id,)).fetchall()
+    return [r["name"] for r in rows]
+
+
+def active_medicine_names() -> list[str]:
+    with tx() as c:
+        return medicine_names(c, current_user())
 
 
 def glucose_context() -> dict | None:
@@ -624,6 +884,33 @@ def slots_left(created_today: int) -> int:
     return max(0, settings.nudge_daily_cap - created_today)
 
 
+# The lunch reminder has one slot a day. The "Log your lunch" reminder (meal-2-<day>, from MEAL_WINDOWS) and the lunch ideas
+# (lunch-<day>, from nutritionstore.nutrition_nudges) are written by two code paths; whichever is stored first takes the slot.
+LUNCH_MEAL_INDEX = 2
+
+
+def lunch_slot_keys(today: str) -> set[str]:
+    return {f"meal-{LUNCH_MEAL_INDEX}-{today}", f"lunch-{today}"}
+
+
+def reminder_time(key: str, day: date, lunch_start_min: int) -> datetime | None:
+    """The time a reminder is due, so the time it shows is the same on every request. None for a reminder with no fixed time
+    (it then keeps the moment it was written)."""
+    hour: float | None = None
+    m = re.match(r"^meal-(\d+)-", key)
+    if m and 1 <= int(m.group(1)) <= len(MEAL_WINDOWS):
+        hour = MEAL_WINDOWS[int(m.group(1)) - 1][0]
+    elif key.startswith("lunch-"):
+        return datetime(day.year, day.month, day.day, tzinfo=TZ) + timedelta(minutes=lunch_start_min)
+    elif key.startswith("checkin-"):
+        hour = CHECKIN_WINDOW[0]
+    elif key.startswith("workout-"):
+        hour = WORKOUT_WINDOW[0]
+    if hour is None:
+        return None
+    return datetime(day.year, day.month, day.day, tzinfo=TZ) + timedelta(minutes=round(hour * 60))
+
+
 def notifications() -> list[dict]:
     """Reminders from the day's progress, kept in the `notifications` table so opening them is recorded. A reminder is only
     created inside its time window and is hidden again once the window has passed, so nothing nags at the wrong time."""
@@ -632,6 +919,10 @@ def notifications() -> list[dict]:
     h = _hour(now)
     today = p["date"]
     lang = texts.person_language(current_user())   # the wording follows the person's language; keys and routes do not
+    from app.db import nutritionstore
+
+    lunch_start_min = nutritionstore.lunch_window(current_user())[0]
+    lunch_slot = lunch_slot_keys(today)
     want: list[tuple[str, str, str, str, str, datetime]] = []  # key, kind, title, body, route, valid until
     items = {i["key"]: i for i in p["items"]}
     m = items["meals"]
@@ -646,8 +937,6 @@ def notifications() -> list[dict]:
         want.append((f"workout-{today}", "nudge", texts.tr(lang, "nudge.workout.title"),
                      texts.tr(lang, "nudge.workout.body", done=p["week_activity_min"], goal=p["week_activity_goal"]), "F1", _until(now, WORKOUT_WINDOW[1])))
     # nutrition and activity nudges: templates over the person's own data, guarded before they are stored (nutritionstore)
-    from app.db import nutritionstore
-
     with tx() as c:
         have_keys = {r["k"] for r in c.execute("select payload->>'key' k from notifications where user_id=%s", (current_user(),)).fetchall()}
         lunch_today = c.execute(
@@ -663,6 +952,8 @@ def notifications() -> list[dict]:
     from app.agents import hooks
 
     want += hooks.dose_nudges(current_user(), now, have_keys)
+    if lunch_slot & have_keys:
+        want = [w for w in want if w[0] not in lunch_slot]   # today's lunch reminder is already there
     quiet, left, keep = in_quiet_hours(now), slots_left(created_today), []
     for w in want:
         if w[0] in have_keys or is_exempt(w[0]):
@@ -673,17 +964,24 @@ def notifications() -> list[dict]:
     want = keep
     if not quiet and left > 0:
         try:
-            want += nutritionstore.nutrition_nudges(current_user(), have_keys, lunch_today, now, max_new=left)
+            # a lunch reminder in this same pass also takes the lunch slot, so the lunch ideas do not add a second one
+            lunch_taken = have_keys | (lunch_slot if any(w[0] in lunch_slot for w in want) else set())
+            want += nutritionstore.nutrition_nudges(current_user(), lunch_taken, lunch_today, now, max_new=left)
             want += hooks.extra_nudges(current_user(), now, have_keys, max(0, left - len([w for w in want if not is_exempt(w[0])])))
         except Exception:
             logger.exception("nutrition nudges failed; the other reminders are unaffected")
     with tx() as c:
+        # two requests (or a request and the minute tick) can write at the same time: the lock makes each check-then-insert one step
+        c.execute("select pg_advisory_xact_lock(hashtext(%s))", (f"notifications:{current_user()}",))
         for key, kind, title, body, to, until in want:
             have = c.execute("select 1 from notifications where user_id=%s and payload->>'key'=%s", (current_user(), key)).fetchone()
+            if not have and key in lunch_slot:
+                have = c.execute("select 1 from notifications where user_id=%s and payload->>'key' = any(%s) limit 1", (current_user(), sorted(lunch_slot))).fetchone()
             if not have:
+                at = reminder_time(key, now.astimezone(TZ).date(), lunch_start_min) or now
                 c.execute(
-                    "insert into notifications (user_id, kind, scheduled_for, sent_at, channel, payload) values (%s,%s::notification_kind,now(),now(),'in_app',%s::jsonb)",
-                    (current_user(), kind, json.dumps({"key": key, "title": title, "body": body, "to": to, "until": until.isoformat()})),
+                    "insert into notifications (user_id, kind, scheduled_for, sent_at, channel, payload) values (%s,%s::notification_kind,%s,now(),'in_app',%s::jsonb)",
+                    (current_user(), kind, at, json.dumps({"key": key, "title": title, "body": body, "to": to, "until": until.isoformat()})),
                 )
         # a reminder is done once the thing it asked for is logged
         for row in c.execute("select id, payload from notifications where user_id=%s and acted_at is null and payload ? 'key'", (current_user(),)).fetchall():

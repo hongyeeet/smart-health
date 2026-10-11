@@ -427,7 +427,7 @@
       "setsKg": "{{n}} 组，{{kg}} 千克",
       "setsLabel": "组数",
       "shoulders": "肩部",
-      "skipRest": "跳过休息",
+      "endRest": "结束休息",
       "start": "开始运动",
       "startSub": "记录您的训练时长、做了什么以及每一组。",
       "startTitle": "运动记录",

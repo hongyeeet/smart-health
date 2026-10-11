@@ -6,6 +6,7 @@ Run from services/api:  python -m pytest tests/db/test_scans_route.py -q       N
 import os
 import sys
 from contextlib import contextmanager
+from datetime import time
 from pathlib import Path
 
 import psycopg
@@ -123,6 +124,7 @@ def test_a_photo_that_was_refused_stores_nothing_but_still_explains(db, monkeypa
     before = conn.execute("select count(*) from prescription_scans").fetchone()[0]
     r = scans._upload(b"blank")
     assert r.review_mode == "manual" and r.status.value == "failed" and "text" in r.notice
+    assert r.error_code == "ocr_empty" and "text" in r.error
     assert stored == [] and conn.execute("select count(*) from prescription_scans").fetchone()[0] == before
     assert scans._get(r.scan_id).reasons == ["ocr_empty"]
     with pytest.raises(HTTPException) as e:
@@ -139,7 +141,8 @@ def test_if_storage_is_down_nothing_pretends_to_be_saved(db, monkeypatch):
     monkeypatch.setattr("app.integrations.storage.upload_object", broken)
     fake_pipeline(monkeypatch, outcome())
     r = scans._upload(b"any")
-    assert r.review_mode == "manual" and r.reasons == ["service_unavailable"] and r.status.value == "failed"
+    assert r.review_mode == "manual" and r.reasons == ["storage_unavailable"] and r.status.value == "failed"
+    assert r.error_code == "storage_unavailable" and "save the photo" in r.error
 
 
 def test_one_persons_scan_is_not_visible_to_another(db, monkeypatch):
@@ -168,13 +171,16 @@ def test_the_response_uses_the_names_the_app_reads(db, monkeypatch):
     assert "sourceText" in j["fields"][0] and j["fields"][0]["level"] in ("high", "check", "unreadable")
 
 
-def test_an_as_needed_label_is_saved_without_a_dose_time(db, monkeypatch):
+def test_an_as_needed_label_is_read_as_such_but_saved_every_day_with_the_time_the_person_chooses(db, monkeypatch):
     conn, _ = db
     fake_pipeline(monkeypatch, outcome(when_to_take=field("as_needed"), times_per_day=ScoredField(value=None, confidence=0.0, model_confidence=0.0,
                                                                                                   source_text=None, needs_confirmation=False)))
     r = scans._upload(b"any")
-    assert r.review_mode == "confirm" and r.as_needed is True and r.schedule == []
+    assert r.review_mode == "confirm" and r.as_needed is True and r.schedule == []        # the label's words, shown as read
     assert "times_per_day" not in [f.key for f in r.fields]
-    med = scans._confirm(r.scan_id, ScanConfirmRequest(times=[]))
-    assert med.as_needed and med.times == [] and med.refill is None
-    assert conn.execute("select dose_time from medication_schedule where medication_id = %s", (med.id,)).fetchall() == [(None,)]
+    with pytest.raises(HTTPException) as e:                                               # no time chosen: a daily medicine needs one
+        scans._confirm(r.scan_id, ScanConfirmRequest(times=[]))
+    assert e.value.status_code == 422
+    med = scans._confirm(r.scan_id, ScanConfirmRequest(times=["08:00"], as_needed=False))
+    assert not med.as_needed and med.times == ["8:00 am"]                                 # the app's clock text
+    assert conn.execute("select dose_time from medication_schedule where medication_id = %s", (med.id,)).fetchall() == [(time(8, 0),)]

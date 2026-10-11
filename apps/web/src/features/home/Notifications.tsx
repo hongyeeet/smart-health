@@ -47,7 +47,7 @@ export function Notifications() {
   ]
 
   return (
-    <Screen>
+    <Screen narrow>
       <Header
         title={t('alerts.title', 'Notifications and alerts')}
         back
@@ -127,7 +127,7 @@ export function Notifications() {
 
       <p className="flex items-start justify-center gap-2 rounded-card bg-well p-4 text-center text-sub text-ink2">
         <ShieldCheck size={18} className="mt-0.5 flex-none" aria-hidden />
-        {t('alerts.footer', 'Medicine alerts come from drug-label rules and an AI web search of your saved medicines. They are not medical advice, and no alert does not mean a combination is safe.')}
+        {t('alerts.footer', 'Medicine alerts come from drug-label rules and an AI web search of your saved medicines. They are not medical advice. No alert does not mean a combination was checked and cleared.')}
       </p>
     </Screen>
   )

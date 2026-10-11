@@ -13,8 +13,8 @@ from typing import Any, Mapping
 
 from app.core.errors import ValidationFailed
 from app.schemas.medicine_scan import REQUIRED_FIELDS, ConfirmedMedication, DoseTime
+from app.services.scan_confidence import THRESHOLD
 
-THRESHOLD = 0.85
 LABELS = {
     "name": "Medicine name", "strength": "Strength", "dose_amount": "Amount each time", "dose_unit": "Unit", "times_per_day": "Times a day",
     "when_to_take": "When to take it", "meal_relation": "Before or after food", "meal_offset_minutes": "Minutes from food",
@@ -29,27 +29,40 @@ WHEN_TIME = {"morning": "08:00", "noon": "12:00", "afternoon": "15:00", "evening
 KIND_FOR_ITEM = {"prescription_label": "prescription", "otc": "otc", "supplement": "supplement", "tcm": "tcm"}
 MEAL_TEXT = {"before_meal": "before meals", "after_meal": "after meals", "with_meal": "with food", "na": "with or without food"}
 # Why a scan sends the person to type the form, in the words the app shows (rules.md: plain, one next step, never a guess).
+# Each key is a stable code the API returns (`reasons`, and `errorCode` for the first one). Order below = priority: the first code
+# that applies is the one shown and returned as `errorCode`.
 REASON_TEXT = {
-    "low_confidence": "Some of the label was hard to read, so please type it in yourself.",
-    "missing_required": "We could not find the name, how often or the total on the label, so please type it in.",
-    "several_items": "There is more than one medicine in this photo. Please add them one at a time.",
-    "unreadable": "The photo is too blurred, dark or cut off to read. Retake it, or type the medicine in.",
-    "ocr_empty": "We could not find any text in the photo. Retake it with the label in good light, or type the medicine in.",
-    "not_a_medicine": "This does not look like a medicine label. Retake the photo, or type the medicine in.",
-    "invalid_json": "We could not read this label just now. Please type the medicine in.",
-    "service_unavailable": "The label reader is not available right now. Your medicines still work: please type it in.",
-    "file_type_not_allowed": "That file type is not supported. Use a JPEG or PNG photo, or type the medicine in.",
-    "file_too_large": "That photo is too large (over 10 MB). Retake it, or type the medicine in.",
     "file_empty": "That photo was empty. Retake it, or type the medicine in.",
+    "file_too_large": "That photo is too large (over 10 MB). Retake it, or type the medicine in.",
+    "file_type_not_allowed": "That file type is not supported. Use a JPEG or PNG photo, or type the medicine in.",
+    "ocr_empty": "We could not find any text in the photo. Retake it with the label in good light, or type the medicine in.",
+    "unreadable": "The photo is too blurred, dark or cut off to read. Retake it, or type the medicine in.",
+    "not_a_medicine": "This does not look like a medicine label. Retake the photo, or type the medicine in.",
+    "daily_limit": "Reading photos is paused for today. You can type the medicine in instead.",
+    "model_unavailable": "The label reader is not available right now. Your medicines still work: please type it in.",
+    "ocr_unavailable": "The text reader is not working right now. Your medicines still work: please type it in.",
+    "storage_unavailable": "We could not save the photo just now. Please try again, or type the medicine in.",
+    "invalid_json": "We could not read this label just now. Please type the medicine in.",
+    "several_items": "There is more than one medicine in this photo. Please add them one at a time.",
+    "low_confidence_all": "We could not read this. Take another photo or type it in.",
+    "missing_required": "We could not find the name, how often or the total on the label, so please type it in.",
+    "low_confidence": "Some of the label was hard to read, so please type it in yourself.",
 }
+# Codes an older scan may still carry (stored before the rename), shown with the same words.
+LEGACY_REASONS = {"service_unavailable": "model_unavailable"}
+REASON_PRIORITY = tuple(REASON_TEXT)
+
+
+def reason_code(reasons: list[str]) -> str | None:
+    """The one stable code that best explains the outcome (the first in REASON_PRIORITY), or None when there is no reason."""
+    codes = {LEGACY_REASONS.get(r, r) for r in reasons}
+    return next((r for r in REASON_PRIORITY if r in codes), None)
 
 
 def reason_text(reasons: list[str]) -> str:
-    for r in ("unreadable", "ocr_empty", "not_a_medicine", "service_unavailable", "invalid_json", "file_type_not_allowed", "file_too_large",
-              "file_empty", "several_items", "missing_required", "low_confidence"):
-        if r in reasons:
-            return REASON_TEXT[r]
-    return REASON_TEXT["low_confidence"]
+    """The plain sentence for the screen. Falls back to the low-confidence wording, which asks for another photo or typing."""
+    code = reason_code(reasons)
+    return REASON_TEXT[code] if code else REASON_TEXT["low_confidence_all"]
 
 
 def clock12(hhmm: str) -> str:
@@ -100,7 +113,7 @@ def api_fields(extraction: Mapping[str, Any] | None, threshold: float = THRESHOL
             continue
         conf = float(f.get("confidence") or 0)
         out.append({"key": key, "label": LABELS[key], "value": f["value"], "confidence": conf, "sourceText": f.get("source_text"),
-                    "level": "high" if conf >= threshold else "check"})
+                    "level": "high" if conf >= threshold else "check"})     # the screen asks for a tick on every "check" field, name included
     return out
 
 
@@ -150,8 +163,9 @@ def build_confirmed(extraction: Mapping[str, Any] | None, edits: Mapping[str, st
     """The medicine the person confirmed: the label values with their edits on top, and the times they chose. Raises ValidationFailed
     with a plain message if something required is missing: the caller returns it to the screen and nothing is saved.
 
-    `as_needed_choice` is the person's own answer to "how do you take it?": True means only when needed (no clock times, whatever the label
-    says), False means every day (times are required, whatever the label says), None means follow the label."""
+    `as_needed_choice` is the person's answer, when one is sent. True means only when needed (no clock times). False or None (not sent) means
+    every day: times are required, whatever the label says. The app no longer offers "only when needed", so a new medicine is never saved
+    as-needed unless an old client asks for it."""
     item = first_item(extraction)
     if item is None:
         raise ValidationFailed("This scan has no single medicine to save. Please type it in.", code="scan_not_confirmable")
@@ -175,7 +189,7 @@ def build_confirmed(extraction: Mapping[str, Any] | None, edits: Mapping[str, st
         raise ValidationFailed("One of the dose times is not a valid time.", code="bad_time")
     if as_needed_choice is True:
         chosen = []                                                    # the person said only when needed: no clock times
-    as_needed = as_needed_choice is True or (as_needed_choice is None and not chosen and val("when_to_take") == "as_needed")
+    as_needed = as_needed_choice is True
     if not chosen and not as_needed:
         chosen = default_times(_int(val("times_per_day")), val("when_to_take"))
     if not chosen and not as_needed:

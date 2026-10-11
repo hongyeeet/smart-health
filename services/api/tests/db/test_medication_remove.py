@@ -27,7 +27,8 @@ from app.schemas.medicines import NewMedicationIn  # noqa: E402
 from app.services import calendar_sync, clash_store, dose_store  # noqa: E402
 from app.services.medication_remove import remove_medication  # noqa: E402
 
-NOW = datetime(2026, 10, 8, 19, 0, tzinfo=dose_store.TZ)
+# the clock is the real time: doses are only made for times after the medicine was created, so a fixed date in the past would find none
+NOW = datetime.now(dose_store.TZ).replace(second=0, microsecond=0)
 
 
 @pytest.fixture()

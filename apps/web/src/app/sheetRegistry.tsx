@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import type { SheetId } from '@/state/store'
 import { EntrySheet } from '@/features/sheets/EntrySheet'
 import { MissSheet } from '@/features/sheets/MissSheet'
+import { StockSheet } from '@/features/meds/StockSheet'
 import { MarkerSheet } from '@/features/day/MarkerSheet'
 import { ShareSheet } from '@/features/brief/ShareSheet'
 import { WhySheet } from '@/features/insights/WhySheet'
@@ -13,4 +14,5 @@ export const sheets: Partial<Record<SheetId, ComponentType<{ onClose: () => void
   D2: MarkerSheet as ComponentType<{ onClose: () => void } & Record<string, unknown>>,
   L2: ShareSheet as ComponentType<{ onClose: () => void } & Record<string, unknown>>,
   H7: MissSheet as ComponentType<{ onClose: () => void } & Record<string, unknown>>,
+  H9: StockSheet as ComponentType<{ onClose: () => void } & Record<string, unknown>>,
 }

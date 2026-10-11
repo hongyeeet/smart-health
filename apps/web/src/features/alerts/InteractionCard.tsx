@@ -117,7 +117,7 @@ export function InteractionCard({ alert }: { alert: ClashAlert }) {
               <CaretRight size={18} weight="bold" aria-hidden />
             </span>
           </Button>
-          <div className="grid grid-cols-2 gap-2 [[data-ts='2']_&]:grid-cols-1">
+          <div className="grid grid-cols-1 gap-2 min-[440px]:grid-cols-2">
             <Button size="md" variant="secondary" icon={Phone} aria-expanded={panel === 'clinic'} onClick={() => setPanel(panel === 'clinic' ? null : 'clinic')}>
               {t('alerts.card.clinic', 'Contact clinic')}
             </Button>
@@ -133,7 +133,7 @@ export function InteractionCard({ alert }: { alert: ClashAlert }) {
               {t('alerts.card.onList', 'This pair is on your doctor questions')}
             </p>
           )}
-          <TextLink onClick={() => dismiss(alert)} className="self-end text-right">
+          <TextLink onClick={() => dismiss(alert)} className="self-start text-left">
             {t('alerts.card.dismiss', 'Dismiss for now and add to my doctor questions')}
           </TextLink>
         </div>

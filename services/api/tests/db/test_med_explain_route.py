@@ -25,6 +25,7 @@ from app.api.routers import medications as meds  # noqa: E402
 from app.db import logstore  # noqa: E402
 from app.llm.vertex import WebSource  # noqa: E402
 from app.schemas.medicines import NewMedicationIn, QuestionIn  # noqa: E402
+from app.services import med_explain_store as store  # noqa: E402
 from app.services import usage  # noqa: E402
 
 
@@ -56,10 +57,14 @@ def new_med(conn, user, **over):
     return meds.create_medication(conn, user, NewMedicationIn.model_validate(base), meds.datetime_today()).id
 
 
+PARTS = {"for_diabetes": "Lowers bad cholesterol.", "how_it_works": "It slows the liver from making cholesterol.",
+         "what_you_may_notice": "Some people notice muscle aches.", "why_timing_matters": "Its effect builds up over time."}
+
+
 def ready(**over):
-    base = dict(status="ready", purpose="Lowers bad cholesterol.", side_effects=["Headache", "Nausea"], tell_doctor="Call if you have muscle pain.",
-                sources=[WebSource("drugs.com", "https://vertexaisearch.cloud.google.com/r/1")], model_id="m", prompt_version="1",
-                input_tokens=10, output_tokens=5)
+    base = dict(status="ready", purpose="Lowers bad cholesterol.", parts=dict(PARTS), side_effects=["Headache", "Nausea"],
+                tell_doctor="Call if you have muscle pain.", sources=[WebSource("drugs.com", "https://vertexaisearch.cloud.google.com/r/1")],
+                model_id="m", prompt_version="2", input_tokens=10, output_tokens=5)
     base.update(over)
     return ExplainOutcome(**base)
 
@@ -121,13 +126,17 @@ def test_an_explanation_for_an_old_version_of_the_medicine_is_not_shown_for_the_
 def test_a_failed_search_saves_nothing_and_says_so_in_plain_words(db, monkeypatch):
     conn, user = db
     mid = new_med(conn, user)
-    fake_run(monkeypatch, ExplainOutcome(status="failed", reason="service_unavailable"), ExplainOutcome(status="failed", reason="no_sources"))
+    fake_run(monkeypatch, ExplainOutcome(status="failed", reason="service_unavailable"), ExplainOutcome(status="failed", reason="no_sources"),
+             ExplainOutcome(status="failed", reason="invalid_answer"))
     with pytest.raises(HTTPException) as e:
         route._explain(mid, False)
     assert e.value.status_code == 503 and "try again" in e.value.detail
     with pytest.raises(HTTPException) as e2:
         route._explain(mid, False)
-    assert e2.value.status_code == 502 and "pharmacist" in e2.value.detail
+    assert e2.value.status_code == 404 and "reliable page" in e2.value.detail and "pharmacist" in e2.value.detail
+    with pytest.raises(HTTPException) as e3:
+        route._explain(mid, False)
+    assert e3.value.status_code == 502 and "try again" in e3.value.detail
     assert conn.execute("select count(*) from medication_explanations where medication_id = %s", (mid,)).fetchone()[0] == 0
 
 
@@ -174,3 +183,52 @@ def test_a_question_goes_to_the_doctor_question_list(db):
     assert conn.execute("select count(*) from event_log where user_id = %s and event = 'doctor_question.added'", (user,)).fetchone()[0] == 1
     with pytest.raises(ValueError):
         QuestionIn(text="no")                                 # too short to be a question
+
+
+def test_the_four_parts_are_saved_and_shown_on_the_medicine_page(db, monkeypatch):
+    conn, user = db
+    if not store.parts_column_present(conn):
+        pytest.skip("migration 0033 (the parts column) is not applied to this database yet")
+    mid = new_med(conn, user)
+    fake_run(monkeypatch, ready())
+    route._explain(mid, False)
+    shown = route._detail(mid).explanation
+    assert shown.parts.for_diabetes == "Lowers bad cholesterol." and shown.parts.why_timing_matters == "Its effect builds up over time."
+
+
+def test_an_explanation_in_the_older_layout_still_shows_and_is_made_again_when_the_database_can_keep_the_parts(db, monkeypatch):
+    conn, user = db
+    mid = new_med(conn, user)
+    med = store.get_medicine(conn, user, mid)
+    store.save(conn, user, mid, status="ready", purpose="An older sentence.", side_effects=["Nausea"], tell_doctor="Call a doctor.",
+               sources=[{"title": "drugs.com", "url": "https://vertexaisearch.cloud.google.com/r/1"}], input_key=route._input_key(med),
+               model_id="m", prompt_version="1")                       # no parts: the layout before prompt version 2
+    old = route._detail(mid).explanation
+    assert old.parts is None and old.purpose == "An older sentence."     # still rendered, with the old layout
+    calls = fake_run(monkeypatch, ready(), ready())
+    again = route._explain(mid, False)
+    if store.parts_column_present(conn):
+        assert len(calls) == 1 and again.parts is not None and route._detail(mid).explanation.parts is not None   # made again
+        expected_calls = 2
+    else:
+        # the database is at 0031: the four parts cannot be kept, so the saved explanation is returned and no search is spent
+        assert len(calls) == 0 and again.parts is None and again.purpose == "An older sentence."
+        expected_calls = 1
+    assert route._explain(mid, True).purpose == "Lowers bad cholesterol." and len(calls) == expected_calls   # an explicit refresh searches
+
+
+def test_the_medicine_page_and_the_name_check_work_without_the_parts_column(db, monkeypatch):
+    conn, user = db
+    mid = new_med(conn, user)
+    fake_run(monkeypatch, ready())
+    made = route._explain(mid, False)                                    # made and saved on any revision
+    assert made.status == "ready" and route._detail(mid).explanation is not None
+    assert route._explain(mid, False).generated_at == made.generated_at  # served from the saved copy
+
+
+def test_the_name_check_is_a_gentle_note_only_for_names_outside_the_drug_list(db):
+    conn, _ = db
+    assert route._scope("Metformin 500 mg", "prescription").out_of_scope is False
+    assert route._scope("Vitamin C 500 mg", "supplement").out_of_scope is False          # supplements are never out of scope
+    assert route._scope("Zzqxv Plumbase 40", "otc").out_of_scope is True
+    assert route._scope("", "prescription").out_of_scope is False

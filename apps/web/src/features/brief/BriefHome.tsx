@@ -10,10 +10,10 @@ import type { DoctorReport, ReportDays } from '@/data/types'
 import { href } from '@/app/routeIds'
 import { useGo } from '@/app/navigation'
 import { Footer, Header, Screen } from '@/ui/layout'
-import { Segmented } from '@/ui/controls'
 import { Alert, Button, Card, Skeleton, StatusPill, TextLink, type Tone } from '@/ui/primitives'
 import { FilePdf, Info, ShareNetwork, Warning, WarningCircle, type IconType } from '@/ui/icons'
 import { APPOINTMENT_KIND, formatWhen, useShareContext } from './shareApi'
+import { ChoiceGrid } from './ChoiceGrid'
 
 const TAG: Record<DoctorReport['alerts'][number]['priority'], { tone: Tone; icon: IconType }> = {
   urgent: { tone: 'danger', icon: WarningCircle },
@@ -33,7 +33,8 @@ export function BriefHome() {
   return (
     <Screen>
       <Header title={t('brief.title', 'Doctor brief')} back backTo="K1" sub={t('brief.sub', 'A report of your readings, symptoms and medicines to take to your next visit. You see exactly what your doctor sees.')} />
-      <Segmented
+      <div className="md:max-w-xl">
+      <ChoiceGrid
         label={t('brief.period', 'Period')}
         value={days}
         onChange={setDays}
@@ -44,12 +45,16 @@ export function BriefHome() {
           { value: 90, label: t('brief.days90', '90 days') },
         ]}
       />
+      </div>
 
       {isLoading && <Skeleton className="h-64" />}
       {isError && <Alert tone="warn">{t('brief.error', 'We could not prepare your report just now. Please try again in a moment.')}</Alert>}
 
       {data && (
         <>
+          {/* findings and what is worth discussing on the left, the lists you add to on the right, from a laptop up */}
+          <div className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6 [&>*]:min-w-0">
+          <div className="flex flex-col gap-4">
           <Card tone="hero" as="section" className="flex flex-col gap-2">
             <p className="text-sub text-ink2">{data.period.label}</p>
             <h2 className="font-serif text-h2 font-medium tracking-tight">{t('brief.findings', 'Key findings')}</h2>
@@ -58,6 +63,12 @@ export function BriefHome() {
                 <li key={f}>{f}</li>
               ))}
             </ul>
+            {data.keyFindingsSource === 'ai' && (
+              <p className="rounded-card border border-line bg-card px-3 py-2 text-sub text-ink2">
+                <span className="font-bold text-ink">{t('brief.aiInsight', 'AI insight.')}</span>{' '}
+                {t('brief.aiNote', 'These sentences were written by an AI from the numbers in this report. The numbers come from your data. Not medical advice. Your doctor decides what they mean.')}
+              </p>
+            )}
             <p className="text-sub text-ink3">{t('brief.sources', 'From: {{sources}}. Sensor worn: {{wear}}.', { sources: data.sources, wear: data.cgmWear })}</p>
           </Card>
 
@@ -77,6 +88,9 @@ export function BriefHome() {
             )}
           </Card>
 
+          </div>
+
+          <div className="flex flex-col gap-4">
           <Card as="section" className="flex flex-col gap-3">
             <h2 className="font-serif text-h2 font-medium tracking-tight">{t('brief.questions', 'Questions you want to ask')}</h2>
             {context.data && context.data.questions.length > 0 ? (
@@ -90,6 +104,9 @@ export function BriefHome() {
             ) : (
               <p className="text-body text-ink2">{t('brief.noQuestions', 'You have no open questions yet. Add one from a medicine or from your care plan.')}</p>
             )}
+            <div>
+              <TextLink onClick={() => go('K12')}>{t('brief.openQuestions', 'Open my questions')}</TextLink>
+            </div>
           </Card>
 
           <Card as="section" className="flex flex-col gap-2">
@@ -130,16 +147,19 @@ export function BriefHome() {
             )}
           </Card>
 
-          <Button variant="secondary" icon={ShareNetwork} onClick={() => go('L2', { sheet: { days } })}>
+          </div>
+          </div>
+
+          <Button variant="secondary" className="md:max-w-sm" icon={ShareNetwork} onClick={() => go('L2', { sheet: { days } })}>
             {t('brief.share', 'Share with my doctor')}
           </Button>
 
-          <Alert tone="info">{t('brief.note', 'These are counts from what you and your devices recorded, worked out by fixed rules, not by AI. They are for your doctor to interpret. Smart Health does not diagnose or advise on medicines.')}</Alert>
+          <Alert tone="info">{t('brief.note', 'The numbers are counts from what you and your devices recorded, worked out by fixed rules. Where the key findings say AI insight, an AI wrote the sentences from those numbers. They are for your doctor to interpret. Smart Health does not diagnose or advise on medicines.')}</Alert>
         </>
       )}
 
       <Footer>
-        <Button icon={FilePdf} disabled={!data} onClick={() => navigate(`${href('L3')}?days=${days}`)}>
+        <Button className="md:mx-auto md:!w-auto md:!flex-none md:px-10" icon={FilePdf} disabled={!data} onClick={() => navigate(`${href('L3')}?days=${days}`, { state: { from: 'L1' } })}>
           {t('brief.open', 'Open the printable report')}
         </Button>
       </Footer>

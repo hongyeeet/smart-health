@@ -136,7 +136,7 @@ export function LogSymptom() {
   }
 
   return (
-    <Screen>
+    <Screen narrow>
       <Header title={t('log.sym.title', 'Log a symptom')} back backTo="E1" sub={t('log.sym.sub', 'About 30 seconds. Say what it was, how strong, and for how long.')} />
       {ctx?.glucose && (
         <Alert tone="info" icon={Info} title={t('log.sym.filled', 'Filled in for you')}>

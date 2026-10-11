@@ -6,13 +6,14 @@ pending clinical review and are never shown as advice.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import psycopg
 
 from app.core.errors import InvalidTransition, NotFound, ValidationFailed
+from psycopg.types.json import Jsonb
 
 TZ = ZoneInfo("Asia/Singapore")
 DUE_SOON_DAYS = 30
@@ -29,14 +30,28 @@ KIND_LABELS = {
     "dental": "Dental check",
     "other": "Other visit",
 }
+# Visits: the kinds a person can log now. Old visits of a removed kind (vaccination, dental) keep their old label in KIND_LABELS.
+APPOINTMENT_KIND_LABELS = {
+    "gp_review": "GP review",
+    "diabetes_review": "Diabetes review",
+    "eye_screening": "Eye screening",
+    "foot_screening": "Foot check",
+    "kidney_test": "Kidney test",
+    "hba1c_test": "Blood test",
+    "other": "Other visit",
+}
+NEW_APPOINTMENT_KINDS = tuple(APPOINTMENT_KIND_LABELS)   # the kinds the Log an appointment form offers
 # The order the checks are listed in on K3 (the same order the team wrote them down).
 PREVENTIVE_ORDER = ["eye_screening", "foot_screening", "kidney_test", "hba1c_test", "vaccination", "diabetes_review"]
 ORIGIN_LABELS = {
-    "user": "You added this",
+    "user": "Added by you",
     "refused_chat": "From your chat",
     "checkin": "From your check-in",
     "agent_suggested": "Suggested by Smart Health",
 }
+# A question marked done is stored as "asked" (the table's status check has no "done"); "open" is on the list, "archived" is removed.
+DONE_STATUS = "asked"
+OPEN_STATUS = "open"
 SUGGESTED_BECAUSE = {"overdue": "Suggested because it is overdue.", "due_soon": "Suggested because it is due soon."}
 SOURCE_LABELS = {"cgm": "Glucose sensor", "watch": "Watch", "camera": "Photo camera"}
 
@@ -133,12 +148,16 @@ def _kind_label(kind: str) -> str:
     return KIND_LABELS[kind]
 
 
+def _visit_kind_label(kind: str) -> str:
+    return APPOINTMENT_KIND_LABELS.get(kind) or KIND_LABELS[kind]
+
+
 def appointment_out(row: dict[str, Any]) -> dict[str, Any]:
     when = row["scheduled_for"]
     return {
         "id": str(row["id"]),
         "kind": row["kind"],
-        "kind_label": _kind_label(row["kind"]),
+        "kind_label": _visit_kind_label(row["kind"]),
         "status": row["status"],
         "scheduled_for": when,
         "scheduled_label": scheduled_label(when) if when else None,
@@ -156,15 +175,46 @@ def question_out(row: dict[str, Any]) -> dict[str, Any]:
         "origin_label": ORIGIN_LABELS.get(row["origin"] or "", "Saved"),
         "status": row["status"],
         "created_at": row["created_at"],
-        "can_remove": row["status"] == "open",
+        "can_remove": row["status"] in (OPEN_STATUS, DONE_STATUS),   # both are on the list; archived ones are not returned
     }
+
+
+# ───────────────────────────────────────────────────────────────── one rule for "next appointment"
+def is_next_visit(status: str, scheduled_for: datetime | None, now: datetime) -> bool:
+    """THE rule for the next appointment, used by K3 and the L1 brief: a visit the person confirmed (planned, so not cancelled,
+    missed or completed) whose time has not passed yet. A visit whose time has passed is not next; it is listed as Past."""
+    return status == "planned" and scheduled_for is not None and scheduled_for >= now
+
+
+def pick_next_visit(rows: list[dict[str, Any]], now: datetime) -> dict[str, Any] | None:
+    """The earliest visit that is next under `is_next_visit`, or None when there is none."""
+    due = [r for r in rows if is_next_visit(r["status"], r["scheduled_for"], now)]
+    return min(due, key=lambda r: (r["scheduled_for"], str(r["id"]))) if due else None
+
+
+def split_visits(rows: list[dict[str, Any]], now: datetime) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """From the live rows (planned and suggested): the upcoming visits, and the earlier ones (planned, time passed, newest first).
+    An earlier visit is returned with status "past", so it is never shown as Planned."""
+    upcoming = [appointment_out(r) for r in rows if r["scheduled_for"] is None or r["scheduled_for"] >= now]
+    past = sorted((r for r in rows if r["status"] == "planned" and r["scheduled_for"] is not None and r["scheduled_for"] < now),
+                  key=lambda r: r["scheduled_for"], reverse=True)
+    return upcoming, [{**appointment_out(r), "status": "past"} for r in past]
+
+
+def next_appointment(conn: psycopg.Connection, user_id: str, now: datetime) -> dict[str, Any] | None:
+    """The next appointment for one person under the one rule above. The L1 brief (share.context) and K3 both use this."""
+    rows = conn.execute(f"select {APPT_COLS} from appointments where user_id = %s and status = 'planned'", (user_id,)).fetchall()
+    row = pick_next_visit(rows, now)
+    return appointment_out(row) if row else None
 
 
 # ───────────────────────────────────────────────────────────────── K3 Care plan
 def load_plan(conn: psycopg.Connection, user_id: str, now: datetime) -> dict[str, Any]:
     today = today_sg(now)
-    upcoming = list_appointments(conn, user_id, now)
-    next_visit = next((a for a in upcoming if a["status"] == "planned" and a["scheduled_for"]), None)
+    live = _live_rows(conn, user_id)
+    upcoming, earlier = split_visits(live, now)
+    next_row = pick_next_visit(live, now)
+    next_visit = appointment_out(next_row) if next_row else None
 
     prev_rows = conn.execute(
         """select i.kind, s.last_done_on, s.next_due_on
@@ -182,12 +232,13 @@ def load_plan(conn: psycopg.Connection, user_id: str, now: datetime) -> dict[str
             "detail": preventive_detail(status, r["last_done_on"], r["next_due_on"]),
         })
 
+    # Open questions newest first, then the done ones (newest first).
     questions = [question_out(r) for r in conn.execute(
         """select id, text, origin, status, created_at from doctor_questions
-           where user_id = %s and status in ('open', 'asked') order by created_at desc""",
+           where user_id = %s and status in ('open', 'asked') order by (status = 'open') desc, created_at desc""",
         (user_id,),
     ).fetchall()]
-    return {"next_appointment": next_visit, "upcoming": upcoming, "preventive": preventive, "questions": questions}
+    return {"next_appointment": next_visit, "upcoming": upcoming, "earlier": earlier, "preventive": preventive, "questions": questions}
 
 
 def add_question(conn: psycopg.Connection, user_id: str, text: str) -> dict[str, Any]:
@@ -200,50 +251,82 @@ def add_question(conn: psycopg.Connection, user_id: str, text: str) -> dict[str,
 
 
 def archive_question(conn: psycopg.Connection, user_id: str, question_id: str) -> dict[str, str]:
-    """Soft remove: the row stays, marked archived. Only an open question can be taken off the list."""
+    """Soft remove: the row stays, marked archived. An open or done question can be taken off the list; a removed one cannot."""
     row = conn.execute("select status from doctor_questions where id = %s and user_id = %s", (question_id, user_id)).fetchone()
     if row is None:
         raise NotFound("That question is not on your list.")
-    if row["status"] != "open":
-        raise InvalidTransition("Only an open question can be removed.")
+    if row["status"] not in (OPEN_STATUS, DONE_STATUS):
+        raise InvalidTransition("That question has already been removed.")
     conn.execute("update doctor_questions set status = 'archived' where id = %s and user_id = %s", (question_id, user_id))
     return {"id": question_id, "status": "archived"}
 
 
+def set_question_done(conn: psycopg.Connection, user_id: str, question_id: str, done: bool) -> dict[str, Any]:
+    """Mark a question done (status asked) or put it back on the open list. Ids only in the event log."""
+    row = conn.execute(
+        "select status from doctor_questions where id = %s and user_id = %s", (question_id, user_id)
+    ).fetchone()
+    if row is None:
+        raise NotFound("That question is not on your list.")
+    if row["status"] not in (OPEN_STATUS, DONE_STATUS):
+        raise InvalidTransition("That question has already been removed.")
+    target = DONE_STATUS if done else OPEN_STATUS
+    if row["status"] != target:
+        conn.execute("update doctor_questions set status = %s where id = %s and user_id = %s", (target, question_id, user_id))
+        conn.execute(
+            "insert into event_log (user_id, actor, event, entity_table, entity_id, payload) values (%s, 'user', %s, 'doctor_questions', %s, %s)",
+            (user_id, "doctor_question.done" if done else "doctor_question.reopened", question_id, Jsonb({})),
+        )
+    out = conn.execute(
+        "select id, text, origin, status, created_at from doctor_questions where id = %s and user_id = %s", (question_id, user_id)
+    ).fetchone()
+    return question_out(out)
+
+
 # ───────────────────────────────────────────────────────────────── K7 Plan an appointment
-def list_appointments(conn: psycopg.Connection, user_id: str, now: datetime) -> list[dict[str, Any]]:
-    start = datetime.combine(today_sg(now), time.min, tzinfo=TZ)
-    return [appointment_out(r) for r in conn.execute(
-        f"""select {APPT_COLS} from appointments
-            where user_id = %s and status in ('planned', 'suggested') and (scheduled_for is null or scheduled_for >= %s)
+def _live_rows(conn: psycopg.Connection, user_id: str) -> list[dict[str, Any]]:
+    """Visits still open: planned or suggested. Cancelled, missed and completed ones are not live."""
+    return conn.execute(
+        f"""select {APPT_COLS} from appointments where user_id = %s and status in ('planned', 'suggested')
             order by scheduled_for nulls last, created_at""",
-        (user_id, start),
-    ).fetchall()]
+        (user_id,),
+    ).fetchall()
 
 
-def add_appointment(conn: psycopg.Connection, user_id: str, kind: str, scheduled_for: datetime, location: str | None,
+def list_appointments(conn: psycopg.Connection, user_id: str, now: datetime) -> list[dict[str, Any]]:
+    """The visits still to come (K7 list). A visit whose time has passed is not here; K3 lists it under Earlier visits."""
+    upcoming, _ = split_visits(_live_rows(conn, user_id), now)
+    return upcoming
+
+
+def add_appointment(conn: psycopg.Connection, user_id: str, kind: str, scheduled_for: datetime,
                     suggested_id: str | None, now: datetime) -> dict[str, Any]:
-    """Save a visit the person has confirmed. A suggested visit is confirmed in place, so there is one row per visit."""
+    """Save a visit the person has confirmed. A suggested visit is confirmed in place, so there is one row per visit.
+    A new visit must be one of the kinds the form offers; a suggested one may keep its older kind. The place is no longer asked."""
     when = _aware(scheduled_for)
     if when <= now:
         raise ValidationFailed("Pick a time in the future.")
     if suggested_id:
-        row = conn.execute("select status from appointments where id = %s and user_id = %s", (suggested_id, user_id)).fetchone()
+        row = conn.execute("select status, kind from appointments where id = %s and user_id = %s", (suggested_id, user_id)).fetchone()
         if row is None:
             raise NotFound("That visit is not on your list.")
         if row["status"] != "suggested":
             raise InvalidTransition("That visit is already confirmed or closed.")
+        if kind not in NEW_APPOINTMENT_KINDS and kind != row["kind"]:
+            raise ValidationFailed("Pick a kind of visit from the list.")
         out = conn.execute(
-            f"""update appointments set kind = %s, status = 'planned', scheduled_for = %s, location = %s,
+            f"""update appointments set kind = %s, status = 'planned', scheduled_for = %s,
                    confirmed_by_user_at = now(), updated_at = now()
                 where id = %s and user_id = %s returning {APPT_COLS}""",
-            (kind, when, location, suggested_id, user_id),
+            (kind, when, suggested_id, user_id),
         ).fetchone()
     else:
+        if kind not in NEW_APPOINTMENT_KINDS:
+            raise ValidationFailed("Pick a kind of visit from the list.")
         out = conn.execute(
-            f"""insert into appointments (user_id, kind, status, scheduled_for, location, confirmed_by_user_at)
-                values (%s, %s, 'planned', %s, %s, now()) returning {APPT_COLS}""",
-            (user_id, kind, when, location),
+            f"""insert into appointments (user_id, kind, status, scheduled_for, confirmed_by_user_at)
+                values (%s, %s, 'planned', %s, now()) returning {APPT_COLS}""",
+            (user_id, kind, when),
         ).fetchone()
     return appointment_out(out)
 

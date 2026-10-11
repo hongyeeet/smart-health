@@ -47,7 +47,9 @@ To add a theme (for example high contrast), add one object to `palettes.ts` and 
 ## 3. Layout
 
 - Mobile first. On a phone or iPad the app fills the screen; on a wide window it sits in a centred 480 px column (set `appConfig.frame` to `'device'` for a phone frame). The shell is `src/app/Shell.tsx`.
-- One screen is one `Screen` (scroll container, 20 px side padding) with a `Header`. Pass `tabs` when the bottom bar is showing.
+- One screen is one `Screen` (scroll container, 20 px side padding, content centred and capped at 720 px on a tablet and 1040 px on a laptop; pass `narrow` for a form or single-task page: 640 px) with a `Header`. Pass `tabs` when the bottom bar is showing: the page then keeps `--tab-space` (the tab bar) plus `--ask-space` (the phone Ask button) free at its end. A `Footer` or onboarding `Dock` carries `data-dock`, which removes the page's bottom padding so the bar sits on the true bottom edge.
+- Tablet and laptop use a side rail instead of the bottom bar; the Ask button lives in the rail there. On a phone it floats above the tab bar and steps aside while the page is scrolled down. Setup and the urgent screen have no rail.
+- Tiles in a list use `TileGrid` (1, 2, 3 columns, equal heights); two-column pages use `Split`, which only goes to two columns from 1024 px.
 - One primary action per screen: full width, 56 px high, `Footer` keeps it on screen.
 - Touch targets are at least 48 px. Chips are 48 px high.
 - Layouts must reflow at 200% text: use `flex-wrap`, `min-w-0`, `break-words`, and for two-column grids add `[[data-ts='2']_&]:grid-cols-1`.

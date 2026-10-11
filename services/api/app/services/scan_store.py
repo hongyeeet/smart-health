@@ -10,14 +10,17 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Callable, Mapping
+from zoneinfo import ZoneInfo
 
 import psycopg
 from psycopg.types.json import Jsonb
 
 from app.core.errors import InvalidTransition, NotFound, ValidationFailed
 from app.schemas.medicine_scan import ConfirmedMedication, ScanOutcome
+from app.services import medication_stock
+from app.services.dose_store import dose_unit
 from app.services.scan_privacy import MaskResult
 
 Uploader = Callable[[str, bytes, str], None]
@@ -148,6 +151,9 @@ def confirm_medication(conn: psycopg.Connection, user_id: str, entry: ConfirmedM
     for d in entry.doses:
         conn.execute("insert into medication_schedule (user_id, medication_id, dose_time, quantity, meal_relation) values (%s, %s, %s, %s, %s)",
                      (user_id, med_id, d.dose_time, d.quantity, d.meal_relation))
+    if not entry.as_needed and entry.total_quantity:     # the pack size is the start count of the stock (plan 4.3); never a guess
+        medication_stock.set_start_count(conn, user_id, med_id, entry.total_quantity, medication_stock.stock_unit_for(dose_unit(entry.kind, entry.directions)),
+                                         datetime.now(ZoneInfo("Asia/Singapore")))
     if scan_id and scan is not None:
         review = build_review(scan[1], entry)
         conn.execute("update prescription_scans set status = 'confirmed', extraction_review = %s where id = %s", (Jsonb(review), scan_id))

@@ -21,7 +21,22 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class LLMUnavailable(RuntimeError):
-    """No credentials, or the model could not be reached."""
+    """No credentials, the model could not be reached, or its answer could not be used.
+
+    `code` is a stable name the screens can act on: model_unavailable, daily_limit, timeout or bad_response.
+    """
+
+    def __init__(self, message: str, code: str = "model_unavailable") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+def _error_code(e: Exception) -> str:
+    """Map a failed model call to a stable code: a time-out, or any other failure of the model or the network."""
+    text = str(e).lower()
+    if isinstance(e, TimeoutError) or "timeout" in type(e).__name__.lower() or "timed out" in text or "deadline" in text:
+        return "timeout"
+    return "model_unavailable"
 
 
 @lru_cache(maxsize=1)
@@ -40,13 +55,14 @@ def _client():
 
 
 def vision_json(image: bytes, mime_type: str, prompt: str, schema: type[T], model: str | None = None) -> T:
-    """Send one image and an instruction; get back a validated object of `schema`."""
-    from google.genai import types
-
+    """Send one image and an instruction; get back a validated object of `schema`. Every failure raises LLMUnavailable with a code."""
     model = model or settings.llm_vision_model
     if not usage.allowed("vertex_vision"):
-        raise LLMUnavailable("The daily AI limit has been reached.")
+        raise LLMUnavailable("The daily AI limit has been reached.", code="daily_limit")
     try:
+        # the import is inside the try: a missing google-genai package must end as LLMUnavailable, not as a crash
+        from google.genai import types
+
         resp = _client().models.generate_content(
             model=model,
             contents=[types.Part.from_bytes(data=image, mime_type=mime_type), prompt],
@@ -59,9 +75,9 @@ def vision_json(image: bytes, mime_type: str, prompt: str, schema: type[T], mode
         )
     except LLMUnavailable:
         raise
-    except Exception as e:  # network, quota, permission: the caller shows "could not read, try again"
-        logger.exception("vision call failed model=%s", model)
-        raise LLMUnavailable(str(e)[:200]) from e
+    except Exception as e:  # network, quota, permission, timeout: the caller shows a plain message and offers manual entry
+        logger.error("vision call failed model=%s type=%s", model, type(e).__name__)
+        raise LLMUnavailable(str(e)[:200], code=_error_code(e)) from e
     um = getattr(resp, "usage_metadata", None)
     usage.record("vertex_vision", getattr(um, "prompt_token_count", 0) or 0, getattr(um, "candidates_token_count", 0) or 0)
     if resp.parsed is not None and isinstance(resp.parsed, schema):
@@ -69,4 +85,49 @@ def vision_json(image: bytes, mime_type: str, prompt: str, schema: type[T], mode
     try:
         return schema.model_validate_json(resp.text or "")
     except Exception as e:
-        raise LLMUnavailable(f"The model answered in an unexpected format: {e}") from e
+        raise LLMUnavailable("The model answered in an unexpected format.", code="bad_response") from e
+
+
+def text_json(system: str, prompt: str, schema: type[T], model: str | None = None) -> T:
+    """Text only (no image) in, a validated object of `schema` out, as JSON. Used by the doctor report's key findings.
+
+    Every failure raises LLMUnavailable with a code, so the caller can fall back to the code-written text.
+    """
+    from app.llm import chat
+
+    model = model or chat.model_name()
+    if not usage.allowed("vertex_generate"):
+        raise LLMUnavailable("The daily AI limit has been reached.", code="daily_limit")
+    try:
+        from google.genai import types
+
+        resp = _client().models.generate_content(
+            model=model,
+            contents=[prompt],
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                response_mime_type="application/json",
+                response_schema=schema,
+                temperature=0.2,
+                # thinking tokens count against the output limit: a small thinking budget keeps the JSON from being cut off
+                thinking_config=types.ThinkingConfig(thinking_budget=512),
+                max_output_tokens=4096,
+                http_options=types.HttpOptions(timeout=settings.llm_timeout_s * 1000),
+            ),
+        )
+    except LLMUnavailable:
+        raise
+    except Exception as e:
+        logger.error("text call failed model=%s type=%s", model, type(e).__name__)
+        raise LLMUnavailable(str(e)[:200], code=_error_code(e)) from e
+    um = getattr(resp, "usage_metadata", None)
+    usage.record("vertex_generate", getattr(um, "prompt_token_count", 0) or 0, getattr(um, "candidates_token_count", 0) or 0)
+    reason =str(getattr(resp.candidates[0], "finish_reason", "")) if getattr(resp, "candidates", None) else ""
+    if "MAX_TOKENS" in reason:
+        raise LLMUnavailable("The model ran out of room before it finished.", code="bad_response")   # a cut-off answer is never used
+    if resp.parsed is not None and isinstance(resp.parsed, schema):
+        return resp.parsed
+    try:
+        return schema.model_validate_json(resp.text or "")
+    except Exception as e:
+        raise LLMUnavailable("The model answered in an unexpected format.", code="bad_response") from e

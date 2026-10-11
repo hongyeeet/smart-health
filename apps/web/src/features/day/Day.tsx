@@ -28,7 +28,7 @@ export function Day() {
 
   return (
     <Screen>
-      <Header back backTo="C1" title={t('day.title', 'Your day')} sub={valid ? dayLabel(date) : undefined} />
+      <Header back backTo="C1" title={t('day.title', 'Your day')} />
 
       {valid && <DateNav date={date} data={day.data} onMove={(d) => go('D1', { params: { date: d } })} />}
 
@@ -50,7 +50,7 @@ export function Day() {
       {valid && day.isPending && <Skeleton className="h-80" />}
       {valid && day.isError && (
         <Alert tone="warn" title={t('day.loadErrorTitle', 'This day did not load')}>
-          {t('day.loadErrorBody', 'Check the connection and try again. Your data is safe.')}
+          {t('day.loadErrorBody', 'Check the connection and try again.')}
         </Alert>
       )}
 
@@ -72,12 +72,14 @@ function DayBody({ day, onPick, onGo }: { day: DayView; onPick: (m: DayMarker) =
     day.targetLow,
     day.targetHigh,
   )
+  // a laptop gets the timeline wide on the left, and the summary and the list beside it
   return (
-    <>
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6 [&>*]:min-w-0">
       <Card tone="hero" as="section">
         <DayTimeline day={day} onPick={onPick} />
       </Card>
 
+      <div className="flex flex-col gap-4">
       <Card as="section">
         <ul className="flex flex-col gap-2 text-body text-ink2">
           <li>{glucose ?? t('day.noGlucose', 'No glucose readings for this day.')}</li>
@@ -110,7 +112,8 @@ function DayBody({ day, onPick, onGo }: { day: DayView; onPick: (m: DayMarker) =
           {t('day.glucoseInsights', 'Glucose insights')}
         </TextLink>
       </div>
-    </>
+      </div>
+    </div>
   )
 }
 

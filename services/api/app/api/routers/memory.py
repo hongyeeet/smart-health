@@ -1,16 +1,21 @@
-"""GET /memory/facts, POST /memory/facts/{id}/action, GET /memory/digest, GET /memory/audit, GET /memory/progress.
+"""GET /memory/facts, POST /memory/facts/{id}/action, GET /memory/digest, GET /memory/audit, GET /memory/progress,
+GET /memory/progress/days, GET /memory/barriers/summary.
 
 "What Smart Health has learned" (PRD F16): the person sees every fact the agent proposed, with why, and can confirm, edit or delete it.
 """
 from __future__ import annotations
 
+from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from app.db import memorystore
+from app.schemas.barriers import BarrierSummary
+from app.schemas.diet import DietDays
+from app.services import barrier_kpis, diet_days
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -55,3 +60,18 @@ async def ai_usage() -> dict:
 @router.get("/progress")
 async def progress() -> dict:
     return await run_in_threadpool(memorystore.progress)
+
+
+@router.get("/progress/days", response_model=DietDays, response_model_by_alias=True)
+async def progress_days(start: date = Query(..., alias="from"), end: date = Query(..., alias="to")) -> DietDays:
+    """Diet tracking calendar: each Singapore day from `from` to `to` (inclusive, at most 92 days) with its meals and macro totals."""
+    try:
+        return DietDays.model_validate(await run_in_threadpool(diet_days.progress_days, start, end))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@router.get("/barriers/summary", response_model=BarrierSummary, response_model_by_alias=True)
+async def barrier_summary() -> BarrierSummary:
+    """The numbers for the "What gets in the way" row on K2: missed doses this week, on-time share, top reason, confirmed barrier ideas."""
+    return BarrierSummary.model_validate(await run_in_threadpool(barrier_kpis.summary))

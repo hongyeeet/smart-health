@@ -12,6 +12,7 @@ import { LogHub } from '@/features/log/LogHub'
 import { LogDone } from '@/features/log/LogDone'
 import { LogSymptom } from '@/features/log/LogSymptom'
 import { LogCheckin } from '@/features/log/LogCheckin'
+import { LogBloodPressure } from '@/features/log/LogBloodPressure'
 import { LogMeal } from '@/features/log/LogMeal'
 import { LogWorkout } from '@/features/workout/LogWorkout'
 import { Home } from '@/features/home/Home'
@@ -42,6 +43,7 @@ import { Sources } from '@/features/me/Sources'
 import { Language } from '@/features/me/Language'
 import { Privacy } from '@/features/me/Privacy'
 import { Appointment } from '@/features/me/Appointment'
+import { Questions } from '@/features/me/Questions'
 import { DataAccount } from '@/features/me/DataAccount'
 import { Contact } from '@/features/me/Contact'
 import { Urgent } from '@/features/urgent/Urgent'
@@ -59,8 +61,8 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   A2: Eligibility,
   A3: AboutYou,
   A4: ChatSetup,
-  /** Folded into A3: devices and routine is step 7 there. */
-  A5: () => <Navigate to="/welcome/about?step=7" replace />,
+  /** Folded into A3: devices is step 9 there. */
+  A5: () => <Navigate to="/welcome/about?step=9" replace />,
   A6: Summary,
   B1: Home,
   C1: Overview,
@@ -79,6 +81,7 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   K5: Language,
   K6: Privacy,
   K7: Appointment,
+  K12: Questions,
   K8: DataAccount,
   K9: Contact,
   B2: Notifications,
@@ -97,6 +100,7 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   H8: AddByHand,
   E1: LogHub,
   E2: LogMeal,
+  E3: LogBloodPressure,
   E4: LogSymptom,
   E5: LogCheckin,
   E6: LogDone,

@@ -57,9 +57,46 @@ def test_a_missing_required_field_shows_as_unreadable_not_invented():
 
 
 def test_every_reason_the_scanner_can_give_has_words_for_the_screen():
-    for r in ("low_confidence", "missing_required", "several_items", "unreadable", "ocr_empty", "not_a_medicine", "invalid_json",
-              "service_unavailable", "file_type_not_allowed", "file_too_large", "file_empty"):
-        assert s.reason_text([r])
+    for r in ("low_confidence", "low_confidence_all", "missing_required", "several_items", "unreadable", "ocr_empty", "not_a_medicine",
+              "invalid_json", "model_unavailable", "ocr_unavailable", "storage_unavailable", "file_type_not_allowed", "file_too_large",
+              "file_empty", "daily_limit"):
+        assert s.reason_text([r]) and s.reason_code([r]) == r
+
+
+def test_the_daily_limit_says_photos_are_paused_and_to_type_it_in():
+    assert s.reason_code(["daily_limit"]) == "daily_limit"
+    assert s.reason_text(["daily_limit"]) == "Reading photos is paused for today. You can type the medicine in instead."
+
+
+# --- stable error codes for the screen -------------------------------------------------------------------------
+
+def test_a_failure_gets_one_plain_sentence_and_one_stable_code():
+    assert s.reason_code(["ocr_empty"]) == "ocr_empty"
+    assert s.reason_text(["ocr_empty"]).startswith("We could not find any text in the photo")
+    assert s.reason_code(["model_unavailable"]) == "model_unavailable" and "not available right now" in s.reason_text(["model_unavailable"])
+
+
+def test_all_fields_unreadable_says_so_in_one_plain_line():
+    assert s.reason_code(["low_confidence_all"]) == "low_confidence_all"
+    assert s.reason_text(["low_confidence_all"]) == "We could not read this. Take another photo or type it in."
+
+
+def test_the_most_useful_code_is_the_one_returned_when_several_apply():
+    assert s.reason_code(["low_confidence", "ocr_empty"]) == "ocr_empty"
+    assert s.reason_code(["missing_required", "low_confidence_all"]) == "low_confidence_all"
+    assert s.reason_code([]) is None
+
+
+def test_a_scan_stored_before_the_rename_still_gets_the_new_code():
+    assert s.reason_code(["service_unavailable"]) == "model_unavailable"
+    assert "not available right now" in s.reason_text(["service_unavailable"])
+
+
+def test_a_name_between_0_6_and_0_85_is_read_but_still_needs_a_tick_on_the_review_screen():
+    # The scan can be confirmed (the name passes the 0.6 code gate), but the screen must still ask the person to check the name.
+    ex = extraction("confirm", fields={"name": field("PARACETAMOL", 0.7), "strength": field("500 mg", 0.7)})
+    level = {f["key"]: f["level"] for f in s.api_fields(ex)}
+    assert level["name"] == "check" and level["strength"] == "check"
 
 
 # --- suggested dose times -----------------------------------------------------------------------------------
@@ -108,13 +145,16 @@ def test_an_as_needed_label_has_no_dose_time_and_no_times_a_day():
     ex = extraction("confirm", fields={"when_to_take": field("as_needed"), "times_per_day": {"value": None, "confidence": 0}})
     assert s.is_as_needed(ex) and s.api_schedule(ex) == []
     assert "times_per_day" not in [f["key"] for f in s.api_fields(ex)]       # not a gap to fill: it is taken only when needed
-    m = s.build_confirmed(ex, {}, [], None, TODAY)
+    m = s.build_confirmed(ex, {}, [], None, TODAY, as_needed_choice=True)
     assert m.as_needed and len(m.doses) == 1 and m.doses[0].dose_time is None and m.doses[0].quantity == Decimal("2")
 
 
 def test_an_as_needed_label_that_also_says_times_a_day_still_has_no_dose_time():
     ex = extraction(fields={"when_to_take": field("as_needed"), "times_per_day": field("3")})       # "3 times daily AS NECESSARY"
-    assert s.api_schedule(ex) == [] and s.build_confirmed(ex, {}, None, None, TODAY).as_needed
+    assert s.api_schedule(ex) == [] and s.build_confirmed(ex, {}, None, None, TODAY, as_needed_choice=True).as_needed
+    with pytest.raises(ValidationFailed) as e:                  # no answer sent: the medicine is saved every day, so a time is needed
+        s.build_confirmed(ex, {}, None, None, TODAY)
+    assert e.value.code == "missing_time"
 
 
 def test_times_the_person_chooses_turn_an_as_needed_label_into_a_scheduled_one():
@@ -210,6 +250,11 @@ def test_the_person_saying_every_day_wins_over_a_label_that_says_when_needed():
     assert e.value.code == "missing_time"
 
 
-def test_no_answer_from_the_person_follows_the_label_as_before():
-    assert s.build_confirmed(extraction(fields={"when_to_take": field("as_needed")}), {}, [], None, TODAY, as_needed_choice=None).as_needed
+def test_no_answer_from_the_person_saves_every_day_even_when_the_label_says_when_needed():
+    # The owner removed "only when needed" (plan section 13.4): a request without `asNeeded` is a daily medicine, never as-needed.
+    as_needed_label = extraction(fields={"when_to_take": field("as_needed")})
+    assert not s.build_confirmed(as_needed_label, {}, ["09:00"], None, TODAY).as_needed
     assert not s.build_confirmed(extraction(), {}, ["08:00"], None, TODAY, as_needed_choice=None).as_needed
+    with pytest.raises(ValidationFailed) as e:
+        s.build_confirmed(as_needed_label, {}, [], None, TODAY)
+    assert e.value.code == "missing_time"

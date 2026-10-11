@@ -14,9 +14,8 @@ from app.services import usage
 
 logger = logging.getLogger(__name__)
 MAX_OUTPUT_TOKENS = 2048   # thinking tokens count against this; the prompt keeps the visible reply under 120 words
-# ai_usage_daily only accepts vertex_vision, vertex_embed and jev (a database check). Chat is Gemini too, so it is counted under vertex_vision
-# until a migration adds a vertex_chat provider.
-PROVIDER = "vertex_vision"
+# Chat is text the person sees, so it has the vertex_generate cap (services/usage.py).
+PROVIDER = "vertex_generate"
 
 
 def model_name() -> str:

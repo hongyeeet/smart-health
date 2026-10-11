@@ -299,3 +299,110 @@ def test_the_demo_patient_profile_is_protected():
         not_the_demo_patient(MR_TAN)
     assert e.value.status_code == 409
     not_the_demo_patient(uuid.uuid4())                                                   # anyone else is fine
+
+
+# ───────────────────────────────────────────────────────────── the export's new sections (what the app stores about the person)
+from app.services import blood_pressure as BP  # noqa: E402
+
+NEW_SECTIONS = ("blood_pressure", "body_measurements", "conditions", "allergies", "devices", "lab_results", "medicine_stock",
+                "doctor_questions", "appointments")
+ONBOARDING_PROFILE = ("diagnosed_year", "care_setting", "healthier_sg", "hypo_last_3m", "hypo_symptoms")
+
+
+def schema_handler(tables):
+    """information_schema.columns: the columns of the table named in the first parameter (empty when the table is not in `tables`)."""
+    return lambda params: Cur([{"column_name": c} for c in tables.get(params[0], ())])
+
+
+def all_tables():
+    tables = {table: needs for (table, needs, _s) in M.EXTRA_SECTIONS.values()}
+    tables["user_profile"] = tuple(M.PROFILE_COLUMNS) + M.OPTIONAL_PROFILE_COLUMNS
+    tables["blood_pressure_readings"] = ("user_id", "recorded_at", "systolic_mmhg", "diastolic_mmhg", "deleted_at")
+    return tables
+
+
+def export_conn(tables, rows_by_fragment=None):
+    handlers = {"information_schema.columns": schema_handler(tables), "from user_profile where user_id": lambda p: Cur([{"display_name": "Mr Tan", "diagnosed_year": 2019}])}
+    handlers.update({frag: (lambda rows: (lambda p: Cur(rows)))(rows) for frag, rows in (rows_by_fragment or {}).items()})
+    return FakeConn(handlers)
+
+
+def test_every_extra_query_is_limited_to_the_person_and_to_live_rows():
+    for name, (table, needs, sql) in M.EXTRA_SECTIONS.items():
+        assert sql.count("%s") == 1 and "user_id=%s" in sql, name
+        assert table in sql, name
+        if name == "doctor_questions":
+            assert "status <> 'archived'" in sql and "deleted_at" not in sql, name
+        elif name == "appointments":   # a visit is closed by its status (cancelled), not by deleted_at: every status is kept
+            assert "deleted_at" not in sql, name
+        else:
+            assert "deleted_at is null" in sql, name
+
+
+def test_export_adds_every_new_section_with_its_rows_and_counts(monkeypatch):
+    readings = [  # newest first, as recent_bp returns them
+        {"id": "b-2", "measured_at": NOW, "systolic": 128, "diastolic": 82, "pulse": 70, "note": "after a walk"},
+        {"id": "b-1", "measured_at": NOW - timedelta(days=1), "systolic": 118, "diastolic": 76, "pulse": None, "note": None},
+    ]
+    seen = []
+    monkeypatch.setattr(BP, "recent_bp", lambda conn, user, days: seen.append((user, days)) or readings)
+    rows = {
+        "from body_measurements": [{"measured_at": NOW, "weight_kg": Decimal("62.5"), "waist_cm": Decimal("88.0"), "source": "onboarding"}],
+        "from conditions": [{"name": "High blood pressure", "code": "hbp", "source": "onboarding", "created_at": NOW}],
+        "from allergies": [{"substance": "Penicillin", "reaction": "rash", "source": "onboarding", "created_at": NOW}],
+        "from devices": [{"kind": "watch", "label": "Apple Watch", "status": None, "source": "onboarding", "created_at": NOW}],
+        "from lab_results": [{"test": "hba1c", "value": Decimal("7.2"), "unit": "%", "measured_at": NOW, "source": "file_import"}],
+        "from medications": [{"medicine": "Metformin", "stock_count": Decimal("24"), "stock_unit": "tablets", "stock_updated_at": NOW}],
+        "from doctor_questions": [{"text": "Can I stop the gliclazide?", "origin": "user", "status": "open", "created_at": NOW}],
+        "from appointments": [{"kind": "gp", "status": "planned", "scheduled_for": NOW, "location": None, "suggested_reason": {"due": "overdue"},
+                               "confirmed_by_user_at": NOW, "created_at": NOW}],
+    }
+    conn = export_conn(all_tables(), rows)
+    out = M.export_for(conn, USER, NOW)
+    for key in NEW_SECTIONS:
+        assert isinstance(out[key], list), key
+        assert out["counts"][key] == len(out[key]), key
+    assert seen == [(USER, M.ALL_READINGS_DAYS)]
+    assert [r["systolic"] for r in out["blood_pressure"]] == [118, 128]           # oldest first, like the other sections
+    assert out["blood_pressure"][1] == {"measured_at": NOW.isoformat(), "systolic": 128, "diastolic": 82, "pulse": 70, "note": "after a walk"}
+    assert all("id" not in r for r in out["blood_pressure"])
+    assert out["body_measurements"][0]["weight_kg"] == 62.5 and out["body_measurements"][0]["waist_cm"] == 88.0
+    assert out["medicine_stock"][0]["stock_count"] == 24.0 and out["medicine_stock"][0]["medicine"] == "Metformin"
+    assert out["lab_results"][0]["value"] == 7.2 and out["lab_results"][0]["source"] == "file_import"
+
+
+def test_onboarding_answers_are_in_the_profile_part_of_the_export(monkeypatch):
+    monkeypatch.setattr(BP, "recent_bp", lambda conn, user, days: [])
+    conn = export_conn(all_tables())
+    out = M.export_for(conn, USER, NOW)
+    assert out["profile"]["diagnosed_year"] == 2019
+    (profile_sql, _), = conn.statements("from user_profile where user_id")
+    for col in ONBOARDING_PROFILE:
+        assert col in profile_sql
+
+
+def test_a_new_empty_person_gets_empty_lists_for_every_new_section(monkeypatch):
+    monkeypatch.setattr(BP, "recent_bp", lambda conn, user, days: [])
+    out = M.export_for(export_conn(all_tables()), UUID(int=99), NOW)
+    assert all(out[key] == [] and out["counts"][key] == 0 for key in NEW_SECTIONS)
+
+
+def test_a_missing_table_or_column_gives_an_empty_section_and_no_query(monkeypatch):
+    tables = all_tables()
+    del tables["conditions"]                       # table not there (before migration 0032)
+    tables["doctor_questions"] = ("text", "origin", "created_at")   # no status column
+    monkeypatch.setattr(BP, "recent_bp", lambda conn, user, days: (_ for _ in ()).throw(AssertionError("must not be read")))
+    tables.pop("blood_pressure_readings")
+    conn = export_conn(tables, {"from conditions": [{"name": "x"}], "from doctor_questions": [{"text": "x"}]})
+    out = M.export_for(conn, USER, NOW)
+    assert out["conditions"] == [] and out["doctor_questions"] == [] and out["blood_pressure"] == []
+    assert not conn.statements("from conditions") and not conn.statements("from doctor_questions")
+    assert out["counts"]["conditions"] == 0
+
+
+def test_a_table_that_appears_later_is_read_without_a_restart():
+    # an empty answer from information_schema is not cached, so a later migration shows up on the next export
+    conn = FakeConn({"information_schema.columns": lambda p: Cur()})
+    assert M._columns(conn, "conditions") == frozenset()
+    conn.handlers["information_schema.columns"] = schema_handler({"conditions": ("name", "deleted_at")})
+    assert M._columns(conn, "conditions") == frozenset({"name", "deleted_at"})

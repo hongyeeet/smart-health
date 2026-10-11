@@ -32,14 +32,16 @@ def one(conn, sql, params=()):
 
 
 def test_only_the_demo_patient_remains(conn):
-    assert one(conn, "select count(*) from users") == 1
+    # people the app creates later (the demo user, new people) are fine; what must not remain is any other dataset person with sensor data
+    assert one(conn, "select count(*) from users u where u.id <> %s and exists (select 1 from watch_readings w where w.user_id = u.id)", (TAN,)) == 0
     assert one(conn, "select count(*) from user_profile where user_id = %s", (TAN,)) == 1
 
 
 def test_there_are_about_three_months_at_five_minutes(conn):
     assert one(conn, "select count(*) from watch_readings") >= 25000
     assert one(conn, "select count(*) from cgm_readings") >= 25000
-    assert one(conn, "select count(*) from timeline_5min") == one(conn, "select count(*) from watch_readings")
+    # every watch reading has its timeline row (logging a meal or a workout adds timeline rows of its own, so the counts need not be equal)
+    assert one(conn, "select count(*) from watch_readings w where not exists (select 1 from timeline_5min t where t.user_id = w.user_id and t.bucket_start = w.recorded_at)") == 0
     assert one(conn, "select (max(recorded_at)::date - min(recorded_at)::date) from watch_readings") >= 89
 
 
@@ -94,7 +96,8 @@ def test_the_gold_analysis_finds_the_planted_effects(conn):
 
 def test_the_scripted_low_and_the_interaction_alerts_exist(conn):
     assert one(conn, "select count(*) from glucose_events where event_type = 'low' and started_at::date = '2026-08-15'") == 1
-    assert one(conn, "select count(*) from interaction_alerts where status = 'open'") == 2          # Clarithromycin with Atorvastatin and with Amlodipine: shown in the clash box
+    # Clarithromycin with Atorvastatin and with Amlodipine: shown in the clash box until the person says they checked with their doctor (then acknowledged)
+    assert one(conn, "select count(*) from interaction_alerts where status in ('open', 'acknowledged') and med_b_id is not null") == 2
     assert one(conn, "select count(*) from interaction_alerts where status = 'not_checked'") == 2
 
 

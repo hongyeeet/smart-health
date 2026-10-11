@@ -41,7 +41,33 @@ export interface Medication {
   purpose: string
   badge: 'interaction' | 'not_checked' | null
   refill: { daysLeft: number; unitsLeft: number } | null
+  /** Where the refill figure comes from: the stock in hand ('stock') or the estimate from the pack date ('estimate'). */
+  refillSource?: 'stock' | 'estimate' | null
   sideEffects: string[]
+}
+
+/** One regular medicine in "My stock" (H1). `status` states a fact about the count, never advice. */
+export interface MedicineStock {
+  id: string
+  name: string
+  strength: string
+  /** null: not set yet. It is never shown as 0. */
+  stockCount: number | null
+  stockUnit: string | null
+  /** Whole days at the usual dose; null when unknown. */
+  daysLeft: number | null
+  status: 'ok' | 'low' | 'out' | 'unknown'
+  updatedAt: string | null
+  /** The last amount set or bought: the full mark of the bar. null when there is none yet. */
+  fullCount: number | null
+  /** The pack size, when it was entered: quick choices in "I bought more". */
+  packSize: number | null
+}
+
+/** GET /medications/stock. `ready` is false while stock tracking is not set up on the server (no items then). */
+export interface StockList {
+  ready: boolean
+  items: MedicineStock[]
 }
 
 /** A web page the explanation was based on. */
@@ -51,10 +77,21 @@ export interface WebSource {
 }
 
 /** What a medicine is for and its common side effects, in plain words, with the web pages they came from (prd F3). */
+/** The four labelled parts of an explanation (prompt version 2). A part the pages did not cover is an empty string. */
+export interface MedicineExplanationParts {
+  forDiabetes: string
+  howItWorks: string
+  whatYouMayNotice: string
+  whyTimingMatters: string
+}
+
 export interface MedicineExplanation {
   /** `not_identified`: the product could not be identified, so nothing is explained. */
   status: 'ready' | 'not_identified'
+  /** what it is for in the person's diabetes (the first part, as plain text) */
   purpose: string
+  /** null for an explanation made before the four parts existed: the page shows the older layout until it is made again */
+  parts?: MedicineExplanationParts | null
   sideEffects: string[]
   tellDoctor: string
   sources: WebSource[]
@@ -326,6 +363,25 @@ export interface ConnectedSource {
   synced: string
 }
 
+/** A meal in the recent list. Every macro is null when unknown (shown as "Not judged", never 0). `response` is null when the sensor has no data for it. */
+export interface RecentMeal {
+  id: string
+  when: string
+  name: string | null
+  mealType: string | null
+  kcal: number | null
+  /** 'you' when the person typed or changed the numbers (label "Your numbers"); 'estimate' when the photo reading gave them */
+  numbersFrom?: 'you' | 'estimate'
+  carbsG: number | null
+  proteinG: number | null
+  fatG: number | null
+  sugarG: number | null
+  fibreG: number | null
+  sodiumMg: number | null
+  flags: ('salt' | 'sugar')[]
+  response: { preMmol: number | null; peakMmol: number | null; minutesToPeak: number | null; riseMmol: number | null } | null
+}
+
 export interface RecentEntry {
   id: string
   kind: LogKind
@@ -333,6 +389,8 @@ export interface RecentEntry {
   detail: string
   when: string
   date: string
+  /** Set for a meal only. */
+  meal?: RecentMeal | null
 }
 
 export interface HomeData {
@@ -390,6 +448,8 @@ export interface ScanResult {
   /** model that produced the extraction, for audit */
   modelId: string | null
   error: string | null
+  /** The stable code behind `error` and `notice` (ocr_empty, model_unavailable, storage_unavailable, low_confidence_all...). */
+  errorCode?: string | null
   /** "confirm": one medicine read clearly, the person checks it. "manual": the person types the form (unreadable, low confidence, a
    *  missing required field, a drug we cannot identify, or several medicines). */
   /** The label says "when necessary": the medicine has no dose times. */
@@ -424,7 +484,7 @@ export interface BriefData {
   dayTraces: { kind: 'best' | 'worst' | 'typical'; date: string }[]
 }
 
-export type LogKind = 'meal' | 'workout' | 'symptom' | 'checkin'
+export type LogKind = 'meal' | 'workout' | 'symptom' | 'checkin' | 'blood_pressure'
 
 export interface LogResult {
   id: string
@@ -464,8 +524,8 @@ export interface WorkoutSession {
   exercises: WorkoutExercise[]
   felt?: Felt
   note?: string
-  /** how hard it felt, 1 (very light) to 5 (all-out) */
-  intensity?: number
+  /** how hard it felt, 1 (very light) to 5 (all-out); null or omitted when the session was not rated */
+  intensity?: number | null
 }
 /** Returned by the server after a session is saved. Every number is computed in code (rules.md 1). */
 export interface WorkoutSummary {
@@ -481,6 +541,8 @@ export interface WorkoutSummary {
     minutesInBand: Record<string, number>
     quality: 'ok' | 'insufficient'
     note?: string
+    /** true when the person takes a beta-blocker: numbers are shown, the effort label is not */
+    betaBlocker: boolean
   }
   /** change in glucose over the next 2 hours, from event_windows, when a sensor was worn */
   glucoseChange2h: number | null
@@ -552,6 +614,22 @@ export interface LogProgress {
   weekStrengthSessions: number
   weekStrengthGoal: number
   nextUp: ProgressItem | null
+  bloodPressure: BloodPressureToday
+}
+/** One saved blood pressure reading. `id` is what edit and delete use. */
+export interface BloodPressureEntry {
+  id: string
+  measuredAt: string
+  systolic: number
+  diastolic: number
+  pulse: number | null
+  note: string | null
+}
+export interface BloodPressureToday {
+  count: number
+  /** plain words, for example "128 over 82 at 8:10 am"; null when nothing is logged today */
+  latest: string | null
+  readings: BloodPressureEntry[]
 }
 export interface WeekWorkouts {
   activeMin: number
@@ -668,6 +746,17 @@ export interface ProgressWeek {
 }
 export interface Progress {
   weeks: ProgressWeek[]
+  /** weeks with 5 or more meals logged; the baseline needs two of them */
+  fullWeeks: number
+  /** the first two full weeks, or null until there are two */
+  baseline: {
+    weeks: string[]
+    meals: number
+    doses: number | null
+    avgKcal: number | null
+    avgSodium: number | null
+    onTimePct: number | null
+  } | null
   compare: {
     avgKcal: { first: number | null; latest: number | null }
     avgSodium: { first: number | null; latest: number | null }
@@ -678,6 +767,71 @@ export interface Progress {
   note: string
 }
 
+/** Diet tracking calendar (K10). Every macro is null when unknown for that day; `meals` 0 means nothing logged. */
+export interface DietTotals {
+  kcal: number | null
+  carbsG: number | null
+  proteinG: number | null
+  fatG: number | null
+  sugarG: number | null
+  fibreG: number | null
+  sodiumMg: number | null
+}
+export interface DietMeal {
+  id: string
+  when: string
+  name: string | null
+  mealType: string | null
+  kcal: number | null
+  /** 'you' when the person typed or changed the numbers (label "Your numbers"); 'estimate' when the photo reading gave them */
+  numbersFrom?: 'you' | 'estimate'
+  carbsG: number | null
+  proteinG: number | null
+  fatG: number | null
+  sugarG: number | null
+  fibreG: number | null
+  sodiumMg: number | null
+}
+export interface DietDay {
+  date: string
+  meals: number
+  totals: DietTotals
+  mealList: DietMeal[]
+}
+export interface DietDays {
+  start: string
+  end: string
+  /** today in Singapore */
+  today: string
+  days: DietDay[]
+}
+
+/** The "What gets in the way" numbers on K2. Null means no data yet, shown as a dash. */
+export interface BarrierSummary {
+  windowDays: number
+  weekStart: string
+  scheduledThisWeek: number
+  missedThisWeek: number | null
+  confirmedDoses: number
+  onTimePct: number | null
+  topReason: { key: string; label: string; count: number; missed: number } | null
+  confirmedBarriers: number
+  waitingBarriers: number
+}
+
+/** One kind of AI call today (the kinds are vertex_vision, vertex_generate, vertex_embed and jev). Each has its own cap. */
+export interface AiUsageProvider {
+  provider: string
+  calls: number
+  /** Calls refused because the cap was already reached. */
+  blocked: number
+  cap: number
+  overCap: boolean
+  inputTokens: number
+  outputTokens: number
+  costUsd: number | null
+}
+
 export interface AiUsage {
   day: string
   calls: number
@@ -686,7 +840,9 @@ export interface AiUsage {
   budgetUsd: number
   blocked: number
   overCap: boolean
-  providers: { provider: string; calls: number; inputTokens: number; outputTokens: number; costUsd: number | null }[]
+  /** The cap of each known kind, by provider name. */
+  caps: Record<string, number>
+  providers: AiUsageProvider[]
   note: string
 }
 
@@ -695,11 +851,17 @@ export type ReportDays = 7 | 14 | 30 | 90
 export type GlucoseBandKey = 'very_high' | 'high' | 'in_range' | 'low' | 'very_low'
 export interface DoctorReport {
   generatedOn: string
+  /** true only when the person's data is the demo dataset; the data notes then say the data is simulated */
+  simulated: boolean
   period: { start: string; end: string; days: number; label: string }
   patient: { name: string; sexAge: string; diagnosis: string }
+  /** the onboarding answers in the patient summary; only rows with an answer are sent */
+  summary: { label: string; value: string }[]
   cgmWear: string
   sources: string
   keyFindings: string[]
+  /** 'ai' when the wording was written by a model from the report's numbers and passed the checks; 'rules' when it is the code-written text */
+  keyFindingsSource: 'ai' | 'rules'
   alerts: { priority: 'urgent' | 'interaction' | 'review'; title: string; detail: string }[]
   glucose: {
     hasData: boolean
@@ -714,7 +876,20 @@ export interface DoctorReport {
     veryLow: number | null
     veryHigh: number | null
   }
+  /** the 14-day baseline beside the period; `available` is false with a note when there is too little sensor data */
+  baseline: {
+    available: boolean
+    note: string | null
+    periodLabel: string | null
+    baselineLabel: string | null
+    rows: { metric: string; baseline: string; period: string; comparison: 'higher than' | 'lower than' | 'about the same as' | '—' }[]
+  }
   symptoms: { symptom: string; logged: number; low: number; high: number; inRange: number; noReading: number; note: string }[]
+  symptomLatest: {
+    latest: { label: string; value: string; on: string }[]
+    rows: { symptom: string; logged: number; text: string }[]
+    note: string
+  }
   episodes: {
     when: string
     symptom: string
@@ -731,8 +906,15 @@ export interface DoctorReport {
   medicines: { name: string; regimen: string; scheduled: number | null; taken: number | null; missed: number | null; notLogged: number | null; adherencePct: number | null; interaction: boolean }[]
   medicinesNote: string | null
   activity: { label: string; value: string; sub: string }[]
-  /** one column per morning: fasting glucose 05:00 to 07:00 beside the night's heart rate and SpO2 while asleep; null means no reading */
-  overnight: { day: string; fasting: number | null; heartRate: number | null; spo2: number | null }[]
+  bloodPressure: {
+    /** readings in the period; 0 means none were logged */
+    count: number
+    systolicRange: string | null
+    diastolicRange: string | null
+    pulseRange: string | null
+    readings: { when: string; systolic: number; diastolic: number; pulse: number | null }[]
+    readingsTotal: number
+  }
   /** up to five plain observations from the person's own data, most important first; empty when nothing stands out yet */
   worthDiscussing: { text: string; evidence: string; kind: 'clash' | 'adherence' | 'pattern' | 'fact' }[]
   questions: string[]
@@ -755,24 +937,39 @@ export interface InsightsPattern {
   n: number
   to: InsightsTab
 }
+/** One measure against the same number of days before. `direction` is "none" when either period has no value. */
 export interface InsightsChange {
-  id: string
-  text: string
+  id: 'tir' | 'fasting' | 'steps' | 'exercise' | 'sleep' | 'stress' | 'doses'
   to: InsightsTab
+  unit: 'points' | 'mmol' | 'steps' | 'minutes' | 'hours' | 'score'
+  direction: 'up' | 'down' | 'same' | 'none'
+  current: number | null
+  previous: number | null
+  delta: number | null
 }
+export type InsightsGridKey = 'glucose' | 'meals' | 'activity' | 'sleep' | 'stress' | 'doses'
 export interface InsightsGridCell {
   date: string
-  weekday: string
   value: number | null
   label: string
   /** 0 no data, 1 to 4 how much (a shade, not a verdict) */
   level: number
 }
+export interface InsightsGridRow {
+  key: InsightsGridKey
+  cells: InsightsGridCell[]
+}
 export interface InsightsOverview {
   period: InsightsPeriod
-  grid: { key: 'glucose' | 'meals' | 'activity' | 'sleep' | 'stress' | 'doses'; label: string; cells: InsightsGridCell[] }[]
   changes: InsightsChange[]
   patterns: InsightsPattern[]
+}
+/** The overview calendar: one cell per day in start to end. Days after `today` are never included. */
+export interface InsightsOverviewDays {
+  start: string
+  end: string
+  today: string
+  rows: InsightsGridRow[]
 }
 export interface InsightsBand {
   key: GlucoseBandKey
@@ -827,7 +1024,8 @@ export interface InsightsActivity {
   strengthGoal: number
   weeks: { label: string; light: number; moderate: number; vigorous: number }[]
   mix: { type: string; label: string; count: number; minutes: number }[]
-  workouts: { id: string; date: string; label: string; type: string; intensity: number; minutes: number; glucoseChange2h: number | null }[]
+  /** intensity is null when the session was not rated; it is never counted as moderate */
+  workouts: { id: string; date: string; label: string; type: string; intensity: number | null; minutes: number; glucoseChange2h: number | null }[]
   steps: { date: string; steps: number | null }[]
   stepsAvg: number | null
   stepsBaseline: number | null
@@ -845,15 +1043,39 @@ export interface InsightsSleep {
   loggedDays: number
   patterns: InsightsPattern[]
 }
+/** C4 and C5: heart rate and SpO2 from the watch (services/api/app/schemas/insights_heart.py). A day without watch data is null, never zero. */
+export interface InsightsHeart {
+  /** ends on the person's last day of watch data (today when there is none) */
+  period: InsightsPeriod
+  /** the last watch day, ISO; null when there is no watch data at all */
+  watchEnd: string | null
+  /** true when the period ends before today or before the other tabs: the screen says "Showing your watch data up to ..." */
+  endNote: boolean
+  hasData: boolean
+  daysWithData: number
+  heartRate: { avg: number | null; high: number | null; low: number | null; restingAvg: number | null; asleepAvg: number | null }
+  spo2: { avg: number | null; low: number | null; asleepAvg: number | null; asleepLow: number | null }
+  days: { date: string; avg: number | null; resting: number | null; asleep: number | null }[]
+}
+/** C5: blood pressure the person logged by hand, newest first. `count` covers every reading in the period; `readings` is capped. */
+export interface InsightsBloodPressure {
+  count: number
+  /** local date of the newest reading, ISO; null when there is none */
+  latest: string | null
+  readings: { date: string; time: string; systolic: number; diastolic: number; pulse: number | null }[]
+}
+
 export type InsightsDoseCell = 'taken' | 'late' | 'unconfirmed' | 'missed' | 'none'
 export interface InsightsMedication {
   period: InsightsPeriod
   dates: string[]
-  meds: { id: string; name: string; regimen: string; taken: number; scheduled: number; adherencePct: number | null; cells: InsightsDoseCell[] }[]
-  fasting: (number | null)[]
+  /** counted: prescription medicines count towards adherence; the others are listed with their grid only (numbers are null) */
+  meds: { id: string; name: string; regimen: string; counted: boolean; taken: number | null; missed: number | null; unconfirmed: number | null; scheduled: number | null; adherencePct: number | null; cells: InsightsDoseCell[] }[]
   taken: number
+  missed: number
   scheduled: number
   unconfirmed: number
+  /** null until a prescription dose has been answered (taken or missed) */
   adherencePct: number | null
   reasons: { key: string; label: string; count: number }[]
   patterns: InsightsPattern[]

@@ -8,13 +8,13 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import Field
 
 from app.db import logstore
 from app.schemas.log import Camel, WorkoutInput
-from app.services.workout_effort import ExerciseEntry, Sample, SetEntry, effort_between, exercise_efforts, exercise_volume_kg, session_volume_kg
+from app.services.workout_effort import ExerciseEntry, Sample, SetEntry, effort_between, exercise_efforts, exercise_volume_kg, session_volume_kg, takes_beta_blocker
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/workouts", tags=["workouts"])
@@ -40,8 +40,9 @@ class SessionIn(Camel):
     exercises: list[ExerciseIn]
     felt: str | None = None
     note: str | None = None
-    # how hard it felt, 1 (very light) to 5 (all-out)
-    intensity: int = Field(3, ge=1, le=5)
+    # how hard it felt, 1 (very light) to 5 (all-out). Optional: null is "not rated" and nothing is filled in. Until
+    # migration 0036 is applied, exercise_logs.intensity is NOT NULL and _save refuses a session with no rating.
+    intensity: int | None = Field(None, ge=1, le=5)
 
 
 class ExerciseOut(Camel):
@@ -58,6 +59,8 @@ class EffortOut(Camel):
     minutes_in_band: dict[str, float]
     quality: str
     note: str | None = None
+    # True when the person takes a beta-blocker: heart-rate numbers are shown, no effort label is
+    beta_blocker: bool = False
 
 
 class SummaryOut(Camel):
@@ -72,6 +75,8 @@ class SummaryOut(Camel):
 
 
 def _save(s: SessionIn) -> SummaryOut:
+    if s.intensity is None and not logstore.rating_optional():
+        raise HTTPException(status_code=422, detail=logstore.RATING_REQUIRED)
     end = s.ended_at or datetime.now(timezone.utc)
     secs = max(60, int((end - s.started_at).total_seconds()))
     minutes = max(1, round(secs / 60))
@@ -90,10 +95,11 @@ def _save(s: SessionIn) -> SummaryOut:
     logstore.create_workout(wi, sets=sets_rows, note=(s.note or "Strength session"), payload=s.model_dump(mode="json", by_alias=True))
 
     samples, age = logstore.heart_rate_and_age(s.started_at, end)
+    beta = takes_beta_blocker(logstore.active_medicine_names())
     if samples and age:
         sm = [Sample(a, b) for a, b in samples]
-        overall = effort_between(sm, s.started_at, end, age)
-        per = exercise_efforts(entries, sm, age)
+        overall = effort_between(sm, s.started_at, end, age, beta_blocker=beta)
+        per = exercise_efforts(entries, sm, age, beta_blocker=beta)
     else:
         overall, per = None, {}
     return SummaryOut(
@@ -105,7 +111,7 @@ def _save(s: SessionIn) -> SummaryOut:
         effort=EffortOut(
             avg_hr=overall.avg_hr if overall else None, max_hr=overall.max_hr if overall else None, intensity=overall.intensity if overall else None,
             minutes_in_band=overall.minutes_in_band if overall else {}, quality=overall.quality if overall else "insufficient",
-            note=(overall.note if overall else "No watch heart rate for this session, so effort is not shown."),
+            note=(overall.note if overall else "No watch heart rate for this session, so effort is not shown."), beta_blocker=beta,
         ),
     )
 

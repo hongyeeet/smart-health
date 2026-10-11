@@ -19,6 +19,7 @@ import { Alert, Button, Card, EmptyState, Skeleton, StatusPill, TextLink } from 
 import { ArrowLeft, CaretDown, CheckCircle, ClipboardText, Phone, ShieldCheck, Stethoscope } from '@/ui/icons'
 import { ClinicNote, QuestionBox, useDismissAlert } from './InteractionCard'
 import { MedPair, NotAdviceNote, originLabel, whenRaised } from './pieces'
+import { SourceItem, uniqueSources } from '@/features/meds/SourceLinks'
 
 export function InteractionDetail() {
   const { t } = useTranslation()
@@ -33,7 +34,7 @@ export function InteractionDetail() {
   const alert = data?.alerts.find((a) => a.id === id)
 
   return (
-    <Screen>
+    <Screen narrow>
       <Header
         back
         backTo="B2"
@@ -121,11 +122,9 @@ export function InteractionDetail() {
               <div className="flex flex-col gap-2 px-4 pb-4">
                 {alert.sources.length > 0 ? (
                   <ul className="flex flex-col gap-1.5">
-                    {alert.sources.map((s) => (
-                      <li key={s.url}>
-                        <a href={s.url} target="_blank" rel="noopener noreferrer" className="break-words text-body text-brand underline underline-offset-4">
-                          {s.title}
-                        </a>
+                    {uniqueSources(alert.sources).map((s) => (
+                      <li key={s.title} className="text-body">
+                        <SourceItem s={s} linkClass="break-words text-brand underline underline-offset-4" />
                       </li>
                     ))}
                   </ul>

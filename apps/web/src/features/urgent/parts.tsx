@@ -46,7 +46,7 @@ export function CallLink({ href, children, primary, label }: { href: string; chi
     <a
       href={href}
       aria-label={label}
-      className={`press flex min-h-14 w-full items-center justify-center gap-2 rounded-[14px] border-2 px-4 py-3 text-center text-body font-bold ${
+      className={`press flex min-h-16 w-full items-center justify-center gap-2 rounded-[14px] border-2 px-4 py-3 text-center text-btn font-bold ${
         primary ? 'border-transparent bg-danger text-card' : 'border-danger bg-card text-danger'
       }`}
     >

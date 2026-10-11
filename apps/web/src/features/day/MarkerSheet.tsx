@@ -64,7 +64,7 @@ export function MarkerSheet({ onClose, marker }: { onClose: () => void; marker?:
         {marker.rows.length > 0 && (
           <dl className="flex flex-col divide-y divide-line/70 rounded-card border border-line bg-card">
             {marker.rows.map((r) => (
-              <div key={r.label} className="flex items-baseline justify-between gap-4 px-4 py-3">
+              <div key={r.label} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-4 py-3">
                 <dt className="text-sub text-ink2">{r.label}</dt>
                 <dd className="num text-right text-body font-bold text-ink">{r.value}</dd>
               </div>

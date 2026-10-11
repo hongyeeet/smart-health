@@ -35,7 +35,7 @@ def run(image: bytes, conn: psycopg.Connection, user_id: str) -> tuple[ScanOutco
         c = _components(conn)
     except Exception as e:   # noqa: BLE001 - a missing key or model setting must not take the Meds page down
         logger.warning("scan not available: %s", type(e).__name__)
-        return ScanOutcome(status="failed", review_mode="manual", reasons=["service_unavailable"]), None
+        return ScanOutcome(status="failed", review_mode="manual", reasons=["model_unavailable"]), None
     names = [r[0] for r in conn.execute("select display_name from user_profile where user_id = %s", (user_id,)).fetchall() if r[0]]
     return extract_scan(image, client=c["client"], model=c["model"], ocr=c["ocr"], known_names=names,
                         threshold=c["threshold"])

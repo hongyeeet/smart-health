@@ -321,7 +321,7 @@
       "notReasonable": "Tidak munasabah",
       "unsafe": "Tidak selamat",
       "target": "Sasaran",
-      "ratingsSoFar": "Penilaian setakat ini: {{n}}. Sasaran dan kiraan 20 ialah nilai sementara menunggu semakan."
+      "ratingsSoFar": "Penilaian setakat ini: {{n}}. Sasaran dan kiraan {{min}} ialah nilai sementara menunggu semakan."
     },
     "sourceMine": "Hidangan yang anda rekodkan lebih daripada sekali, dengan gantian yang lebih ringan daripada pangkalan data makanan Singapura.",
     "sourceSample": "Hidangan tipikal gerai makanan pada hidangan yang diterbitkan. Bukan hidangan yang direkodkan oleh sesiapa.",

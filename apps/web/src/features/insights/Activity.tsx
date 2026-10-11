@@ -8,7 +8,8 @@ import { TrendChart } from '@/charts/TrendChart'
 import { Split } from '@/ui/layout'
 import { Button, Card, SectionTitle } from '@/ui/primitives'
 import { Barbell } from '@/ui/icons'
-import { Findings, Gate, InsightsFrame, Plain, Tile, num, useInsightsDays } from './shared'
+import { Findings, Gate, InsightsFrame, Plain, Tile, TileGrid, num, useInsightsDays } from './shared'
+import { HeartBlock } from './heart/HeartBlock'
 
 export function ActivityTab() {
   const days = useInsightsDays((s) => s.days)
@@ -17,14 +18,16 @@ export function ActivityTab() {
   const { t } = useTranslation()
   const noMinutes = !!data && data.weeks.every((w) => w.light + w.moderate + w.vigorous === 0)
   return (
-    <InsightsFrame tab="C4" period={data?.period}>
+    <InsightsFrame tab="C4" period={data?.period} why="activity">
       <Gate data={data} isError={isError} empty={!!data && !data.period.hasData} emptyText={t('insights.activity.empty', 'Log a workout and your activity shows up here.')}>
         {data && (
           <Split>
             <div className="flex flex-col gap-4">
               <section className="flex flex-col gap-3">
                 <SectionTitle>{t('insights.activity.thisWeek', 'This week')}</SectionTitle>
-                <Plain why="activity">{t('insights.activity.weekPlain', 'Moderate or vigorous minutes, and strength sessions, against the weekly goals.')}</Plain>
+                <Plain>
+                  {t('insights.activity.weekPlain', 'Moderate or vigorous minutes, and strength sessions, against the weekly goals. Effort is as you rated it.')}
+                </Plain>
                 <Card tone="hero" className="grid grid-cols-2 gap-3">
                   <Ring
                     value={data.moderateMin}
@@ -47,6 +50,9 @@ export function ActivityTab() {
                 <Card tone="hero">
                   {noMinutes ? <p className="text-body text-ink2">{t('insights.activity.noWorkouts4', 'No workouts logged in the last 4 weeks.')}</p> : <IntensityBars weeks={data.weeks} />}
                 </Card>
+                {!noMinutes && (
+                  <p className="text-sub text-ink3">{t('insights.activity.effortNote', 'Light, moderate and vigorous are as you rated the effort, not from your heart rate.')}</p>
+                )}
               </section>
               {data.mix.length > 0 && (
                 <section className="flex flex-col gap-1">
@@ -65,6 +71,7 @@ export function ActivityTab() {
                   </div>
                 </section>
               )}
+              <HeartBlock days={days} />
             </div>
             <div className="flex flex-col gap-4">
               {data.workouts.length > 0 && (
@@ -76,7 +83,9 @@ export function ActivityTab() {
                         <span className="min-w-0">
                           <span className="block text-body font-bold">{w.label}</span>
                           <span className="block text-sub text-ink2">
-                            {t('insights.activity.workoutLine', '{{date}}, {{min}} min, effort {{effort}} of 5', { date: w.date, min: w.minutes, effort: w.intensity })}
+                            {w.intensity == null
+                              ? t('insights.activity.workoutLineUnrated', '{{date}}, {{min}} min, not rated', { date: w.date, min: w.minutes })
+                              : t('insights.activity.workoutLine', '{{date}}, {{min}} min, effort {{effort}} of 5 as you rated it', { date: w.date, min: w.minutes, effort: w.intensity })}
                           </span>
                         </span>
                         {w.glucoseChange2h != null && (
@@ -94,7 +103,7 @@ export function ActivityTab() {
               )}
               <section className="flex flex-col gap-3">
                 <SectionTitle>{t('insights.activity.steps', 'Steps')}</SectionTitle>
-                <Plain why="activity">
+                <Plain>
                   {data.stepsAvg != null && data.stepsBaseline != null
                     ? t('insights.activity.stepsBoth', 'You averaged {{avg}} steps a day. Your usual from the 60 days before is about {{base}}.', {
                         avg: num(data.stepsAvg),
@@ -117,13 +126,13 @@ export function ActivityTab() {
                   </Card>
                 )}
                 {data.stepsAvg != null && data.stepsBaseline != null && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <TileGrid>
                     <Tile label={t('insights.activity.thisPeriod', 'This period')} value={num(data.stepsAvg)} unit={t('insights.activity.aDay', 'a day')} />
                     <Tile label={t('insights.activity.yourUsual', 'Your usual')} value={num(data.stepsBaseline)} unit={t('insights.activity.aDay', 'a day')} />
-                  </div>
+                  </TileGrid>
                 )}
               </section>
-              <Findings items={data.patterns} />
+              <Findings items={data.patterns} whyLink={false} />
               <Button icon={Barbell} onClick={() => go('F1')}>
                 {t('insights.activity.logWorkout', 'Log a workout')}
               </Button>
@@ -131,6 +140,8 @@ export function ActivityTab() {
           </Split>
         )}
       </Gate>
+      {/* with data, the heart block sits in the left column above; otherwise (loading, error, nothing logged) it still shows here */}
+      {!(data && !isError && data.period.hasData) && <HeartBlock days={days} />}
     </InsightsFrame>
   )
 }

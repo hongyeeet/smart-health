@@ -18,6 +18,8 @@ dispatcher records: delivery_status = sent | failed | skipped, delivered_at, del
 | Rule | Detail |
 |---|---|
 | Address | The person gave one at onboarding (`user_profile.notification_email`) and has not turned emails off (`email_opt_in`). They can change both in Me, Privacy. |
+| Before a profile exists | The address lives on the profile row, which the first onboarding save creates. `PUT /notify/email` answers **409** until then, and nothing is stored. The onboarding screens keep the email and save it with page 3, with Finish, or in the chat with its first save (fix wave, 2026-10-11). |
+| Lunch | The lunch reminder and the lunch ideas share one slot a day, so the person gets at most one lunch nudge email (see learning-loop 12.3). |
 | Kinds | `nudge` (meal, workout, lunch ideas, salt prompt), `checkin`, `refill`, `appointment`, `urgent`. Dose reminders are not emailed (they have the calendar events and the Home card). Everything else is `skipped`. |
 | Not late | A reminder with an expiry (`payload.until`) is not sent after it. One without an expiry is not sent after 6 hours (an urgent alert after 2). One already done in the app (`acted_at`) is not sent. |
 | Limits | At most `EMAIL_DAILY_CAP` (3) emails per person per day, and none in quiet hours (22:00 to 07:00 Singapore time); a quiet-hours row waits and is sent after 07:00 only if it has not expired. |
@@ -59,7 +61,7 @@ With the webhook blank nothing is sent and nothing is lost: rows stay `pending` 
 
 ## Endpoints
 
-`GET/PUT /api/v1/notify/email` (address and on/off), `POST /api/v1/notify/test` (send one test email to the saved address), and the public
+`GET/PUT /api/v1/notify/email` (address and on/off; PUT answers 409 when the person has no profile yet), `POST /api/v1/notify/test` (send one test email to the saved address), and the public
 `GET /api/v1/notify/unsubscribe?t=<signed token>`.
 
 ## Not built

@@ -1,36 +1,30 @@
 /**
- * A3 — About you. Ten steps on one route (?step=1 to 10), so the browser's back button moves one step at a time.
- * The steps and questions follow Damien's clinical onboarding design (Stitch export): body measurements, diabetes history,
- * medicines, lows, conditions, lab results, devices and routine, lifestyle, a safety check, and where reminders go.
+ * A3 — About you, pages 3 to 11 on one route (?step=3 to 11). The step in the address is the page number, so the counter reads
+ * "Step N of 11" and Back moves one page at a time. Continue saves this page to the record (usePageSave) before moving on.
  *
- * The screen records answers and nothing else: no score, stage, category or target, and no comment on any value
- * (rules.md 1.1, 1.6). The checks below only catch typing slips. The kinds of medicine ticked here are background for the
- * doctor brief; the medicines themselves, with their doses, come only from the scan and add-by-hand screens.
- * The answers with a profile column are saved at the end of this flow (api.ts) and again on the summary.
+ * The screen records answers and nothing else: no score, stage, category or target, and no comment on any value (rules.md 1.1, 1.6).
+ * The checks only catch typing slips and missing required answers, and each one says what to fix.
  */
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { appConfig } from '@/config/app'
 import { href } from '@/app/routeIds'
+import { fullName } from '@/features/meds/medicineText'
 import { useBack, useGo } from '@/app/navigation'
 import { useMeds } from '@/data/hooks'
-import { useUi } from '@/state/store'
 import { Screen } from '@/ui/layout'
-import { Segmented } from '@/ui/controls'
-import { Alert, Button, Card, Field, TextLink, Toggle } from '@/ui/primitives'
+import { Alert, Button, Card, Field, Skeleton, TextLink, Toggle } from '@/ui/primitives'
 import { Camera, Plus, Trash } from '@/ui/icons'
-import { Dock, Group, PickMany, PickOne, Question, Scale, StepHead, TopBar, clock, useStepNav, type Option } from './parts'
-import { REMINDER_TIMES, labelOf, useOptions } from './options'
-import { SafetyAlerts } from './SafetyAlerts'
-import { useNotifyEmail, usePrefillOnboarding, useSaveNotifyEmail, useSaveProfile, useSavedOnboarding, toProfileBody } from './api'
-import { LIMITS, inRange, num, pastDateOk, useOnboarding, yearOk, type GlucoseUnit, type Hba1cUnit, type OnboardingAnswers } from './useOnboarding'
+import { DemoNotice, Dock, Group, InfoTip, Later, LoadNotice, LoadingAnswers, PickMany, PickOne, Scale, StepHead, TopBar, UnitToggle, useStepNav } from './parts'
+import { labelOf, useOptions } from './options'
+import { emailBody, pageBody, useOnboardingSource, type ProfileBody } from './api'
+import { usePageSave } from './usePageSave'
+import { LIMITS, emailOk, inRange, pastDateOk, phoneOk, useOnboarding, yearOk, type GlucoseUnit, type Hba1cUnit, type OnboardingAnswers } from './useOnboarding'
 
-export const ABOUT_STEPS = 10
-/** A plain check that an address has the shape name@domain.tld. Providers are not checked; any valid address is accepted. */
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-/** Welcome and eligibility come first, so "about you" step 1 is step 3 of the whole flow. */
-const OFFSET = 2
+/** The first and last page on this route. Welcome (1) and eligibility (2) have their own routes. */
+export const FIRST_PAGE = 3
+export const LAST_PAGE = 11
 /** Adults only (prd section 3). */
 const MIN_AGE = 18
 
@@ -44,45 +38,32 @@ export function AboutYou() {
   const { review, next } = useStepNav()
   const [params] = useSearchParams()
   const raw = Number(params.get('step'))
-  const step = Number.isInteger(raw) && raw >= 1 && raw <= ABOUT_STEPS ? raw : 1
+  const step = Number.isInteger(raw) && raw >= FIRST_PAGE && raw <= LAST_PAGE ? raw : FIRST_PAGE
 
   const a = useOnboarding((s) => s.answers)
   const set = useOnboarding((s) => s.set)
   const opts = useOptions()
   const meds = useMeds()
-  const locale = useUi((s) => s.locale)
-  const saved = useSavedOnboarding()
-  usePrefillOnboarding(saved.data)
-  const saveProfile = useSaveProfile()
-  const notify = useNotifyEmail()
-  const saveEmail = useSaveNotifyEmail()
-  /* the reminder address could not be saved: the person can go on, and the summary says so */
-  const [emailFailed, setEmailFailed] = useState(false)
-  /* an address already stored for reminders fills the box once, when it is still empty */
-  useEffect(() => {
-    const stored = notify.data?.email
-    if (stored && !useOnboarding.getState().answers.reminderEmail) set({ reminderEmail: stored })
-  }, [notify.data, set])
+  const src = useOnboardingSource()
+  const page = usePageSave(src.loadFailed)
+  /* the same route serves every page, so a message from one page is cleared when the person moves to another */
+  useEffect(() => page.reset(), [step])
 
-  const heads: { name: string; title: string; sub: string }[] = [
-    { name: t('onboarding.s1.name', 'Body measurements'), title: t('onboarding.s1.title', 'About you'), sub: t('onboarding.s1.sub', 'A few basics about you. Only the year of birth is needed.') },
-    { name: t('onboarding.s2.name', 'Diabetes history'), title: t('onboarding.s2.title', 'Your diabetes and your care'), sub: t('onboarding.s2.sub', 'When it started and who looks after it.') },
-    { name: t('onboarding.s3.name', 'Medicines'), title: t('onboarding.s3.title', 'Your medicines'), sub: t('onboarding.s3.sub', 'Tick every kind you take now. The names underneath are examples to help you find yours.') },
-    {
-      name: t('onboarding.s4.name', 'Low glucose'),
-      title: t('onboarding.s4.title', 'Low glucose (hypos)'),
-      sub: t('onboarding.s4.sub', 'A hypo is a low glucose reading, below {{low}} mmol/L, often with sweating, shaking or dizziness.', { low: appConfig.hypoTiers.low.toFixed(1) }),
-    },
-    { name: t('onboarding.s5.name', 'Other conditions'), title: t('onboarding.s5.title', 'Other conditions and check-ups'), sub: t('onboarding.s5.sub', 'Things a doctor has told you that you have, your allergies, and your last diabetes checks.') },
-    { name: t('onboarding.s6.name', 'Lab results'), title: t('onboarding.s6.title', 'Lab results and blood pressure'), sub: t('onboarding.s6.sub', 'Copy the numbers from your most recent report. Leave blank anything you do not have.') },
-    { name: t('onboarding.s7.name', 'Devices and routine'), title: t('onboarding.s7.title', 'Your devices and your day'), sub: t('onboarding.s7.sub', 'Which devices you use, and what a usual day looks like.') },
-    { name: t('onboarding.s8.name', 'Lifestyle'), title: t('onboarding.s8.title', 'Eating, activity and habits'), sub: t('onboarding.s8.sub', 'Rough answers are fine. There are no right or wrong ones.') },
-    { name: t('onboarding.s9.name', 'Safety check'), title: t('onboarding.s9.title', 'A safety check before you start'), sub: t('onboarding.s9.sub', 'Tell us if any of these is happening, and who to contact in an emergency.') },
-    { name: t('onboarding.s10.name', 'Reminders'), title: t('onboarding.s10.title', 'Where should reminders go?'), sub: t('onboarding.s10.sub', 'We email you a gentle reminder when something is due, like logging a meal. You can turn this off any time in Me, Privacy.') },
-  ]
-  const head = heads[step - 1]!
+  /* ---- headings: the page title and what the page is for ---- */
+  const heads: Record<number, { name: string; title: string; sub: string }> = {
+    3: { name: t('onboarding.s3.name', 'About you'), title: t('onboarding.s3.title', 'About you'), sub: t('onboarding.s3.sub', 'A few basics. Only the year of birth is needed to continue.') },
+    4: { name: t('onboarding.s4.name', 'Diabetes history'), title: t('onboarding.s4.title', 'Your diabetes and your care'), sub: t('onboarding.s4.sub', 'When it was found, and who looks after it.') },
+    5: { name: t('onboarding.s5.name', 'Medicines'), title: t('onboarding.s5.title', 'Your medicines'), sub: t('onboarding.s5.sub', 'Scan the label of each medicine you take. You can check or change them later.') },
+    6: { name: t('onboarding.s6.name', 'Low glucose'), title: t('onboarding.s6.title', 'Low glucose (hypos)'), sub: t('onboarding.s6.sub', 'Answer what you can. Tap the i to see what a hypo is.') },
+    7: { name: t('onboarding.s7.name', 'Other conditions and checks'), title: t('onboarding.s7.title', 'Other conditions and check-ups'), sub: t('onboarding.s7.sub', 'Things a doctor has told you about, your allergies, and your last diabetes checks.') },
+    8: { name: t('onboarding.s8.name', 'Lab results'), title: t('onboarding.s8.title', 'Lab results'), sub: t('onboarding.s8.sub', 'Copy the numbers from your most recent report. Leave blank anything you do not have.') },
+    9: { name: t('onboarding.s9.name', 'Devices'), title: t('onboarding.s9.title', 'Your watch and sensor'), sub: t('onboarding.s9.sub', 'Choose what you use. Nothing is paired on this page.') },
+    10: { name: t('onboarding.s10.name', 'Your work week'), title: t('onboarding.s10.title', 'Your work week'), sub: t('onboarding.s10.sub', 'When you usually work, so reminders can fit your day.') },
+    11: { name: t('onboarding.s11.name', 'Emergency contact'), title: t('onboarding.s11.title', 'Who should we contact in an emergency?'), sub: t('onboarding.s11.sub', 'All four details are needed. They are used for safety only.') },
+  }
+  const head = heads[step]!
 
-  /* ---- checks: they only catch typing slips, and say what to fix ---- */
+  /* ---- checks: they only catch typing slips and missing answers, and say what to fix ---- */
   const thisYear = new Date().getFullYear()
   const between = (lo: number, hi: number, unit: string) => t('onboarding.err.between', 'Enter a number from {{lo}} to {{hi}} {{unit}}, or leave it blank.', { lo, hi, unit })
   const e: Errors = {}
@@ -92,78 +73,88 @@ export function AboutYou() {
   if (!inRange(a.weightKg, LIMITS.weightKg)) e.weightKg = between(...LIMITS.weightKg, 'kg')
   if (!inRange(a.waistCm, LIMITS.waistCm)) e.waistCm = between(...LIMITS.waistCm, 'cm')
   if (!yearOk(a.diagnosedYear, { notBefore: yearOk(a.birthYear, { required: true }) ? Number(a.birthYear) : 1900 })) e.diagnosedYear = t('onboarding.err.diagYear', 'Enter a 4-digit year, not before you were born and not in the future.')
-  if (!pastDateOk(a.labDate)) e.labDate = t('onboarding.err.future', 'This date is in the future.')
   const hba1cLimit = a.hba1cUnit === '%' ? LIMITS.hba1cPct : LIMITS.hba1cMmolMol
   if (!inRange(a.hba1c, hba1cLimit)) e.hba1c = between(hba1cLimit[0], hba1cLimit[1], a.hba1cUnit)
   const glucoseLimit = a.glucoseUnit === 'mmol/L' ? LIMITS.glucoseMmol : LIMITS.glucoseMgDl
   if (!inRange(a.fastingGlucose, glucoseLimit)) e.fastingGlucose = between(glucoseLimit[0], glucoseLimit[1], a.glucoseUnit)
   if (!inRange(a.fastingInsulin, LIMITS.fastingInsulin)) e.fastingInsulin = between(...LIMITS.fastingInsulin, 'µIU/mL')
-  if (!inRange(a.egfr, LIMITS.egfr)) e.egfr = between(...LIMITS.egfr, '')
-  if (!inRange(a.systolic, LIMITS.systolic)) e.systolic = between(...LIMITS.systolic, 'mmHg')
-  if (!inRange(a.diastolic, LIMITS.diastolic)) e.diastolic = between(...LIMITS.diastolic, 'mmHg')
-  const sys = num(a.systolic)
-  const dia = num(a.diastolic)
-  if (!e.systolic && !e.diastolic) {
-    if ((sys === null) !== (dia === null)) e[sys === null ? 'systolic' : 'diastolic'] = t('onboarding.err.bpBoth', 'Enter both numbers, or leave both blank.')
-    else if (sys !== null && dia !== null && dia >= sys) e.diastolic = t('onboarding.err.bpOrder', 'The bottom number should be lower than the top number.')
-  }
-
-  const emailOk = (v: string) => EMAIL.test(v.trim())
-  if (a.contactEmail.trim() && !emailOk(a.contactEmail)) e.contactEmail = t('onboarding.err.email', 'Enter an email address like name@gmail.com, or leave it blank.')
-  if (a.reminderEmail.trim() && !emailOk(a.reminderEmail)) e.reminderEmail = t('onboarding.err.email', 'Enter an email address like name@gmail.com, or leave it blank.')
-
-  const fieldsByStep: (keyof OnboardingAnswers)[][] = [['birthYear', 'heightCm', 'weightKg', 'waistCm'], ['diagnosedYear'], [], [], [], ['labDate', 'hba1c', 'fastingGlucose', 'fastingInsulin', 'egfr', 'systolic', 'diastolic'], [], [], ['contactEmail'], ['reminderEmail']]
-  const stepHasError = fieldsByStep[step - 1]!.some((k) => e[k])
+  if (!pastDateOk(a.labDate)) e.labDate = t('onboarding.err.future', 'This date is in the future.')
+  const hasLab = [a.hba1c, a.fastingGlucose, a.fastingInsulin].some((v) => v.trim() !== '')
+  if (hasLab && !a.labDate && !e.labDate) e.labDate = t('onboarding.err.labDate', 'Enter the date of your blood test. It is needed with the numbers.')
+  const contactProblems: Errors = {}
+  if (a.contactPhone.trim() && !phoneOk(a.contactPhone)) contactProblems.contactPhone = t('onboarding.err.phone', 'Enter a mobile number with digits, like +65 9123 4567.')
+  if (a.contactEmail.trim() && !emailOk(a.contactEmail)) contactProblems.contactEmail = t('onboarding.err.email', 'Enter an email address like name@gmail.com.')
   const working = a.workType !== null && a.workType !== 'not_working'
   const workMissing = working && (a.workDays.length === 0 || !a.workStart || !a.workEnd)
-  const contactMissing = !a.contactName.trim() || !a.contactPhone.trim() || !a.contactRelation.trim()
-  const blocked = stepHasError || (step === 1 && !a.birthYear.trim()) || (step === 7 && workMissing) || (step === 9 && (a.redFlags.length === 0 || contactMissing))
-  const raceIsSuggestion = opts.race.some((o) => o.value === a.race)
+  const contactMissing = !a.contactName.trim() || !a.contactRelation.trim() || !a.contactPhone.trim() || !a.contactEmail.trim()
+  const pageErrors: Errors = { ...e, ...contactProblems }
+  /* a page is only held up by its own fields, so a problem on one page never blocks another */
+  const fieldsOnPage: Partial<Record<number, (keyof OnboardingAnswers)[]>> = {
+    3: ['birthYear', 'heightCm', 'weightKg', 'waistCm'],
+    4: ['diagnosedYear'],
+    8: ['labDate', 'hba1c', 'fastingGlucose', 'fastingInsulin'],
+    11: ['contactPhone', 'contactEmail'],
+  }
+  const blocked =
+    (fieldsOnPage[step] ?? []).some((k) => pageErrors[k]) ||
+    (step === 3 && !a.birthYear.trim()) ||
+    (step === 10 && workMissing) ||
+    (step === 11 && contactMissing)
 
-  /* the profile is saved without blocking: the answers stay on this device and the summary saves them again on Finish */
-  const saveQuietly = () => saveProfile.mutateAsync(toProfileBody(useOnboarding.getState().answers, locale, (code) => labelOf(opts.conditions, code))).catch(() => undefined)
+  /* ---- what this page saves, and moving on ---- */
+  const firstSave = !src.saved.data?.profile
+  /* The server creates the profile from page 3 (it needs the birth year). Until then, pages 4 to 11 are kept on this device and
+     the Finish step saves them all. */
+  const profileBody = (): ProfileBody | null => {
+    if (step === 3) return pageBody(3, a, firstSave)
+    if (firstSave) return null
+    return pageBody(step, a, false)
+  }
+  /* the reminder email is sent here too when it was not stored yet (typed on Welcome before the profile existed) */
+  const storedEmail = src.email.data
+  const emailPending = (a.reminderEmail.trim() || null) !== (storedEmail?.email ?? null) || a.reminderOn !== (storedEmail?.optIn ?? true)
+  /* the email follows the profile: it is sent once the profile exists (page 3 creates it), or when an address was typed */
+  const emailNow = emailPending && (step === FIRST_PAGE || !firstSave || a.reminderEmail.trim() !== '') ? emailBody(a) : null
   const onNext = async () => {
-    if (step < ABOUT_STEPS) return next(`${href('A3')}?step=${step + 1}`)
-    const email = a.reminderEmail.trim()
-    if (email && !emailFailed) {
-      try {
-        await saveEmail.mutateAsync(email)
-      } catch {
-        setEmailFailed(true)
-        return
-      }
+    if (!page.holding) {
+      const ok = await page.commit(profileBody(), emailNow)
+      if (!ok) return
     }
-    await saveQuietly()
+    if (step < LAST_PAGE) return next(`${href('A3')}?step=${step + 1}`)
     next(href('A6'))
   }
-  const skipEmail = async () => {
-    set({ reminderEmail: '' })
-    await saveQuietly()
-    next(href('A6'))
-  }
-  const nextLabel = review
-    ? t('onboarding.backToSummary', 'Back to summary')
-    : step === ABOUT_STEPS
-      ? emailFailed
-        ? t('onboarding.email.anyway', 'Continue without it')
-        : t('onboarding.toSummary', 'Check my answers')
-      : t('common.continue', 'Continue')
+  const onBack = review ? () => navigate(href('A6')) : step === FIRST_PAGE ? back : () => navigate(`${href('A3')}?step=${step - 1}`)
 
   const setAllergy = (i: number, patch: Partial<OnboardingAnswers['allergies'][number]>) => set({ allergies: a.allergies.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
-  const reminderOptions: Option<string>[] = REMINDER_TIMES.map((v) => ({ value: v, label: clock(v) }))
   const twoCol = "grid grid-cols-2 gap-3 [[data-ts='2']_&]:grid-cols-1"
   const hba1cUnits: { value: Hba1cUnit; label: string }[] = [{ value: '%', label: '%' }, { value: 'mmol/mol', label: 'mmol/mol' }]
   const glucoseUnits: { value: GlucoseUnit; label: string }[] = [{ value: 'mmol/L', label: 'mmol/L' }, { value: 'mg/dL', label: 'mg/dL' }]
+  const raceIsSuggestion = opts.race.some((o) => o.value === a.race)
+  const nextLabel = review ? t('onboarding.backToSummary', 'Back to summary') : step === LAST_PAGE ? t('onboarding.toSummary', 'Check my answers') : t('common.continue', 'Continue')
+  const continueAnyway = page.holding
+
+  if (!src.ready) {
+    return (
+      <Screen narrow>
+        <TopBar />
+        <LoadingAnswers />
+      </Screen>
+    )
+  }
 
   return (
-    <Screen>
+    <Screen narrow>
       <TopBar />
-      <StepHead step={step + OFFSET} name={head.name} title={head.title} sub={head.sub} />
+      <StepHead step={step} name={head.name} title={head.title} sub={head.sub} />
+      {src.loadFailed && <LoadNotice />}
+      {src.readOnly && <DemoNotice />}
+      {page.error && <Alert tone="danger">{page.error}</Alert>}
+      {page.notice && <Alert tone="info">{page.notice}</Alert>}
 
-      {step === 1 && (
+      {step === 3 && (
         <Group>
-          <Field label={t('onboarding.birthYear', 'Year of birth')} inputMode="numeric" value={a.birthYear} onChange={(birthYear) => set({ birthYear })} placeholder="1965" error={e.birthYear} />
-          <PickOne label={t('onboarding.gender.label', 'Gender')} options={opts.gender} value={a.gender} onChange={(gender) => set({ gender })} />
+          <Field label={t('onboarding.birthYear', 'Year of birth')} inputMode="numeric" value={a.birthYear} onChange={(birthYear) => set({ birthYear })} placeholder="1965" error={e.birthYear} hint={t('onboarding.birthYearHint', 'Needed to continue.')} />
+          <PickOne label={t('onboarding.gender.label', 'Sex')} options={opts.gender} value={a.gender} onChange={(gender) => set({ gender })} />
           <PickOne label={t('onboarding.race.label', 'Ethnic group')} options={opts.race} value={raceIsSuggestion ? a.race : null} onChange={(race) => set({ race: race ?? '' })} />
           <Field label={t('onboarding.race.other', 'Or type it in')} value={raceIsSuggestion ? '' : a.race} onChange={(race) => set({ race })} />
           <div className={twoCol}>
@@ -174,53 +165,53 @@ export function AboutYou() {
         </Group>
       )}
 
-      {step === 2 && (
+      {step === 4 && (
         <Group>
           <Field label={t('onboarding.diagYear', 'Year you were told you have type 2 diabetes')} inputMode="numeric" value={a.diagnosedYear} onChange={(diagnosedYear) => set({ diagnosedYear })} placeholder="2016" error={e.diagnosedYear} />
-          <PickOne label={t('onboarding.family', 'Does a parent, brother or sister have type 2 diabetes?')} options={opts.yesNoUnsure} value={a.familyHistory} onChange={(familyHistory) => set({ familyHistory })} />
           <PickOne label={t('onboarding.care.label', 'Where do you usually go for your diabetes?')} options={opts.careSetting} value={a.careSetting} onChange={(careSetting) => set({ careSetting })} />
           <PickOne label={t('onboarding.hsg.label', 'Are you enrolled in Healthier SG?')} options={opts.healthierSg} value={a.healthierSg} onChange={(healthierSg) => set({ healthierSg })} />
         </Group>
       )}
 
-      {step === 3 && (
+      {step === 5 && (
         <>
-          <Group>
-            <PickMany stack none="none" label={t('onboarding.med.label', 'Diabetes medicines')} options={opts.diabetesMeds} value={a.diabetesMeds} onChange={(diabetesMeds) => set({ diabetesMeds })} />
-          </Group>
-          <Group>
-            <PickMany stack none="none" label={t('onboarding.omed.label', 'Other regular medicines')} options={opts.otherMeds} value={a.otherMeds} onChange={(otherMeds) => set({ otherMeds })} />
-          </Group>
           <Group title={t('onboarding.meds.addTitle', 'Add each medicine from its label')}>
-            <p className="text-sub text-ink2">{t('onboarding.meds.intro', 'The ticks above only tell your doctor which kinds you take. For reminders and explanations, add each medicine: Smart Health copies what is on your label and you confirm it. You can also do this later from Medications.')}</p>
-            <div className="flex flex-col gap-2">
-              <Button variant="secondary" icon={Camera} onClick={() => go('H2')}>
-                {t('onboarding.meds.scan', 'Scan a label')}
-              </Button>
-              <Button variant="secondary" icon={Plus} onClick={() => go('H8')}>
-                {t('onboarding.meds.byHand', 'Add by hand')}
-              </Button>
-            </div>
-            {meds.data && meds.data.length > 0 && (
-              <Card tone="soft" className="flex flex-col gap-1.5">
-                <p className="text-sub font-bold text-ink2">{t('onboarding.meds.added', 'Already in your list')}</p>
-                <ul className="flex flex-col gap-1">
-                  {meds.data.map((m) => (
-                    <li key={m.id} className="break-words text-body">
-                      {m.name} {m.strength}
-                    </li>
-                  ))}
-                </ul>
-              </Card>
+            <p className="text-sub text-ink2">{t('onboarding.meds.intro', 'Smart Health copies what is on the label, and you check it. You can also do this later from Medications.')}</p>
+            <p className="text-sub text-ink2">{t('onboarding.meds.scope', 'Smart Health is for diabetes medicines and the medicines or supplements you take every day.')}</p>
+            <Button variant="secondary" icon={Camera} onClick={() => go('H2')}>
+              {t('onboarding.meds.scan', 'Scan a label')}
+            </Button>
+            <TextLink onClick={() => go('H8')} className="self-start">
+              {t('onboarding.meds.byHand', 'Type it in')}
+            </TextLink>
+          </Group>
+          <Group title={t('onboarding.meds.savedTitle', 'Medicines saved so far')}>
+            {meds.isPending && <Skeleton className="h-16" />}
+            {meds.isError && <Alert tone="warn">{t('onboarding.meds.error', 'We could not load your medicines just now. You can carry on, and check them later in Medications.')}</Alert>}
+            {meds.isSuccess && meds.data.length === 0 && <p className="text-body text-ink2">{t('onboarding.meds.none', 'No medicines saved yet.')}</p>}
+            {meds.isSuccess && meds.data.length > 0 && (
+              <ul className="flex flex-col gap-1.5">
+                {meds.data.map((m) => (
+                  <li key={m.id} className="break-words text-body">
+                    {fullName(m)}
+                  </li>
+                ))}
+              </ul>
             )}
           </Group>
           <Alert tone="info">{t('onboarding.meds.note', 'Smart Health explains and reminds. It never tells you to start, stop or change a medicine.')}</Alert>
         </>
       )}
 
-      {step === 4 && (
+      {step === 6 && (
         <>
           <Group>
+            <div className="flex items-center gap-2 text-sub text-ink2">
+              <span>{t('onboarding.hypo.what', 'What is a hypo?')}</span>
+              <InfoTip label={t('onboarding.hypo.whatLabel', 'What is a hypo?')}>
+                <p>{t('onboarding.hypo.tip', 'A hypo is a low glucose reading, below {{low}} mmol/L, often with sweating, shaking or dizziness.', { low: appConfig.hypoTiers.low.toFixed(1) })}</p>
+              </InfoTip>
+            </div>
             <PickOne label={t('onboarding.hypo.count', 'How many hypos have you had in the last 3 months?')} options={opts.hypo3m} value={a.hypo3m} onChange={(hypo3m) => set({ hypo3m })} />
             <PickOne label={t('onboarding.hypo.severe', 'In the last 12 months, have you had a hypo where you needed someone else to help you?')} options={opts.yesNo} value={a.severeHypo} onChange={(severeHypo) => set({ severeHypo })} />
           </Group>
@@ -233,12 +224,12 @@ export function AboutYou() {
               lowLabel={t('onboarding.gold.low', '1 = always aware')}
               highLabel={t('onboarding.gold.high', '7 = never aware')}
             />
-            <p className="text-sub text-ink3">{t('onboarding.gold.note', 'Your answer is passed to your doctor as you gave it. Skip it if you have never had a hypo.')}</p>
+            <p className="text-sub text-ink3">{t('onboarding.gold.note', 'Leave it blank if you have never had a hypo.')}</p>
           </Group>
         </>
       )}
 
-      {step === 5 && (
+      {step === 7 && (
         <>
           <Group>
             <PickMany stack none="none" label={t('onboarding.cond.label', 'Has a doctor told you that you have any of these?')} options={opts.conditions} value={a.conditions} onChange={(conditions) => set({ conditions })} />
@@ -273,98 +264,101 @@ export function AboutYou() {
         </>
       )}
 
-      {step === 6 && (
+      {step === 8 && (
         <Group>
-          <Field label={t('onboarding.labDate', 'Date of the blood test')} type="date" value={a.labDate} onChange={(labDate) => set({ labDate })} error={e.labDate} />
+          <Field label={t('onboarding.labDate', 'Date of the blood test')} type="date" value={a.labDate} onChange={(labDate) => set({ labDate })} error={e.labDate} hint={hasLab ? undefined : t('onboarding.labDateHint', 'Needed if you enter any number below.')} />
           <div className="flex flex-col gap-2">
             <Field label={t('onboarding.hba1c', 'HbA1c')} inputMode="decimal" value={a.hba1c} onChange={(hba1c) => set({ hba1c })} placeholder={a.hba1cUnit === '%' ? '7.2' : '55'} error={e.hba1c} />
-            <Segmented label={t('onboarding.hba1cUnit', 'HbA1c unit')} options={hba1cUnits} value={a.hba1cUnit} onChange={(hba1cUnit) => set({ hba1cUnit })} />
+            <UnitToggle label={t('onboarding.hba1cUnit', 'HbA1c unit')} options={hba1cUnits} value={a.hba1cUnit} onChange={(hba1cUnit) => set({ hba1cUnit })} />
           </div>
           <div className="flex flex-col gap-2">
             <Field label={t('onboarding.fpg', 'Fasting glucose')} inputMode="decimal" value={a.fastingGlucose} onChange={(fastingGlucose) => set({ fastingGlucose })} placeholder={a.glucoseUnit === 'mmol/L' ? '7.4' : '133'} error={e.fastingGlucose} />
-            <Segmented label={t('onboarding.fpgUnit', 'Fasting glucose unit')} options={glucoseUnits} value={a.glucoseUnit} onChange={(glucoseUnit) => set({ glucoseUnit })} />
+            <UnitToggle label={t('onboarding.fpgUnit', 'Fasting glucose unit')} options={glucoseUnits} value={a.glucoseUnit} onChange={(glucoseUnit) => set({ glucoseUnit })} />
           </div>
           <Field label={t('onboarding.insulin', 'Fasting insulin (optional)')} inputMode="decimal" suffix="µIU/mL" value={a.fastingInsulin} onChange={(fastingInsulin) => set({ fastingInsulin })} placeholder="11.5" error={e.fastingInsulin} />
-          <Field label={t('onboarding.egfr', 'Kidney function (eGFR)')} inputMode="decimal" value={a.egfr} onChange={(egfr) => set({ egfr })} placeholder="82" hint={t('onboarding.egfrHint', 'In mL/min/1.73 m², as printed on your report.')} error={e.egfr} />
-          <Question label={t('onboarding.bp.label', 'Blood pressure')} hint={t('onboarding.bp.hint', 'Your last reading, for example 128 over 82.')}>
-            <div className={twoCol}>
-              <Field label={t('onboarding.bp.sys', 'Top number')} inputMode="numeric" suffix="mmHg" value={a.systolic} onChange={(systolic) => set({ systolic })} placeholder="128" error={e.systolic} />
-              <Field label={t('onboarding.bp.dia', 'Bottom number')} inputMode="numeric" suffix="mmHg" value={a.diastolic} onChange={(diastolic) => set({ diastolic })} placeholder="82" error={e.diastolic} />
-            </div>
-          </Question>
         </Group>
       )}
 
-      {step === 7 && (
-        <>
-          <Group title={t('onboarding.cgm.title', 'Glucose sensor (CGM)')}>
-            <PickOne label={t('onboarding.cgm.label', 'Which sensor do you use?')} options={opts.cgm} value={a.cgm} onChange={(cgm) => set({ cgm })} />
-          </Group>
-          <Group title={t('onboarding.wear.title', 'Smart watch')}>
-            <PickOne label={t('onboarding.wear.label', 'Which watch do you wear?')} options={opts.wearable} value={a.wearable} onChange={(wearable) => set({ wearable })} />
-          </Group>
-          <Alert tone="info">{t('onboarding.connect.note', 'Nothing is paired in this step. You link a watch or sensor later in Me, under Connected sources. They only send data to Smart Health.')}</Alert>
-          <Group title={t('onboarding.routine.title', 'Your usual day')}>
-            <div className={twoCol}>
-              <Field label={t('onboarding.wake', 'I usually wake at')} type="time" value={a.wakeTime} onChange={(wakeTime) => set({ wakeTime })} />
-              <Field label={t('onboarding.sleep', 'I usually sleep at')} type="time" value={a.sleepTime} onChange={(sleepTime) => set({ sleepTime })} />
-            </div>
-            <PickOne label={t('onboarding.work.label', 'Your work')} options={opts.work} value={a.workType} onChange={(workType) => set(workType === null || workType === 'not_working' ? { workType, workDays: [], workStart: '', workEnd: '' } : { workType })} />
-            {working && (
-              <>
-                <PickMany label={t('onboarding.work.days', 'Days you usually work')} options={opts.weekdays} value={a.workDays.map(String)} onChange={(d) => set({ workDays: d.map(Number).sort((x, y) => x - y) })} />
-                <div className={twoCol}>
-                  <Field label={t('onboarding.work.start', 'Work starts')} type="time" value={a.workStart} onChange={(workStart) => set({ workStart })} />
-                  <Field label={t('onboarding.work.end', 'Work ends')} type="time" value={a.workEnd} onChange={(workEnd) => set({ workEnd })} />
-                </div>
-                {workMissing && <p className="text-sub text-ink2">{t('onboarding.work.needed', 'Choose your work days and hours to continue. For a night shift, the end time can be earlier than the start.')}</p>}
-              </>
-            )}
-            <PickMany none="none" label={t('onboarding.fast.label', 'Do you fast regularly?')} options={opts.fasting} value={a.fasting} onChange={(fasting) => set({ fasting })} />
-            <PickMany label={t('onboarding.reminders', 'Good times for reminders')} hint={t('onboarding.remindersHint', 'Pick any. You can change them later.')} options={reminderOptions} value={a.reminderTimes} onChange={(reminderTimes) => set({ reminderTimes: [...reminderTimes].sort() })} />
-          </Group>
-        </>
-      )}
+      {step === 9 && <DevicesChoice a={a} set={set} commit={(body) => page.commit(body, null)} readOnly={src.readOnly} error={page.error} />}
 
-      {step === 8 && (
+      {step === 10 && (
         <Group>
-          <PickOne label={t('onboarding.eat.label', 'Meals a week from a hawker centre, food court or takeaway')} options={opts.eatOut} value={a.eatOut} onChange={(eatOut) => set({ eatOut })} />
-          <PickOne label={t('onboarding.sweet.label', 'Sweet drinks a day (sweet kopi or teh, bubble tea, soft drinks)')} options={opts.sweetDrinks} value={a.sweetDrinks} onChange={(sweetDrinks) => set({ sweetDrinks })} />
-          <PickOne label={t('onboarding.active.label', 'Days a week with 30 minutes or more of brisk activity')} options={opts.activeDays} value={a.activeDays} onChange={(activeDays) => set({ activeDays })} />
-          <PickOne label={t('onboarding.smoke.label', 'Do you smoke?')} options={opts.smoking} value={a.smoking} onChange={(smoking) => set({ smoking })} />
-          <PickOne label={t('onboarding.alcohol.label', 'Alcohol')} options={opts.alcohol} value={a.alcohol} onChange={(alcohol) => set({ alcohol })} />
+          <PickOne label={t('onboarding.work.label', 'Your work')} options={opts.work} value={a.workType} onChange={(workType) => set(workType === null || workType === 'not_working' ? { workType, workDays: [], workStart: '', workEnd: '' } : { workType })} />
+          {working && (
+            <>
+              <PickMany label={t('onboarding.work.days', 'Days you usually work')} options={opts.weekdays} value={a.workDays.map(String)} onChange={(d) => set({ workDays: d.map(Number).sort((x, y) => x - y) })} />
+              <div className={twoCol}>
+                <Field label={t('onboarding.work.start', 'Work starts')} type="time" value={a.workStart} onChange={(workStart) => set({ workStart })} />
+                <Field label={t('onboarding.work.end', 'Work ends')} type="time" value={a.workEnd} onChange={(workEnd) => set({ workEnd })} />
+              </div>
+              {workMissing && <p className="text-sub text-ink2">{t('onboarding.work.needed', 'Choose your work days and hours to continue. For a night shift, the end time can be earlier than the start.')}</p>}
+            </>
+          )}
         </Group>
       )}
 
-      {step === 9 && (
-        <>
-          <Group>
-            <PickMany stack none="none" label={t('onboarding.red.label', 'Is any of these happening? Tick all that apply.')} options={opts.redFlags} value={a.redFlags} onChange={(redFlags) => set({ redFlags })} hint={a.redFlags.length === 0 ? t('onboarding.red.needed', 'Tick at least one answer to continue.') : undefined} />
-            <SafetyAlerts flags={a.redFlags} />
-          </Group>
-          <Group title={t('onboarding.contact.label', 'Emergency contact')}>
-            <Field label={t('onboarding.contact.name', 'Their name')} value={a.contactName} onChange={(contactName) => set({ contactName })} placeholder={t('onboarding.contact.namePh', 'Next of kin or caregiver')} />
-            <Field label={t('onboarding.contact.relation', 'Who they are to you')} value={a.contactRelation} onChange={(contactRelation) => set({ contactRelation })} placeholder={t('onboarding.contact.relationPh', 'For example, wife, son or friend')} />
-            <Field label={t('onboarding.contact.phone', 'Their mobile number')} type="tel" inputMode="tel" value={a.contactPhone} onChange={(contactPhone) => set({ contactPhone })} placeholder="+65 9123 4567" hint={contactMissing ? t('onboarding.contact.needed', 'Their name, number and relationship are needed to continue. Used for safety only.') : t('onboarding.contact.hint', 'Used for safety only. You can change this later.')} />
-            <Field label={t('onboarding.contact.email', 'Their email (optional)')} value={a.contactEmail} onChange={(contactEmail) => set({ contactEmail })} placeholder="name@gmail.com" error={e.contactEmail} />
-          </Group>
-        </>
-      )}
-
-      {step === ABOUT_STEPS && (
+      {step === 11 && (
         <Group>
-          <Field label={t('onboarding.email.label', 'Your Gmail address')} value={a.reminderEmail} onChange={(reminderEmail) => set({ reminderEmail })} placeholder="name@gmail.com" error={e.reminderEmail} hint={t('onboarding.email.hint', 'Any email address works. Leave it blank to add it later.')} />
-          {emailFailed && <Alert tone="warn">{t('onboarding.email.failed', 'We could not save your email just now. Your answer is kept on this device. You can add it later in Me, Privacy.')}</Alert>}
+          <Field label={t('onboarding.contact.name', 'Their name')} value={a.contactName} onChange={(contactName) => set({ contactName })} placeholder={t('onboarding.contact.namePh', 'Next of kin or caregiver')} hint={a.contactName.trim() ? undefined : t('onboarding.contact.needed', 'Needed to continue.')} />
+          <Field label={t('onboarding.contact.relation', 'Who they are to you')} value={a.contactRelation} onChange={(contactRelation) => set({ contactRelation })} placeholder={t('onboarding.contact.relationPh', 'For example, wife, son or friend')} hint={a.contactRelation.trim() ? undefined : t('onboarding.contact.needed', 'Needed to continue.')} />
+          <Field label={t('onboarding.contact.phone', 'Their mobile number')} type="tel" inputMode="tel" value={a.contactPhone} onChange={(contactPhone) => set({ contactPhone })} placeholder="+65 9123 4567" error={contactProblems.contactPhone} hint={a.contactPhone.trim() ? t('onboarding.contact.phoneHint', 'Digits, with an optional + at the front.') : t('onboarding.contact.needed', 'Needed to continue.')} />
+          <Field label={t('onboarding.contact.email', 'Their email')} value={a.contactEmail} onChange={(contactEmail) => set({ contactEmail })} placeholder="name@gmail.com" error={contactProblems.contactEmail} hint={a.contactEmail.trim() ? undefined : t('onboarding.contact.needed', 'Needed to continue.')} />
+          <p className="text-sub text-ink3">{t('onboarding.contact.hint', 'Used for safety only. You can change this later in Me.')}</p>
         </Group>
       )}
 
-      <Dock onBack={review ? () => navigate(href('A6')) : back} onNext={onNext} nextDisabled={blocked || saveProfile.isPending || saveEmail.isPending} nextLabel={nextLabel}>
-        {step === ABOUT_STEPS && !review && (
-          <TextLink onClick={skipEmail} className="self-center">
-            {t('onboarding.email.skip', 'Skip for now')}
-          </TextLink>
-        )}
-      </Dock>
+      <Later />
+      <Dock onBack={onBack} onNext={onNext} nextDisabled={!continueAnyway && (blocked || page.saving)} nextLabel={continueAnyway ? t('onboarding.continueAnyway', 'Continue anyway') : nextLabel} />
     </Screen>
+  )
+}
+
+/**
+ * Page 9. Choosing a watch or sensor is saved to the record; nothing is paired here. "Connecting…" is shown while the choice is
+ * saved. The result says what really happened: the choice is saved and not paired yet, or it was not saved. It never says a
+ * device is connected.
+ */
+function DevicesChoice({ a, set, commit, readOnly, error }: { a: OnboardingAnswers; set: (p: Partial<OnboardingAnswers>) => void; commit: (body: ProfileBody) => Promise<boolean>; readOnly: boolean; error: string | null }) {
+  const { t } = useTranslation()
+  const opts = useOptions()
+  const [state, setState] = useState<'idle' | 'connecting' | 'chosen' | 'later' | 'failed'>(a.wearable || a.cgm ? 'chosen' : 'idle')
+  const names = [a.wearable, a.cgm].filter((v): v is string => !!v && v !== 'none').map((v) => labelOf([...opts.wearable, ...opts.cgm], v))
+  const hasChoice = names.length > 0
+  const connect = async () => {
+    setState('connecting')
+    const ok = await commit({ watchModel: a.wearable, cgmModel: a.cgm })
+    setState(ok ? 'chosen' : 'failed')
+  }
+  return (
+    <>
+      <Group title={t('onboarding.cgm.title', 'Glucose sensor (CGM)')}>
+        <PickOne label={t('onboarding.cgm.label', 'Which sensor do you use?')} options={opts.cgm} value={a.cgm} onChange={(cgm) => { set({ cgm }); setState('idle') }} />
+      </Group>
+      <Group title={t('onboarding.wear.title', 'Smart watch')}>
+        <PickOne label={t('onboarding.wear.label', 'Which watch do you wear?')} options={opts.wearable} value={a.wearable} onChange={(wearable) => { set({ wearable }); setState('idle') }} />
+      </Group>
+      <Group title={t('onboarding.connect.title', 'Connect')}>
+        {state === 'connecting' && (
+          <p className="flex items-center gap-2 text-body font-bold" role="status">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-brand" aria-hidden />
+            {t('onboarding.connect.connecting', 'Connecting…')}
+          </p>
+        )}
+        {state === 'chosen' && hasChoice && (
+          <Alert tone="info">
+            {t('onboarding.connect.chosen', 'Chosen: {{names}}. It is not paired yet. You can pair it later in Me, Connected sources.', { names: names.join(', ') })}
+          </Alert>
+        )}
+        {state === 'later' && <Alert tone="info">{t('onboarding.connect.later', 'Not now. You can do this later in Me, Connected sources.')}</Alert>}
+        {state === 'failed' && <Alert tone="warn">{error ?? t('onboarding.connect.failed', 'We could not save your choice just now. It is kept on this device.')}</Alert>}
+        <div className="flex flex-wrap gap-2">
+          <Button disabled={!hasChoice || readOnly || state === 'connecting'} onClick={connect}>
+            {t('onboarding.connect.button', 'Connect')}
+          </Button>
+          <TextLink onClick={() => setState('later')}>{t('onboarding.connect.notNow', 'Not now')}</TextLink>
+        </div>
+        {readOnly && <p className="text-sub text-ink3">{t('onboarding.connect.demo', 'Mr Tan is demo data, so no choice is saved here.')}</p>}
+      </Group>
+    </>
   )
 }

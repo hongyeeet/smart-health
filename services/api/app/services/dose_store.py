@@ -25,6 +25,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from app.core.errors import InvalidTransition, NotFound, ValidationFailed
+from app.services import medication_stock
 
 TZ = ZoneInfo("Asia/Singapore")
 WINDOW = timedelta(hours=2)
@@ -172,8 +173,16 @@ def _event(conn: psycopg.Connection, user_id: str, event: str, dose_id: Any, pay
                  (user_id, event, dose_id, Jsonb(payload)))
 
 
+def _stock_taken(conn: psycopg.Connection, user_id: str, lid: Any, mid: Any, now: datetime) -> None:
+    """The medicine's stock goes down by this dose's amount, in the same transaction (plan 4.3). See medication_stock.dose_taken."""
+    if not medication_stock.stock_ready(conn):
+        return
+    q = conn.execute("select s.quantity from medication_log l left join medication_schedule s on s.id = l.schedule_id where l.id = %s", (lid,)).fetchone()
+    medication_stock.dose_taken(conn, user_id, mid, lid, q[0] if q else None, now)
+
+
 def mark_taken(conn: psycopg.Connection, user_id: str, dose_id: str, now: datetime) -> str:
-    """The person says they took it, now. Only while the dose's window is open; saying it twice changes nothing."""
+    """The person says they took it, now. Only while the dose's window is open; saying it twice changes nothing (and takes nothing off the stock twice)."""
     lid, status, at, mid, _name, _strength = _load(conn, user_id, dose_id)
     if status == "taken":
         return "taken"
@@ -184,6 +193,7 @@ def mark_taken(conn: psycopg.Connection, user_id: str, dose_id: str, now: dateti
     conn.execute("update medication_log set status = 'taken', taken_at = %s where id = %s", (now, lid))
     late = now - at > timedelta(minutes=60)
     _event(conn, user_id, "dose.taken", lid, {"medication_id": str(mid), "late": late})
+    _stock_taken(conn, user_id, lid, mid, now)
     return "taken"
 
 
@@ -199,6 +209,7 @@ def save_reason(conn: psycopg.Connection, user_id: str, dose_id: str, reason: st
     note = (note or "").strip()[:500] or None
     if reason == TOOK_IT:
         conn.execute("update medication_log set status = 'taken', taken_at = scheduled_at, miss_note = %s where id = %s", (note, lid))
+        _stock_taken(conn, user_id, lid, mid, now)          # "I took it" is a dose taken, so it comes off the stock too
         out = "taken"
     else:
         conn.execute("update medication_log set status = 'missed', miss_reason = %s, miss_note = %s where id = %s", (reason, note, lid))

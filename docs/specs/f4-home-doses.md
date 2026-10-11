@@ -36,7 +36,8 @@ Answering twice is refused ("already answered"), and a dose that can still be ta
 - **Window.** 2 hours either side (a constant, `WINDOW`; "configurable per medicine" in the PRD is not built). Taken is refused before the window opens.
 - **Late.** A dose taken more than 60 minutes after its time is recorded as late in the event log (`dose.taken`, `late: true`); the status stays `taken`.
 - **Lookback.** An unanswered dose older than 2 days is no longer asked about. At most the 3 most recent are shown.
-- **Pending rows** do not count against the person: the adherence percentage and the timeline only count answered doses (taken, missed, skipped).
+- **Pending rows** do not count against the person: a dose that is still to come is not counted. A dose whose window has passed and that nobody answered is shown as "not confirmed" and counts as not taken in Insights (C6) (`insights.py`). Whether such doses should count in the adherence denominator is an open question for the owner (implementation plan, section 14.4). How the doctor brief counts them was not traced in this pass.
+- **Stock:** "Taken" and "I took it, forgot to log" take one dose's amount off the medicine's stock count (`medication_stock`, decision D-085); the other reasons do not.
 - **Event log** entries `dose.taken` and `dose.reason.saved` hold ids, the reason code and flags only, never names or notes.
 
 ## 4. API and screens

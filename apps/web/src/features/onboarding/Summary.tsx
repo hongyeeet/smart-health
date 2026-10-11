@@ -1,27 +1,28 @@
 /**
- * A6 — Your profile summary. An editable read-back of what the person entered.
+ * A6 — Your profile summary. An editable read-back of what the person entered, page by page. Edit opens the right page
+ * (About you, ?step=3 to 11, with ?review=1 so Continue comes back here).
  *
- * Damien's Stitch design ends on a "clinical target profile" with stages, risk tiers and personal targets. Those are left
- * out: Smart Health does not classify the person or set targets (rules.md 1.1, 1.6, 1.15). What is kept is the read-back,
- * the plain arithmetic (age, BMI, unit conversions, with no category attached), a short list of gaps worth raising with
- * the doctor, and the safety messages.
+ * Finish saves every page to the record, records the consent and completion, and goes to Home. If the save fails, the person
+ * stays here, the reason is shown, and nothing is said to be saved that was not. Mr Tan (the demo patient) is never written.
+ *
+ * Damien's Stitch design ends on a clinical target profile with stages, risk tiers and targets. Those are left out:
+ * Smart Health does not classify the person or set targets (rules.md 1.1, 1.6, 1.15). What is kept is the read-back, plain
+ * arithmetic (age, BMI, unit conversions, no category), and a short list of gaps worth raising with the doctor.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { href } from '@/app/routeIds'
-import { useBack } from '@/app/navigation'
+import { useMeds } from '@/data/hooks'
 import { useUi } from '@/state/store'
-import { appConfig } from '@/config/app'
 import { Screen } from '@/ui/layout'
 import { Alert, Card, TextLink } from '@/ui/primitives'
 import { PencilSimple } from '@/ui/icons'
-import { Dock, TopBar, clock } from './parts'
+import { DemoNotice, Dock, Later, LoadNotice, LoadingAnswers, TopBar, clock } from './parts'
 import { labelOf, useOptions } from './options'
-import { SafetyAlerts } from './SafetyAlerts'
-import { ABOUT_STEPS } from './AboutYou'
-import { toProfileBody, useCompleteOnboarding, usePrefillOnboarding, useSaveProfile, useSavedOnboarding } from './api'
+import { allPagesBody, emailBody, useCompleteOnboarding, useOnboardingSource, useSaveStep } from './api'
 import { convert, num, useOnboarding } from './useOnboarding'
+import { LAST_PAGE } from './AboutYou'
 
 interface Row {
   label: string
@@ -31,19 +32,27 @@ interface Row {
 export function Summary() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const back = useBack('A3')
-  const locale = useUi((s) => s.locale)
   const toast = useUi((s) => s.showToast)
   const a = useOnboarding((s) => s.answers)
   const set = useOnboarding((s) => s.set)
-  const reset = useOnboarding((s) => s.reset)
   const o = useOptions()
-  const saved = useSavedOnboarding()
-  usePrefillOnboarding(saved.data)
-  const saveProfile = useSaveProfile()
+  const src = useOnboardingSource()
+  const meds = useMeds()
+  const save = useSaveStep()
   const complete = useCompleteOnboarding()
-  /* null when nothing has gone wrong; otherwise the server's plain reason, or "" when there is none */
+  /* null when nothing has gone wrong; otherwise the reason, which may be an empty string */
   const [failed, setFailed] = useState<string | null>(null)
+  /* the reminder email could not be saved; the person can still finish */
+  const [emailNote, setEmailNote] = useState(false)
+
+  if (!src.ready) {
+    return (
+      <Screen narrow>
+        <TopBar />
+        <LoadingAnswers />
+      </Screen>
+    )
+  }
 
   const on = t('onboarding.sum.on', 'On')
   const off = t('onboarding.sum.off', 'Off')
@@ -52,6 +61,18 @@ export function Summary() {
   const many = <T extends string>(options: { value: T; label: string }[], values: T[]) => list(values.map((v) => labelOf(options, v)))
   const step = (n: number) => `${href('A3')}?step=${n}&review=1`
   const date = (iso: string) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+  const working = a.workType !== null && a.workType !== 'not_working'
+
+  /* the reminder email as the server holds it. The box on the device is not what is saved until the server has it. */
+  const serverEmail = src.email.data?.email ?? null
+  const typedEmail = a.reminderEmail.trim()
+  const savedEmailLine = src.email.isError
+    ? t('onboarding.sum.emailUnknown', 'Could not check it just now')
+    : typedEmail !== (serverEmail ?? '')
+      ? serverEmail
+        ? `${serverEmail}. ${t('onboarding.sum.notSavedYet', 'Not saved yet')}`
+        : t('onboarding.sum.notSavedYet', 'Not saved yet')
+      : (serverEmail ?? '')
 
   const sections: { title: string; edit: string; rows: Row[] }[] = [
     {
@@ -59,18 +80,19 @@ export function Summary() {
       edit: `${href('A1')}?review=1`,
       rows: [
         { label: t('onboarding.sum.name', 'Name'), value: a.name.trim() },
-        { label: t('onboarding.language', 'Language'), value: appConfig.locales.find((l) => l.code === locale)?.native ?? locale },
+        { label: t('onboarding.email.label', 'Email for reminders'), value: savedEmailLine },
+        { label: t('onboarding.email.on', 'Send me reminder emails'), value: a.reminderOn ? on : off },
         { label: t('onboarding.consent.data', 'Use my health data'), value: a.consentData ? on : off },
         { label: t('onboarding.consent.share', 'Share a doctor brief'), value: a.consentShare ? on : off },
         { label: t('onboarding.consent.research', 'Use my data for research'), value: a.consentResearch ? on : off },
       ],
     },
     {
-      title: t('onboarding.s1.name', 'Body measurements'),
-      edit: step(1),
+      title: t('onboarding.s3.name', 'About you'),
+      edit: step(3),
       rows: [
         { label: t('onboarding.birthYear', 'Year of birth'), value: a.birthYear.trim() },
-        { label: t('onboarding.gender.label', 'Gender'), value: labelOf(o.gender, a.gender) },
+        { label: t('onboarding.gender.label', 'Sex'), value: labelOf(o.gender, a.gender) },
         { label: t('onboarding.race.label', 'Ethnic group'), value: a.race.trim() ? labelOf(o.race, a.race.trim()) : '' },
         { label: t('onboarding.height', 'Height'), value: unit(a.heightCm, 'cm') },
         { label: t('onboarding.weight', 'Weight'), value: unit(a.weightKg, 'kg') },
@@ -78,26 +100,33 @@ export function Summary() {
       ],
     },
     {
-      title: t('onboarding.s2.name', 'Diabetes history'),
-      edit: step(2),
+      title: t('onboarding.s4.name', 'Diabetes history'),
+      edit: step(4),
       rows: [
         { label: t('onboarding.sum.diagYear', 'Year of diagnosis'), value: a.diagnosedYear.trim() },
-        { label: t('onboarding.sum.family', 'Type 2 diabetes in close family'), value: labelOf(o.yesNoUnsure, a.familyHistory) },
         { label: t('onboarding.sum.care', 'Usual place of care'), value: labelOf(o.careSetting, a.careSetting) },
         { label: t('onboarding.sum.hsg', 'Healthier SG'), value: labelOf(o.healthierSg, a.healthierSg) },
       ],
     },
     {
-      title: t('onboarding.s3.name', 'Medicines'),
-      edit: step(3),
+      title: t('onboarding.s5.name', 'Medicines'),
+      edit: step(5),
       rows: [
-        { label: t('onboarding.med.label', 'Diabetes medicines'), value: many(o.diabetesMeds, a.diabetesMeds) },
-        { label: t('onboarding.omed.label', 'Other regular medicines'), value: many(o.otherMeds, a.otherMeds) },
+        {
+          label: t('onboarding.sum.medicines', 'Saved medicines'),
+          value: meds.isPending
+            ? t('onboarding.sum.loading', 'Loading…')
+            : meds.isError
+              ? t('onboarding.sum.medsError', 'Could not load them just now')
+              : meds.data.length === 0
+                ? t('onboarding.meds.none', 'No medicines saved yet.')
+                : list(meds.data.map((m) => `${m.name} ${m.strength}`.trim())),
+        },
       ],
     },
     {
-      title: t('onboarding.s4.name', 'Low glucose'),
-      edit: step(4),
+      title: t('onboarding.s6.name', 'Low glucose'),
+      edit: step(6),
       rows: [
         { label: t('onboarding.sum.hypo3m', 'Hypos in the last 3 months'), value: labelOf(o.hypo3m, a.hypo3m) },
         { label: t('onboarding.sum.severe', 'Needed help with a hypo in the last 12 months'), value: labelOf(o.yesNo, a.severeHypo) },
@@ -105,69 +134,54 @@ export function Summary() {
       ],
     },
     {
-      title: t('onboarding.s5.name', 'Other conditions'),
-      edit: step(5),
+      title: t('onboarding.s7.name', 'Other conditions and checks'),
+      edit: step(7),
       rows: [
         { label: t('onboarding.sum.conditions', 'Conditions'), value: list([...a.conditions.map((c) => labelOf(o.conditions, c)), a.otherConditions.trim()]) },
         {
           label: t('onboarding.allergy.label', 'Allergies'),
-          value: a.noAllergies ? t('onboarding.sum.noAllergies', 'No known allergies') : list(a.allergies.map((x) => (x.reaction.trim() ? `${x.substance.trim()} (${x.reaction.trim()})` : x.substance.trim()))),
+          value: a.noAllergies ? t('onboarding.sum.noAllergies', 'No known allergies') : list(a.allergies.filter((x) => x.substance.trim()).map((x) => (x.reaction.trim() ? `${x.substance.trim()} (${x.reaction.trim()})` : x.substance.trim()))),
         },
         { label: t('onboarding.sum.eye', 'Last eye check'), value: labelOf(o.lastCheck, a.eyeCheck) },
         { label: t('onboarding.sum.foot', 'Last foot check'), value: labelOf(o.lastCheck, a.footCheck) },
       ],
     },
     {
-      title: t('onboarding.s6.name', 'Lab results'),
-      edit: step(6),
+      title: t('onboarding.s8.name', 'Lab results'),
+      edit: step(8),
       rows: [
         { label: t('onboarding.sum.labDate', 'Date of the blood test'), value: date(a.labDate) },
         { label: t('onboarding.hba1c', 'HbA1c'), value: unit(a.hba1c, a.hba1cUnit) },
         { label: t('onboarding.fpg', 'Fasting glucose'), value: unit(a.fastingGlucose, a.glucoseUnit) },
         { label: t('onboarding.sum.insulin', 'Fasting insulin'), value: unit(a.fastingInsulin, 'µIU/mL') },
-        { label: t('onboarding.sum.egfr', 'Kidney function (eGFR)'), value: unit(a.egfr, 'mL/min/1.73 m²') },
-        { label: t('onboarding.bp.label', 'Blood pressure'), value: a.systolic.trim() && a.diastolic.trim() ? `${a.systolic.trim()} / ${a.diastolic.trim()} mmHg` : '' },
       ],
     },
     {
-      title: t('onboarding.s7.name', 'Devices and routine'),
-      edit: step(7),
+      title: t('onboarding.s9.name', 'Devices'),
+      edit: step(9),
       rows: [
-        { label: t('onboarding.sum.cgm', 'Glucose sensor'), value: labelOf(o.cgm, a.cgm) },
         { label: t('onboarding.sum.watch', 'Smart watch'), value: labelOf(o.wearable, a.wearable) },
-        { label: t('onboarding.sum.wake', 'Wakes at'), value: a.wakeTime ? clock(a.wakeTime) : '' },
-        { label: t('onboarding.sum.sleep', 'Sleeps at'), value: a.sleepTime ? clock(a.sleepTime) : '' },
+        { label: t('onboarding.sum.cgm', 'Glucose sensor'), value: labelOf(o.cgm, a.cgm) },
+      ],
+    },
+    {
+      title: t('onboarding.s10.name', 'Your work week'),
+      edit: step(10),
+      rows: [
         { label: t('onboarding.sum.work', 'Work'), value: labelOf(o.work, a.workType) },
-        { label: t('onboarding.sum.workDays', 'Work days'), value: many(o.weekdays, a.workDays.map(String)) },
-        { label: t('onboarding.sum.workHours', 'Work hours'), value: a.workStart && a.workEnd ? `${clock(a.workStart)} to ${clock(a.workEnd)}` : '' },
-        { label: t('onboarding.sum.fasting', 'Fasting'), value: many(o.fasting, a.fasting) },
-        { label: t('onboarding.sum.reminders', 'Reminder times'), value: list(a.reminderTimes.map(clock)) },
+        { label: t('onboarding.sum.workDays', 'Work days'), value: working ? many(o.weekdays, a.workDays.map(String)) : '' },
+        { label: t('onboarding.sum.workHours', 'Work hours'), value: working && a.workStart && a.workEnd ? `${clock(a.workStart)} to ${clock(a.workEnd)}` : '' },
       ],
     },
     {
-      title: t('onboarding.s8.name', 'Lifestyle'),
-      edit: step(8),
+      title: t('onboarding.s11.name', 'Emergency contact'),
+      edit: step(LAST_PAGE),
       rows: [
-        { label: t('onboarding.sum.eatOut', 'Meals out a week'), value: labelOf(o.eatOut, a.eatOut) },
-        { label: t('onboarding.sum.sweet', 'Sweet drinks'), value: labelOf(o.sweetDrinks, a.sweetDrinks) },
-        { label: t('onboarding.sum.active', 'Active days a week'), value: labelOf(o.activeDays, a.activeDays) },
-        { label: t('onboarding.sum.smoke', 'Smoking'), value: labelOf(o.smoking, a.smoking) },
-        { label: t('onboarding.alcohol.label', 'Alcohol'), value: labelOf(o.alcohol, a.alcohol) },
+        { label: t('onboarding.contact.name', 'Their name'), value: a.contactName.trim() },
+        { label: t('onboarding.contact.relation', 'Who they are to you'), value: a.contactRelation.trim() },
+        { label: t('onboarding.contact.phone', 'Their mobile number'), value: a.contactPhone.trim() },
+        { label: t('onboarding.contact.email', 'Their email'), value: a.contactEmail.trim() },
       ],
-    },
-    {
-      title: t('onboarding.s9.name', 'Safety check'),
-      edit: step(ABOUT_STEPS - 1),
-      rows: [
-        { label: t('onboarding.sum.redFlags', 'Happening now'), value: many(o.redFlags, a.redFlags) },
-        { label: t('onboarding.sum.contact', 'Emergency contact'), value: list([a.contactName.trim(), a.contactRelation.trim(), a.contactPhone.trim()]) },
-        { label: t('onboarding.sum.contactEmail', 'Emergency contact email'), value: a.contactEmail.trim() },
-      ],
-    },
-    {
-      title: t('onboarding.s10.name', 'Reminders'),
-      edit: step(ABOUT_STEPS),
-      rows: [{ label: t('onboarding.sum.reminderEmail', 'Reminder email'), value: a.reminderEmail.trim() }],
     },
   ]
 
@@ -192,11 +206,30 @@ export function Summary() {
   const notGiven = t('onboarding.sum.notGiven', 'Not given')
   const title = a.name.trim() ? t('onboarding.sum.titleFor', 'Your profile summary, {{name}}', { name: a.name.trim() }) : t('onboarding.sum.title', 'Your profile summary')
 
-  /* Finish saves the profile and records the consent, then goes home. If either fails, the person stays here and can try again. */
+  /* Finish saves every page, then records the consent and completion. Nothing is shown as saved until the server has said so. */
   const finish = async () => {
+    if (src.readOnly) {
+      toast(t('onboarding.sum.demoDone', 'Mr Tan is demo data, so nothing was saved to his record.'))
+      navigate(href('B1'), { replace: true })
+      return
+    }
+    /* the saved answers must be read first: a save from a device copy alone could blank what the record holds */
+    if (src.loadFailed) {
+      setFailed(t('onboarding.sum.noRead', 'Your saved answers could not be read, so Finish cannot save right now. Check your connection, then tap Finish again.'))
+      return
+    }
     setFailed(null)
+    setEmailNote(false)
     try {
-      await saveProfile.mutateAsync(toProfileBody(a, locale, (code) => labelOf(o.conditions, code)))
+      /* the reminder email is sent only when its saved value is known (or the box has something), so it is never cleared by mistake */
+      const email = src.email.isSuccess || a.reminderEmail.trim() ? emailBody(a) : null
+      const res = await save.mutateAsync({ profile: allPagesBody(a, !src.saved.data?.profile), email })
+      /* the profile was just saved, so a waiting email should not happen; if it does, the person stays here and is told */
+      if (res.email === 'waiting') {
+        setFailed(t('onboarding.email.waiting', 'We will save your email when your profile is created. It is kept on this device until then.'))
+        return
+      }
+      if (res.email === 'failed') setEmailNote(true)
       await complete.mutateAsync()
     } catch (err) {
       setFailed(err instanceof Error ? err.message : '')
@@ -206,10 +239,13 @@ export function Summary() {
     toast(t('onboarding.sum.done', 'Setup finished'))
     navigate(href('B1'), { replace: true })
   }
-  const savedAt = saved.data?.profile?.updatedAt
-  const savedLine = savedAt
-    ? t('onboarding.sum.savedAt', 'Saved to your Smart Health record on {{date}}.', { date: new Date(savedAt).toLocaleString('en-SG', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) })
-    : t('onboarding.sum.notSaved', 'Not saved to your record yet. Tap Finish to save it.')
+
+  const savedAt = src.saved.data?.profile?.updatedAt
+  const savedLine = src.readOnly
+    ? t('onboarding.sum.demo', 'Mr Tan is demo data. Nothing you see here is saved to his record.')
+    : savedAt
+      ? t('onboarding.sum.savedAt', 'Your record was last saved on {{date}}.', { date: new Date(savedAt).toLocaleString('en-SG', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) })
+      : t('onboarding.sum.notSaved', 'Not saved to your record yet. Tap Finish to save it.')
 
   const table = (rows: Row[]) => (
     <dl className="flex flex-col divide-y divide-line">
@@ -223,7 +259,7 @@ export function Summary() {
   )
 
   return (
-    <Screen>
+    <Screen narrow>
       <TopBar />
       <div>
         <p className="text-sub font-bold text-brand">{t('onboarding.sum.step', 'All steps done')}</p>
@@ -231,7 +267,8 @@ export function Summary() {
         <p className="mt-1.5 text-sub text-ink2">{t('onboarding.sum.sub', 'This is what you told us. Change anything that is not right.')}</p>
       </div>
 
-      <SafetyAlerts flags={a.redFlags} />
+      {src.loadFailed && <LoadNotice />}
+      {src.readOnly && <DemoNotice />}
 
       {calc.length > 0 && (
         <Card as="section" tone="hero" className="flex flex-col gap-1">
@@ -267,8 +304,11 @@ export function Summary() {
 
       <Alert tone="info">
         <p>{savedLine}</p>
-        <p className="mt-1.5">{t('onboarding.sum.local', 'Some answers, such as lab results, medicine kinds, lifestyle and your wake and sleep times, stay on this device for now.')}</p>
+        {!src.readOnly && src.saved.data && !src.saved.data.historyReady && (
+          <p className="mt-1.5">{t('onboarding.sum.local', 'Some answers, such as the diabetes history and the lab results, are kept on this device for now.')}</p>
+        )}
       </Alert>
+      {emailNote && <Alert tone="warn">{t('onboarding.email.notSaved', 'We could not save your reminder email just now. It is kept on this device. You can add it later in Me, Privacy.')}</Alert>}
       {failed !== null && (
         <Alert tone="danger">
           <p>{t('onboarding.sum.failed', 'Setup is not finished yet. Your answers are still on this device. Fix the point below, or check your connection, then tap Finish again.')}</p>
@@ -277,17 +317,8 @@ export function Summary() {
       )}
       <p className="text-center text-sub text-ink3">{t('onboarding.sum.fine', 'Smart Health explains, organises and reminds. It is not a diagnosis and does not replace your doctor.')}</p>
 
-      <Dock onBack={back} onNext={finish} nextDisabled={saveProfile.isPending || complete.isPending} nextLabel={t('onboarding.sum.finish', 'Finish')}>
-        <TextLink
-          onClick={() => {
-            reset()
-            navigate(href('A1'), { replace: true })
-          }}
-          className="self-center"
-        >
-          {t('onboarding.sum.restart', 'Clear my answers and start again')}
-        </TextLink>
-      </Dock>
+      <Later />
+      <Dock onBack={() => navigate(step(LAST_PAGE))} onNext={finish} nextDisabled={save.isPending || complete.isPending} nextLabel={t('onboarding.sum.finish', 'Finish')} />
     </Screen>
   )
 }

@@ -2,33 +2,36 @@
  * K2 — What Smart Health has learned (PRD F16).
  *
  * The agent only proposes. Here the person sees each thing it noticed, why it thinks so, and decides: confirm it, say it in their own
- * words, or delete it (a deleted idea is never proposed again). The week's digest shows everything it did, and the audit list shows
- * the runs behind it. Nothing here gives advice.
+ * words, or delete it (a deleted idea is never proposed again). "What gets in the way" starts with a row of numbers from the database.
+ * The week's digest shows the counts. Nothing here gives advice.
  */
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { useAiUsage, useAudit, useDigest, useLearned, useLearnedAction } from '@/data/hooks'
+import { useAiUsage, useDigest, useLearned, useLearnedAction } from '@/data/hooks'
 import type { LearnedFact } from '@/data/types'
 import { cn } from '@/lib/cn'
 import { Header, Screen } from '@/ui/layout'
-import { Alert, Button, Card, EmptyState, Field, SectionTitle, Skeleton, TextLink } from '@/ui/primitives'
+import { Alert, Button, Card, EmptyState, Field, SectionTitle, Skeleton } from '@/ui/primitives'
 import { Brain, CheckCircle, Info } from '@/ui/icons'
+import { BarrierKpis } from './learned/BarrierKpis'
 
-const clock = (iso: string) => new Date(iso).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
-/** Bold numbers in the digest. The sentence itself is translated, so the number can sit anywhere in it. */
 const BOLD = { b: <b className="num" /> }
+
+/** The barrier sentences end in a count such as "(43 times)". That count covers all time, while the KPI row above is the last 30 days. */
+const ALL_TIME_COUNT = /\((\d+) times?\)/
 
 function FactCard({ f }: { f: LearnedFact }) {
   const { t } = useTranslation()
   const act = useLearnedAction()
+  const statement = f.statement.replace(ALL_TIME_COUNT, (_m, n: string) => `(${n} ${Number(n) === 1 ? t('me.learned.time', 'time') : t('me.learned.times', 'times')}, ${t('me.learned.allTime', 'all time')})`)
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(f.statement)
   const busy = act.isPending
   const source = f.source === 'user' ? t('me.learned.ownWords', 'In your own words') : t('me.learned.noticedBy', 'Noticed by Smart Health, {{pct}}% sure', { pct: Math.round(f.confidence * 100) })
   return (
-    <Card className="flex flex-col gap-2">
+    <Card className="flex h-full flex-col gap-2">
       <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 text-body font-bold leading-snug">{f.statement}</p>
+        <p className="min-w-0 text-body font-bold leading-snug">{statement}</p>
         <span className={cn('flex-none rounded-chip px-2 py-0.5 text-micro font-bold', f.status === 'active' ? 'bg-ok-soft text-ok' : 'bg-brass-soft text-brass')}>
           {f.status === 'active' ? t('me.learned.confirmed', 'Confirmed') : t('me.learned.waiting', 'Waiting for you')}
         </span>
@@ -38,7 +41,7 @@ function FactCard({ f }: { f: LearnedFact }) {
       {editing && (
         <div className="flex flex-col gap-2">
           <Field label={t('me.learned.sayIt', 'Say it your way')} value={text} onChange={setText} multiline />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button size="md" className="!w-auto" disabled={busy || text.trim().length < 3} onClick={() => act.mutate({ id: f.id, action: 'edit', text }, { onSuccess: () => setEditing(false) })}>
               {t('me.learned.saveWording', 'Save my wording')}
             </Button>
@@ -49,7 +52,7 @@ function FactCard({ f }: { f: LearnedFact }) {
         </div>
       )}
       {!editing && (
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="mt-auto flex flex-wrap gap-2 pt-1">
           {f.status === 'proposed' && (
             <Button size="md" className="!w-auto" icon={CheckCircle} disabled={busy} onClick={() => act.mutate({ id: f.id, action: 'confirm' })}>
               {t('me.learned.rightOne', 'That is right')}
@@ -68,15 +71,64 @@ function FactCard({ f }: { f: LearnedFact }) {
   )
 }
 
+/**
+ * AI use today, one line per kind of AI call, with that kind's own count and cap from the usage endpoint. A kind that has used its
+ * cap says so in plain words. Nothing here is a fixed number: the counts and caps come from the server.
+ */
+function AiUseToday() {
+  const { t } = useTranslation()
+  const { data: ai, isError, isLoading } = useAiUsage()
+  const kindName = (provider: string): string => {
+    switch (provider) {
+      case 'vertex_vision':
+        return t('me.learned.ai.vision', 'Photo and label reads')
+      case 'vertex_generate':
+        return t('me.learned.ai.generate', 'Text written for you')
+      case 'vertex_embed':
+        return t('me.learned.ai.embed', 'Search lookups')
+      case 'jev':
+        return t('me.learned.ai.jev', 'Safety checks')
+      default:
+        return t('me.learned.ai.other', 'Other AI use')
+    }
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-sub font-bold text-ink2">{t('me.learned.aiToday', 'AI use today')}</p>
+      {isLoading && !ai && <Skeleton className="h-12" />}
+      {isError && !ai && <p className="text-sub text-ink3">{t('me.learned.aiLoadError', 'We could not load AI use today.')}</p>}
+      {ai && ai.providers.length === 0 && <p className="text-sub text-ink3">{t('me.learned.aiNone', 'No AI use recorded today yet.')}</p>}
+      {ai && ai.providers.length > 0 && (
+        <ul className="flex flex-col text-sub text-ink2">
+          {ai.providers.map((p) => (
+            <li key={p.provider} className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line py-1.5 last:border-b-0">
+              <span>
+                <Trans
+                  i18nKey="me.learned.aiLine"
+                  defaults="{{kind}}: <b>{{calls}}</b> of <b>{{cap}}</b> today"
+                  values={{ kind: kindName(p.provider), calls: p.calls, cap: p.cap }}
+                  components={BOLD}
+                />
+              </span>
+              {p.overCap && <span className="text-ink3">{t('me.learned.aiPaused', 'Paused until tomorrow')}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function Digest() {
   const { t } = useTranslation()
   const { data } = useDigest()
-  const { data: ai } = useAiUsage()
   if (!data) return <Skeleton className="h-40" />
   const r = data.reminders
   return (
     <Card tone="hero" className="flex flex-col gap-3">
       <SectionTitle>{t('me.learned.thisWeek', 'This week')}</SectionTitle>
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-8 [&>*]:min-w-0">
+      <div className="flex flex-col gap-3">
       <ul className="flex flex-col gap-1.5 text-body">
         <li>
           {data.newFacts === 1 ? (
@@ -120,59 +172,11 @@ function Digest() {
           </ul>
         </div>
       )}
-      {ai && (
-        <p className="text-sub text-ink2">
-          {ai.blocked > 0 ? (
-            <Trans i18nKey="me.learned.aiHeld" defaults="AI use today: <b>{{calls}}</b> of {{cap}} calls, {{n}} held back at the limit." values={{ calls: ai.calls, cap: ai.callCap, n: ai.blocked }} components={BOLD} />
-          ) : (
-            <Trans i18nKey="me.learned.aiUse" defaults="AI use today: <b>{{calls}}</b> of {{cap}} calls." values={{ calls: ai.calls, cap: ai.callCap }} components={BOLD} />
-          )}
-        </p>
-      )}
+      </div>
+      <AiUseToday />
+      </div>
       <p className="text-sub text-ink3">{t('me.learned.onlySuggests', 'It only suggests. It never changes your medicines, your numbers or its own safety rules.')}</p>
     </Card>
-  )
-}
-
-function Audit() {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const { data } = useAudit(open)
-  const TRIGGER: Record<string, string> = {
-    tick: t('me.learned.trigger.tick', 'Reminder check'),
-    nightly: t('me.learned.trigger.nightly', 'Nightly review'),
-    chat: t('me.learned.trigger.chat', 'A message'),
-    log: t('me.learned.trigger.log', 'A log'),
-    memory: t('me.learned.trigger.memory', 'Memory'),
-    checkin: t('me.learned.trigger.checkin', 'Check-in'),
-    scan: t('me.learned.trigger.scan', 'A scan'),
-    brief: t('me.learned.trigger.brief', 'Brief'),
-    onboarding: t('me.learned.trigger.onboarding', 'Onboarding'),
-  }
-  return (
-    <section className="flex flex-col gap-2">
-      <TextLink onClick={() => setOpen((o) => !o)} className="self-start">
-        {open ? t('me.learned.hideDid', 'Hide what it did') : t('me.learned.seeDid', 'See what it did')}
-      </TextLink>
-      {open && (
-        <Card tone="soft" className="flex flex-col gap-2">
-          {!data && <Skeleton className="h-24" />}
-          {data?.length === 0 && <p className="text-body text-ink2">{t('me.learned.nothingYet', 'Nothing yet.')}</p>}
-          <ul className="divide-y divide-line">
-            {data?.map((r) => (
-              <li key={r.id} className="py-2 text-sub">
-                <p className="font-bold">
-                  {TRIGGER[r.trigger] ?? r.trigger}{' '}
-                  <span className="font-normal text-ink3">{t('me.learned.auditMeta', '· {{when}} · {{status}}', { when: clock(r.at), status: r.status })}</span>
-                </p>
-                <p className="text-ink2">{r.steps.map((s) => s.node).join(t('me.learned.then', ' then '))}</p>
-              </li>
-            ))}
-          </ul>
-          <p className="text-micro text-ink3">{t('me.learned.recorded', 'Every run is recorded, and your own changes are logged too.')}</p>
-        </Card>
-      )}
-    </section>
   )
 }
 
@@ -183,6 +187,10 @@ export function Learned() {
     <Screen>
       <Header title={t('me.learned.title', 'What Smart Health has learned')} back backTo="K1" sub={t('me.learned.sub', 'Everything it noticed about you, and why. You decide what stays.')} />
       <Digest />
+      <section className="flex flex-col gap-3">
+        <SectionTitle>{t('me.learned.barrierTitle', 'What gets in the way')}</SectionTitle>
+        <BarrierKpis />
+      </section>
       {isError && <Alert tone="warn">{t('me.learned.loadError', 'We could not load this just now.')}</Alert>}
       {!data && !isError && <Skeleton className="h-40" />}
       {data && data.total === 0 && (
@@ -192,16 +200,17 @@ export function Learned() {
       )}
       {data?.groups.map((g) => (
         <section key={g.category} className="flex flex-col gap-3">
-          <SectionTitle>{g.label}</SectionTitle>
-          {g.facts.map((f) => (
-            <FactCard key={f.id} f={f} />
-          ))}
+          <SectionTitle>{g.category === 'barrier' ? t('me.learned.barrierIdeas', 'Ideas about what gets in the way') : g.label}</SectionTitle>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 [&>*]:min-w-0">
+            {g.facts.map((f) => (
+              <FactCard key={f.id} f={f} />
+            ))}
+          </div>
         </section>
       ))}
       <Alert tone="info" icon={Info}>
         {t('me.learned.notDiagnosis', 'These are patterns in your own logs, not a diagnosis. If a delete is wrong for you, nothing is lost: it just stops being used.')}
       </Alert>
-      <Audit />
     </Screen>
   )
 }

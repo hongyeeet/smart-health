@@ -1,18 +1,17 @@
-import type { ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { appConfig } from '@/config/app'
 import { href } from '@/app/routeIds'
 import { cn } from '@/lib/cn'
-import { Footer } from '@/ui/layout'
-import { Button, Card, StatusPill } from '@/ui/primitives'
+import { Alert, Button, Card, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
 import { Check, Leaf, Lock } from '@/ui/icons'
 
-/** Welcome, eligibility and the ten "about you" steps. The summary (A6) comes after the last one. */
-export const TOTAL_STEPS = 12
+/** The pages the person sees: Welcome (1), eligibility (2), About you (3 to 11). The summary (A6) comes after the last one and is not counted. */
+export const TOTAL_STEPS = 11
 
 /* ------------------------------------ frame ------------------------------------ */
-/** Brand row at the top of every onboarding screen, with an honest note about where the answers are kept. */
+/** Brand row at the top of every onboarding screen. */
 export function TopBar() {
   const { t } = useTranslation()
   return (
@@ -27,9 +26,55 @@ export function TopBar() {
         </StatusPill>
       </div>
       <StatusPill tone="neutral" icon={Lock}>
-        {t('onboarding.onDevice', 'Saved when you finish')}
+        {t('onboarding.yourAnswers', 'Your answers')}
       </StatusPill>
     </div>
+  )
+}
+
+/**
+ * A small "i" button that opens a short note. It opens on a click or tap, and with Enter or Space from the keyboard; Escape or a tap
+ * outside closes it. It is not hover-only, so touch and keyboard users get the same note.
+ */
+export function InfoTip({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  const box = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  return (
+    <span ref={box} className="relative inline-flex align-middle">
+      <button
+        type="button"
+        aria-label={label}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((o) => !o)}
+        className="press flex h-12 w-12 flex-none items-center justify-center"
+      >
+        <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-full border-[1.5px] border-brand bg-card font-serif text-sub font-semibold text-brand">
+          i
+        </span>
+      </button>
+      {open && (
+        <span id={id} className="absolute left-0 top-12 z-20 flex w-[min(20rem,calc(100vw-3rem))] flex-col gap-2 rounded-card border border-line bg-card p-3.5 text-left text-sub text-ink shadow-lift">
+          {children}
+        </span>
+      )}
+    </span>
   )
 }
 
@@ -68,11 +113,39 @@ export function Group({ title, children }: { title?: string; children: ReactNode
   )
 }
 
-/** Back and Continue, side by side, always on screen. */
-export function Dock({ onBack, onNext, nextLabel, nextDisabled, children }: { onBack?: () => void; onNext: () => void; nextLabel: string; nextDisabled?: boolean; children?: ReactNode }) {
+/** Shown while the saved answers are read, so the form never shows another person's answers. */
+export function LoadingAnswers() {
   const { t } = useTranslation()
   return (
-    <Footer>
+    <div role="status" aria-live="polite" className="flex flex-col gap-3">
+      <span className="sr-only">{t('onboarding.loading', 'Loading your answers')}</span>
+      <Skeleton className="h-8 w-2/3" />
+      <Skeleton className="h-40 w-full" />
+    </div>
+  )
+}
+
+/** The saved answers could not be read: the form shows what is on this device. */
+export function LoadNotice() {
+  const { t } = useTranslation()
+  return <Alert tone="warn">{t('onboarding.loadFailed', 'We could not load your saved answers just now. The answers on this device are shown.')}</Alert>
+}
+
+/** Mr Tan is demo data: his answers can be read here, but nothing is saved to his record from onboarding. */
+export function DemoNotice() {
+  const { t } = useTranslation()
+  return <Alert tone="info">{t('onboarding.demo.notice', 'Mr Tan is demo data. His record is not changed from here. To try setup, switch to the demo user or start as a new person.')}</Alert>
+}
+
+/**
+ * Back and Continue, side by side, always on screen. It holds only the two buttons, so it stays short (about 80 px at 100% text,
+ * about 100 px at 200%, because button text grows to 150% there). The bar never grows past 35% of the screen height. Its own space is part of the page, so
+ * nothing at the end of a page is covered. The links ("Finish later" and the rest) sit in the page flow, above it: see Later.
+ */
+export function Dock({ onBack, onNext, nextLabel, nextDisabled }: { onBack?: () => void; onNext: () => void; nextLabel: string; nextDisabled?: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <div data-dock className="sticky bottom-0 -mx-5 mt-2 flex max-h-[35vh] flex-col overflow-y-auto bg-gradient-to-t from-canvas from-70% to-transparent px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 md:-mx-8 md:px-8">
       <div className="flex gap-3">
         {onBack && (
           <Button variant="secondary" onClick={onBack} className="!w-auto flex-none px-6">
@@ -83,8 +156,40 @@ export function Dock({ onBack, onNext, nextLabel, nextDisabled, children }: { on
           {nextLabel}
         </Button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The secondary links, in the page flow above the Dock (not inside the sticky bar). "Finish later" leaves for Home at any point:
+ * each page is already saved when Continue works, and the rest can be done later from Me, Replay onboarding.
+ */
+export function Later({ children, label }: { children?: ReactNode; label?: string }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  return (
+    <div className="flex flex-col items-center gap-1 pt-2">
       {children}
-    </Footer>
+      <TextLink onClick={() => navigate(href('B1'))} className="self-center">
+        {label ?? t('onboarding.later', 'Finish later')}
+      </TextLink>
+    </div>
+  )
+}
+
+/** Unit choice (for example % or mmol/mol). The same look as the other choice bars, with a 48 px tap target. */
+export function UnitToggle<T extends string>({ options, value, onChange, label }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex rounded-chip border border-line bg-well p-1">
+      {options.map((o) => {
+        const on = o.value === value
+        return (
+          <button key={o.value} type="button" role="radio" aria-checked={on} onClick={() => onChange(o.value)} className={cn('press min-h-12 flex-1 rounded-chip px-3 text-sub font-bold', on ? 'bg-card text-ink shadow-lift' : 'text-ink2')}>
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 

@@ -1,7 +1,7 @@
 import { Trans, useTranslation } from 'react-i18next'
 import { useDoses, useMarkTaken } from '@/data/hooks'
 import { useGo } from '@/app/navigation'
-import { Alert, Button, Card, SectionTitle, StatusPill, TextLink } from '@/ui/primitives'
+import { Alert, Button, Card, SectionTitle, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
 import { CheckCircle, Pill } from '@/ui/icons'
 
 /**
@@ -24,7 +24,7 @@ export function DoseCard() {
         {t('home.dose.loadError', 'We could not load your medicines. Tap to try again.')}
       </Alert>
     )
-  if (!data) return null
+  if (!data) return <Skeleton className="h-44" />
   if (!data.hasMedicines)
     return (
       <Card onClick={() => go('H1')} className="flex items-center gap-3">
@@ -75,17 +75,19 @@ export function DoseCard() {
       )}
 
       {data.unconfirmed.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-card bg-well p-3.5">
+        <ul className="divide-y divide-line rounded-card bg-well px-3.5">
           {data.unconfirmed.map((u) => (
-            <div key={u.id} className="flex flex-col gap-1">
-              <p className="text-body">{t('home.dose.notConfirmed', '{{when}} is not confirmed.', { when: u.whenLabel })}</p>
-              <p className="text-sub text-ink3">{u.title}</p>
-              <TextLink onClick={() => go('H7', { sheet: { doseId: u.id } })} className="self-start">
+            <li key={u.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 py-2.5">
+              <div className="min-w-0 flex-1 basis-40">
+                <p className="break-words text-sub font-bold leading-snug">{u.title}</p>
+                <p className="text-sub leading-snug text-ink2">{t('home.dose.notConfirmed', '{{when}} is not confirmed.', { when: u.whenLabel })}</p>
+              </div>
+              <TextLink onClick={() => go('H7', { sheet: { doseId: u.id } })} className="flex-none">
                 {t('home.dose.tellUs', 'Tell us why')}
               </TextLink>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </Card>
   )

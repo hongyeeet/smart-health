@@ -149,7 +149,8 @@ def build_timeline(ctx):
         i0, i1 = span(r.start_at, r.end_at)
         T.iloc[i0:i1, T.columns.get_loc("exercise_id")] = r.id
         T.iloc[i0:i1, T.columns.get_loc("exercise_type")] = r.type
-        T.iloc[i0:i1, T.columns.get_loc("exercise_intensity")] = int(r.intensity)
+        if pd.notna(r.intensity):  # an unrated workout keeps exercise_intensity null (not rated), it is still in exercise_id and the mask
+            T.iloc[i0:i1, T.columns.get_loc("exercise_intensity")] = int(r.intensity)
         ex_mask[i0:i1] = True
     ctx["ex_mask"] = ex_mask
     # medication: the bucket of the dose (taken time if taken, otherwise the scheduled time)

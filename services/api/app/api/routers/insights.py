@@ -1,13 +1,16 @@
 """The Insights tab (screens C1 to C6 and C8):
 
   GET /insights/overview|glucose|food|activity|sleep|medication?days=7|30|90
+  GET /insights/overview/days?from=YYYY-MM-DD&to=YYYY-MM-DD   (the overview calendar, at most 92 days)
   GET /insights/sprint
+  GET /insights/heart?days=7|30|90         (heart rate and SpO2, C4 and C5; app/services/insights_heart.py)
+  GET /insights/blood-pressure?days=7|30|90  (C5; manual readings)
 
 Read-only. Every number is computed in code from the person's stored data (app/services/insights.py); no model is called.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Callable
 
 from fastapi import APIRouter, HTTPException, Query
@@ -15,7 +18,9 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.db import logstore
 from app.schemas import insights as S
+from app.schemas import insights_heart as HS
 from app.services import insights as svc
+from app.services import insights_heart as heart_svc
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -43,6 +48,15 @@ def _today():
 @router.get("/overview", response_model=S.Overview, response_model_by_alias=True)
 async def overview(days: int = Query(7)):
     return S.Overview.model_validate(await _run(svc.overview, _days(days), _today()))
+
+
+@router.get("/overview/days", response_model=S.OverviewDays, response_model_by_alias=True)
+async def overview_days(from_: date = Query(alias="from"), to: date = Query(...)):
+    if to < from_:
+        raise HTTPException(422, "to must be on or after from")
+    if (to - from_).days + 1 > svc.MAX_DAY_RANGE:
+        raise HTTPException(422, f"at most {svc.MAX_DAY_RANGE} days at a time")
+    return S.OverviewDays.model_validate(await _run(svc.overview_days, from_, to, _today()))
 
 
 @router.get("/glucose", response_model=S.GlucoseInsights, response_model_by_alias=True)
@@ -73,3 +87,13 @@ async def medication(days: int = Query(30)):
 @router.get("/sprint", response_model=S.SensorRun, response_model_by_alias=True)
 async def sensor_run():
     return S.SensorRun.model_validate(await _run(svc.sensor_run, _today()))
+
+
+@router.get("/heart", response_model=HS.HeartInsights, response_model_by_alias=True)
+async def heart(days: int = Query(30)):
+    return HS.HeartInsights.model_validate(await _run(heart_svc.heart, _days(days), _today()))
+
+
+@router.get("/blood-pressure", response_model=HS.BloodPressureInsights, response_model_by_alias=True)
+async def blood_pressure(days: int = Query(30)):
+    return HS.BloodPressureInsights.model_validate(await _run(heart_svc.blood_pressure, _days(days), _today()))

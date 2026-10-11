@@ -195,11 +195,11 @@ def main():
     sets_df = F["exercise_sets"]
     for r in F["exercise_logs"].itertuples():
         sets = sets_df[sets_df.exercise_log_id == r.id] if len(sets_df) else sets_df
-        payload = {"entry": "exercise", "type": r.type, "start": iso(r.start), "end": iso(r.end), "intensity": int(r.intensity), "feeling": int(r.feeling) if pd.notna(r.feeling) else None,
+        payload = {"entry": "exercise", "type": r.type, "start": iso(r.start), "end": iso(r.end), "intensity": (int(r.intensity) if pd.notna(r.intensity) else None), "feeling": int(r.feeling) if pd.notna(r.feeling) else None,
                    "note": py(r.note), "origin": "inferred from real heart rate and activity" if r.real else "simulated",
                    "sets": [{"exercise": s.exercise, "order": int(s.exercise_order), "set": int(s.set_no), "reps": int(s.reps), "weight_kg": float(s.weight_kg)} for s in sets.itertuples()]}
         bid = B.add("bronze_exercise", f"ex:{r.id}", SIM, payload, r.end + pd.Timedelta(minutes=5))
-        ex_rows.append((r.id, TAN, py(r.start), py(r.end), r.type, int(r.intensity), (int(r.feeling) if pd.notna(r.feeling) else None), py(r.note), SIM, bid))
+        ex_rows.append((r.id, TAN, py(r.start), py(r.end), r.type, (int(r.intensity) if pd.notna(r.intensity) else None), (int(r.feeling) if pd.notna(r.feeling) else None), py(r.note), SIM, bid))
     S["exercise_logs"] = ex_rows
     for s in sets_df.itertuples():
         set_rows.append((str(uid("v2", "set", s.exercise_log_id, s.exercise_order, s.set_no)), s.exercise_log_id, TAN, s.exercise, int(s.exercise_order), int(s.set_no),

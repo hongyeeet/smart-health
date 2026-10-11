@@ -14,11 +14,15 @@ from typing import Any
 from app.agents import adherence
 from app.agents.trace import audit
 from app.db.logstore import TZ, current_user, tx
+from app.services.day import kcal as kcal_of
 
 TABLE_LABEL = {"medication_log": "your dose log", "food_logs": "your meal log", "exercise_logs": "your workouts", "symptom_logs": "your symptoms",
                "wellbeing_logs": "your check-ins", "notifications": "your reminders"}
 CATEGORY_LABEL = {"routine": "Your routines", "barrier": "What gets in the way", "preference": "What you like", "food_response": "How food affects you",
                   "goal": "Your goals", "context": "Other things"}
+# Ideas that are not shown on the screen. "Some missed doses were because of running out" was proposed from scripted miss reasons in
+# Mr Tan's data (see the flags in the G2 report) and is hidden until the rule in agents/adherence.py is fixed. Rows are not deleted.
+HIDDEN_FACT_KEYS = ("barrier.ran_out",)
 
 
 def _why(refs: Any) -> str:
@@ -39,8 +43,8 @@ def list_facts() -> dict[str, Any]:
     with tx() as c:
         rows = c.execute(
             """select id, key, category::text cat, statement, confidence, status::text st, version, evidence_refs, user_confirmed_at, source, updated_at
-               from memory_facts where user_id=%s and status in ('proposed','active') order by category, confidence desc""",
-            (current_user(),),
+               from memory_facts where user_id=%s and status in ('proposed','active') and key <> all(%s) order by category, confidence desc""",
+            (current_user(), list(HIDDEN_FACT_KEYS)),
         ).fetchall()
     groups: dict[str, list] = {}
     for r in rows:
@@ -143,19 +147,36 @@ def progress() -> dict[str, Any]:
     on_time = {w["week_start"]: w for w in adherence.on_time_by_week(uid)}
     weeks = []
     for m in meals:
-        kcal = round(4 * float(m["carbs"] or 0) + 4 * float(m["protein"] or 0) + 9 * float(m["fat"] or 0)) if m["carbs"] is not None else None
+        kcal = kcal_of(m["carbs"], m["protein"], m["fat"])
         ot = on_time.get(m["wk"])
         weeks.append({"weekStart": m["wk"].isoformat(), "meals": int(m["n"]), "avgKcal": kcal, "avgSodium": round(float(m["sodium"])) if m["sodium"] is not None else None,
                       "doses": ot["doses"] if ot else None, "onTimePct": ot["on_time_pct"] if ot else None})
     full = [w for w in weeks if w["meals"] >= 5]
-    def avg(rows: list[dict], k: str) -> float | None:
-        v = [r[k] for r in rows if r[k] is not None]
-        return round(sum(v) / len(v), 1) if v else None
-    first, last = full[:2], full[-2:]
-    compare = None
-    if len(full) >= 4:
-        compare = {k: {"first": avg(first, k), "latest": avg(last, k)} for k in ("avgKcal", "avgSodium", "onTimePct")}
-        compare["firstWeeks"] = [w["weekStart"] for w in first]
-        compare["latestWeeks"] = [w["weekStart"] for w in last]
-    return {"weeks": weeks, "compare": compare,
+    return {"weeks": weeks, "fullWeeks": len(full), "baseline": baseline(full), "compare": compare(full),
             "note": "This shows what the person logged and did, week by week. It does not show that the app caused any change."}
+
+
+def _avg(rows: list[dict], k: str) -> float | None:
+    v = [r[k] for r in rows if r[k] is not None]
+    return round(sum(v) / len(v), 1) if v else None
+
+
+def baseline(full: list[dict]) -> dict[str, Any] | None:
+    """Pure: the starting point, the first two full weeks (5 or more meals each). None until there are two such weeks."""
+    if len(full) < 2:
+        return None
+    first = full[:2]
+    doses = [w["doses"] for w in first if w["doses"] is not None]
+    return {"weeks": [w["weekStart"] for w in first], "meals": sum(w["meals"] for w in first), "doses": sum(doses) if doses else None,
+            "avgKcal": _avg(first, "avgKcal"), "avgSodium": _avg(first, "avgSodium"), "onTimePct": _avg(first, "onTimePct")}
+
+
+def compare(full: list[dict]) -> dict[str, Any] | None:
+    """The first two full weeks against the latest two (kept in the response for older clients; the screen shows the baseline only)."""
+    if len(full) < 4:
+        return None
+    first, last = full[:2], full[-2:]
+    out: dict[str, Any] = {k: {"first": _avg(first, k), "latest": _avg(last, k)} for k in ("avgKcal", "avgSodium", "onTimePct")}
+    out["firstWeeks"] = [w["weekStart"] for w in first]
+    out["latestWeeks"] = [w["weekStart"] for w in last]
+    return out

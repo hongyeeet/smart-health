@@ -20,6 +20,7 @@ from fastapi.concurrency import run_in_threadpool
 from app.db import logstore
 from app.schemas import share as S
 from app.schemas.brief import DoctorReport
+from app.services import doctor_report
 from app.services import share as svc
 
 router = APIRouter(prefix="/brief/shares", tags=["share"])
@@ -89,4 +90,6 @@ async def public_report(token: str, request: Request) -> DoctorReport:
     report = await run_in_threadpool(work)
     if report is None:
         raise HTTPException(404, svc.NOT_AVAILABLE)
+    # outside the transaction: the key findings may wait on the model, the same report as the owner's (see routers/brief.py)
+    report = await run_in_threadpool(doctor_report.word_findings, report)
     return DoctorReport.model_validate(report)

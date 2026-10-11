@@ -28,9 +28,17 @@ from app.schemas.medicine_scan import (
     ScoredItem,
 )
 
-THRESHOLD = 0.85            # below this a filled-in field must be typed by the user
+THRESHOLD = 0.85            # below this a filled-in field must be typed by the user (the default, from settings)
+
+# Per-field thresholds. A field listed here uses its own number instead of THRESHOLD. Owner: Joely. The owner may change these
+# again. Only the medicine NAME is lower (0.6, plan section 13.4 and Q9): a wrong name is still caught on the review screen,
+# where the person reads it. Strength, directions, times and dates stay at the default (D-064: any low field forces typing).
+FIELD_THRESHOLDS: dict[str, float] = {
+    "name": 0.6,
+}
 SOURCE_COVERAGE_MIN = 0.7   # at least this share of the quoted words must be found in the OCR text
 VALUE_IN_SOURCE_MIN = 70.0
+VALUE_IN_SOURCE_CAP = 0.6
 
 STRENGTH_RE = re.compile(r"^\d+(?:[.,]\d+)?\s?(?:mg|mcg|µg|ug|g|ml|iu|units?|%|mmol)(?:\s?/\s?\d*(?:[.,]\d+)?\s?(?:ml|mg|g|l|tab|tablet|dose))?$", re.I)
 MEAL = {"before_meal", "after_meal", "with_meal", "na"}
@@ -58,6 +66,11 @@ def token_coverage(quote: str, ocr_text: str) -> float:
         return 0.0
     found = sum(len(w) for w in words if w in pool or (len(w) >= 5 and fuzz.partial_ratio(w, pool) >= 85))
     return found / total
+
+
+def threshold_for(name: str, threshold: float = THRESHOLD) -> float:
+    """The confidence a field needs. A field listed in FIELD_THRESHOLDS uses its own number; every other field uses `threshold`."""
+    return FIELD_THRESHOLDS.get(name, threshold)
 
 
 def _cap(conf: float, limit: float, flags: list[str], flag: str) -> float:
@@ -111,11 +124,13 @@ def score_field(name: str, raw: RawField, ocr_text: str, threshold: float = THRE
         if ocr_text and token_coverage(src, ocr_text) < SOURCE_COVERAGE_MIN:
             conf = _cap(conf, 0.55, flags, "source_not_in_ocr")
         if name not in DERIVED and fuzz.partial_ratio(_norm(value), _norm(src)) < VALUE_IN_SOURCE_MIN:
-            conf = _cap(conf, 0.6, flags, "value_not_in_source")
+            # A value that disagrees with its quote is always flagged: its cap sits below the field's own threshold
+            # (the name threshold is 0.6, so the name cap is 0.55, not 0.6).
+            conf = _cap(conf, min(VALUE_IN_SOURCE_CAP, threshold_for(name, threshold) - 0.05), flags, "value_not_in_source")
     if not _valid_shape(name, value):
         conf = _cap(conf, 0.4, flags, "invalid_shape")
     return ScoredField(value=value, confidence=round(conf, 3), model_confidence=raw.confidence, source_text=src,
-                       flags=flags, needs_confirmation=conf < threshold)
+                       flags=flags, needs_confirmation=conf < threshold_for(name, threshold))
 
 
 def score_item(item: RawItem, ocr_text: str, threshold: float = THRESHOLD) -> ScoredItem:
@@ -147,8 +162,11 @@ def decide(raw: RawExtraction, items: Sequence[ScoredItem], threshold: float = T
         return Decision("failed", "manual", ["not_a_medicine"])
     reasons: list[str] = []
     for it in items:
-        if any(f.needs_confirmation for name, f in it.fields.items() if name not in INFORMATION_ONLY):
-            reasons.append("low_confidence")
+        judged = {name: f for name, f in it.fields.items() if name not in INFORMATION_ONLY and f.value is not None}
+        low = [name for name, f in judged.items() if f.needs_confirmation]
+        if low:
+            # Every filled field is low: the label was not read at all, so the screen says so and asks for another photo or typing.
+            reasons.append("low_confidence_all" if len(low) == len(judged) else "low_confidence")
         as_needed = it.fields["when_to_take"].value == "as_needed"       # "when necessary" has no times per day: that is not a gap
         if any(it.fields[r].value is None for r in REQUIRED_FIELDS if not (r == "times_per_day" and as_needed)):
             reasons.append("missing_required")

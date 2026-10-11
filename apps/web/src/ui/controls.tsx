@@ -23,7 +23,7 @@ export function Segmented<T extends string | number>({ options, value, onChange,
 }
 
 /** Scrollable tab strip with a sliding underline. */
-export function TabStrip<T extends string>({ tabs, value, onChange, label }: { tabs: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
+export function TabStrip<T extends string>({ tabs, value, onChange, label, flush }: { tabs: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string; /** Do not bleed into the screen padding from a tablet up, where the padding is wider than the strip assumes. */ flush?: boolean }) {
   const id = useId()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -32,7 +32,7 @@ export function TabStrip<T extends string>({ tabs, value, onChange, label }: { t
     if (box && el) box.scrollTo({ left: el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2 })
   }, [value])
   return (
-    <div ref={ref} role="tablist" aria-label={label} className="hide-scroll relative -mx-5 flex gap-1 overflow-x-auto border-b border-line px-5">
+    <div ref={ref} role="tablist" aria-label={label} className={cn('hide-scroll relative -mx-5 flex gap-1 overflow-x-auto border-b border-line px-5', flush && 'md:mx-0 md:px-0')}>
       {tabs.map((t) => {
         const on = t.value === value
         return (
@@ -95,7 +95,8 @@ export function ChoiceCards<T extends string>({ options, value, onChange, label 
 export const RAMP = [14, 32, 52, 76, 100] as const
 const rampBg = (n: number) => `color-mix(in oklab, var(--c-brand) ${RAMP[n - 1]}%, var(--c-card))`
 
-export function Rating({ value, onChange, label, lowLabel, highLabel }: { value: number; onChange: (n: number) => void; label: string; lowLabel: string; highLabel: string }) {
+/** A 1 to 5 choice. `value` null means nothing chosen yet (no default is shown as chosen). */
+export function Rating({ value, onChange, label, lowLabel, highLabel }: { value: number | null; onChange: (n: number) => void; label: string; lowLabel: string; highLabel: string }) {
   return (
     <div className="flex flex-col gap-2" role="radiogroup" aria-label={label}>
       <p className="text-body font-bold">{label}</p>

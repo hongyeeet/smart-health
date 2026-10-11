@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 import type { SeriesPoint } from '@/data/types'
 import { shortDate } from '@/lib/format'
 import { duration, ease } from '@/motion/tokens'
+import { useUi } from '@/state/store'
 import { linear, useMeasure } from './useMeasure'
 
 const drawn = new Set<string>()
@@ -37,10 +38,12 @@ export function TrendChart({
   endLabel?: string
 }) {
   const { t } = useTranslation()
+  const ts = useUi((st) => st.textScale)
   const [ref, width] = useMeasure<HTMLDivElement>()
   const id = useId()
   const [sel, setSel] = useState<number | null>(null)
-  const padL = 40
+  // the value labels grow with the text size, so at 200% the left margin does too
+  const padL = ts === 2 ? 76 : 40
   const padR = 8
   const padT = 10
   const padB = 26
@@ -80,8 +83,19 @@ export function TrendChart({
     const i = Math.round(((x - padL) / (width - padL - padR)) * (points.length - 1))
     setSel(Math.min(Math.max(i, 0), points.length - 1))
   }
-  const shown = sel ?? last
+  // with nothing picked, the readout is the latest day that has a value (its date is written beside it)
+  const lastKnown = points.reduce((a, p, i) => (p.v != null ? i : a), -1)
+  const shown = sel ?? (lastKnown >= 0 ? lastKnown : last)
   const sp = points[shown]
+  // runs of days with no value, drawn as hatched bands: the line stops, it is never joined across them
+  const gaps: { from: number; to: number }[] = []
+  points.forEach((p, i) => {
+    if (p.v != null) return
+    const prev = gaps[gaps.length - 1]
+    if (prev && prev.to === i - 1) prev.to = i
+    else gaps.push({ from: i, to: i })
+  })
+  const hatch = `hatch-${id.replace(/:/g, '')}`
 
   return (
     <div ref={ref} className="w-full">
@@ -99,6 +113,16 @@ export function TrendChart({
         onPointerMove={(e) => e.buttons && pick(e.clientX, e.currentTarget)}
         onPointerLeave={() => setSel(null)}
       >
+        <defs>
+          <pattern id={hatch} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--c-ink3)" strokeOpacity=".45" strokeWidth="1.5" />
+          </pattern>
+        </defs>
+        {gaps.map((g) => {
+          const x0 = g.from === 0 ? padL : sx(g.from - 1)
+          const x1 = g.to === last ? width - padR : sx(g.to + 1)
+          return <rect key={g.from} x={x0} y={padT} width={Math.max(x1 - x0, 0)} height={height - padB - padT} fill={`url(#${hatch})`} />
+        })}
         {baseline && <rect x={padL} width={width - padL - padR} y={sy(baseline[1])} height={Math.max(sy(baseline[0]) - sy(baseline[1]), 2)} fill="var(--c-band)" rx={4} />}
         {ticks.map((t, i) => (
           <g key={i}>
@@ -134,6 +158,7 @@ export function TrendChart({
         )}
         {sel == null && lastV != null && <circle cx={sx(last)} cy={sy(lastV)} r={0} />}
       </svg>
+      {gaps.length > 0 && <p className="mt-1 text-micro text-ink3">{t('charts.gapKey', 'Hatched: no data on those days.')}</p>}
       <span id={id} className="sr-only">
         {label}
       </span>

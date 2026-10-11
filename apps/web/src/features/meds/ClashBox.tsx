@@ -3,6 +3,7 @@ import { useUi } from '@/state/store'
 import { useGo } from '@/app/navigation'
 import { Alert, Button } from '@/ui/primitives'
 import { CheckCircle, Stethoscope, Warning } from '@/ui/icons'
+import { SourceItem, uniqueSources } from './SourceLinks'
 
 /**
  * The medicine clash box on the Meds page (prd F5). It appears only when two of the person's medicines may clash, found by the drug-pair
@@ -43,12 +44,10 @@ export function ClashBox() {
                 {a.sources.length > 0 && (
                   <p className="text-micro text-ink3">
                     From:{' '}
-                    {a.sources.map((s, i) => (
-                      <span key={s.url}>
+                    {uniqueSources(a.sources).map((s, i) => (
+                      <span key={s.title}>
                         {i > 0 && ', '}
-                        <a href={s.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-                          {s.title}
-                        </a>
+                        <SourceItem s={s} linkClass="underline underline-offset-2" />
                       </span>
                     ))}
                     . Not medical advice.

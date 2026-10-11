@@ -150,3 +150,66 @@ def test_an_as_needed_label_needs_no_times_a_day():
     assert d.review_mode == "confirm" and d.reasons == []
     r2 = raw(item(times_per_day=RawField()))                              # no times and not as needed: still a gap
     assert "missing_required" in c.decide(r2, [c.score_item(i, OCR) for i in r2.items]).reasons
+
+
+# --- per-field thresholds (plan section 13.4: the medicine name 0.6, everything else stays at the default) -----------
+
+def test_the_name_threshold_is_0_6_and_is_set_in_one_dict():
+    assert c.FIELD_THRESHOLDS == {"name": 0.6}
+    assert c.threshold_for("name") == 0.6 and c.threshold_for("strength") == 0.85 and c.threshold_for("total_quantity") == 0.85
+
+
+def test_a_name_at_0_7_is_read_but_a_strength_at_0_7_is_typed():
+    name = c.score_field("name", f("METFORMIN", 0.7, "METFORMIN 500 mg TABLET"), OCR)
+    strength = c.score_field("strength", f("500 mg", 0.7, "500 mg"), OCR)
+    assert not name.needs_confirmation and name.confidence == 0.7
+    assert strength.needs_confirmation
+
+
+def test_a_name_below_0_6_is_still_typed():
+    assert c.score_field("name", f("METFORMIN", 0.55, "METFORMIN 500 mg TABLET"), OCR).needs_confirmation
+
+
+def test_the_name_threshold_does_not_change_the_default_for_other_fields():
+    assert c.threshold_for("strength", 0.9) == 0.9 and c.threshold_for("name", 0.9) == 0.6
+
+
+def test_a_name_that_disagrees_with_its_quote_is_still_typed_at_0_6():
+    # The disagreement cap used to be 0.6, which is exactly the name threshold: it would have passed. It now sits below it.
+    s = c.score_field("name", f("ATORVASTATIN", 0.99, "METFORMIN 500 mg TABLET"), OCR)
+    assert "value_not_in_source" in s.flags and s.confidence < 0.6 and s.needs_confirmation
+
+
+def test_a_name_with_no_quote_or_an_invented_quote_is_still_typed():
+    assert c.score_field("name", RawField(value="METFORMIN", confidence=0.99, source_text=None), OCR).needs_confirmation
+    assert c.score_field("name", f("AMOXICILLIN", 0.99, "AMOXICILLIN 500 mg"), OCR).needs_confirmation
+
+
+def test_a_name_the_ocr_cut_short_on_a_curved_label_is_still_typed():
+    # The label says DEXCOPHAN; the OCR read it as COPHAN. The strict check cannot see it on the photo text, so it is typed.
+    # (A looser word match was tried and let a misread "dextrophan" through at 0.95, so it was removed.)
+    ocr = "Allergy NkDA Dato:07 Nov 2024 COPHAN 15MG (Dextromethorphan). Qty: 20 KALLANG AVENUE"
+    s = c.score_field("name", f("DEXCOPHAN", 0.90, "DEXCOPHAN"), ocr)
+    assert "source_not_in_ocr" in s.flags and s.confidence == 0.55 and s.needs_confirmation
+
+
+def test_a_look_alike_name_is_not_accepted_just_because_a_similar_generic_name_is_printed():
+    ocr = "DEXCOPHAN 15MG (Dextromethorphan) Qty: 60"
+    s = c.score_field("name", f("DEXTROPHAN", 0.95, "DEXTROPHAN"), ocr)
+    assert "source_not_in_ocr" in s.flags and s.needs_confirmation
+
+
+# --- which failure is reported: low_confidence (some fields) or low_confidence_all (every field) -------------------
+
+def test_every_filled_field_low_is_reported_as_low_confidence_all():
+    r = raw(item(strength=f("500 mg", 0.5, "500 mg"), name=f("METFORMIN", 0.3, "METFORMIN 500 mg TABLET"),
+                 times_per_day=f("2", 0.4, "twice daily"), total_quantity=f("60", 0.2, "Qty: 60"),
+                 meal_relation=f("after_meal", 0.5, "after meals")))
+    d = c.decide(r, [c.score_item(i, OCR) for i in r.items])
+    assert (d.review_mode, d.reasons) == ("manual", ["low_confidence_all"])
+
+
+def test_some_fields_low_is_reported_as_low_confidence():
+    r = raw(item(strength=f("500 mg", 0.5, "500 mg")))
+    d = c.decide(r, [c.score_item(i, OCR) for i in r.items])
+    assert d.reasons == ["low_confidence"]

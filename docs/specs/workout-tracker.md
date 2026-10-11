@@ -2,7 +2,7 @@
 
 A live strength-session tracker: how long the person trains, what they do, every set with reps and weight, and a rest timer. When the session is saved, the server works out how hard it was from the watch heart rate and the person's own resting-heart-rate baseline, and the doctor brief and Insights can use the result. Read it with [prd.md](prd.md) (F6 exercise, F18 timeline), [data-model-v2.md](data-model-v2.md) (the tables `exercise_logs` and `exercise_sets`) and [memory.md](memory.md) (evidence statuses). Since data model v2 (2026-10-05) the session is saved as a `bronze_exercise` row, then `exercise_logs` with its `exercise_sets`; the older `workouts` and `workout_sets` tables no longer exist.
 
-**Status (2026-10-03): scaffold.** The screen, the on-device session store, the effort calculation with tests, and the data contract exist. Nothing is saved to the database yet, because the tables for sets do not exist (schema.md section 14, approved by the owner on 2026-10-03) and the Gold tables are not built (task E1-3). Decision D-055.
+**Status (2026-10-11): built and connected, not yet verified on the database.** The screen, the on-device session store, the effort calculation, the save endpoint (`POST /workouts`) and the week progress (`GET /workouts/week`) exist. The sets are saved in `exercise_sets` under `exercise_logs` (migration 0018). The **rating is optional** from 2026-10-11 (migration 0036), and the **honest label** and the **beta-blocker and coverage rules** are in section 4. Not built: the model sentence (section 2) and the Gold resting-heart-rate baseline. Originally decided on 2026-10-03 (D-055).
 
 ## 1. What the person does
 
@@ -23,9 +23,9 @@ The rule is the same as everywhere else in the project: **the model writes langu
 | Average and peak heart rate, minutes in each band, overall intensity (light, moderate, vigorous) | **Code**: `services/api/app/services/workout_effort.py` | Uses an age-based maximum heart rate and fixed cut-offs. Placeholders pending clinical validation (questions-for-damien.md, G1) |
 | Average heart rate per exercise | **Code**, from the time each exercise's sets were logged | Needs set times, which the app records |
 | Volume (reps x weight) and set counts | **Code** | Bodyweight sets are counted but add no volume |
-| Whether the heart-rate data is good enough | **Code** | Under 70% of the expected 1-minute samples gives "insufficient" and no intensity. Unknown stays unknown |
-| People on beta-blockers | **Code** | Heart rate is not a reliable effort signal there, so no intensity label is shown |
-| One plain-language sentence about the session | **The model (Claude Sonnet 5.5)**, from the finished numbers only | Validated like the brief narrative: every number in the sentence must come from the computed summary. Optional; the screen works without it |
+| Whether the heart-rate data is good enough | **Code** | Under 70% of the expected samples gives "insufficient" and no intensity. The expected count uses the person's own sampling interval (the median gap between samples, kept between 60 and 600 seconds; 60 seconds with fewer than three samples). Unknown stays unknown |
+| People on beta-blockers | **Code** | Heart rate is not a reliable effort signal there, so no intensity label is shown. The rule is wired on `POST /workouts` (fix wave, 2026-10-11) |
+| One plain-language sentence about the session | **Not built.** Planned for the model (the gateway exists), from the finished numbers only. Every number in the sentence must come from the computed summary. The workouts code makes no model call, so the screen shows the numbers only |
 | Glucose change after the session | **Code**, from `exercise_response` (Gold) | Worded "associated with", never "caused by". Needs at least 5 comparable sessions before it is shown as a pattern |
 
 ## 3. How it uses the Gold tables
@@ -47,6 +47,12 @@ Gold tables are derived values built from Silver (data-flow.md). They are built 
 - Not a diagnosis. Unwell after a session offers the symptom form; it never names a cause.
 - The effort cut-offs (percent of maximum heart rate for each band) are placeholders and are not cited. They need a clinician (G1) before they are shown to real users.
 - A heart rate that is missing is shown as missing, never as zero.
+- **Honest label (2026-10-11).** On the Activity tab the light, moderate and vigorous labels of the quick log are described as "as you rated the effort, not from your heart rate". The strength tracker's labels come from heart rate, and are only shown with the rules below.
+- **Coverage rule.** Under 70% of the expected samples in the session gives "insufficient": no intensity label and the note "Heart rate was missing for too much of this time to judge effort". The expected count is set by the person's own sampling interval (fix wave, 2026-10-11). Before the fix it assumed one sample a minute, but watch heart rate is stored in 5-minute buckets, so the old count asked for five times too many samples.
+- **Estimate label (fix wave).** The summary says "Estimated from your heart rate: {light, moderate or vigorous}" (`WorkoutTracker.tsx`).
+- **Unrated workouts.** A workout saved without a rating is kept, is not counted toward active minutes, and the Saved summary says: "No effort rating was given, so this workout is not counted toward your active minutes." (Insights shows it as "not rated".)
+- **Beta-blocker rule.** A medicine on the person's list whose generic name is a beta-blocker (placeholder list: atenolol, bisoprolol, metoprolol, propranolol, carvedilol, nebivolol, labetalol, sotalol; matched as whole words) gives no intensity label. The note says heart rate is not a reliable sign of effort for them. Brand names are not on the list yet. The list needs clinical review (questions-for-damien G1).
+- **Optional rating (2026-10-11).** "How hard did it feel?" (1 to 5) is optional (requested with the 2026-10-11 work; no decision number yet). A workout without a rating is saved, and a null rating is never counted as moderate or vigorous. Migration 0036 allows the null; until it is applied the app keeps asking for the rating.
 
 ## 5. What exists and what is still to build
 
@@ -54,12 +60,12 @@ Gold tables are derived values built from Silver (data-flow.md). They are built 
 |---|---|
 | Screen `/log/workout/live` (registry id F2) in `apps/web`: timer, exercises, sets, rest timer, finish, summary | Built as a scaffold |
 | On-device session store (`useWorkoutSession`) with a pending-upload list | Built |
-| Data contract: `WorkoutSession`, `WorkoutSummary`, `saveWorkoutSession`, `getWorkoutSummary` | In the types and the `Api` interface; the HTTP client throws `NotWired` |
-| Effort and volume calculation with 9 tests | Built, no database |
+| Data contract: `WorkoutSession`, `WorkoutSummary`, `saveWorkoutSession`, `getWorkoutSummary` | In the types and the HTTP client (`POST /workouts`, `GET /workouts/week`) |
+| Effort and volume calculation | Built; unit tests (`tests/unit/test_workout_effort.py`, `test_workouts_router.py`). Not run against the database |
 | Tables for the sets | `workout_sets` (migration 0015) became `exercise_sets` under `exercise_logs` in migration 0018 (2026-10-05); same columns |
-| Save endpoint that reads heart rate, calls the calculation and stores the summary | Not built (needs E0-2, the API skeleton) |
+| Save endpoint that reads heart rate, calls the calculation and stores the summary | Built: `POST /workouts` (`services/api/app/api/routers/workouts.py`), stored as `bronze_exercise`, then `exercise_logs` and `exercise_sets` |
 | Gold inputs (resting heart rate, glucose after sessions) | Built for the demo patient (`daily_summary`, `exercise_response`); the nightly job that fills them is not built |
-| Model sentence | Waits for E0-3, the gateway |
-| Link from the Log hub (E1) and the cardio workout form (F1) | Not built; open `/log/workout/live` directly |
+| Model sentence | Not built (section 2) |
+| Link from the Log hub (E1) and the quick log (F1) | Built: the Workout tile on the Log hub opens F1, and F1 has "Start a live session" for `/log/workout/live` |
 
 Backlog task: E7-5.

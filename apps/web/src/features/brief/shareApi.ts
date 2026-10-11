@@ -86,17 +86,20 @@ export const useSharedReport = (token: string | undefined) =>
 /** The full address of a link, for copying. Built from the page's own origin, so it works on any host. */
 export const shareAddress = (path: string) => `${window.location.origin}${path}`
 
-/** Plain words for the appointment kinds the server stores. */
+/**
+ * Plain words for the appointment kinds the server stores. The same words as the care plan (me/care/api.ts), so a visit reads the same
+ * on every screen. Vaccination and Dental check are kept only for older visits: the form no longer offers them.
+ */
 export const APPOINTMENT_KIND: Record<string, string> = {
   gp_review: 'GP review',
   diabetes_review: 'Diabetes review',
   eye_screening: 'Eye screening',
   foot_screening: 'Foot check',
   kidney_test: 'Kidney test',
-  hba1c_test: 'HbA1c test',
+  hba1c_test: 'Blood test',
   vaccination: 'Vaccination',
-  dental: 'Dental',
-  other: 'Other',
+  dental: 'Dental check',
+  other: 'Other visit',
 }
 
 const WHEN = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Singapore' } as const

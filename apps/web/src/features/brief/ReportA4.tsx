@@ -2,10 +2,14 @@
  * L3 — The printable doctor report ("Diabetes monitoring report"), following Damien's report design.
  *
  * This page only lays out what `GET /brief/report` returns: every number, alert and sentence is computed by the server from
- * the person's stored data (services/api/app/services/doctor_report.py). Nothing is calculated or worded here, and no AI is
- * involved. The person sees exactly this page; there is no separate doctor version (rules.md 1.8).
+ * the person's stored data (services/api/app/services/doctor_report.py). The key findings may be worded by an AI, and then the
+ * AI insight note says so (ReportView). The person sees exactly this page; there is no separate doctor version (rules.md 1.8).
+ *
+ * This page is outside the app frame. It is entered with a normal push from Doctor brief (L1), so the app's back arrow would
+ * return to it. "Back to the app" therefore goes back to the Doctor brief entry it came from, or replaces this entry with it
+ * when the page was opened directly (a new tab or a reload).
  */
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useDoctorReport } from '@/data/hooks'
 import type { ReportDays } from '@/data/types'
 import { href } from '@/app/routeIds'
@@ -16,15 +20,22 @@ const DAYS: ReportDays[] = [7, 14, 30, 90]
 
 export function ReportA4() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [params, setParams] = useSearchParams()
   const asked = Number(params.get('days'))
   const days: ReportDays = (DAYS as number[]).includes(asked) ? (asked as ReportDays) : 14
   const { data, isError, isLoading, refetch } = useDoctorReport(days)
+  const cameFromBrief = (location.state as { from?: string } | null)?.from === 'L1'
+
+  function backToApp() {
+    if (cameFromBrief) navigate(-1)
+    else navigate(href('L1'), { replace: true })
+  }
 
   return (
     <div className="rp-page" style={{ position: 'fixed', inset: 0, overflowY: 'auto' }}>
       <div className="rp-bar">
-        <button type="button" onClick={() => navigate(href('L1'))}>
+        <button type="button" onClick={backToApp}>
           Back to the app
         </button>
         <div>

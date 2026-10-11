@@ -116,12 +116,11 @@ def test_open_link_is_returned():
 def fake_report(monkeypatch):
     seen = {}
 
-    def load(conn, user_id, days, now):
+    def read(conn, user_id, days, now):
         seen.update(user_id=user_id, days=days, now=now)
-        return "inputs"
+        return {"built": "inputs"}
 
-    monkeypatch.setattr(svc.doctor_report, "load", load)
-    monkeypatch.setattr(svc.doctor_report, "build", lambda inputs: {"built": inputs})
+    monkeypatch.setattr(svc.doctor_report, "read", read)
     return seen
 
 
@@ -171,3 +170,30 @@ def test_revoke_sets_revoked_at_once_and_keeps_the_first_time(monkeypatch):
 
 def test_revoke_of_someone_elses_or_missing_share_is_none():
     assert svc.revoke_share(FakeConn([]), uuid4(), uuid4(), NOW) is None
+
+
+# ----------------------------------------------------------------------------------------------- the L1 brief's next appointment
+def test_brief_context_uses_the_same_next_visit_rule_as_the_care_plan():
+    future = NOW + timedelta(days=4)
+    past_visit = {"id": uuid4(), "kind": "diabetes_review", "status": "planned", "scheduled_for": NOW - timedelta(days=1), "location": None,
+                  "suggested_reason": None, "confirmed_by_user_at": NOW}
+    next_visit = {**past_visit, "id": uuid4(), "scheduled_for": future}
+    conn = FakeConn([], [past_visit, next_visit])
+    out = svc.context(conn, uuid4(), NOW)
+    assert out["questions"] == []
+    assert out["next_appointment"]["id"] == str(next_visit["id"])
+    assert out["next_appointment"]["scheduled_for"] == future and out["next_appointment"]["kind"] == "diabetes_review"
+
+
+def test_brief_context_says_none_when_only_past_visits_exist():
+    past_visit = {"id": uuid4(), "kind": "gp_review", "status": "planned", "scheduled_for": NOW - timedelta(days=2), "location": None,
+                  "suggested_reason": None, "confirmed_by_user_at": NOW}
+    out = svc.context(FakeConn([], [past_visit]), uuid4(), NOW)
+    assert out["next_appointment"] is None
+
+
+def test_brief_context_ignores_cancelled_visits():
+    cancelled = {"id": uuid4(), "kind": "gp_review", "status": "cancelled", "scheduled_for": NOW + timedelta(days=3), "location": None,
+                 "suggested_reason": None, "confirmed_by_user_at": NOW}
+    assert svc.context(FakeConn([], []), uuid4(), NOW)["next_appointment"] is None
+    assert svc.context(FakeConn([], [cancelled]), uuid4(), NOW)["next_appointment"] is None
