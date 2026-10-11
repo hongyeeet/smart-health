@@ -1,6 +1,8 @@
-"""Ask Smart Health (I1): urgent bypass, refusals, guard on the reply, the conservative paths, scrubbing, starters and the 8-message limit.
+"""Ask Smart Health (I1): urgent bypass, self-harm words, the speed limit, identifiers, the fallback when the model is down, storage through
+send(), starters and the 8-message limit.
 
-No database and no network: the model, JEV, storage and the trace are fakes.
+No database and no network: the model (AI.triage, AI.answer), JEV, storage and the trace are fakes. The rules themselves are tested in
+test_chat_guard.py and the decision order in test_chat_flow.py.
 """
 from __future__ import annotations
 
@@ -13,18 +15,22 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from app.agents import chat_assistant as AI  # noqa: E402
 from app.llm import chat as chat_llm  # noqa: E402
 from app.llm import jev  # noqa: E402
 from app.llm.gateway import LLMUnavailable  # noqa: E402
 from app.services import chat as C  # noqa: E402
+from app.services import chat_guard as G  # noqa: E402
+from app.services import texts  # noqa: E402
 
-REAL_GENERATE = chat_llm.generate
+REAL_ANSWER = AI.answer
 TODAY = date(2026, 10, 10)
 CLEAN = {"med_advice": 0.01, "diagnosis": 0.01, "urgent": 0.01}
+ANSWER = "Your average glucose was 9.4 mmol/L on 1 day."
 
 
 class FakeRun:
-    id = "run-1"
+    id = None
 
     def __init__(self, *a, **k):
         self.steps, self.finished = [], None
@@ -53,22 +59,31 @@ ROWS = {
 
 @pytest.fixture
 def env(monkeypatch):
-    """A world where everything works; each test breaks one piece."""
-    calls = {"model": [], "guard": []}
+    """A world where everything works and JEV is not configured; each test breaks one piece."""
+    G.LIMITER.reset()
+    calls = {"triage": [], "model": [], "guard": []}
     monkeypatch.setattr(C, "tx", fake_tx)
     monkeypatch.setattr(C, "_log_guard", lambda *a, **k: None)
     monkeypatch.setattr(C, "load_rows", lambda conn, uid, today, text: ROWS)
     monkeypatch.setattr(C, "load_names", lambda uid: C.name_tokens(*ROWS["names"]))
+    monkeypatch.setattr(C.nutritionstore, "lunch_options", lambda *a, **k: [])
+    monkeypatch.setattr(jev, "_key", lambda: "")
     monkeypatch.setattr(jev, "guard", lambda t: calls["guard"].append(t) or dict(CLEAN))
-    monkeypatch.setattr(jev, "guard_blocks", lambda t: (False, dict(CLEAN)))
-    monkeypatch.setattr(jev, "choice", lambda s, i, c: jev.Choice("nutrition", {}, 0.9))
 
-    def gen(system, history, user):
-        calls["model"].append((system, history, user))
-        return "Your average glucose was 9.4 mmol/L on 1 day."
+    def triage(safe):
+        calls["triage"].append(safe)
+        return AI.Triage(intent="data_summary")
 
-    monkeypatch.setattr(chat_llm, "generate", gen)
-    return calls
+    def answer(lang_name, context_text, history, safe_text):
+        calls["model"].append((lang_name, context_text, history, safe_text))
+        return AI.Reply(reply=ANSWER, reply_en=ANSWER)
+
+    monkeypatch.setattr(AI, "triage", triage)
+    monkeypatch.setattr(AI, "answer", answer)
+    # any model call that is not faked fails loudly here, never reaches the network
+    monkeypatch.setattr(chat_llm, "generate", lambda *a, **k: pytest.fail("a live model call was made in a unit test"))
+    yield calls
+    G.LIMITER.reset()
 
 
 def run_decide(text, history=None):
@@ -76,12 +91,19 @@ def run_decide(text, history=None):
 
 
 # ----------------------------------------------------------------------------- urgent
-@pytest.mark.parametrize("text", ["I have chest pain", "I can't breathe", "my dad fainted", "my sugar is very low and I feel confused", "I feel suicidal",
+@pytest.mark.parametrize("text", ["I have chest pain", "I can't breathe", "my dad fainted", "my sugar is very low and I feel confused",
                                   "Very low glucose now", "I am confused and my glucose is low"])
 def test_urgent_words_bypass_the_model_and_jev(env, text):
     o = run_decide(text)
     assert (o.kind, o.text, o.open_urgent) == ("urgent", C.URGENT_TEXT, True)
-    assert env["model"] == [] and env["guard"] == []
+    assert env["model"] == [] and env["guard"] == [] and env["triage"] == []
+
+
+@pytest.mark.parametrize("text", ["I feel suicidal", "I want to die", "I want to end my life"])
+def test_self_harm_words_get_the_caring_reply_and_no_model_call(env, text):
+    o = run_decide(text)
+    assert (o.kind, o.text) == ("urgent", texts.tr("en", "chat.self_harm"))
+    assert env["model"] == [] and env["triage"] == [] and env["guard"] == []
 
 
 def test_confused_alone_is_not_urgent():
@@ -89,13 +111,21 @@ def test_confused_alone_is_not_urgent():
     assert not C.is_urgent_text("How was my glucose this week?")
 
 
+def test_a_low_reading_with_a_sign_of_a_low_is_urgent(env):
+    o = run_decide("My glucose was 3.4 and I am sweating")
+    assert (o.kind, o.text, o.open_urgent) == ("urgent", C.URGENT_TEXT, True)
+    assert env["model"] == [] and env["triage"] == []
+
+
 def test_jev_urgent_probability_also_bypasses_the_model(env, monkeypatch):
+    monkeypatch.setattr(jev, "_key", lambda: "k")
     monkeypatch.setattr(jev, "guard", lambda t: {"med_advice": 0.0, "diagnosis": 0.0, "urgent": 0.6})
     o = run_decide("I feel strange")
-    assert o.kind == "urgent" and o.open_urgent and env["model"] == []
+    assert o.kind == "urgent" and o.open_urgent and env["model"] == [] and env["triage"] == []
 
 
 def test_urgent_edge_between_floor_and_urgent_p_is_a_caution_not_an_answer(env, monkeypatch):
+    monkeypatch.setattr(jev, "_key", lambda: "k")
     monkeypatch.setattr(jev, "guard", lambda t: {"med_advice": 0.0, "diagnosis": 0.0, "urgent": 0.3})
     o = run_decide("I feel a bit off")
     assert (o.kind, o.text) == ("refused", C.CAUTION_TEXT) and env["model"] == []
@@ -103,104 +133,14 @@ def test_urgent_edge_between_floor_and_urgent_p_is_a_caution_not_an_answer(env, 
     assert run_decide("How was my week?").kind == "answer"   # just under the floor
 
 
-# ----------------------------------------------------------------------------- refusals
-def test_medicine_question_is_refused_and_offers_the_doctor_question(env, monkeypatch):
-    monkeypatch.setattr(jev, "guard", lambda t: {"med_advice": 0.95, "diagnosis": 0.0, "urgent": 0.0})
-    o = run_decide("Should I stop taking metformin?")
-    assert (o.kind, o.text, o.offer_question, o.verdict) == ("refused", C.REFUSED_TEXT, True, "blocked_med_advice")
-    assert env["model"] == []
-
-
-def test_diagnosis_question_is_refused(env, monkeypatch):
-    monkeypatch.setattr(jev, "guard", lambda t: {"med_advice": 0.0, "diagnosis": 0.9, "urgent": 0.0})
-    o = run_decide("Do I have kidney disease?")
-    assert o.kind == "refused" and o.offer_question and o.verdict == "blocked_diagnosis" and env["model"] == []
-
-
-def test_guard_edge_is_inclusive_at_one_minus_floor(env, monkeypatch):
-    cut = 1 - C.settings.jev_guard_floor
-    monkeypatch.setattr(jev, "guard", lambda t: {"med_advice": cut, "diagnosis": 0.0, "urgent": 0.0})
-    assert run_decide("x question").kind == "refused"
-    monkeypatch.setattr(jev, "guard", lambda t: {"med_advice": cut - 0.01, "diagnosis": 0.0, "urgent": 0.0})
-    assert run_decide("x question").kind == "answer"
-
-
-def test_unreachable_jev_takes_the_conservative_path_and_no_model_call(env, monkeypatch):
-    monkeypatch.setattr(jev, "guard", lambda t: {"med_advice": None, "diagnosis": None, "urgent": None})
-    o = run_decide("How was my glucose?")
-    assert (o.kind, o.text) == ("unavailable", C.GUARD_DOWN_TEXT) and env["model"] == []
-    monkeypatch.setattr(jev, "guard", lambda t: {"med_advice": 0.0, "diagnosis": None, "urgent": 0.0})   # one missing answer is enough
-    assert run_decide("How was my glucose?").kind == "unavailable"
-
-
-# ----------------------------------------------------------------------------- the reply
-def test_a_blocked_reply_is_replaced(env, monkeypatch):
-    monkeypatch.setattr(jev, "guard_blocks", lambda t: (True, {"med_advice": 0.9, "diagnosis": 0.0, "urgent": 0.0}))
-    o = run_decide("How was my glucose?")
-    assert (o.kind, o.text, o.offer_question) == ("refused", C.BLOCKED_REPLY_TEXT, True)
-    assert "9.4" not in o.text
-
-
-def test_reply_guard_unreachable_replaces_the_reply(env, monkeypatch):
-    monkeypatch.setattr(jev, "guard_blocks", lambda t: (True, {"med_advice": None, "diagnosis": None, "urgent": None}))
-    assert run_decide("How was my glucose?").text == C.BLOCKED_REPLY_TEXT
-
-
-def test_a_good_answer_has_sources_from_the_data_used(env):
-    o = run_decide("How was my glucose this week?")
-    assert o.kind == "answer" and "9.4" in o.text
-    assert [s.to for s in o.sources] == ["C2"]    # nutrition route sent glucose and food; only glucose is named
-
-
-def test_model_failure_is_a_calm_reply(env, monkeypatch):
-    def boom(*a):
-        raise LLMUnavailable("down")
-
-    monkeypatch.setattr(chat_llm, "generate", boom)
-    o = run_decide("How was my glucose this week?")
-    assert (o.kind, o.text) == ("unavailable", C.UNAVAILABLE_TEXT)
-
-
-def test_daily_cap_reached_is_a_calm_reply(env, monkeypatch):
-    monkeypatch.setattr(chat_llm.usage, "allowed", lambda p: False)
-    monkeypatch.setattr(chat_llm, "generate", REAL_GENERATE)   # the real function, which checks the cap first
-    o = run_decide("How was my glucose this week?")
-    assert o.kind == "unavailable" and o.text == C.UNAVAILABLE_TEXT
-
-
-def test_empty_data_gets_the_honest_reply_without_the_model(env, monkeypatch):
-    empty = dict(ROWS, daily=[], meds=[], meals=[], workouts=[], questions=[], facts=[], anchor=None)
-    monkeypatch.setattr(C, "load_rows", lambda *a: empty)
-    o = run_decide("How was my glucose this week?")
-    assert (o.kind, o.text) == ("empty", C.EMPTY_TEXT) and env["model"] == []
-
-
-def test_help_question_is_answered_without_any_service(env):
-    o = run_decide("What can you help me with?")
-    assert (o.kind, o.text) == ("help", C.HELP_TEXT) and env["guard"] == [] and env["model"] == []
-
-
-def test_low_confidence_route_uses_every_section(env, monkeypatch):
-    monkeypatch.setattr(jev, "choice", lambda s, i, c: jev.Choice("adherence", {}, 0.59))
-    run_decide("How was my glucose this week?")
-    assert "YOUR GLUCOSE" in env["model"][0][2] and "YOUR MEDICINES" in env["model"][0][2]
-    monkeypatch.setattr(jev, "choice", lambda s, i, c: None)   # JEV unreachable for routing: general path, not a failure
-    assert run_decide("How was my glucose this week?").kind == "answer"
-
-
-def test_confident_route_limits_the_sections(env, monkeypatch):
-    monkeypatch.setattr(jev, "choice", lambda s, i, c: jev.Choice("adherence", {}, 0.9))
-    run_decide("Did I take my tablets?")
-    prompt = env["model"][0][2]
-    assert "YOUR DOSES" in prompt and "YOUR MEALS" not in prompt
-
-
 # ----------------------------------------------------------------------------- privacy
-def test_identifiers_never_reach_the_model_or_jev(env):
-    text = "I am Tan, my NRIC is S1234567D, call 91234567 or tan@example.com. How was my glucose?"
+def test_identifiers_never_reach_the_model_or_jev(env, monkeypatch):
+    monkeypatch.setattr(jev, "_key", lambda: "k")
+    # (the word NRIC itself is refused by the rules before any model call: see test_chat_flow; here the number must be scrubbed)
+    text = "I am Tan, my ID is S1234567D, call 91234567 or tan@example.com. How was my glucose?"
     run_decide(text, history=[("user", "Mdm Lim phone 81234567"), ("assistant", "ok")])
-    system, history, user = env["model"][0]
-    sent = " ".join([system, user, *[t for _, t in history], *env["guard"]])
+    lang, ctx, hist, safe = env["model"][0]
+    sent = " ".join([*env["triage"], ctx, *[t for _, t in hist], safe, *env["guard"]])
     for secret in ("S1234567D", "91234567", "81234567", "tan@example.com", "Mei Ling", "Lim", "Tan"):
         assert secret not in sent, secret
     assert "Mr Tan" not in sent
@@ -263,6 +203,18 @@ def test_context_has_only_the_persons_rows_and_marks_missing_data():
     assert not next(s for s in sparse.sections if s.key == "glucose").lines and not next(s for s in sparse.sections if s.key == "sleep").lines
 
 
+def test_one_day_of_data_reads_in_the_singular():
+    text = C.build_sections(ROWS, TODAY).text()          # ROWS has one day with glucose and sleep
+    assert "1 day with glucose readings" in text and "on 1 night" in text
+    assert "1 days" not in text and "1 nights" not in text
+
+
+@pytest.mark.parametrize("phrase", ["1 dose planned", "1 meal logged"])
+def test_one_dose_and_one_meal_read_in_the_singular(phrase):
+    rows = dict(ROWS, daily=[dict(ROWS["daily"][0], doses_scheduled=1, doses_taken=1, doses_missed=0, meals_n=1)])
+    assert phrase in C.build_sections(rows, TODAY).text()
+
+
 def test_history_is_limited_to_eight_messages(monkeypatch):
     seen = {}
 
@@ -287,22 +239,26 @@ def test_history_is_limited_to_eight_messages(monkeypatch):
     assert seen["limit"] == 8 and len(h) == 8 and h[0][1] == "m1" and h[-1][1] == "m8"   # oldest first, never more than 8
 
 
-# ----------------------------------------------------------------------------- the whole turn
-def test_send_stores_the_exchange_and_never_raises(env, monkeypatch):
+# ----------------------------------------------------------------------------- send(): storage, model failure, cap
+@pytest.fixture
+def stored(env, monkeypatch):
     saved = []
     monkeypatch.setattr(C, "Run", FakeRun)
     monkeypatch.setattr(C, "_conversation", lambda uid, cid: "conv-1")
     monkeypatch.setattr(C, "_history", lambda conv: [])
     monkeypatch.setattr(C, "_save", lambda conv, role, text, at, verdict=None, run_id=None: saved.append((role, text, verdict)) or {"id": f"m{len(saved)}", "at": datetime(2026, 10, 10).isoformat()})
     monkeypatch.setattr(C, "starter_facts", lambda conn, uid, today: {"cgm_days": 7, "medicines": ["Metformin 500 mg"], "questions": 0})
+    return saved
+
+
+def test_send_stores_the_exchange_and_never_raises(env, stored, monkeypatch):
     out = C.send("demo", "u1", "How was my glucose this week?", None)
     assert out["conversation_id"] == "conv-1" and out["reply"]["kind"] == "answer"
-    assert [r for r, _, _ in saved] == ["user", "assistant"]
+    assert [r for r, _, _ in stored] == ["user", "assistant"]
     assert out["follow_ups"] == ["What is Metformin for?"]
-    # a refusal is stored as a fixed template and offers the action with the person's own words
-    monkeypatch.setattr(jev, "guard", lambda t: {"med_advice": 0.99, "diagnosis": 0.0, "urgent": 0.0})
+    # a medicine change is stored as a fixed template and offers the action with the person's own words
     out = C.send("demo", "u1", "Can I double my dose?", "conv-1")
-    assert out["reply"]["text"] == C.REFUSED_TEXT and saved[-1][0] == "system_template"
+    assert out["reply"]["text"].startswith(texts.tr("en", "chat.med_change")) and stored[-1][0] == "system_template"
     assert out["actions"] == [{"kind": "doctor_question", "label": "Add to my doctor questions", "to": None, "text": "Can I double my dose?"}]
     # urgent opens J1 and gives no follow-ups
     out = C.send("demo", "u1", "I have chest pain", "conv-1")
@@ -311,6 +267,25 @@ def test_send_stores_the_exchange_and_never_raises(env, monkeypatch):
     monkeypatch.setattr(C, "decide", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
     out = C.send("demo", "u1", "hello there", "conv-1")
     assert out["reply"]["text"] == C.UNAVAILABLE_TEXT
+
+
+def test_model_failure_gives_the_persons_own_summary_through_send(env, stored, monkeypatch):
+    def down(*a):
+        raise LLMUnavailable("down")
+
+    monkeypatch.setattr(AI, "answer", down)
+    out = C.send("demo", "u1", "How was my glucose this week?", None)
+    assert out["reply"]["kind"] == "answer" and out["reply"]["text"].startswith(texts.tr("en", "chat.fallback_intro"))
+    assert "Your glucose:" in out["reply"]["text"]
+    assert C.GUARD_DOWN_TEXT not in out["reply"]["text"] and [r for r, _, _ in stored] == ["user", "assistant"]
+
+
+def test_daily_cap_gives_a_calm_reply_through_the_real_answer_path(env, stored, monkeypatch):
+    monkeypatch.setattr(AI, "answer", REAL_ANSWER)            # the real function, which checks the daily cap before any call
+    monkeypatch.setattr(chat_llm.usage, "allowed", lambda p: False)
+    out = C.send("demo", "u1", "How was my glucose this week?", None)
+    assert out["reply"]["text"].startswith(texts.tr("en", "chat.fallback_intro"))
+    assert env["model"] == [] and "Your glucose:" in out["reply"]["text"]
 
 
 def test_empty_message_is_rejected():

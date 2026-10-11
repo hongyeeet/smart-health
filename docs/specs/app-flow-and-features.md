@@ -51,7 +51,7 @@
 | Urgent | Low-glucose alert (two tiers), call buttons, "I'm okay", email the emergency contact, demo trigger | J1 |
 | Me | Hub with every screen listed, what Smart Health has learned (with a row of numbers), diet tracking (baseline and calendar), care plan, questions for your doctor, log an appointment, review suggestions, connected sources, language and display, privacy and consent, appointment, data and account, emergency contact | K1 to K12 |
 | Doctor brief | Brief home, share by link, printable A4 report with AI-worded key findings (with a fallback), read-only page for the doctor | L1, L2, L3, `/s/:token` |
-| Chat | "Ask Smart Health", a chat grounded in the person's own data. The Ask button shows on Home and the Insights overview | I1 |
+| Chat | "Ask Smart Health": a personal assistant that reads the person's own data (glucose, meals, food ideas, activity, sleep, blood pressure, medicines, symptoms they logged, doctor questions, what the app noticed) with its own guardrails: no diagnosis, no medicine advice, no verdicts, always a doctor referral for symptoms and an offer to add a doctor question, fixed pointers to Insights, Lunch ideas and Review suggestions. See [chat-guardrails.md](chat-guardrails.md). The Ask button shows on Home and the Insights overview | I1 |
 | Background | Reminders every minute, reminder emails, nightly learning, calendar events for doses (backend built; the recipe is paused, see section 11) | scheduler |
 
 Not built: manual glucose entry (there is no screen) and connect or disconnect for sensors and watches. See section 11.
@@ -472,7 +472,7 @@ Folder `features/brief/`. Everything is computed by the server (`doctor_report.p
 
 **J-I Daily background.** Every minute: reminders due (meal, check-in, workout, lunch, salt prompt) and reminder emails. Nightly 02:00: learning pass proposes facts for K2.
 
-**J-J Chat.** B1 or C1 Ask → I1 chat, grounded in the person's own data → the answer goes through the safety guard before it is shown. Questions for the doctor can be added to K12.
+**J-J Chat.** B1 or C1 Ask → I1 chat, grounded in the person's own data → the message goes through the chat's own rules, a Gemini triage and a grounded Gemini answer, and the reply through the output rules before it is shown (chat-guardrails.md). A symptom, diagnosis or medicine question ends with a doctor referral and a button to add it to the doctor questions (K12).
 
 ---
 
@@ -584,7 +584,7 @@ Plain code, no AI, unless a row says otherwise.
 | `workout_effort` | Heart-rate effort; the coverage rule (70% of the expected samples, counted at the person's own sampling interval, 60 to 600 seconds); the beta-blocker rule (placeholder list); the training volume |
 | `web_sources` | The one shape for web sources shown with a medicine explanation or a clash alert: one entry per site, named by the site, a link only where there is a page (openFDA is a name only) |
 | `usage` | The daily AI limit, kept **per kind of call** (section 10) |
-| `chat` | The chat's answer rules: urgent words first, then the guard on each message and reply |
+| `chat`, `chat_guard` | The chat's decision flow and its pure guard rules (urgent and self-harm words, speed limit, input rules, output rules, signposts); the model calls are in `app/agents/chat_assistant.py`. JEV is optional |
 
 **Scan reason codes** (`scan_api.REASON_TEXT`; the screen shows the plain sentence): `file_empty`, `file_too_large` (over 10 MB), `file_type_not_allowed`, `ocr_empty` (no text found), `unreadable`, `not_a_medicine`, `daily_limit` ("Reading photos is paused for today"), `model_unavailable`, `ocr_unavailable`, `storage_unavailable`, `invalid_json`, `several_items`, `low_confidence_all`, `missing_required`, `low_confidence`. An older code `service_unavailable` is read as `model_unavailable`.
 
