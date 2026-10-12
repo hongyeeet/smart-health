@@ -290,7 +290,8 @@ export function Stepper({ value, onChange, min = 0, max = 999, step = 1, format,
 
 /* ---------------------------------- Skeleton ---------------------------------- */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-card bg-well', className)} aria-hidden />
+  // a loading block is named for screen readers; sighted users see the pulse
+  return <div className={cn('animate-pulse rounded-card bg-well', className)} role="status" aria-label="Loading" />
 }
 
 export function EmptyState({ icon: Icon, children, action }: { icon: IconType; children: ReactNode; action?: ReactNode }) {
