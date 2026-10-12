@@ -85,7 +85,8 @@
 @page { size: A4; margin: 12mm; }
 @media print {
   html, body, #root { height: auto !important; overflow: visible !important; background: #fff !important; }
-  .rp-page { background: #fff; padding: 0; }
+  /* the page is a fixed, scrolling layer on screen (inline style); on paper it must flow, or only the first sheet prints */
+  .rp-page { background: #fff; padding: 0; position: static !important; inset: auto !important; overflow: visible !important; height: auto !important; }
   .rp-bar { display: none; }
   .rp-sheet { margin: 0; box-shadow: none; width: auto; max-width: none; min-height: 0; padding: 0; overflow: visible; }
   .rp-box, .rp-tag, .rp-swatch, .rp-row-urgent td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
