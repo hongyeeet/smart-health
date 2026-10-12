@@ -89,4 +89,8 @@
   .rp-bar { display: none; }
   .rp-sheet { margin: 0; box-shadow: none; width: auto; max-width: none; min-height: 0; padding: 0; overflow: visible; }
   .rp-box, .rp-tag, .rp-swatch, .rp-row-urgent td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* a box, a table row or a heading is not split across two printed pages; a heading stays with what follows it */
+  .rp-box, .rp-sheet tr, .rp-sheet h2, .rp-sheet h3 { break-inside: avoid; page-break-inside: avoid; }
+  .rp-sheet h2, .rp-sheet h3 { break-after: avoid; page-break-after: avoid; }
+  .rp-sheet thead { display: table-header-group; }
 }
