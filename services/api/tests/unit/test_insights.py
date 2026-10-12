@@ -310,3 +310,10 @@ def test_medication_with_only_non_prescription_items_has_no_adherence():
     logs = [_med_log(MED_FISH, 1, 8, "taken", 8)]
     out = I.medication(_FakeConn(meds=_meds(), med_logs=logs), "u", 30, date(2026, 10, 2), NOW)
     assert out["adherence_pct"] is None and out["scheduled"] == 0 and out["meds"][0]["adherence_pct"] is None
+
+
+def test_the_sleep_response_has_the_average_and_the_short_nights_but_no_usual():
+    from app.schemas.insights import SleepInsights
+    fields = set(SleepInsights.model_fields)
+    assert "sleep_baseline" not in fields                    # "your usual" was removed from the page on 2026-10-12
+    assert {"sleep_avg", "short_nights", "stress_avg", "mood_avg", "high_stress_days", "logged_days", "days", "patterns"} <= fields

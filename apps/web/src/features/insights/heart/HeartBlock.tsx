@@ -47,11 +47,12 @@ export function NoWatch() {
 }
 
 /** Average and resting heart rate (the day's highest and lowest single readings in small grey text under resting) and the day-by-day chart. */
-export function HeartPanel({ data }: { data: InsightsHeart }) {
+export function HeartPanel({ data, showTitle = false }: { data: InsightsHeart; showTitle?: boolean }) {
   const { t } = useTranslation()
   const hr = data.heartRate
   return (
     <div className="flex flex-col gap-3">
+      {showTitle && <p className="text-body font-bold">{t('insights.activity.heartTitle', 'Heart rate')}</p>}
       {data.endNote && (
         <p className="text-sub font-bold text-ink2">{t('insights.heart.endNote', 'Showing your watch data up to {{date}}', { date: shortDate(data.period.end) })}</p>
       )}
@@ -68,10 +69,6 @@ export function HeartPanel({ data }: { data: InsightsHeart }) {
         />
       </TileGrid>
       <HeartChart days={data.days} label={t('insights.heart.chartLabel', 'Average and resting heart rate by day, in beats per minute')} />
-      <p className="text-sub text-ink3">
-        {t('insights.heart.daysWith', 'Watch data on {{n}} of {{total}} days. A blank day had none.', { n: data.daysWithData, total: data.days.length })}{' '}
-        {t('insights.heart.singleReadings', 'Highest and lowest are single readings.')}
-      </p>
     </div>
   )
 }

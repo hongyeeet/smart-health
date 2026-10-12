@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import type { DoseStatus, FoodResponse, GlucoseLevel, GridCell, WeekGrid } from '@/data/types'
-import { shortDate, signed } from '@/lib/format'
+import { signed } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { ease } from '@/motion/tokens'
 import { useUi } from '@/state/store'
@@ -388,63 +388,3 @@ export function AdherenceTimeline({ days, rows, fasting }: { days: string[]; row
   )
 }
 
-/* ------------------------------ mood and stress pairs ------------------------------ */
-const dayNo = (iso: string) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))) / 86400000
-
-/**
- * Mood and stress check-ins, 1 to 5. With `from` and `to` each check-in sits on its own day of the period, so a day with no check-in
- * is an empty column (a gap) and not squeezed out; without them the check-ins are spaced evenly.
- */
-export function MoodStress({ data, label, from, to }: { data: { date: string; mood: number; stress: number }[]; label?: string; from?: string; to?: string }) {
-  const { t } = useTranslation()
-  const [ref, width] = useMeasure<HTMLDivElement>()
-  const ts = useUi((st) => st.textScale)
-  const h = 156
-  const padL = ts === 2 ? 38 : 24
-  const padR = 8
-  const padT = 10
-  const padB = 28
-  const sy = linear(1, 5, h - padB, padT)
-  const dated = !!from && !!to && dayNo(to) > dayNo(from)
-  const span = dated ? dayNo(to!) - dayNo(from!) : Math.max(data.length - 1, 1)
-  const sx = (i: number, d: string) => padL + ((dated ? dayNo(d) - dayNo(from!) : i) / span) * (width - padL - padR)
-  const step = (width - padL - padR) / (span || 1)
-  const r = Math.max(2.5, Math.min(5.5, step * 0.42))
-  const first = dated ? from! : data[0]?.date
-  const last = dated ? to! : data[data.length - 1]?.date
-  return (
-    <div ref={ref} className="w-full">
-      <svg width={width} height={h} role="img" aria-label={label ?? t('charts.moodDefault', 'Mood and stress check-ins, 1 to 5, last 14 days')} className="overflow-visible">
-        {[1, 3, 5].map((v) => (
-          <g key={v}>
-            <line x1={padL} x2={width - padR} y1={sy(v)} y2={sy(v)} stroke="var(--c-line)" strokeDasharray="3 5" />
-            <text x={padL - 8} y={sy(v) + 4} textAnchor="end" fill="var(--c-ink3)" className="num" style={{ fontSize: 'calc(13px * var(--ts))' }}>
-              {v}
-            </text>
-          </g>
-        ))}
-        {data.map((d, i) => (
-          <g key={d.date}>
-            <circle cx={sx(i, d.date)} cy={sy(d.mood)} r={r} fill="var(--c-s1)" />
-            <circle cx={sx(i, d.date)} cy={sy(d.stress)} r={Math.max(r - 0.5, 2)} fill="var(--c-card)" stroke="var(--c-s2)" strokeWidth={r > 4 ? 2.5 : 1.5} />
-          </g>
-        ))}
-        {first && (
-          <text x={padL} y={h - 6} fill="var(--c-ink3)" style={{ fontSize: 'calc(13px * var(--ts))' }}>
-            {shortDate(first)}
-          </text>
-        )}
-        {last && (
-          <text x={width - padR} y={h - 6} textAnchor="end" fill="var(--c-ink3)" style={{ fontSize: 'calc(13px * var(--ts))' }}>
-            {shortDate(last)}
-          </text>
-        )}
-      </svg>
-      <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sub text-ink2">
-        <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-[var(--c-s1)]" aria-hidden />{t('charts.mood', 'Mood')}</li>
-        <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full border-2 border-[var(--c-s2)] bg-card" aria-hidden />{t('charts.stress', 'Stress')}</li>
-      </ul>
-      {dated && <p className="mt-1 text-micro text-ink3">{t('charts.moodGapKey', 'A blank day means no check-in that day.')}</p>}
-    </div>
-  )
-}

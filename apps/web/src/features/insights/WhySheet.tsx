@@ -45,9 +45,9 @@ export function WhySheet({ onClose, topic = 'week' }: { onClose: () => void; top
     },
     sleep: {
       title: t('insights.why.sleep.title', 'Sleep and stress'),
-      shows: t('insights.why.sleep.shows', 'Hours slept each night, and your mood and stress check-ins.'),
-      from: t('insights.why.sleep.from', 'Sleep from your watch. Mood and stress are the ratings you gave in your check-ins.'),
-      limit: t('insights.why.sleep.limit', 'Stress is how you rated it, not something measured. Bedtime regularity is not shown yet.'),
+      shows: t('insights.why.sleep.showsV2', 'Hours slept each night, your heart rate and blood oxygen, your mood and stress check-ins and the blood pressure you logged.'),
+      from: t('insights.why.sleep.fromV2', 'Sleep, heart rate and blood oxygen from your watch. Mood and stress are the ratings you gave in your check-ins. Blood pressure is what you typed in.'),
+      limit: t('insights.why.sleep.limitV2', 'Stress is how you rated it, not something measured. Blood pressure is shown as logged and is not judged here. A watch on the wrist is less accurate than a fingertip meter.'),
     },
     medication: {
       title: t('insights.why.medication.title', 'Medication'),

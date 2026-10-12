@@ -23,6 +23,8 @@ export function TrendChart({
   drawKey,
   yMin,
   yMax,
+  ticks: fixedTicks,
+  tickFormat,
   endLabel,
 }: {
   points: SeriesPoint[]
@@ -34,6 +36,10 @@ export function TrendChart({
   drawKey?: string
   yMin?: number
   yMax?: number
+  /** y-axis labels at these values instead of the three automatic ones (for example 1, 3, 5 on a 1 to 5 scale) */
+  ticks?: number[]
+  /** how the y-axis labels are written; the same as `format` unless given (the readout can say "3 of 5" while the axis says 3) */
+  tickFormat?: (v: number) => string
   /** what the right-hand end of the axis is called; "Today" unless the data stops earlier */
   endLabel?: string
 }) {
@@ -72,7 +78,7 @@ export function TrendChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points, width, height, y0, y1])
 
-  const ticks = [y0 + (y1 - y0) * 0.1, (y0 + y1) / 2, y1 - (y1 - y0) * 0.1]
+  const ticks = fixedTicks ?? [y0 + (y1 - y0) * 0.1, (y0 + y1) / 2, y1 - (y1 - y0) * 0.1]
   const key = drawKey ?? `${label}-${points.length}`
   const first = !drawn.has(key)
   const last = points.length - 1
@@ -128,7 +134,7 @@ export function TrendChart({
           <g key={i}>
             <line x1={padL} x2={width - padR} y1={sy(t)} y2={sy(t)} stroke="var(--c-line)" strokeDasharray="3 5" />
             <text x={padL - 8} y={sy(t) + 4} textAnchor="end" fill="var(--c-ink3)" style={{ fontSize: 'calc(13px * var(--ts))' }}>
-              {format(t)}
+              {(tickFormat ?? format)(t)}
             </text>
           </g>
         ))}

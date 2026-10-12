@@ -215,8 +215,7 @@ class SleepInsights(Camel):
     period: Period
     days: list[SleepDay]
     sleep_avg: float | None
-    sleep_baseline: float | None
-    short_nights: int
+    short_nights: int            # nights under 6 hours in the period
     stress_avg: float | None
     mood_avg: float | None
     high_stress_days: int

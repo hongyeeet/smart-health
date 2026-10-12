@@ -85,27 +85,29 @@ export function Plain({ children, why }: { children: ReactNode; why?: WhyTopic }
 }
 
 /** Findings from the person's own history. Always labelled unverified: they compare two things, they do not prove a cause. Pass `whyLink={false}` on a tab that has its own top link. */
-export function Findings({ items, onOpen, whyLink = true }: { items: InsightsPattern[]; onOpen?: (to: InsightsTab) => void; whyLink?: boolean }) {
+export function Findings({ items, onOpen, whyLink = true, twoColumns = false }: { items: InsightsPattern[]; onOpen?: (to: InsightsTab) => void; whyLink?: boolean; /** from a laptop up, two findings side by side (for a full-width section) */ twoColumns?: boolean }) {
   const go = useGo()
   const { t } = useTranslation()
   if (!items.length) return null
   return (
     <section className="flex flex-col gap-2">
       <SectionTitle>{t('insights.shared.findings', 'What your history shows')}</SectionTitle>
-      {items.map((p) => (
-        <Card key={p.key} className="flex flex-col gap-2">
-          <p className="text-body">{p.text}</p>
-          <p className="num text-sub text-ink3">{t('insights.shared.basedOn', 'Based on {{n}} matched events in your own history.', { n: p.n })}</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <UnverifiedTag />
-            {(onOpen || whyLink) && (
-              <button type="button" onClick={() => (onOpen ? onOpen(p.to) : go('C7', { sheet: { topic: 'findings' } }))} className="press min-h-11 rounded-chip px-2 text-sub font-bold text-brand">
-                {onOpen ? t('insights.shared.seeMore', 'See more') : t('insights.shared.whyLink', 'Why am I seeing this?')}
-              </button>
-            )}
-          </div>
-        </Card>
-      ))}
+      <div className={cn('flex flex-col gap-2', twoColumns && 'lg:grid lg:grid-cols-2 lg:items-start lg:gap-3')}>
+        {items.map((p) => (
+          <Card key={p.key} className="flex flex-col gap-2">
+            <p className="text-body">{p.text}</p>
+            <p className="num text-sub text-ink3">{t('insights.shared.basedOn', 'Based on {{n}} matched events in your own history.', { n: p.n })}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <UnverifiedTag />
+              {(onOpen || whyLink) && (
+                <button type="button" onClick={() => (onOpen ? onOpen(p.to) : go('C7', { sheet: { topic: 'findings' } }))} className="press min-h-11 rounded-chip px-2 text-sub font-bold text-brand">
+                  {onOpen ? t('insights.shared.seeMore', 'See more') : t('insights.shared.whyLink', 'Why am I seeing this?')}
+                </button>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
     </section>
   )
 }

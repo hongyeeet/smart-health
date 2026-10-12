@@ -1033,7 +1033,7 @@ export interface InsightsSleep {
   period: InsightsPeriod
   days: { date: string; hours: number | null; mood: number | null; stress: number | null; energy: number | null }[]
   sleepAvg: number | null
-  sleepBaseline: number | null
+  /** nights under 6 hours in the period */
   shortNights: number
   stressAvg: number | null
   moodAvg: number | null

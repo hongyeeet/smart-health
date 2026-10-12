@@ -28,7 +28,7 @@ from app.services import insights as I
 from app.services.blood_pressure import recent_bp
 from app.services.doctor_report import Inputs, _nights
 
-BP_MAX_READINGS = 30  # the table shows the newest readings; the count uses all of them
+BP_MAX_READINGS = 400  # a safety cap: the chart draws every reading of the period (90 days at a few a day is far below this)
 
 
 def _r1(x: float | None) -> float | None:

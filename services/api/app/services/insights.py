@@ -20,9 +20,9 @@ from app.core.config import settings
 TZ = ZoneInfo("Asia/Singapore")
 ALLOWED_DAYS = (7, 30, 90)
 LOW, HIGH, VERY_LOW, VERY_HIGH = 3.9, 10.0, 3.0, 13.9
+SHORT_NIGHT_H = 6.0
 LATE_AFTER_MIN = 60                 # a dose taken more than an hour after its time counts as late (the dose window ends there)
 MIN_PATTERN_PAIRS = 5               # prd F10: a finding needs at least 5 matched events
-SHORT_NIGHT_H = 6.0
 BASELINE_DAYS = 60
 SHOWN_MED_DAYS = 30                 # the dose grid stays readable on a phone
 
@@ -551,7 +551,7 @@ def activity(conn: psycopg.Connection[Any], user: str, days: int, today: date) -
 def sleep(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> dict[str, Any]:
     end = anchor(conn, user, today, "sleep")
     start, _ = window(end, days)
-    daily = _daily(conn, user, start - timedelta(days=BASELINE_DAYS), end)
+    daily = _daily(conn, user, start, end)
     series = []
     for i in range(days):
         d = start + timedelta(days=i)
@@ -560,9 +560,8 @@ def sleep(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> d
     hours = [s["hours"] for s in series if s["hours"] is not None]
     stress = [s["stress"] for s in series if s["stress"] is not None]
     mood = [s["mood"] for s in series if s["mood"] is not None]
-    prior = [float(v["sleep_hours"]) for d, v in daily.items() if d < start and v.get("sleep_hours") is not None]
     return {
-        "period": _period(end, days, bool(hours) or bool(stress)), "days": series, "sleep_avg": _r1(_mean(hours)), "sleep_baseline": _r1(_mean(prior)) if len(prior) >= 7 else None,
+        "period": _period(end, days, bool(hours) or bool(stress)), "days": series, "sleep_avg": _r1(_mean(hours)),
         "short_nights": sum(h < SHORT_NIGHT_H for h in hours), "stress_avg": _r1(_mean(stress)), "mood_avg": _r1(_mean(mood)), "high_stress_days": sum(s >= 4 for s in stress), "logged_days": len(stress),
         "patterns": patterns_for(_patterns(conn, user), "C5"),
     }

@@ -103,7 +103,16 @@ def test_blood_pressure_is_newest_first_in_singapore_time_and_capped_for_the_tab
     assert out["readings"][1]["pulse"] == 72 and out["readings"][1]["time"] == "21:22"
 
 
-def test_blood_pressure_table_is_capped_but_the_count_uses_every_reading(monkeypatch):
+def test_blood_pressure_returns_every_reading_of_the_period_for_the_chart(monkeypatch):
+    rows = [{"measured_at": datetime(2026, 10, 1, 1, tzinfo=timezone.utc), "systolic": 120 + i, "diastolic": 80, "pulse": None} for i in range(41)]
+    monkeypatch.setattr(H, "recent_bp", lambda conn, uid, days: rows)
+    _ends_on(monkeypatch, END)
+    out = H.blood_pressure(None, str(uuid.uuid4()), 90, END)
+    assert out["count"] == 41 and len(out["readings"]) == 41            # a 90-day chart draws all of them, not the newest 30
+    assert H.BP_MAX_READINGS >= 400
+
+
+def test_blood_pressure_stops_at_the_safety_cap_but_the_count_uses_every_reading(monkeypatch):
     rows = [{"measured_at": datetime(2026, 10, 1, 1, tzinfo=timezone.utc), "systolic": 120, "diastolic": 80, "pulse": None}] * (H.BP_MAX_READINGS + 5)
     monkeypatch.setattr(H, "recent_bp", lambda conn, uid, days: rows)
     _ends_on(monkeypatch, END)
