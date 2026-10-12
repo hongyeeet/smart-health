@@ -28,6 +28,7 @@
 .rp-sheet td { padding: 5px 8px 5px 0; border-bottom: 1px solid #eaecf0; vertical-align: top; }
 .rp-sheet th.rp-num, .rp-sheet td.rp-num { text-align: right; padding-right: 0; padding-left: 8px; white-space: nowrap; }
 .rp-strong { font-weight: 700; }
+.rp-sheet td.rp-label { width: 230px; }
 .rp-out { font-weight: 700; color: #b42318; }
 .rp-row-urgent td { background: #fef3f2; }
 .rp-ai { margin: 8px 0 0; padding: 8px 10px; border-left: 3px solid #1d4a3c; background: #eef6f2; font-size: 12px; color: #1d2939; }
@@ -73,6 +74,9 @@
   .rp-stack td:first-child { font-weight: 700; }
   .rp-stack td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 400; color: #475467; }
   .rp-stack td[data-label="Note"], .rp-stack td[data-label="Last dose taken before"] { grid-column: 1 / -1; }
+  /* two-column label/value tables (health summary): the label sits over its value, so a long value gets the whole width */
+  .rp-sheet td.rp-label { display: block; width: auto; padding-bottom: 0; border-bottom: 0; }
+  .rp-sheet td.rp-label + td { display: block; padding-top: 0; }
   .rp-row-urgent td { background: transparent; }
   .rp-stack.rp-row-urgent, .rp-stack tr.rp-row-urgent { background: #fef3f2; }
   /* alerts: the tag and the title on one line, the detail under them */

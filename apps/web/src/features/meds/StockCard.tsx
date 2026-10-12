@@ -43,7 +43,7 @@ export function StockSection() {
         </EmptyState>
       )}
       {data?.ready && data.items.length > 0 && (
-        <TileGrid>
+        <TileGrid spread>
           {data.items.map((m) => (
             <li key={m.id} className="flex">
               <StockCard m={m} onBought={() => open(m, 'add')} onSet={() => open(m, 'set')} />
