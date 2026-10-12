@@ -79,7 +79,7 @@ def resolve(now: datetime, reading: dict | None, alert: dict | None) -> dict[str
     Returns {tier, value, since, status, id, demo, recheck_at, contact_after, ack_at, escalated_at, email_queued}.
     """
     none = {"tier": "none", "value": None, "since": None, "status": "none", "id": None, "demo": False, "recheck_at": None,
-            "contact_after": None, "escalated": False, "email_queued": False}
+            "contact_after": None, "escalated": False, "email_queued": False, "note": None}
     live_reading = counting_reading(reading, now)
     if alert:
         acked = alert.get("ack_at") is not None
@@ -100,7 +100,7 @@ def resolve(now: datetime, reading: dict | None, alert: dict | None) -> dict[str
             return {**none, "tier": tier, "value": value, "since": alert["since"], "status": status, "id": alert["id"], "demo": alert["demo"],
                     "recheck_at": alert["recheck_at"] if acked else None,
                     "contact_after": alert["since"] + timedelta(minutes=CONTACT_AFTER_MINUTES) if status == "active" else None,
-                    "escalated": bool(alert.get("escalated_at")), "email_queued": bool(alert.get("email_queued"))}
+                    "escalated": bool(alert.get("escalated_at")), "email_queued": bool(alert.get("email_queued")), "note": alert.get("note")}
         # an old alert is over; a reading counts again only if it came after that alert started
         if live_reading and live_reading["at"] <= alert["since"]:
             live_reading = None
@@ -163,7 +163,8 @@ def load_alert(conn: psycopg.Connection, user: Any) -> dict | None:
         return None
     p = r["payload"]
     return {"id": str(r["id"]), "since": _dt(p["since"]), "tier": p["tier"], "value": float(p["value"]), "demo": bool(p.get("demo")),
-            "ack_at": _dt(p.get("ackAt")), "recheck_at": _dt(p.get("recheckAt")), "escalated_at": _dt(p.get("escalatedAt")), "email_queued": bool(p.get("emailQueued"))}
+            "ack_at": _dt(p.get("ackAt")), "recheck_at": _dt(p.get("recheckAt")), "escalated_at": _dt(p.get("escalatedAt")), "email_queued": bool(p.get("emailQueued")),
+            "note": p.get("escalationNote")}
 
 
 def load_contact(conn: psycopg.Connection, user: Any) -> dict[str, Any]:
@@ -219,7 +220,7 @@ def view(state: dict[str, Any], contact: dict[str, Any], now: datetime) -> dict[
         "has_contact": bool(contact["name"] or contact["phone"] or contact["email"]),
         "contact_name": contact["name"], "contact_phone": contact["phone"],
         "channels": {"phone": bool(contact["phone"]), "email": bool(contact["email"])},
-        "email_queued": state["email_queued"], "escalated": state["escalated"],
+        "email_queued": state["email_queued"], "escalated": state["escalated"], "escalation_note": state.get("note"),
         "emergency_number": EMERGENCY_NUMBER, "recheck_minutes": RECHECK_MINUTES, "contact_after_minutes": CONTACT_AFTER_MINUTES,
     }
 
@@ -279,7 +280,10 @@ def escalate(conn: psycopg.Connection, user: Any, now: datetime) -> tuple[dict, 
         insert_contact_request(conn, user, aid, title, body, {
             "tier": state["tier"], "value": state["value"], "demo": state["demo"], "contactName": contact["name"], "contactEmail": contact["email"]})
         queued = True
-    _patch(conn, aid, escalatedAt=now.isoformat(), emailQueued=queued)
+    if queued:
+        _patch(conn, aid, escalatedAt=now.isoformat(), emailQueued=True, escalationNote=None)
+    else:   # nobody was told: the alert is not marked escalated, and the reason is kept so the screen can say so
+        _patch(conn, aid, emailQueued=False, escalationNote=reason, escalationTriedAt=now.isoformat())
     events.append(("urgent.escalated", aid, {"tier": state["tier"], "value": state["value"], "demo": state["demo"], "emailQueued": queued, "reason": reason}))
     if queued:
         events.append(("urgent.contact_email_requested", aid, {"demo": state["demo"], "contactName": contact["name"]}))  # the address itself is not logged

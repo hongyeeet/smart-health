@@ -9,6 +9,8 @@ Numbers and the choice are made in code; the web app writes the words. Nothing h
 """
 from __future__ import annotations
 
+import logging
+import time
 from datetime import datetime
 
 from fastapi import APIRouter
@@ -18,6 +20,12 @@ from app.core.config import settings
 from app.db import logstore, nutritionstore
 
 router = APIRouter(prefix="/home", tags=["home"])
+logger = logging.getLogger(__name__)
+
+CACHE_SECONDS = 60          # the banner for one person is reused this long; a meal or workout logged by that person ends it at once
+PENDING_RETRY_SECONDS = 5   # while food types are still being worked out, ask again after this long
+FOOD_TYPE_BUDGET = 1.2      # seconds the first look may wait for the food types before it answers without a flag
+_cache: dict[str, tuple[float, int, dict]] = {}
 
 
 def _meal_due_now() -> str | None:
@@ -37,7 +45,7 @@ def _meal_due_now() -> str | None:
 def _food_flag() -> dict | None:
     """The first food habit (heaviest first, as GET /nutrition/flags orders them) that is high in salt or sugar.
     The catch-all "other" type is left out: "your other food" is not a thing the person can act on."""
-    for habit in nutritionstore.food_habits(logstore.current_user()):
+    for habit in nutritionstore.food_habits(logstore.current_user(), swaps=False, classify_budget=FOOD_TYPE_BUDGET):
         if habit["type"] == "other":
             continue
         avg = habit["avg"]
@@ -51,9 +59,34 @@ def _food_flag() -> dict | None:
     return None
 
 
+def build_banner() -> tuple[dict, bool]:
+    """The banner, and whether it is complete. It is not complete while the food types are still being worked out."""
+    complete = True
+    with logstore.one_connection():
+        meal = _meal_due_now()
+        try:
+            flag = _food_flag()
+        except nutritionstore.HabitsPending:
+            flag, complete = None, False
+        except Exception:
+            logger.exception("home banner: food flag unavailable")
+            flag = None
+    return {"meal": meal, "flag": flag}, complete
+
+
+def cached_banner(now: float | None = None) -> dict:
+    """The banner for the current person, reused for CACHE_SECONDS and until that person logs something (logstore.log_epoch)."""
+    now = time.monotonic() if now is None else now
+    key = logstore.current_user_key()
+    epoch = logstore.log_epoch(key)
+    hit = _cache.get(key)
+    if hit and hit[1] == epoch and now < hit[0]:
+        return hit[2]
+    out, complete = build_banner()
+    _cache[key] = (now + (CACHE_SECONDS if complete else PENDING_RETRY_SECONDS), epoch, out)
+    return out
+
+
 @router.get("/banner")
 async def banner() -> dict:
-    def run() -> dict:
-        return {"meal": _meal_due_now(), "flag": _food_flag()}
-
-    return await run_in_threadpool(run)
+    return await run_in_threadpool(cached_banner)

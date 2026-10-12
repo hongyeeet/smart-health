@@ -1,4 +1,5 @@
 """GET /home/banner: which one food banner Home may show (app/api/routers/home.py). Stubs stand in for the database."""
+import contextlib
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -42,40 +43,42 @@ def test_no_meal_banner_when_the_meal_is_later(monkeypatch):
 
 
 def test_high_salt_habit_is_flagged(monkeypatch):
-    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid: [habit({"sodium_mg": settings.habit_sodium_mg + 1})])
+    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid, **kw: [habit({"sodium_mg": settings.habit_sodium_mg + 1})])
     monkeypatch.setattr(home.logstore, "current_user", lambda: "u")
     assert home._food_flag() == {"kind": "salt", "type": "noodles", "label": "Noodles", "n": 5}
 
 
 def test_high_sugar_habit_is_flagged(monkeypatch):
-    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid: [habit({"sugar_g": settings.habit_sugar_g + 5})])
+    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid, **kw: [habit({"sugar_g": settings.habit_sugar_g + 5})])
     monkeypatch.setattr(home.logstore, "current_user", lambda: "u")
     assert home._food_flag()["kind"] == "sugar"
 
 
 def test_calorie_only_habit_is_not_a_salt_or_sugar_flag(monkeypatch):
-    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid: [habit({"kcal": settings.habit_kcal + 400})])
+    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid, **kw: [habit({"kcal": settings.habit_kcal + 400})])
     monkeypatch.setattr(home.logstore, "current_user", lambda: "u")
     assert home._food_flag() is None
 
 
 def test_catch_all_other_food_is_not_flagged(monkeypatch):
-    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid: [habit({"sodium_mg": settings.habit_sodium_mg + 1}, type_="other")])
+    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid, **kw: [habit({"sodium_mg": settings.habit_sodium_mg + 1}, type_="other")])
     monkeypatch.setattr(home.logstore, "current_user", lambda: "u")
     assert home._food_flag() is None
 
 
 def test_first_flagged_habit_wins(monkeypatch):
     habits = [habit({"kcal": 900}, type_="rice"), habit({"sodium_mg": settings.habit_sodium_mg + 1}, type_="noodles")]
-    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid: habits)
+    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid, **kw: habits)
     monkeypatch.setattr(home.logstore, "current_user", lambda: "u")
     assert home._food_flag()["type"] == "noodles"
 
 
 def test_banner_is_empty_when_nothing_to_say(monkeypatch):
     monkeypatch.setattr(home.logstore, "progress", lambda: progress_with("later"))
-    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid: [])
+    monkeypatch.setattr(home.nutritionstore, "food_habits", lambda uid, **kw: [])
     monkeypatch.setattr(home.logstore, "current_user", lambda: "u")
+    monkeypatch.setattr(home.logstore, "one_connection", contextlib.nullcontext)
+    home._cache.clear()
     import asyncio
 
     assert asyncio.run(home.banner()) == {"meal": None, "flag": None}

@@ -9,6 +9,7 @@ The answer logic and its guards are in app/services/chat.py. A model, JEV or cap
 """
 from __future__ import annotations
 
+import psycopg
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
@@ -51,3 +52,5 @@ async def add_question(body: S.QuestionIn) -> S.QuestionOut:
         return S.QuestionOut.model_validate(await run_in_threadpool(svc.add_doctor_question, str(logstore.current_user()), body.text))
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
+    except psycopg.errors.ForeignKeyViolation:
+        raise HTTPException(404, "That person was not found.") from None

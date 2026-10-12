@@ -322,13 +322,28 @@ def patterns_for(rows: list[dict[str, Any]], tab: str | None = None) -> list[dic
 
 
 # ───────────────────────────────────────────────────────────────── reading the rows
-def anchor(conn: psycopg.Connection[Any], user: str, today: date) -> date:
+def anchor(conn: psycopg.Connection[Any], user: str, today: date, metric: str | None = None) -> date:
+    """The last day a screen should end on.
+
+    `metric` is "glucose", "steps" or "sleep": the latest day with that SENSOR data (a stray log on a later day, such as one meal or a
+    pending dose placeholder, must not move a sensor screen to an empty week). With no metric, or no day for that metric, it is the
+    overall anchor: the latest day with any sensor data or any ANSWERED dose; only if there is none, the latest day with a log
+    (meal, workout, check-in). Dose rows that are only waiting for a tap never count. With nothing at all, it is `today`."""
     r = conn.execute(
-        """select max(local_date) d from daily_summary where user_id=%s and local_date<=%s and
-           (glucose_mean_mmol is not null or meals_n>0 or exercise_sessions_n>0 or doses_scheduled>0 or mood_avg is not null or steps_total is not null)""",
+        """select max(local_date) filter (where glucose_mean_mmol is not null) glucose,
+                  max(local_date) filter (where steps_total is not null) steps,
+                  max(local_date) filter (where sleep_hours is not null) sleep,
+                  max(local_date) filter (where coalesce(doses_taken, 0) > 0 or coalesce(doses_missed, 0) > 0) answered,
+                  max(local_date) filter (where meals_n > 0 or exercise_sessions_n > 0 or mood_avg is not null) logged
+           from daily_summary where user_id=%s and local_date<=%s""",
         (user, today),
-    ).fetchone()
-    return (r["d"] if r and r["d"] else today)
+    ).fetchone() or {}
+    if metric in ("glucose", "steps", "sleep") and r.get(metric):
+        return r[metric]
+    sensor = [d for d in (r.get("glucose"), r.get("steps"), r.get("sleep"), r.get("answered")) if d]
+    if sensor:
+        return max(sensor)
+    return r.get("logged") or today
 
 
 def _period(end: date, days: int, has_data: bool) -> dict[str, Any]:
@@ -386,7 +401,7 @@ def overview(conn: psycopg.Connection[Any], user: str, days: int, today: date) -
     daily = _daily(conn, user, p_start, end)
     fasting = _fasting(conn, user, p_start, end)
     in_cur = {d: v for d, v in daily.items() if start <= d <= end}
-    has = any(v.get("glucose_mean_mmol") is not None or v.get("meals_n") or v.get("exercise_sessions_n") or v.get("doses_scheduled") or v.get("mood_avg") is not None for v in in_cur.values())
+    has = any(v.get("glucose_mean_mmol") is not None or v.get("meals_n") or v.get("exercise_sessions_n") or v.get("doses_taken") or v.get("doses_missed") or v.get("mood_avg") is not None or v.get("steps_total") is not None or v.get("sleep_hours") is not None for v in in_cur.values())
 
     def agg(lo: date, hi: date) -> dict[str, float | None]:
         taken = sum(v["doses_taken"] or 0 for d, v in daily.items() if lo <= d <= hi)
@@ -394,7 +409,7 @@ def overview(conn: psycopg.Connection[Any], user: str, days: int, today: date) -
         f = [g for d, g in fasting.items() if lo <= d <= hi]
         return {
             "fasting": _mean(f) if len(f) >= 3 else None, "tir": _avg(daily, "tir_pct", lo, hi), "steps": _avg(daily, "steps_total", lo, hi),
-            "exercise": float(sum(v["exercise_min"] or 0 for d, v in daily.items() if lo <= d <= hi)) if any(lo <= d <= hi for d in daily) else None,
+            "exercise": float(sum(v["exercise_min"] for d, v in daily.items() if lo <= d <= hi and v.get("exercise_min") is not None)) if any(lo <= d <= hi and v.get("exercise_min") is not None for d, v in daily.items()) else None,
             "sleep": _avg(daily, "sleep_hours", lo, hi), "stress": _avg(daily, "stress_self_avg", lo, hi), "doses": (100.0 * taken / sched) if sched else None,
         }
 
@@ -430,7 +445,7 @@ def overview_days(conn: psycopg.Connection[Any], user: str, lo: date, hi: date, 
 
 
 def glucose(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> dict[str, Any]:
-    end = anchor(conn, user, today)
+    end = anchor(conn, user, today, "glucose")
     start, _ = window(end, days)
     low, high = _targets(conn, user)
     values = _cgm(conn, user, start, end)
@@ -501,7 +516,7 @@ def food(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> di
 
 
 def activity(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> dict[str, Any]:
-    end = anchor(conn, user, today)
+    end = anchor(conn, user, today, "steps")
     start, _ = window(end, days)
     bar_lo = bar_spans(end, days)[1][0][1]                   # the first day of the first bar
     rows = conn.execute(
@@ -534,7 +549,7 @@ def activity(conn: psycopg.Connection[Any], user: str, days: int, today: date) -
 
 
 def sleep(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> dict[str, Any]:
-    end = anchor(conn, user, today)
+    end = anchor(conn, user, today, "sleep")
     start, _ = window(end, days)
     daily = _daily(conn, user, start - timedelta(days=BASELINE_DAYS), end)
     series = []
@@ -604,7 +619,7 @@ def medication(conn: psycopg.Connection[Any], user: str, days: int, today: date,
 
 def sensor_run(conn: psycopg.Connection[Any], user: str, today: date) -> dict[str, Any]:
     """C8. There is no stored "sprint" yet (the sensor connection is not built), so this summarises the last 14 days of sensor data."""
-    end = anchor(conn, user, today)
+    end = anchor(conn, user, today, "glucose")
     start, _ = window(end, 14)
     values = _cgm(conn, user, start, end)
     low, high = _targets(conn, user)

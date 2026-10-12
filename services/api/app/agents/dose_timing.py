@@ -4,7 +4,7 @@
   - A reminder is made only for a scheduled dose that is still untaken, inside its window, for a medicine with a dose time. As-needed
     and deleted medicines have no slot, so they never get one. The first reminder waits for the chosen offset; one re-reminder comes
     30 minutes after it if the dose is still untaken and the window is still open.
-  - The offset is picked by the existing epsilon-greedy policy (nudge_policy, kind dose_time, 15% exploring). A reminder whose dose
+  - The offset is picked by the existing epsilon-greedy policy (nudge_policy, kind slot, arm key "dose_time:<medicine>:<offset>", 15% exploring). A reminder whose dose
     is taken inside the window is a success for its offset (policy_act). An untaken dose is a miss: the reminder was tried and not
     acted on, so the rate falls. A person's own median delay (taken time minus set time, over their last 30 taken doses) is the prior,
     once there are 7 usable delays; before that the offset starts at 0 and the menu is explored evenly.
@@ -46,7 +46,10 @@ PRIOR_HISTORY = 30                  # the most recent taken doses per medicine t
 PRIOR_CUSHION_MIN = 10              # the preferred offset sits this many minutes before the median delay
 HISTORY_DAYS = 180
 NOTE_LOOKBACK = timedelta(days=60)  # reminder rows kept for learning (acted, dismissed, renudged)
-ARM_KIND = "dose_time"
+# nudge_policy only allows the arm kinds slot/template/suggestion/activity (CHECK nudge_policy_arm_kind_check, alembic 0021), so the
+# dose-time arms live under kind "slot" with a key that starts "dose_time:" and cannot clash with the other slot arms.
+ARM_KIND = "slot"
+ARM_PREFIX = "dose_time:"
 ROUTE = "B1"
 RENUDGE_SUFFIX = "-renudge"
 DISMISSED = ("dismissed", "dismissed_learned")   # action on a reminder row: the person said "not for me" / already recorded
@@ -58,7 +61,7 @@ _KEY = re.compile(r"^dose-([0-9a-f-]{36})-(\d{4}-\d{2}-\d{2})-(\d{2}:\d{2})(-ren
 
 # ───────────────────────────────────────────────────────────────── keys and windows (pure)
 def arm_key(medication_id: str, offset: int) -> str:
-    return f"{medication_id}:{offset}"
+    return f"{ARM_PREFIX}{medication_id}:{offset}"
 
 
 def arm_offset(arm: str) -> int:
@@ -213,11 +216,12 @@ def _draft(slot: dict, key: str, renudge: bool, arm: str | None) -> dict[str, An
 
 
 def _vet(d: dict[str, Any], check: Callable[[str, str], bool], lang: str = "en") -> tuple | None:
-    """A reminder row, or None when its title is blocked. A blocked body is dropped and the reminder still goes out without it.
+    """A reminder row. The title is a fixed template (see test_dose_text_templates_pass_the_local_rules) and the meal wording is a fixed
+    phrase, so neither goes to the live guard: a guard that is capped or down must never stop a dose reminder. Only the label's own
+    directions text is checked by the live guard; when it is blocked or unknown the body is dropped and the reminder still goes out.
     The guard checks the English text; the row carries the text in `lang`."""
-    if not check(d["title"], "dose_reminder_title"):
-        return None
-    body_ok = not d["body"] or check(d["body"], "dose_reminder_body")
+    from_label = bool(" ".join((d["directions"] or "").split()))
+    body_ok = not d["body"] or not from_label or check(d["body"], "dose_reminder_body")
     title = (renudge_title if d["renudge"] else reminder_title)(d["name"], lang)
     body = reminder_body(d["directions"], d["meal"], lang) if body_ok else ""
     return (d["key"], d["kind"], title, body, ROUTE, d["until"])
@@ -293,7 +297,11 @@ def _seed(text: str) -> int:
 def _ranker(user_id) -> Callable[[str, list[str]], list[str]]:
     """The policy's own ranking (15% exploring), seeded per slot so one dose's choice does not change from one tick to the next."""
     def rank(seed: str, keys: list[str]) -> list[str]:
-        return nutritionstore.rank_arms(user_id, ARM_KIND, keys, random.Random(_seed(seed)))
+        try:
+            return nutritionstore.rank_arms(user_id, ARM_KIND, keys, random.Random(_seed(seed)))
+        except Exception:
+            logger.exception("dose-time policy could not be read; the reminder keeps the preferred offset")
+            return list(keys)
     return rank
 
 
@@ -313,7 +321,8 @@ def _gather(c, user_id, now: datetime) -> dict[str, Any]:
     notes = c.execute(
         "select id, payload->>'key' k, scheduled_for, acted_at, action from notifications "
         "where user_id = %s and payload->>'key' like 'dose-%%' and scheduled_for > %s", (user_id, now - NOTE_LOOKBACK)).fetchall()
-    tries = c.execute("select arm_key k, tries from nudge_policy where user_id = %s and arm_kind = %s", (user_id, ARM_KIND)).fetchall()
+    tries = c.execute("select arm_key k, tries from nudge_policy where user_id = %s and arm_kind = %s and arm_key like %s",
+        (user_id, ARM_KIND, ARM_PREFIX + "%")).fetchall()
     hist = c.execute(
         "select medication_id mid, scheduled_at, taken_at from medication_log where user_id = %s and schedule_id is not null "
         "and status = 'taken' and taken_at is not null and taken_at > scheduled_at and scheduled_at > %s order by scheduled_at desc",
@@ -361,25 +370,57 @@ def nudges(user_id, now: datetime, have_keys: set[str], max_new: int) -> list[tu
             continue
         out.append(row)
         if d["arm"]:
-            nutritionstore.policy_try(user_id, ARM_KIND, d["arm"])
-            audit(user_id, "agent", "dose.reminder_offered", None, None, {"key": d["key"], "offset": arm_offset(d["arm"])})
+            try:   # the learning record must never cost the person their reminder
+                nutritionstore.policy_try(user_id, ARM_KIND, d["arm"])
+                audit(user_id, "agent", "dose.reminder_offered", None, None, {"key": d["key"], "offset": arm_offset(d["arm"])})
+            except Exception:
+                logger.exception("dose reminder offered, but the policy record could not be saved")
+    if out:
+        _close_anchor_reminders(user_id, [d for d in res["rows"] if not d["renudge"]])
     for a in res["acts"]:
-        with tx() as c:
-            got = c.execute(
-                "update notifications set acted_at = now(), action = 'taken' where user_id = %s and acted_at is null "
-                "and payload->>'key' in (%s, %s) returning payload->>'key' k",
-                (user_id, a["key"], a["key"] + RENUDGE_SUFFIX)).fetchall()
-        if any(r["k"] == a["key"] for r in got):
-            nutritionstore.policy_act(user_id, ARM_KIND, a["arm"])
-            audit(user_id, "user", "dose.taken_after_reminder", None, None, {"key": a["key"], "offset": arm_offset(a["arm"])})
+        try:
+            _act(user_id, a)
+        except Exception:
+            logger.exception("could not record the outcome of a dose reminder")
     for r in res["rejects"]:
-        with tx() as c:
-            got = c.execute(
-                "update notifications set action = 'dismissed_learned' where user_id = %s and action = 'dismissed' and payload->>'key' = %s returning id",
-                (user_id, r["key"])).fetchall()
-        if got:
-            nutritionstore.policy_reject(user_id, ARM_KIND, r["arm"])
+        try:
+            _reject(user_id, r)
+        except Exception:
+            logger.exception("could not record a dismissed dose reminder")
     return out
+
+
+def _close_anchor_reminders(user_id, drafts: list[dict]) -> None:
+    """One dose, one reminder: the dose-time reminder wins, so an open anchor reminder for the same medicine and day is closed."""
+    for d in drafts:
+        try:
+            day = d["key"].rsplit("-", 1)[0][-10:]
+            part = period_word((d["until"] - timedelta(minutes=WINDOW_MIN)).astimezone(TZ).hour)
+            with tx() as c:
+                c.execute("update notifications set acted_at = now(), action = 'superseded' where user_id = %s and acted_at is null and payload->>'key' = %s",
+                          (user_id, f"dose-anchor-{d['medication_id']}-{part}-{day}"))
+        except Exception:
+            logger.exception("could not close the anchor reminder")
+
+
+def _act(user_id, a: dict) -> None:
+    with tx() as c:
+        got = c.execute(
+            "update notifications set acted_at = now(), action = 'taken' where user_id = %s and acted_at is null "
+            "and payload->>'key' in (%s, %s) returning payload->>'key' k",
+            (user_id, a["key"], a["key"] + RENUDGE_SUFFIX)).fetchall()
+    if any(r["k"] == a["key"] for r in got):
+        nutritionstore.policy_act(user_id, ARM_KIND, a["arm"])
+        audit(user_id, "user", "dose.taken_after_reminder", None, None, {"key": a["key"], "offset": arm_offset(a["arm"])})
+
+
+def _reject(user_id, r: dict) -> None:
+    with tx() as c:
+        got = c.execute(
+            "update notifications set action = 'dismissed_learned' where user_id = %s and action = 'dismissed' and payload->>'key' = %s returning id",
+            (user_id, r["key"])).fetchall()
+    if got:
+        nutritionstore.policy_reject(user_id, ARM_KIND, r["arm"])
 
 
 def preview(user_id, now: datetime, have_keys: set[str], max_new: int = 99) -> dict[str, Any]:

@@ -8,7 +8,7 @@ One row of `medication_log` per scheduled dose. A dose has a window of 2 hours e
     Taken                     status taken at the moment of the tap (it counts as late when that was over 60 minutes after the time)
     a reason                  "I took it, forgot to log" -> taken; every other reason -> missed, with the reason (and note) stored
 
-Rows are made for today and tomorrow when the app asks. A dose is never made up for a time that was already over before anyone could
+Rows are made for today only, when the app asks (tomorrow's next dose is worked out in memory, and nothing is stored for Mr Tan). A dose is never made up for a time that was already over before anyone could
 act on it (its window had closed, or the medicine did not exist yet), so nothing is ever called missed without a chance to answer.
 Nothing here gives dose advice: the amount is the person's own label. Event payloads hold ids and enums only, never names or notes
 (rules.md section 3).
@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 import psycopg
 from psycopg.types.json import Jsonb
 
+from app.db.logstore import is_read_only
 from app.core.errors import InvalidTransition, NotFound, ValidationFailed
 from app.services import medication_stock
 
@@ -99,24 +100,42 @@ def _local(day: date, t: time) -> datetime:
     return datetime.combine(day, t, tzinfo=TZ)
 
 
+_SLOTS = ("select s.id, s.medication_id, s.dose_time, s.created_at, m.name, m.strength, m.kind::text, m.description, s.quantity, m.end_date "
+          "from medication_schedule s join medications m on m.id = s.medication_id "
+          "where s.user_id = %s and s.deleted_at is null and m.deleted_at is null and s.dose_time is not null and m.as_needed is not true")
+
+
 def ensure_rows(conn: psycopg.Connection, user_id: str, now: datetime) -> int:
-    """Make the dose rows for today and tomorrow (once; repeats change nothing). Returns how many were new."""
+    """Make today's dose rows (once; repeats change nothing). Returns how many were new.
+
+    Only for doses that are due today, from a scheduled (not as-needed), current medicine, and only where somebody could still answer.
+    Tomorrow's doses are not stored: `today` works out the next dose in memory. Nothing is made for a read-only person (Mr Tan)."""
+    if is_read_only(user_id):
+        return 0
     today = now.astimezone(TZ).date()
     made = 0
-    sched = conn.execute(
-        "select s.id, s.medication_id, s.dose_time, s.created_at from medication_schedule s join medications m on m.id = s.medication_id "
-        "where s.user_id = %s and s.deleted_at is null and m.deleted_at is null and s.dose_time is not null and m.as_needed is not true "
-        "and (m.end_date is null or m.end_date >= %s)", (user_id, today)).fetchall()
-    for sid, mid, t, created in sched:
+    for sid, mid, t, created, _n, _s, _k, _d, _q, end in conn.execute(_SLOTS + " and (m.end_date is null or m.end_date >= %s)", (user_id, today)).fetchall():
+        at = _local(today, t)
+        if at < created or at + WINDOW < now:         # before the medicine existed, or already over before anyone could answer
+            continue
+        made += conn.execute(
+            "insert into medication_log (user_id, medication_id, schedule_id, scheduled_at, status, source) "
+            "values (%s, %s, %s, %s, 'pending', 'manual') on conflict (schedule_id, scheduled_at) do nothing",
+            (user_id, mid, sid, at)).rowcount
+    return made
+
+
+def _upcoming_in_memory(conn: psycopg.Connection, user_id: str, now: datetime, have: set[tuple[Any, datetime]]) -> list[tuple[datetime, str]]:
+    """Doses today and tomorrow whose window has not opened yet and that have no row: worked out here, never stored."""
+    today = now.astimezone(TZ).date()
+    out: list[tuple[datetime, str]] = []
+    for sid, _mid, t, created, name, strength, kind, directions, qty, end in conn.execute(_SLOTS, (user_id,)).fetchall():
         for day in (today, today + timedelta(days=1)):
             at = _local(day, t)
-            if at < created or at + WINDOW < now:     # before the medicine existed, or already over before anyone could answer
+            if at < created or (end is not None and end < day) or (sid, at) in have or not now < at - WINDOW:
                 continue
-            made += conn.execute(
-                "insert into medication_log (user_id, medication_id, schedule_id, scheduled_at, status, source) "
-                "values (%s, %s, %s, %s, 'pending', 'manual') on conflict (schedule_id, scheduled_at) do nothing",
-                (user_id, mid, sid, at)).rowcount
-    return made
+            out.append((at, dose_title(name, strength, kind, directions, qty)))
+    return out
 
 
 def today(conn: psycopg.Connection, user_id: str, now: datetime) -> dict[str, Any]:
@@ -125,7 +144,7 @@ def today(conn: psycopg.Connection, user_id: str, now: datetime) -> dict[str, An
     has = conn.execute("select 1 from medication_schedule s join medications m on m.id = s.medication_id where s.user_id = %s and s.deleted_at is null "
                        "and m.deleted_at is null and s.dose_time is not null and m.as_needed is not true limit 1", (user_id,)).fetchone()
     rows = conn.execute(
-        "select l.id, l.status::text, l.scheduled_at, l.taken_at, s.quantity, s.meal_relation::text, m.name, m.strength, m.kind::text, m.description "
+        "select l.id, l.status::text, l.scheduled_at, l.taken_at, s.quantity, s.meal_relation::text, m.name, m.strength, m.kind::text, m.description, l.schedule_id "
         "from medication_log l join medication_schedule s on s.id = l.schedule_id join medications m on m.id = l.medication_id "
         "where l.user_id = %s and m.deleted_at is null and m.as_needed is not true and l.scheduled_at between %s and %s order by l.scheduled_at",
         (user_id, now - LOOKBACK - timedelta(hours=1), now + timedelta(days=2))).fetchall()
@@ -134,7 +153,9 @@ def today(conn: psycopg.Connection, user_id: str, now: datetime) -> dict[str, An
     upcoming: list[tuple[datetime, str]] = []
     taken_today = 0
     local_today = now.astimezone(TZ).date()
-    for lid, status, at, taken_at, qty, meal, name, strength, kind, directions in rows:
+    have: set[tuple[Any, datetime]] = set()
+    for lid, status, at, taken_at, qty, meal, name, strength, kind, directions, sid in rows:
+        have.add((sid, at))
         title = dose_title(name, strength, kind, directions, qty)
         item = {"id": str(lid), "title": title, "time": clock12(at.astimezone(TZ).timetz().replace(tzinfo=None)), "with_food": meal != "na",
                 "when_label": day_phrase(at, now)}
@@ -148,6 +169,7 @@ def today(conn: psycopg.Connection, user_id: str, now: datetime) -> dict[str, An
             due.append(item)
         elif now - at <= LOOKBACK:
             unconfirmed.append(item)
+    upcoming += _upcoming_in_memory(conn, user_id, now, have)
     unconfirmed.reverse()                                # most recent first
     nxt = min(upcoming, default=None)
     return {"has_medicines": bool(has), "due": due, "unconfirmed": unconfirmed[:3], "taken_today": taken_today,
@@ -195,6 +217,19 @@ def mark_taken(conn: psycopg.Connection, user_id: str, dose_id: str, now: dateti
     _event(conn, user_id, "dose.taken", lid, {"medication_id": str(mid), "late": late})
     _stock_taken(conn, user_id, lid, mid, now)
     return "taken"
+
+
+def mark_untaken(conn: psycopg.Connection, user_id: str, dose_id: str, now: datetime) -> str:
+    """The person says they did NOT take it after all: the dose goes back to waiting for an answer, and the pill goes back on the stock
+    (once; saying it twice changes nothing). Returns the new status."""
+    lid, status, _at, mid, _name, _strength = _load(conn, user_id, dose_id)
+    if status != "taken":
+        raise InvalidTransition("This dose is not marked as taken.")
+    conn.execute("update medication_log set status = 'pending', taken_at = null, miss_reason = null, miss_note = null where id = %s", (lid,))
+    _event(conn, user_id, "dose.untaken", lid, {"medication_id": str(mid)})
+    if medication_stock.stock_ready(conn):
+        medication_stock.dose_untaken(conn, user_id, mid, lid, now)
+    return "pending"
 
 
 def save_reason(conn: psycopg.Connection, user_id: str, dose_id: str, reason: str, note: str | None, now: datetime) -> str:

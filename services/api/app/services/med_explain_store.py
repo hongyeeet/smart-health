@@ -13,7 +13,8 @@ from typing import Any, Mapping, Sequence
 import psycopg
 from psycopg.types.json import Jsonb
 
-from app.core.errors import NotFound
+from app.core.errors import NotFound, ValidationFailed
+from app.services.care import check_question_text
 
 
 def input_hash(name: str, strength: str | None, kind: str, directions: str | None) -> str:
@@ -104,6 +105,7 @@ def save(conn: psycopg.Connection, user_id: str, med_id: str, *, status: str, pu
 def add_question(conn: psycopg.Connection, user_id: str, med_id: str, text: str) -> str:
     """A question the person wants to ask their doctor about this medicine. It goes to the doctor-question list (care plan and brief)."""
     get_medicine(conn, user_id, med_id)                        # must be their own medicine
+    text = check_question_text(text)                           # not empty, not a greeting, at least 8 letters (ValidationFailed)
     row = conn.execute("insert into doctor_questions (user_id, text, origin, status) values (%s, %s, 'user', 'open') returning id",
                        (user_id, text.strip())).fetchone()
     if row is None:

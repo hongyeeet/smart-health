@@ -13,7 +13,7 @@ from typing import Any
 
 from app.agents import adherence
 from app.agents.trace import audit
-from app.db.logstore import TZ, current_user, tx
+from app.db.logstore import TZ, current_user, is_read_only, tx
 from app.services.day import kcal as kcal_of
 
 TABLE_LABEL = {"medication_log": "your dose log", "food_logs": "your meal log", "exercise_logs": "your workouts", "symptom_logs": "your symptoms",
@@ -22,7 +22,13 @@ CATEGORY_LABEL = {"routine": "Your routines", "barrier": "What gets in the way",
                   "goal": "Your goals", "context": "Other things"}
 # Ideas that are not shown on the screen. "Some missed doses were because of running out" was proposed from scripted miss reasons in
 # Mr Tan's data (see the flags in the G2 report) and is hidden until the rule in agents/adherence.py is fixed. Rows are not deleted.
-HIDDEN_FACT_KEYS = ("barrier.ran_out",)
+HIDDEN_FACT_KEYS = ("barrier.ran_out",)    # hidden for the scripted demo patient only: see hidden_keys()
+
+
+def hidden_keys(user_id: Any) -> list[str]:
+    """The fact keys not shown for this person. The "ran out" idea came from Mr Tan's scripted miss reasons, so it is hidden for him
+    only; for anybody else it comes from their own dose log and is shown like any other idea."""
+    return list(HIDDEN_FACT_KEYS) if is_read_only(user_id) else []
 
 
 def _why(refs: Any) -> str:
@@ -44,7 +50,7 @@ def list_facts() -> dict[str, Any]:
         rows = c.execute(
             """select id, key, category::text cat, statement, confidence, status::text st, version, evidence_refs, user_confirmed_at, source, updated_at
                from memory_facts where user_id=%s and status in ('proposed','active') and key <> all(%s) order by category, confidence desc""",
-            (current_user(), list(HIDDEN_FACT_KEYS)),
+            (current_user(), hidden_keys(current_user())),
         ).fetchall()
     groups: dict[str, list] = {}
     for r in rows:

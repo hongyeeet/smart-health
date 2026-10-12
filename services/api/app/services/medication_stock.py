@@ -16,7 +16,9 @@ Nothing here gives advice. "Running low" states a fact about the count only. The
 """
 from __future__ import annotations
 
-from datetime import datetime
+import uuid
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from decimal import Decimal
 from math import floor
 from typing import Any, Mapping
@@ -172,6 +174,25 @@ def dose_untaken(conn: psycopg.Connection, user_id: str, med_id: Any, dose_id: A
     _event(conn, user_id, EVENT_DOSE, "medication_log", dose_id, {"delta": float(new - stock)})
 
 
+def refill_cycles(conn: psycopg.Connection, user_id: str, med_ids: list[Any]) -> dict[str, str]:
+    """For each medicine, the day its current supply began: the last time its count was set or more was bought (from the event log),
+    or "first" when there has been none. The refill reminder's key holds this, so a medicine is reminded once per supply: missing
+    doses moves the run-out date, but it does not start a new cycle."""
+    out = {str(m): "first" for m in med_ids}
+    if not med_ids:
+        return out
+    for mid, day in conn.execute(
+            "select entity_id, (max(occurred_at) at time zone 'Asia/Singapore')::date from event_log where user_id = %s "
+            "and entity_table = 'medications' and event in (%s, %s) and entity_id = any(%s) group by entity_id",
+            (user_id, EVENT_SET, EVENT_ADDED, [m if isinstance(m, uuid.UUID) else uuid.UUID(str(m)) for m in med_ids])).fetchall():
+        out[str(mid)] = day.isoformat()
+    return out
+
+
+def refill_key(med_id: Any, cycle: str) -> str:
+    return f"refill-{med_id}-{cycle}"
+
+
 def set_start_count(conn: psycopg.Connection, user_id: str, med_id: Any, count: int, unit: str, now: datetime) -> None:
     """The start value when a medicine is saved from a scan or by hand, from its pack size. The caller only calls it when the pack size is known."""
     if not stock_ready(conn):
@@ -207,15 +228,17 @@ def add_count(conn: psycopg.Connection, user_id: str, med_id: Any, amount: Decim
     _event(conn, user_id, EVENT_ADDED, "medications", med_id, {"delta": float(amount)})
 
 
-def stock_list(conn: psycopg.Connection, user_id: str, med_id: Any = None) -> list[dict[str, Any]]:
-    """Every live, regular medicine of the person (or one of them): the count, the days left at the usual dose, and the status.
+def stock_list(conn: psycopg.Connection, user_id: str, med_id: Any = None, today: date | None = None) -> list[dict[str, Any]]:
+    """Every live, regular medicine of the person (or one of them) that has not ended: the count, the days left at the usual dose, and the status.
+    A medicine whose end date is before today is left out ("My stock" is what the person has to take). A pack size with no count stays unknown.
     'full_count' is the last amount the person set or bought, the full mark of the bar; None when there is none yet."""
     only = "and m.id = %s" if med_id is not None else ""
-    params: tuple[Any, ...] = (user_id, med_id) if med_id is not None else (user_id,)
+    today = today or datetime.now(ZoneInfo("Asia/Singapore")).date()
+    params: tuple[Any, ...] = (user_id, today, med_id) if med_id is not None else (user_id, today)
     rows = conn.execute(
         "select m.id, m.name, m.strength, m.kind::text, m.description, m.total_quantity, m.stock_count, m.stock_unit, m.stock_updated_at, "
         "coalesce((select sum(s.quantity) from medication_schedule s where s.medication_id = m.id and s.deleted_at is null), 0) "
-        "from medications m where m.user_id = %s and m.deleted_at is null and m.as_needed is not true "
+        "from medications m where m.user_id = %s and m.deleted_at is null and m.as_needed is not true and (m.end_date is null or m.end_date >= %s) "
         "and not exists (select 1 from medication_schedule s where s.medication_id = m.id and s.deleted_at is null and s.dose_time is null) "
         f"{only} order by m.created_at, m.name", params).fetchall()
     # the last set or bought amount of each medicine, from the event log (ids and counts are all it holds)

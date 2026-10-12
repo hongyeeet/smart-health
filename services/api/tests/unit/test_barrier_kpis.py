@@ -2,7 +2,8 @@
 from datetime import date
 
 from app.services import barrier_kpis as K
-from app.db.memorystore import HIDDEN_FACT_KEYS
+from app.db.logstore import APP_USER, MR_TAN_USER
+from app.db.memorystore import HIDDEN_FACT_KEYS, hidden_keys
 
 TODAY = date(2026, 10, 11)  # a Sunday
 
@@ -50,3 +51,9 @@ def test_week_starts_on_monday():
 
 def test_the_hidden_running_out_idea_is_excluded_from_the_barrier_counts():
     assert "barrier.ran_out" in HIDDEN_FACT_KEYS
+
+
+def test_the_running_out_idea_is_hidden_for_mr_tan_only():
+    assert hidden_keys(MR_TAN_USER) == ["barrier.ran_out"]
+    assert hidden_keys(APP_USER) == []
+    assert hidden_keys("person-0123456789ab") == []

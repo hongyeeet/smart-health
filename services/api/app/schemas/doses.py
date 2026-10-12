@@ -37,4 +37,4 @@ class ReasonIn(Camel):
 
 
 class DoseResult(Camel):
-    status: Literal["taken", "missed"]
+    status: Literal["taken", "missed", "pending"]

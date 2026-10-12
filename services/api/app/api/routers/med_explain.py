@@ -22,7 +22,7 @@ from psycopg.rows import tuple_row
 
 from app.agents import med_explain_pipeline
 from app.api.routers.medications import datetime_today, list_medications
-from app.core.errors import NotFound
+from app.core.errors import NotFound, ValidationFailed
 from app.db import logstore
 from app.schemas.medicines import (
     ExplanationOut,
@@ -164,5 +164,7 @@ def _ask(med_id: str, body: QuestionIn) -> QuestionOut:
             qid = store.add_question(conn, str(logstore.current_user()), med_id, body.text)
         except NotFound as e:
             raise HTTPException(404, str(e)) from None
+        except ValidationFailed as e:
+            raise HTTPException(422, str(e)) from None
     logger.info("doctor question added from the medicine page")
     return QuestionOut(id=qid)

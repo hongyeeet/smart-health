@@ -6,10 +6,14 @@ is stored. Functions take the user id so the same logic runs on the app's demo u
 """
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import random
 import statistics
+import threading
+from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -192,12 +196,43 @@ def _logged_baseline(rows: list[dict]) -> dict[str, float | None]:
     return out
 
 
-def food_habits(user_id, anchor: datetime | None = None, days: int = 14) -> list[dict[str, Any]]:
+class HabitsPending(Exception):
+    """The food types are still being worked out (the first look after a restart). Try again in a few seconds; nothing is wrong."""
+
+
+_CLASSIFY_POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="food-types")
+_CLASSIFYING: dict[tuple[str, ...], Future] = {}
+_CLASSIFY_LOCK = threading.Lock()
+
+
+def _types_within(names: list[str], budget: float) -> dict[str, str]:
+    """Food types for `names`, waiting at most `budget` seconds. The work carries on in the background and fills the cache, so the next
+    look is instant. Raises HabitsPending when it is not finished: a missing type is unknown, never guessed as "other"."""
+    key = tuple(sorted({foodagent.normalise(n) for n in names}))
+    with _CLASSIFY_LOCK:
+        fut = _CLASSIFYING.get(key)
+        if fut is None or (fut.done() and fut.exception() is not None):
+            fut = _CLASSIFY_POOL.submit(contextvars.copy_context().run, foodagent.classify_foods, list(names))
+            _CLASSIFYING[key] = fut
+    try:
+        return fut.result(timeout=budget)
+    except FutureTimeout:
+        raise HabitsPending() from None
+    finally:
+        with _CLASSIFY_LOCK:
+            if fut.done():
+                _CLASSIFYING.pop(key, None)
+
+
+def food_habits(user_id, anchor: datetime | None = None, days: int = 14, swaps: bool = True, classify_budget: float | None = None) -> list[dict[str, Any]]:
     """A type of food the person keeps eating, and lighter dishes to try next time.
 
     Steps: group the last two weeks of meals by food type (JEV labels each distinct meal name), keep a type eaten at least
     `food_flag_min_meals` times whose logged average is high in calories, salt or sugar, then ask the shelf (the Singapore food
     database) for similar dishes that would save something compared with the person's OWN logged numbers for their usual dish.
+
+    `swaps=False` skips the shelf search and the swap outcome (they cost many queries); the habit type, label, count and averages are the
+    same. `classify_budget` (seconds) stops the first, slow food-type lookup from holding the caller: raises HabitsPending instead.
     """
     with tx() as c:
         if anchor is None:
@@ -213,7 +248,9 @@ def food_habits(user_id, anchor: datetime | None = None, days: int = 14) -> list
         med = c.execute("select percentile_cont(0.5) within group (order by rise_mmol) m from meal_response where user_id=%s and rise_mmol is not null", (user_id,)).fetchone()["m"]
     if not rows:
         return []
-    types = foodagent.classify_foods([r["food"] for r in rows])
+    names = [r["food"] for r in rows]
+    types = foodagent.classify_foods(names) if classify_budget is None else _types_within(names, classify_budget)
+    skip = excluded_keys(user_id) if swaps else set()
     groups: dict[str, list[dict]] = {}
     for r in rows:
         groups.setdefault(types[foodagent.normalise(r["food"])], []).append(r)
@@ -235,9 +272,8 @@ def food_habits(user_id, anchor: datetime | None = None, days: int = 14) -> list
         top = max(repeated, key=load)
         rises = [(float(r["rise"]), int(r["n"])) for r in rs if r["rise"] is not None]
         rise = round(sum(v * k for v, k in rises) / sum(k for _, k in rises), 1) if rises else None
-        skip = excluded_keys(user_id)
-        alts = [a for a in foodagent.better_alternatives(top["food"], _logged_baseline([top])) if f"swap:{a['foodId']}" not in skip]
-        outcome = swap_outcome(user_id, top["food"], [a["name"] for a in alts], anchor)
+        alts = [a for a in foodagent.better_alternatives(top["food"], _logged_baseline([top])) if f"swap:{a['foodId']}" not in skip] if swaps else []
+        outcome = swap_outcome(user_id, top["food"], [a["name"] for a in alts], anchor) if swaps else None
         out.append({
             "type": t, "label": foodagent.TYPE_LABEL[t], "n": n, "dishes": sorted((r["food"] for r in rs), key=lambda x: x)[:6], "topDish": top["food"], "topDishN": int(top["n"]), "topAvg": {k: v for k, v in _logged_baseline([top]).items()},
             "avg": {k: avg[k] for k in ("kcal", *_MACROS)}, "meanRise": rise, "medianRise": round(float(med), 1) if med is not None else None,

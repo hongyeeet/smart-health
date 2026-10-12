@@ -14,6 +14,7 @@ Thresholds are placeholders pending clinical review. They are named here, not in
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date, datetime, time, timedelta
 from typing import Any
 
@@ -24,7 +25,7 @@ from app.agents.trace import audit
 from app.db.logstore import TZ, tx
 from app.db.nutritionstore import guarded
 from app.llm import jev
-from app.services import texts
+from app.services import medication_stock, texts
 from app.services.dose_store import period_word, short_name
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ QUESTION_REASONS = ("felt_fine", "side_effects")
 QUESTION_KEYWORD = {"felt_fine": "felt fine", "side_effects": "side effect"}
 MEAL_LABEL = {"breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner"}
 Row = tuple[str, str, str, str, str, datetime]
+_ANCHOR_KEY = re.compile(r"^dose-anchor-([0-9a-f-]{36})-(\w+)-(\d{4}-\d{2}-\d{2})$")
 
 
 # ----------------------------------------------------------------------------- pure rules (no database)
@@ -211,10 +213,11 @@ def run(user_id: Any, write: bool = False) -> dict[str, Any]:
     totals: dict[str, int] = {}
     for (reason, _mid), n in counts.items():
         totals[reason] = totals.get(reason, 0) + n
-    if not totals:
+    # a routine is noticed from the dose and meal logs (docs/specs/learning-loop.md LL2), so it does not wait for a miss reason
+    if not totals and not any(a["holds"] for a in anchor_slots(rows)):
         return {"skipped": "no miss reasons in the last 28 days"}
     lo, hi = window_days(end)
-    most = max(totals.values())
+    most = max(totals.values(), default=0)
     report: dict[str, Any] = {"window": {"from": lo.isoformat(), "to": hi.isoformat()}, "reasons": totals, "proposals": [], "doctor_questions": [], "routines": []}
 
     lang = texts.person_language(user_id)
@@ -284,14 +287,46 @@ def run(user_id: Any, write: bool = False) -> dict[str, Any]:
 
 def nudges(user_id: Any, now: datetime, have_keys: set[str], max_new: int) -> list[Row]:
     """Reminders the notification list should hold now. Dose reminders (keys start with "dose-") are exempt from the cap, the rest count."""
+    return anchor_nudges(user_id, now, have_keys) + other_nudges(user_id, now, have_keys, max_new)
+
+
+def anchor_nudges(user_id: Any, now: datetime, have_keys: set[str]) -> list[Row]:
+    """The anchored dose reminders (exempt from the cap). `have_keys` should also hold the dose-time reminder keys made in the same
+    pass, so one dose never gets two reminders."""
     today = now.astimezone(TZ).date()
-    exempt: list[Row] = []
     with tx() as c:
-        exempt += _anchor_reminders(c, user_id, now, today, have_keys)
+        return _anchor_reminders(c, user_id, now, today, have_keys)
+
+
+def other_nudges(user_id: Any, now: datetime, have_keys: set[str], max_new: int) -> list[Row]:
+    """The refill and doctor-question reminders (they count towards the daily cap)."""
+    today = now.astimezone(TZ).date()
     capped = _refill_reminders(user_id, now, today, have_keys)
     with tx() as c:
         capped += _question_reminders(c, user_id, now, have_keys)
-    return exempt + capped[: max(0, max_new)]
+    return capped[: max(0, max_new)]
+
+
+def close_taken_anchors(user_id: Any, now: datetime) -> int:
+    """Close an open anchor reminder once its dose is no longer pending (taken, missed or removed). Returns how many were closed."""
+    today = now.astimezone(TZ).date()
+    closed = 0
+    with tx() as c:
+        rows = c.execute("select id, payload->>'key' k from notifications where user_id=%s and acted_at is null and payload->>'key' like 'dose-anchor-%%'",
+                         (user_id,)).fetchall()
+        for r in rows:
+            m = _ANCHOR_KEY.match(r["k"] or "")
+            if not m:
+                continue
+            mid, part, day = m[1], m[2], date.fromisoformat(m[3])
+            pend = c.execute(
+                "select scheduled_at from medication_log where user_id=%s and medication_id=%s and status='pending' and (scheduled_at at time zone 'Asia/Singapore')::date=%s",
+                (user_id, mid, day)).fetchall()
+            if day == today and any(period_word(p["scheduled_at"].astimezone(TZ).hour) == part for p in pend):
+                continue
+            c.execute("update notifications set acted_at = now(), action = 'taken' where id=%s and acted_at is null", (r["id"],))
+            closed += 1
+    return closed
 
 
 def _anchor_reminders(c, user_id, now: datetime, today: date, have_keys: set[str]) -> list[Row]:
@@ -326,12 +361,14 @@ def _anchor_reminders(c, user_id, now: datetime, today: date, have_keys: set[str
         dose = next((d for d in doses if period_word(d["scheduled_at"].astimezone(TZ).hour) == part and dose_due(now, d["scheduled_at"])), None)
         if meal is None or dose is None:
             continue
+        from app.agents.dose_timing import dose_key   # one dose, one reminder: the dose-time reminder wins
+        if dose_key(mid, dose["scheduled_at"]) in have_keys or dose_key(mid, dose["scheduled_at"], renudge=True) in have_keys:
+            continue
         name = short_name(dose["name"], dose["strength"])
-        body_en = texts.tr("en", "dose.anchor.body", meal=meal_label(meal["meal"]), part=part, name=name)
-        if guarded(user_id, body_en, "dose_anchor"):
-            body = texts.tr(lang, "dose.anchor.body", meal=meal_label(meal["meal"], lang), part=texts.label(lang, "period", part), name=name)
-            title = texts.tr(lang, "dose.anchor.title", part=texts.label(lang, "period", part))
-            out.append((key, "dose_reminder", title, body, "B1", dose["scheduled_at"] + DOSE_WINDOW))
+        # a fixed template (meal word, part of day, medicine name): no model text, so no live guard that could be capped or down
+        body = texts.tr(lang, "dose.anchor.body", meal=meal_label(meal["meal"], lang), part=texts.label(lang, "period", part), name=name)
+        title = texts.tr(lang, "dose.anchor.title", part=texts.label(lang, "period", part))
+        out.append((key, "dose_reminder", title, body, "B1", dose["scheduled_at"] + DOSE_WINDOW))
     return out
 
 
@@ -342,7 +379,7 @@ def _refill_body(days_left: int, short: str, lang: str) -> str:
 
 
 def _refill_reminders(user_id, now: datetime, today: date, have_keys: set[str]) -> list[Row]:
-    """A refill reminder 7 days before the supply estimate runs out, once per supply (the key holds the run-out date). Only after the person
+    """A refill reminder 7 days before the supply estimate runs out, once per supply (the key holds the day the supply began, not the run-out date). Only after the person
     confirmed the refill action. The estimate is the Meds page's own (medications.refill_for), so the two never disagree."""
     from app.api.routers.medications import list_medications
 
@@ -352,13 +389,18 @@ def _refill_reminders(user_id, now: datetime, today: date, have_keys: set[str]) 
         if not c.execute("select 1 from memory_facts where user_id=%s and key=%s and status='active' and user_confirmed_at is not null",
                          (user_id, ACTION_KEY["ran_out"])).fetchone():
             return out
+        previous = c.row_factory
         c.row_factory = tuple_row
-        meds = list_medications(c, str(user_id), today)
+        try:
+            meds = list_medications(c, str(user_id), today)
+            cycles = medication_stock.refill_cycles(c, str(user_id), [m.id for m in meds])
+        finally:
+            c.row_factory = previous      # the connection may be shared with the rest of the request
     for m in meds:
         if m.as_needed or m.refill is None or not refill_due(m.refill.days_left):
             continue
         runout = today + timedelta(days=m.refill.days_left)
-        key = f"refill-{m.id}-{runout.isoformat()}"
+        key = medication_stock.refill_key(m.id, cycles.get(str(m.id), "first"))     # once per supply: missed doses move the run-out date, not the key
         if key in have_keys:
             continue
         short = short_name(m.name, None)

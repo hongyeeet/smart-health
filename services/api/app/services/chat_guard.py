@@ -84,6 +84,8 @@ DIAGNOSIS_REQUEST = _rx(
     r"\bdo i have\b(?!\s+(any |a |an |to |enough |my |the |another |more |some )*(appointments?|visits?|to\b|until\b|before\b|meals?|medic\w*|tablets?|pills?|questions?|readings?|data|logs?|results?|checks?|reminders?|time|steps?|goals?|messages?|alerts?|allerg\w*|doctors?))", r"\bam i (sick|ill|dying|diabetic|having|getting|developing|suffering)\b", r"\bwhat('s| is| are) (wrong|the matter) with me\b", r"\bdiagnos(e|is|ing)\b",
     r"\bwhat (disease|illness|condition|sickness|infection|problem) (do i|is it|could it be|might it be)\b", r"\b(is|could|might|can) (it|this|that) be (a |an |the )?(cancer|tumou?r|stroke|heart attack|infection|neuropathy|retinopathy|nephropathy|kidney|liver|thyroid|anaemia|anemia|dementia|covid|flu|dengue)\b",
     r"\bwhat (is|are) (causing|making)\b.{0,30}\b(me|my)\b", r"\bwhy (do|am|have|did) i (feel|have|keep|get|got)\b", r"\bis (this|it|that) (serious|dangerous|a sign|something (bad|serious))\b",
+    r"\b(is|could|might|may) (this|it|that|my [a-z]+( [a-z]+)?) (be |a sign of |signs of )?(a |an |the |some )?(diabet\w*|neuropathy|retinopathy|nephropathy|kidney (disease|failure|damage|problem)|heart (disease|failure|problem)|liver (disease|damage)|cancer|tumou?r|anaemia|anemia|dementia|depression|thyroid)\b",
+    r"\b(is|are) (there )?(something|anything) wrong with (me|my [a-z]+)\b", r"\bhave i (got|developed)\b", r"\bwhat do i have\b",
     r"\b(complications?|damage)\b.{0,25}\b(do i|have i|am i|will i)\b", r"\bwill i (die|go blind|lose|need amputation)\b", r"\bhow (long|much) (do i|time do i) have\b(?!\s+(to|until|before|left until|till)\b)",
 )
 # the person asks whether to start, stop, skip or change a medicine or its amount
@@ -113,7 +115,7 @@ _THANKS = re.compile(r"^\W*(thanks|thank you|thx|ok|okay|bye|goodbye|cheers)\W*$
 # asking whether a number or a result is normal, good, bad, high, healthy or safe: the person gets their numbers, never the verdict
 _VERDICT_Q = re.compile(r"\b(is|are|was|were)\b.{0,30}\b(normal|abnormal|good|bad|healthy|unhealthy|too high|too low|high enough|low enough|dangerous|safe|unsafe|worrying|concerning|alarming)\b|\b(should|do) i (be )?(worried|concerned|worry|panic)\b|\bis (that|this|it) (a )?(problem|concern|worry)\b", re.I)
 # thoughts of ending their life or hurting themselves: a fixed, caring reply with the emergency and support numbers, never a model answer
-_SELF_HARM = re.compile(r"\b(suicid\w*|kill(ing)? myself|(end|ending|take|taking) (my|his|her) (own )?life|end it all|want(ed)? to die|wish i (was|were) dead|no (reason|point) (to|in) (live|living|going on)|(hurt|harm|cut)(ting)? myself|self[- ]?harm|don.?t want to (live|be here|go on)|better off dead)\b", re.I)
+_SELF_HARM = re.compile(r"\b(suicid\w*|kill(ing)? myself|(end|ending|take|taking) (my|his|her) (own )?life|end it all|want(ed)? to die|wish i (was|were) dead|no (reason|point) (to|in) (live|living|going on)|(hurt|harm|cut)(ting)? myself|self[- ]?harm|don.?t want to (live|be here|go on|be alive)|do not want to (live|be here|go on|be alive)|can.?t (go on|take it anymore)|better off dead|(take|took) my own life|thinking (of|about) ending (it|my life))\b", re.I)
 _URL = re.compile(r"(https?://|www\.)\S+|\b[\w.-]+\.(com|org|net|io|sg|gov|edu|co)\b/?\S*", re.I)
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _PHONE = re.compile(r"(?<!\d)(\+?\d[\d \-()]{7,}\d|(?:\+?65[ -]?)?[3689]\d{3}[ -]?\d{4})(?!\d)")
@@ -141,6 +143,28 @@ def low_reading_with_symptoms(text: str) -> bool:
     t = text or ""
     values = [float(m.group(2)) for m in _LOW_NUM.finditer(t)] + [float(m.group(1)) for m in _MMOL.finditer(t)]
     return any(0.5 <= v < 4.0 for v in values) and bool(_HYPO_SYMPTOMS.search(t))
+
+
+_LOW_SUGAR = re.compile(r"\blow (blood )?(sugar|glucose)\b|\b(sugar|glucose)\b[\w ]{0,20}\b(low|dropp\w+|crash\w+)\b|\bhypo(glyc\w+)?\b|\bsugar crash", re.I)
+_LOW_SYMPTOMS = re.compile(r"\b(faint\w*|confus\w*|disorient\w*|shak\w+|trembl\w+|sweat\w*|dizz\w*|clammy|light-?headed|blurr\w+|weak\w*|drowsy|unresponsive|passed out|blacked out)\b", re.I)
+
+
+def low_sugar_with_symptoms(text: str) -> bool:
+    """Words for a low sugar together with a sign of a low (faint, confused, shaky, sweating, dizzy): urgent. A low mentioned alone is not."""
+    t = text or ""
+    return bool(_LOW_SUGAR.search(t) and _LOW_SYMPTOMS.search(t))
+
+
+# the model's honest answer when the person's data has nothing on the question: a short sentence, no numbers
+_NO_DATA = re.compile(
+    r"^\W*(sorry[,. ]+)?(i|smart health|there)\s+(do not|don't|did not|didn't|cannot|can't|could not|couldn't|have no|has no|is no|is not any|am not able to)\b[^.?!]{0,80}\b(in|from|on|about|for) (your|the) (data|records?|logs?|readings?|entries|information|app)\b"
+    r"|^\W*(sorry[,. ]+)?(i|smart health)\s+(do not|don't|have no|has no)\b[^.?!]{0,60}\b(data|information|records?)\b[^.?!]{0,30}\b(on|about|for) (that|this|it)\b", re.I)
+
+
+def is_no_data_reply(reply: str) -> bool:
+    """True for a short honest "I do not have that in your data" reply (up to 45 words, no digits). Such a reply claims nothing."""
+    t = re.sub(r"\s+", " ", reply or "").strip()
+    return bool(t) and len(t.split()) <= 45 and not re.search(r"\d", t) and bool(_NO_DATA.match(t))
 
 
 def is_thanks(text: str) -> bool:
@@ -252,6 +276,9 @@ REPLY_RULES: list[tuple[str, re.Pattern[str]]] = [
         r".{0,45}\b(take|taking|stop|stopping|skip|skipping|start|starting|increase|decrease|reduce|raise|lower|double|halve|change|switch|adjust|miss|crush|split|combine|mix)\b"
         r".{0,40}\b(medic\w*|tablets?|pills?|capsules?|doses?|insulin|metformin|statins?|drugs?|supplements?|herbs?|\d+ ?mg)\b"
         r"|\b(stop|skip|start|increase|decrease|reduce|double|halve|crush|split)\b.{0,12}\b(your|the|a|an)\b.{0,20}\b(medic\w*|tablets?|pills?|capsules?|doses?|insulin|metformin|statins?|drugs?|supplements?)\b", re.I)),
+    ("medicine_advice", re.compile(      # an order to take, double, halve, change, stop or skip; it must start a sentence (or follow please/then/now), so "You take Metformin 500 mg at 08:00" stays allowed
+        r"(?:^|[.!?:;,\n]\s*|\b(?:please|then|and|just|now|also|tonight|today)\s+)(take|double|halve|increase|reduce|decrease|stop|skip|miss|cut|raise|lower|swap|switch|crush|split)\b"
+        r"[^.?!\n]{0,40}?\b(tablets?|pills?|capsules?|doses?|dosage|medic\w*|insulin|units? of|\d+(\.\d+)? ?(mg|mcg|ml|units?))\b", re.I)),
     ("verdict", re.compile(
         r"\b(is|are|was|were|looks?|seems?|sounds?|appears?|remains?)\s+(a |an |the )?(very |quite |a bit |fairly |pretty |still |perfectly |totally |completely )?(normal|abnormal|healthy|unhealthy|dangerous|safe|unsafe|worrying|concerning|alarming|good|bad|fine|great|excellent|terrible|poor|too high|too low)\b"
         r"|\b(normal|abnormal|healthy|dangerous|safe) (range|level|levels|values?)\b|\bwithin (the )?normal\b|\b(nothing to worry|no need to worry|don't worry|do not worry|not a concern)\b", re.I)),

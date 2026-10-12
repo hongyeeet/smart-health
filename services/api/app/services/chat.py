@@ -23,6 +23,7 @@ from typing import Any
 from app.agents.orchestrator import SKILLS
 from app.agents.trace import Run
 from app.core.config import settings
+from app.core.errors import ValidationFailed
 from app.db import logstore
 from app.db.logstore import TZ, tx
 from app.llm import chat as chat_llm
@@ -38,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 HISTORY_N = 8             # messages kept as context for the model, never older ones
 ROUTE_FLOOR = 0.6         # below this JEV confidence the message goes to the general path (same as the orchestrator)
+DIAGNOSIS_REFUSE_P = 0.6  # a message is refused as a diagnosis request only when JEV scores it this high (the reply guard stays at 1 - jev_guard_floor)
 URGENT_P = 0.5            # JEV says an urgent symptom is this likely: treat it as urgent
 CONTEXT_DAYS = 14
 STARTER_CGM_DAYS = 5      # days with glucose in the last 7 that count as "a CGM week"
@@ -64,6 +66,17 @@ _URGENT = [re.compile(p, re.I) for p in (
     r"\bunconscious\b", r"\bseizure|\bconvuls", r"\bsuicid", r"\b(kill|hurt|harm) myself\b", r"\bend my life\b", r"\bwant to die\b",
     r"\boverdos", r"\bslurred speech\b", r"\bface (is )?droop", r"\b(very|extremely|dangerously) low (blood )?(sugar|glucose)\b",
     r"\b(sugar|glucose) (is |was )?(very|extremely|dangerously) low\b", r"\bsevere hypo",
+    # more English wording (the rules are the safety floor when JEV is off or does not score a phrase)
+    r"\b(having|getting|feels? like|feel like|looks? like|think (i|he|she|it)'?s?|think (i am|i'm))\b[^.?!]{0,20}\b(a |an )?heart attack\b", r"\bis (this|it|that) (a |an )?(heart attack|stroke)\b",
+    r"\b(having|think[\w' ]{0,12}) (a |an )?stroke\b",
+    r"\bchest (hurts?|aches?|aching|discomfort|pains?|is (tight|heavy|hurting|painful|squeezing)|feels? (tight|heavy|squeezed|crushed|funny))\b", r"\b(tightness|pressure|heaviness|discomfort|squeezing|crushing) (in|on|around|across) (my |the )?chest\b",
+    r"\bpain (in|around|across|down) (my |the )?(left |right )?(chest|arm|jaw)\b", r"\b(left|both) arms?\b[^.?!]{0,15}\b(numb\w*|tingl\w*|heavy|weak\w*|hurts?|pain\w*)\b",
+    r"\b(numb|numbness|tingling)\b[^.?!]{0,20}\b(left arm|jaw|one side)\b",
+    r"\b(can ?not|can't|cant|unable to|struggling to|hard to|difficult to|difficulty|trouble) (to )?(breathe|breathing|catch my breath|get (any )?air)\b", r"\bshortness of breath\b|\bbreathless\b|\bgasping\b",
+    r"\bspeech is slurred\b|\bslurring (my )?(words|speech)\b", r"\bsudden(ly)?\b[^.?!]{0,25}\b(weak\w*|numb\w*|confus\w*|can'?t see|lost (my )?vision|trouble (seeing|speaking|walking))\b",
+    r"\b(one side of|half of) (my )?(face|body)\b", r"\bhaving a fit\b", r"\b(not|isn't|is not) (breathing|waking up)\b|\bunresponsive\b|\bblack(ed)? out\b",
+    r"\b(severe|severely|critically) low\b[^.?!]{0,15}\b(sugar|glucose)\b|\b(sugar|glucose)\b[^.?!]{0,15}\b(severely|critically) low\b",
+    r"\b(took|taken|swallowed|had) (too many|too much|an extra|a lot of)\b[^.?!]{0,25}\b(tablets?|pills?|insulin|medic\w*|capsules?|doses?)\b",
 )]
 _CONFUSED = re.compile(r"\b(confused|confusion|disoriented)\b", re.I)
 _LOW_WORDS = re.compile(r"\b(low|sugar|glucose|hypo|sweat\w*|shak\w+|dizzy)\b", re.I)
@@ -77,7 +90,8 @@ def clean_text(text: str) -> str:
 
 def is_urgent_text(text: str) -> bool:
     t = clean_text(text)
-    return any(p.search(t) for p in _URGENT) or bool(_CONFUSED.search(t) and _LOW_WORDS.search(t)) or G.low_reading_with_symptoms(t)
+    return (any(p.search(t) for p in _URGENT) or bool(_CONFUSED.search(t) and _LOW_WORDS.search(t)) or G.low_reading_with_symptoms(t)
+            or G.low_sugar_with_symptoms(t))
 
 
 def is_help_request(text: str) -> bool:
@@ -121,12 +135,15 @@ def verdict_for(res: dict[str, float | None]) -> str:
     return "blocked_other"
 
 
-def classify_message(res: dict[str, float | None]) -> str:
-    """What to do with a message from its guard result: down, urgent, refuse, caution or ok. Conservative at every edge."""
+def classify_message(res: dict[str, float | None], reply: bool = False) -> str:
+    """What to do with a guard result: down, urgent, refuse, caution or ok. Conservative at every edge.
+    On the person's MESSAGE the diagnosis score has its own, less strict line (DIAGNOSIS_REFUSE_P): JEV scores an ordinary blood pressure
+    question about 0.4 for it, and real diagnosis questions are refused by our own word rules before this. On a REPLY (reply=True) every
+    score uses the strict line."""
     cut = 1 - settings.jev_guard_floor
     if (res.get("urgent") or 0) >= URGENT_P:
         return "urgent"
-    if (res.get("med_advice") or 0) >= cut or (res.get("diagnosis") or 0) >= cut:
+    if (res.get("med_advice") or 0) >= cut or (res.get("diagnosis") or 0) >= (cut if reply else max(cut, DIAGNOSIS_REFUSE_P)):
         return "refuse"
     if (res.get("urgent") or 0) >= cut:
         return "caution"
@@ -511,6 +528,11 @@ def add_doctor_question(uid: str, text: str) -> dict[str, str]:
     t = clean_text(text)
     if not t:
         raise ValueError("The question is empty.")
+    from app.services import care  # local import: care does not import chat, but keep the module graph flat
+    try:
+        t = care.check_question_text(t)
+    except ValidationFailed as e:
+        raise ValueError(str(e)) from None
     with tx() as c:
         have = c.execute("select id, text from doctor_questions where user_id=%s and status='open' and lower(text)=lower(%s)", (uid, t)).fetchone()
         if have:
@@ -594,7 +616,9 @@ def fallback_text(ctx: Context, lang: str, question: str = "") -> str | None:
     q = (question or "").lower()
     full = [sec for sec in ctx.sections if sec.lines]
     about = [sec for sec in full if any(w in q for w in KEYWORDS.get(sec.key, ()))]
-    lines = [f"{sec.label}: {sec.lines[0]}" for sec in (about or full)][:4]      # what the question is about; with no match, the first few sections
+    if full and not about:
+        return texts.tr(lang, "chat.empty")           # nothing in the data is about this question: say so, do not list unrelated sections
+    lines = [f"{sec.label}: {sec.lines[0]}" for sec in about][:4]
     return (texts.tr(lang, "chat.fallback_intro") + "\n" + "\n".join(f"- {x}" for x in lines)) if lines else None
 
 
@@ -717,16 +741,19 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
     problems = G.reply_problems(en)
     if lang != "en":
         problems += [p for p in G.reply_problems(local, neutral_only=True) if p not in problems]
+    honest_no_data = not problems and G.is_no_data_reply(en)       # "I do not have that in your data": it claims nothing, so JEV has nothing to add
     if unsupported_numbers(en, sent.text() + " " + text):
         problems.append("uncited_numbers")
-    if not problems and jev_reachable():
-        if classify_message(jev.guard(en)) in ("refuse", "urgent", "caution"):
+    if not problems and not honest_no_data and jev_reachable():
+        if classify_message(jev.guard(en), reply=True) in ("refuse", "urgent", "caution"):
             problems.append("jev")
     _log_guard(uid, "output", "pass" if not problems else _REPLY_VERDICT.get(problems[0], "blocked_other"), en, run.id)
     if problems:
         fb = fallback_text(sent, lang, text)
         return finish(fb, verdict=_REPLY_VERDICT.get(problems[0], "blocked_other")) if fb else Outcome(
             "refused", texts.tr(lang, "chat.blocked_reply"), offer_question=True, verdict=_REPLY_VERDICT.get(problems[0], "blocked_other"))
+    if honest_no_data:
+        return finish(local, "empty")
     return finish(local, sources=pick_sources(sent.sections, text, en, _med_names(sent)))
 
 
@@ -765,7 +792,8 @@ def send(user_key: str, uid: str, raw_text: str, conv_id: str | None) -> dict[st
         if status == "ok" and o.kind in ("urgent", "refused"):
             status = "guard_blocked"
         role = "assistant" if o.kind == "answer" else "system_template"
-        me = _save(conv, "user", text, asked_at, None, run.id)
+        stored_text = G.scrub_pii(text)                  # an NRIC, phone or email is never stored; the person sees the scrubbed words after a reload
+        me = _save(conv, "user", stored_text, asked_at, None, run.id)
         bot = _save(conv, role, o.text, datetime.now(TZ), o.verdict if o.verdict in (
             "pass", "urgent", "blocked_diagnosis", "blocked_med_advice", "blocked_other", "blocked_injection", "blocked_uncited") else None, run.id)
         try:
@@ -781,10 +809,10 @@ def send(user_key: str, uid: str, raw_text: str, conv_id: str | None) -> dict[st
     if o.open_urgent:
         actions.append({"kind": "open", "label": "Open the urgent screen", "to": "J1", "text": None})
     if o.offer_question:
-        actions.append({"kind": "doctor_question", "label": "Add to my doctor questions", "to": None, "text": text})
+        actions.append({"kind": "doctor_question", "label": "Add to my doctor questions", "to": None, "text": stored_text})
     return {
         "conversation_id": conv,
-        "message": _msg(me["id"], "user", text, asked_at),
+        "message": _msg(me["id"], "user", stored_text, asked_at),
         "reply": _msg(bot["id"], role, o.text, datetime.fromisoformat(bot["at"]), o.kind),
         "sources": [{"label": s.label, "to": s.to, "detail": s.detail} for s in o.sources],
         "actions": actions,
