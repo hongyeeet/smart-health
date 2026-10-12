@@ -1,6 +1,6 @@
 # Smart Health: what is built, every screen, and the flow (v2)
 
-**Written 2026-10-10. Updated 2026-10-11 from the code on branch `dev`, twice: in the morning, and again in the evening after the fix wave, the QA wave and two design critic passes (second docs pass).** The last commit is `3449891`. The work of 2026-10-11 (onboarding, medicine stock, blood pressure, the doctor brief, Insights, Home, care plan, logs, workouts, the design changes) is in the working tree and **not committed yet**. Where this file says "built", it means present in the code on disk. Database migrations are in the repository up to `0036`. **Migrations `0032` to `0036` were applied on 2026-10-11 by the owner's approval** (`alembic current` is `0036`; the docs pass did not run Alembic). The code still checks each new column at run time. This file **replaces [flow.md](flow.md) as the description of the app that exists today**. `flow.md` still holds the original plan (journeys J1 to J15, the event catalogue and the demo script) and is kept for the planned-but-unbuilt parts. Where the two disagree, this file is right about what is built.
+**Written 2026-10-10. Updated 2026-10-11 from the code on branch `dev`, twice: in the morning, and again in the evening after the fix wave, the QA wave and two design critic passes (second docs pass).** The work of 2026-10-11 and 2026-10-12 (onboarding, medicine stock, blood pressure, the doctor brief, Insights, Home, care plan, logs, workouts, the design changes, the rebuilt chat) is **committed and pushed on `dev`**. Where this file says "built", it means present in the code on disk. Database migrations are in the repository up to `0037`. **Migrations `0032` to `0036` were applied on 2026-10-11 and `0037` (layer comments only) on 2026-10-12, each by the owner's approval** (`alembic current` is `0037`). The code still checks each new column at run time. This file **replaces [flow.md](flow.md) as the description of the app that exists today**. `flow.md` still holds the original plan (journeys J1 to J15, the event catalogue and the demo script) and is kept for the planned-but-unbuilt parts. Where the two disagree, this file is right about what is built.
 
 **What this file is for.** It lists everything that works today, screen by screen, so the app's flow and look can be redesigned and regenerated from it. Section 12 is the design brief. Everything else is facts about the current build: what each screen shows, what each button does, which server call it uses, and what is not built. It describes the **behaviour and content to keep**; it does not describe the current look, which is the thing being replaced.
 
@@ -617,7 +617,7 @@ Every minute: reminders due, lunch ideas, high-salt prompt, and the **email disp
 
 ## 9. Database
 
-Supabase Postgres, Alembic migrations **0001 to 0036** in `services/api/alembic/versions`. **Migrations 0032 to 0036 were applied on 2026-10-11 by the owner's approval** (`alembic current` is `0036`; the docs pass did not run Alembic). Layers: Bronze (as received), Silver (cleaned), Gold (derived), plus operations. Highlights by area:
+Supabase Postgres, Alembic migrations **0001 to 0037** in `services/api/alembic/versions`. **Migrations 0032 to 0036 were applied on 2026-10-11 and 0037 on 2026-10-12, by the owner's approval** (`alembic current` is `0037`). Layers: Bronze (as received), Silver (cleaned), Gold (derived), plus operations. Highlights by area:
 
 **Migrations added on 2026-10-11** (all written to add, never to drop; each can run twice; all applied as above):
 
@@ -628,6 +628,7 @@ Supabase Postgres, Alembic migrations **0001 to 0036** in `services/api/alembic/
 | `0034_ai_usage_generate_provider` | `ai_usage_daily.provider` now also allows `vertex_generate` (text the person sees) |
 | `0035_blood_pressure_columns` | `blood_pressure_readings`: `id` (unique, back-filled from the Bronze row id so existing readings keep their id; Mr Tan's 42 seeded readings keep their ids), `pulse` (30 to 220), `note` (up to 300 characters), `updated_at`. Pulse and note copied from the Bronze payload where present |
 | `0036_workout_intensity_optional` | `exercise_logs.intensity` may be null (a workout can be saved without a rating; null means not rated and is never counted as moderate or vigorous). The 1 to 5 check stays. The downgrade refuses to run while any workout is unrated |
+| `0037_layer_comments_missing` | Comment-only: a `Layer: App` comment on `nudge_policy`, `adherence_barriers`, `content_proposals` and `ai_usage_daily` (the schema test needs every table to name its layer). No data or structure change |
 
 Decision 1 (Joely, 2026-10-11): **medicine stock is kept on `medications` itself, with no stock events table.** Every change is written to `event_log` as ids and counts only (`medication.stock.set`, `.added`, `.dose`). The migration file does not create a `medication_stock_events` table.
 
@@ -671,7 +672,7 @@ Row-level security is on. Reference data (drugs, foods, priors) is loaded once b
 
 | Item | State |
 |---|---|
-| **Migrations 0032 to 0036 on the shared database** | **Applied on 2026-10-11 by the owner's approval** (`alembic current` is `0036`). Not committed yet. The docs pass did not run Alembic |
+| **Migrations 0032 to 0037 on the shared database** | **Applied by the owner's approval** (0032 to 0036 on 2026-10-11, 0037 on 2026-10-12; `alembic current` is `0037`). Committed and pushed |
 | **Database tests for 2026-10-11 work** | The fix wave ran them: all pass except `test_only_the_demo_patient_remains`, which expects 1 user while the shared database has 2 (already failing before this pass). A full database-suite run took over three hours once because of database contention and is being re-checked |
 | **Doctor brief key findings by AI (D-081)** | Built with checks and a fallback. **Departs from rules.md 1.2 and 1.8; Hong Yi to confirm** |
 | **Stock on Home** (low-stock note at 7 days or fewer) | Not built (the stock is on the Meds page only) |

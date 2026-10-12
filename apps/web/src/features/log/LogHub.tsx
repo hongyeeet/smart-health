@@ -24,9 +24,7 @@ function chip(i: ProgressItem | undefined, t: TFunction) {
   // usual time, and screen readers hear "a good time to log".
   if (i.status === 'due')
     return (
-      <span className="mt-1 flex h-3 w-3 flex-none items-center justify-center rounded-full bg-brand-soft ring-1 ring-brand/30" role="img" aria-label={t('log.hub.goodTime', 'A good time to log')}>
-        <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-      </span>
+      <span className="rounded-chip bg-brand-soft px-2 py-0.5 text-micro font-bold text-brand">{t('log.hub.goodTimeShort', 'Good time')}</span>
     )
   if (i.key === 'meals' && i.count > 0) return <span className="rounded-chip bg-well px-2 py-0.5 text-micro font-bold text-ink2">{t('log.hub.ofTarget', '{{count}} of {{target}}', { count: i.count, target: i.target })}</span>
   return null

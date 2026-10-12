@@ -295,7 +295,7 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function EmptyState({ icon: Icon, children, action }: { icon: IconType; children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+    <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-6 py-10 text-center">
       <Icon size={36} className="text-ink3" aria-hidden />
       <p className="text-body text-ink2">{children}</p>
       {action}

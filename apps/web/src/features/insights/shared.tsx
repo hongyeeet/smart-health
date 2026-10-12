@@ -10,6 +10,7 @@ import type { RouteId } from '@/app/routeIds'
 import { useGo } from '@/app/navigation'
 import { cn } from '@/lib/cn'
 import { Header, Screen } from '@/ui/layout'
+import { UserSwitch } from '@/features/home/UserSwitch'
 import { Segmented, TabStrip } from '@/ui/controls'
 import { Alert, Card, EmptyState, SectionTitle, Skeleton, UnverifiedTag } from '@/ui/primitives'
 import { ChartLineUp, Info } from '@/ui/icons'
@@ -43,7 +44,7 @@ export function InsightsFrame({ tab, period, why, children, back }: { tab: Route
   ]
   return (
     <Screen tabs>
-      <Header title={t('insights.shared.title', 'Insights')} back={!!back} backTo={back} />
+      <Header title={t('insights.shared.title', 'Insights')} back={!!back} backTo={back} trailing={back ? undefined : <UserSwitch />} />
       <TabStrip label={t('insights.shared.tabsLabel', 'Insights sections')} tabs={tabs} value={tab} onChange={(v) => go(v)} flush />
       <div className="md:max-w-md">
         <Segmented

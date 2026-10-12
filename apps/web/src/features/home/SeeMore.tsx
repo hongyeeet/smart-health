@@ -37,7 +37,7 @@ export function SeeMoreButton({ open, onToggle }: { open: boolean; onToggle: () 
       onClick={onToggle}
       aria-expanded={open}
       aria-controls="home-more"
-      className="press flex min-h-12 w-full items-center justify-between gap-3 rounded-card border border-line bg-card px-4 py-3 text-left text-body font-bold"
+      className="press flex min-h-12 w-full items-center justify-center gap-3 rounded-card border border-line bg-card px-4 py-3 text-left text-body font-bold"
     >
       {open ? t('home.more.less', 'See less') : t('home.more.more', 'See more')}
       <CaretDown size={20} className={cn('flex-none text-ink3 transition-transform duration-200', open && 'rotate-180')} aria-hidden />
