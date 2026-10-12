@@ -14,7 +14,10 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import uuid
+from collections import OrderedDict
+from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
@@ -34,6 +37,7 @@ from app.agents import chat_assistant as AI
 from app.db import nutritionstore
 from app.services import blood_pressure, care, clash_store, insights, texts, usage
 from app.services import chat_guard as G
+from app.services import chat_planner as P
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +50,14 @@ STARTER_CGM_DAYS = 5      # days with glucose in the last 7 that count as "a CGM
 MAX_STARTERS = 4
 MAX_REPLY_WORDS = 130     # the prompt asks for under 120; a longer reply is cut at a sentence end
 MAX_PASSAGES = 3
+# the extra views the planner picks (see chat_planner.py): every view is capped so the context stays small
+MAX_VIEW_LINES = 14       # lines kept per extra view (a weekly history of 90 days is 13 weekly lines plus one heading)
+MAX_VIEW_CHARS = 3000     # characters kept across ALL extra views together; later lines are dropped first
+LATE_DINNER_HOUR = 21     # a dinner logged at 9 pm or later counts as a late dinner in the responses view
+EMBED_DIM = 768           # gemini-embedding-001 at 768 dimensions (decision D-048), the size of knowledge_chunks.embedding
+EMBED_MODEL = "gemini-embedding-001"
+EMBED_CACHE_SIZE = 128    # questions whose embedding is remembered in this process, so a repeated question costs nothing
+MAX_VECTOR_DISTANCE = 0.6 # cosine distance above which a guidance chunk is not close enough to quote (placeholder until there is content to tune it on)
 
 URGENT_TEXT = texts.tr("en", "chat.urgent")       # the English source; other languages come from texts.tr(lang, key)
 REFUSED_TEXT = texts.tr("en", "chat.refused")
@@ -192,7 +204,7 @@ class Context:
         head = [f"Today is {self.today:%d %b %Y}." if self.today else "", f"The latest day with data is {self.latest:%d %b %Y}." if self.latest else ""]
         body = [f"{s.label.upper()}\n" + "\n".join(f"- {x}" for x in s.lines) for s in self.sections if s.lines]
         if self.passages:
-            body.append("GENERAL INFORMATION\n" + "\n".join(f"- {p}" for p in self.passages))
+            body.append("GENERAL INFORMATION (quoted reference text with its source in brackets; general reading, NOT about this person)\n" +"\n".join(f"- {p}" for p in self.passages))
         return scrub("\n\n".join([" ".join(h for h in head if h), *body]), self.names)
 
 
@@ -222,6 +234,13 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
     "appointments": ("appointment", "visit", "clinic", "check-up", "checkup"),
     "medicine_alerts": ("interact", "clash", "together", "combine"),
     "food_ideas": ("suggest", "idea", "what to eat", "lighter", "swap", "instead"),
+    # the extra views ("flu" alone is not a keyword: it would match inside "influence")
+    "labs": ("hba1c", "a1c", "lab ", "lab result", "blood test", "test result", "cholesterol", "ldl", "hdl", "triglycerid", "insulin", "glycated"),
+    "profile": ("allerg", "condition", "diagnosed", "my history", "profile", "polyclinic", "healthier sg", "who looks after", "how long have i"),
+    "baseline": ("usual", "typical", "normally", "baseline", "compared", "than before", "drift"),
+    "preventive": ("eye screen", "eye check", "eye test", "eye exam", "retina", "foot screen", "foot check", "foot exam", "kidney", "flu shot", "flu jab", "influenza", "vaccin", "screening", "preventive", "check-up", "checkup"),
+    "responses": ("after ", "spike", "affect", "response", "respond", "pattern", "late dinner", "impact", "what works"),
+    "longer_history": ("month", "trend", "since", "improv", "compared", "history", "over time", "weekly", "30 days", "60 days", "90 days", "better", "worse"),
 }
 
 
@@ -407,7 +426,313 @@ def load_rows(conn, uid: str, today: date, text: str) -> dict[str, Any]:
         alerts = []
     return {"daily": daily, "anchor": anchor if daily else None, "meds": meds, "meals": meals,
             "workouts": workouts, "questions": questions, "facts": facts, "names": [p["display_name"], p["emergency_contact_name"]] if p else [],
-            "symptoms": symptoms, "bp": bp, "visit": visit, "alerts": alerts, "passages": passages(conn, text)}
+            "symptoms": symptoms, "bp": bp, "visit": visit, "alerts": alerts,
+            "passages": passages(conn, text, name_tokens(*([p["display_name"], p["emergency_contact_name"]] if p else [])))}
+
+
+# ----------------------------------------------------------------------------- the extra views the planner picks
+LAB_NAMES = {"hba1c": "HbA1c", "fasting_glucose": "Fasting glucose (lab)", "fasting_insulin": "Fasting insulin"}
+CARE_SETTING_TEXT = {"polyclinic": "a polyclinic", "gp": "a GP clinic", "hospital": "a hospital", "none": "no regular place of care"}
+PREVENTIVE_NAMES = {"eye_screening": "Eye screening", "foot_screening": "Foot screening", "kidney_test": "Kidney test", "hba1c_test": "HbA1c test",
+                    "vaccination": "Vaccination (flu and others)"}
+VIEW_SECTIONS: dict[str, tuple[str, str, str]] = {      # key -> (label shown as a source chip, screen id, detail)
+    "labs": ("Your lab results", "K1", "latest results on record"),
+    "profile": ("Your profile", "K1", "from your sign-up answers"),
+    "baseline": ("Your usual range", "C2", f"last {CONTEXT_DAYS} days against the {insights.BASELINE_DAYS} days before"),
+    "preventive": ("Your preventive checks", "K3", "dates on record"),
+    "responses": ("How you responded", "K2", "your own computed responses"),
+    "longer_history": ("Your longer history", "C1", "weekly summaries"),
+}
+
+
+def _view_rows(conn, key: str, fn, default):
+    """One view's rows. A failed view is logged and left out (its own savepoint keeps the rest of the transaction usable); the chat goes on."""
+    try:
+        with _savepoint(conn):
+            return fn()
+    except Exception:
+        logger.exception("chat view %s not readable", key)
+        return default
+
+
+def late_dinner_stats(dinners: list[dict[str, Any]], fasting: dict[date, float], late_hour: int = LATE_DINNER_HOUR) -> dict[str, Any] | None:
+    """Pure: the average morning (fasting) glucose the day after a dinner logged at late_hour or later, against the day after earlier dinners.
+    None unless BOTH groups have at least insights.MIN_PATTERN_PAIRS mornings with a reading (the app's own minimum for a finding)."""
+    late, other = [], []
+    for d in dinners:
+        g = fasting.get(d["day"] + timedelta(days=1))
+        if g is None:
+            continue
+        (late if int(d["hour"]) >= late_hour else other).append(float(g))
+    if len(late) < insights.MIN_PATTERN_PAIRS or len(other) < insights.MIN_PATTERN_PAIRS:
+        return None
+    return {"late_n": len(late), "late_avg": sum(late) / len(late), "other_n": len(other), "other_avg": sum(other) / len(other), "hour": late_hour}
+
+
+def load_views(conn, uid: str, today: date, views: set[str] | frozenset[str], text: str = "") -> dict[str, Any]:
+    """Read-only. The rows for the views the planner picked, over the connection the caller already holds (no new connection). A view that
+    cannot be read is left out. Returns {} for no views."""
+    out: dict[str, Any] = {}
+    if not views:
+        return out
+    try:
+        anchor = insights.anchor(conn, uid, today)
+    except Exception:
+        logger.exception("chat views: anchor not readable")
+        return out
+    out["anchor"] = anchor
+    if "labs" in views:
+        out["labs"] = _view_rows(conn, "labs", lambda: [dict(r) for r in conn.execute(
+            """select test::text test, value, unit, measured_at from (
+                   select test, value, unit, measured_at, row_number() over (partition by test order by measured_at desc) rn
+                   from lab_results where user_id=%s and deleted_at is null) x
+               where rn <= 2 order by test, measured_at desc""", (uid,)).fetchall()], [])
+    if "profile" in views:
+        def prof() -> dict[str, Any]:
+            p = conn.execute("select diagnosed_year, care_setting, healthier_sg, allergies_note, conditions_note from user_profile where user_id=%s", (uid,)).fetchone()
+            res = dict(p) if p else {}
+            res["conditions"] = [r["name"] for r in conn.execute("select name from conditions where user_id=%s and deleted_at is null order by created_at limit 10", (uid,)).fetchall()]
+            res["allergies"] = [dict(r) for r in conn.execute("select substance, reaction from allergies where user_id=%s and deleted_at is null order by created_at limit 10", (uid,)).fetchall()]
+            return res
+        out["profile"] = _view_rows(conn, "profile", prof, {})
+    if "baseline" in views:
+        def base() -> dict[str, Any]:
+            start = anchor - timedelta(days=CONTEXT_DAYS - 1)
+            fasting = insights._fasting(conn, uid, start - timedelta(days=insights.BASELINE_DAYS), anchor)          # the Insights definition: 05:00 to 07:00 local
+            daily = insights._daily(conn, uid, start - timedelta(days=insights.BASELINE_DAYS), anchor)
+            prior = [g for d, g in fasting.items() if d < start]
+            weekly: list[float | None] = []
+            for k in range(5, -1, -1):                      # six weeks of medians, oldest first, as Insights does for its drift line
+                hi_d = anchor - timedelta(days=7 * k)
+                w = [g for d, g in fasting.items() if hi_d - timedelta(days=6) <= d <= hi_d]
+                weekly.append(insights._median(w) if len(w) >= 3 else None)
+            p75 = insights._percentile(prior, 0.75) if len(prior) >= 7 else None
+            return {"fasting_prior": prior, "fasting_recent": [g for d, g in fasting.items() if d >= start],
+                    "steps_prior": [float(v["steps_total"]) for d, v in daily.items() if d < start and v.get("steps_total") is not None],
+                    "steps_recent": [float(v["steps_total"]) for d, v in daily.items() if d >= start and v.get("steps_total") is not None],
+                    "drift_weeks": insights.drift_weeks(weekly, p75) if p75 is not None else 0}
+        out["baseline"] = _view_rows(conn, "baseline", base, {})
+    if "preventive" in views:
+        out["preventive"] = _view_rows(conn, "preventive", lambda: [dict(r) for r in conn.execute(
+            """select i.kind::text kind, s.last_done_on, s.next_due_on from preventive_items i
+               left join patient_preventive_status s on s.preventive_item_id = i.id and s.user_id = %s""", (uid,)).fetchall()], [])
+    if "responses" in views:
+        def resp() -> dict[str, Any]:
+            lo = anchor - timedelta(days=89)
+            lo_ts = datetime.combine(lo, datetime.min.time(), TZ)
+            meals = [dict(r) for r in conn.execute(
+                """select f.meal_type::text meal_type, count(*) n, avg(m.rise_mmol) rise, avg(m.peak_glucose_mmol) peak
+                   from meal_response m join food_logs f on f.id = m.food_log_id
+                   where m.user_id=%s and f.deleted_at is null and f.start_at >= %s and m.rise_mmol is not null group by 1 order by 1""", (uid, lo_ts)).fetchall()]
+            ex = conn.execute(
+                """select count(*) n, avg(r.glucose_change_at_end) avg_change, count(*) filter (where r.post_exercise_low_flag) lows, count(r.post_exercise_low_flag) known
+                   from exercise_response r join exercise_logs e on e.id = r.exercise_log_id
+                   where r.user_id=%s and e.deleted_at is null and e.start_at >= %s and r.glucose_change_at_end is not null""", (uid, lo_ts)).fetchone()
+            dinners = [dict(r) for r in conn.execute(
+                """select (start_at at time zone 'Asia/Singapore')::date day, extract(hour from start_at at time zone 'Asia/Singapore')::int hour from food_logs
+                   where user_id=%s and deleted_at is null and meal_type::text = 'dinner' and start_at >= %s""", (uid, lo_ts)).fetchall()]
+            late = late_dinner_stats(dinners, insights._fasting(conn, uid, lo, anchor + timedelta(days=1))) if dinners else None
+            pats = insights.patterns_for(insights._patterns(conn, uid))
+            return {"meals": meals, "exercise": dict(ex) if ex and ex["n"] else None, "late": late, "patterns": pats}
+        out["responses"] = _view_rows(conn, "responses", resp, {})
+    if "longer_history" in views:
+        days = P.history_days(text)
+        lo = anchor - timedelta(days=days - 1)
+        out["history"] = _view_rows(conn, "longer_history", lambda: {
+            "days": days, "daily": list(insights._daily(conn, uid, lo, anchor).values())}, {})
+    return out
+
+
+def _trim(x: Any, digits: int = 2) -> str:
+    """A lab value as written on the report: no trailing zeros (7.20 is 7.2)."""
+    t = f"{float(x):.{digits}f}"
+    return t.rstrip("0").rstrip(".") if "." in t else t
+
+
+def _full(d: Any) -> str:
+    """A date with its year, for records that can be old (lab results, check dates)."""
+    d = d.astimezone(TZ).date() if isinstance(d, datetime) else d
+    return f"{d.day} {d:%b %Y}"
+
+
+def _with_unit(r: dict[str, Any]) -> str:
+    return f"{_trim(r['value'])}" + (f" {r['unit']}" if r.get("unit") else "")
+
+
+def _lab_lines(labs: list[dict[str, Any]]) -> list[str]:
+    by: dict[str, list[dict[str, Any]]] = {}
+    for r in labs:
+        by.setdefault(str(r["test"]), []).append(r)
+    out = []
+    for test, rows in by.items():
+        rows = sorted(rows, key=lambda r: r["measured_at"], reverse=True)
+        r0 = rows[0]
+        if r0.get("value") is None:
+            continue
+        line = f"{LAB_NAMES.get(test, test.replace('_', ' '))}: {_with_unit(r0)} on {_full(r0['measured_at'])}"
+        if len(rows) > 1 and rows[1].get("value") is not None:
+            line += f"; the one before: {_with_unit(rows[1])} on {_full(rows[1]['measured_at'])}"
+        out.append(line)
+    return out
+
+
+def _profile_lines(p: dict[str, Any]) -> list[str]:
+    out: list[str] = []
+    if p.get("diagnosed_year"):
+        out.append(f"Told they have type 2 diabetes in {int(p['diagnosed_year'])}")
+    if p.get("care_setting") in CARE_SETTING_TEXT:
+        out.append(f"Diabetes care is usually at {CARE_SETTING_TEXT[p['care_setting']]}")
+    if p.get("healthier_sg") in ("yes", "no"):
+        out.append(f"Healthier SG enrolment: {p['healthier_sg']}")
+    conds = [str(c).strip() for c in p.get("conditions") or [] if c and str(c).strip()]
+    if conds:
+        out.append("Other conditions they listed: " + ", ".join(conds))
+    elif p.get("conditions_note"):
+        out.append("Conditions note: " + str(p["conditions_note"]).strip())
+    alls = [f"{a['substance']}" + (f" (reaction: {a['reaction']})" if a.get("reaction") else "") for a in p.get("allergies") or [] if a.get("substance")]
+    if alls:
+        out.append("Allergies they listed: " + "; ".join(alls))
+    elif p.get("allergies_note"):
+        out.append("Allergies note: " + str(p["allergies_note"]).strip())
+    return out        # nothing recorded means nothing is said: an empty list is not written as "none"
+
+
+def _baseline_lines(b: dict[str, Any]) -> list[str]:
+    out: list[str] = []
+    prior, recent = b.get("fasting_prior") or [], b.get("fasting_recent") or []
+    if len(prior) >= 7:       # the same minimum as Insights uses for a usual range
+        lo, mid, hi = (insights._percentile(prior, q) for q in (0.25, 0.5, 0.75))
+        out.append(f"Morning (fasting) glucose over the {insights.BASELINE_DAYS} days before the last {CONTEXT_DAYS}: middle {_num(mid)} mmol/L, usual range {_num(lo)} to {_num(hi)} mmol/L, on {len(prior)} mornings")
+        if len(recent) >= 3:
+            out.append(f"Morning (fasting) glucose over the last {CONTEXT_DAYS} days: average {_num(sum(recent) / len(recent))} mmol/L, on {len(recent)} mornings")
+        if int(b.get("drift_weeks") or 0) >= 2:
+            out.append(f"Morning glucose has been above the usual range for about {int(b['drift_weeks'])} weeks")
+    sp, sr = b.get("steps_prior") or [], b.get("steps_recent") or []
+    if len(sp) >= 7:
+        out.append(f"Steps over the {insights.BASELINE_DAYS} days before the last {CONTEXT_DAYS}: average {round(sum(sp) / len(sp))} a day, on {len(sp)} days")
+        if len(sr) >= 3:
+            out.append(f"Steps over the last {CONTEXT_DAYS} days: average {round(sum(sr) / len(sr))} a day, on {len(sr)} days")
+    return out
+
+
+def _preventive_lines(rows: list[dict[str, Any]], today: date) -> list[str]:
+    out = []
+    for kind, name in PREVENTIVE_NAMES.items():
+        r = next((x for x in rows if x.get("kind") == kind), None)
+        if r is None:
+            continue
+        bits = []
+        if r.get("last_done_on"):
+            bits.append(f"last done {_full(r['last_done_on'])}")
+        if r.get("next_due_on"):
+            bits.append(f"next due {_full(r['next_due_on'])}" + (" (that date has passed)" if r["next_due_on"] < today else ""))
+        out.append(f"{name}: " + ("; ".join(bits) if bits else "no date on record"))
+    return out
+
+
+def _response_lines(r: dict[str, Any], facts: list[str]) -> list[str]:
+    out: list[str] = []
+    for m in r.get("meals") or []:
+        if m.get("rise") is None or not m.get("n"):
+            continue
+        bit = f"{m['meal_type'] or 'meal'}: after {int(m['n'])} meal{'s' if int(m['n']) != 1 else ''} with sensor data, glucose rose by {_num(m['rise'])} mmol/L on average"
+        if m.get("peak") is not None:
+            bit += f", peak {_num(m['peak'])} mmol/L on average"
+        out.append(bit + " (last 90 days)")
+    ex = r.get("exercise")
+    if ex and ex.get("avg_change") is not None:
+        ch = float(ex["avg_change"])
+        bit = f"{int(ex['n'])} exercise session{'s' if int(ex['n']) != 1 else ''} with sensor data: glucose {'fell' if ch < 0 else 'rose'} by {_num(abs(ch))} mmol/L on average by the end of the session"
+        if ex.get("known"):
+            bit += f"; {int(ex['lows'] or 0)} of {int(ex['known'])} were followed by a low reading"
+        out.append(bit + " (last 90 days)")
+    late = r.get("late")
+    if late:
+        out.append(f"Fasting glucose the morning after a dinner logged at {late['hour'] - 12} pm or later: average {_num(late['late_avg'])} mmol/L on {late['late_n']} mornings; "
+                   f"after earlier dinners: average {_num(late['other_avg'])} mmol/L on {late['other_n']} mornings")
+    for p in r.get("patterns") or []:
+        out.append(f"{p['text']} (from {int(p['n'])} matched days)")
+    out += [f"Smart Health has learned: {f}" for f in facts[:5] if f]
+    return out
+
+
+def _history_lines(h: dict[str, Any], anchor: date) -> list[str]:
+    days = int(h.get("days") or 0)
+    daily = {d["local_date"]: d for d in h.get("daily") or []}
+    if not days or not daily:
+        return []
+    out = [f"Weekly summaries for the last {days} days to {_short(anchor)}"]
+    first = anchor - timedelta(days=days - 1)
+    for k in range(-(-days // 7) - 1, -1, -1):             # oldest week first
+        hi = anchor - timedelta(days=7 * k)
+        lo = max(first, hi - timedelta(days=6))
+        rows = [d for dt, d in daily.items() if lo <= dt <= hi]
+        bits = []
+        g = [float(d["glucose_mean_mmol"]) for d in rows if d.get("glucose_mean_mmol") is not None]
+        if g:
+            bits.append(f"glucose average of daily means {_num(sum(g) / len(g))} mmol/L on {len(g)} day{'s' if len(g) != 1 else ''}")
+        sched = sum(d.get("doses_scheduled") or 0 for d in rows)
+        if sched:
+            bits.append(f"{sum(d.get('doses_taken') or 0 for d in rows)} of {sched} planned doses taken")
+        meals = sum(int(d.get("meals_n") or 0) for d in rows)
+        if meals:
+            bits.append(f"{meals} meal{'s' if meals != 1 else ''} logged")
+        ex = sum(int(d.get("exercise_min") or 0) for d in rows)
+        if ex:
+            bits.append(f"{ex} exercise minutes")
+        st = [int(d["steps_total"]) for d in rows if d.get("steps_total") is not None]
+        if st:
+            bits.append(f"average {round(sum(st) / len(st))} steps a day")
+        if bits:
+            out.append(f"{_short(lo)} to {_short(hi)}: " + ", ".join(bits))
+    return out if len(out) > 1 else []
+
+
+def cap_view_sections(secs: list[Section], max_lines: int = MAX_VIEW_LINES, max_chars: int = MAX_VIEW_CHARS) -> list[Section]:
+    """At most max_lines lines per view and max_chars characters over all the views together; the later lines are the ones dropped."""
+    used = 0
+    for s in secs:
+        keep = []
+        for line in s.lines[:max_lines]:
+            if used + len(line) > max_chars:
+                break
+            keep.append(line)
+            used += len(line)
+        s.lines = keep
+    return secs
+
+
+def build_view_sections(extra: dict[str, Any], today: date, facts: list[str] | None = None) -> list[Section]:
+    """Pure: the extra views as sections. Only the views that were loaded are built. Unknown values are left out (never zero), no line gives a
+    verdict or advice, every line passes the data-line check and the whole set is capped (MAX_VIEW_LINES per view, MAX_VIEW_CHARS together)."""
+    raw: dict[str, list[str]] = {}
+    if "labs" in extra:
+        raw["labs"] = _lab_lines(extra["labs"] or [])
+    if "profile" in extra:
+        raw["profile"] = _profile_lines(extra["profile"] or {})
+    if "baseline" in extra:
+        raw["baseline"] = _baseline_lines(extra["baseline"] or {})
+    if "preventive" in extra:
+        raw["preventive"] = _preventive_lines(extra["preventive"] or [], today)
+    if "responses" in extra:
+        raw["responses"] = _response_lines(extra["responses"] or {}, list(facts or []))
+    if "history" in extra:
+        raw["longer_history"] = _history_lines(extra["history"] or {}, extra.get("anchor") or today)
+    secs = []
+    for key, lines in raw.items():
+        label, to, detail = VIEW_SECTIONS[key]
+        secs.append(Section(key, label, to, [x for x in (G.sanitize_data_line(l) for l in lines) if x], detail))
+    return cap_view_sections(secs)
+
+
+def build_context(conn, uid: str, today: date, text: str, views: set[str] | frozenset[str] = frozenset()) -> Context:
+    """The whole context for a question over ONE connection: the default 14-day sections, plus only the extra views the planner picked."""
+    rows = load_rows(conn, uid, today, text)
+    ctx = build_sections(rows, today)
+    if views:
+        extra = load_views(conn, uid, today, views, text)
+        ctx.sections += build_view_sections(extra, today, rows.get("facts", []))
+    return ctx
 
 
 def load_names(uid: str) -> list[str]:
@@ -421,19 +746,111 @@ def load_names(uid: str) -> list[str]:
         return []
 
 
-def passages(conn, text: str) -> list[str]:
-    """Short passages from the knowledge base that share a word with the question (search by words; the table may be empty)."""
-    words = [w for w in re.findall(r"[a-z]{5,}", text.lower())][:5]
+# ----------------------------------------------------------------------------- guidance passages (meaning-based search, keyword search as the fallback)
+_EMBED_CACHE: "OrderedDict[str, tuple[float, ...]]" = OrderedDict()
+_EMBED_LOCK = threading.Lock()
+
+
+def _embed_remote(text: str) -> tuple[float, ...]:
+    """One embedding call (the same client and model as the food search). Raises on any problem; the caller treats that as 'no embedding'."""
+    from google.genai import types
+
+    from app.agents import food   # local import: the client is only built when an embedding is really needed
+
+    r = food._embed_client().models.embed_content(model=EMBED_MODEL, contents=[text], config=types.EmbedContentConfig(output_dimensionality=EMBED_DIM))
+    return tuple(float(x) for x in r.embeddings[0].values)
+
+
+def embed_question(text: str) -> tuple[float, ...] | None:
+    """The embedding of an (already scrubbed) question, or None. Remembered per question text in a small in-process LRU (a repeated question is
+    free; a failure is not remembered). Counted under the `vertex_embed` daily cap like every other embedding; over the cap, or on any error,
+    the answer is None and the caller uses the keyword search. Never raises."""
+    key = re.sub(r"\s+", " ", text or "").strip().lower()
+    if not key:
+        return None
+    with _EMBED_LOCK:
+        if key in _EMBED_CACHE:
+            _EMBED_CACHE.move_to_end(key)
+            return _EMBED_CACHE[key]
+    try:
+        if not usage.allowed("vertex_embed"):
+            return None
+        vec = _embed_remote(key)
+        usage.record("vertex_embed", len(key.split()), 0)
+        if len(vec) != EMBED_DIM:
+            logger.warning("question embedding has %s numbers, expected %s; using the keyword search", len(vec), EMBED_DIM)
+            return None
+    except Exception as e:
+        logger.warning("question embedding failed, using the keyword search: %s", str(e)[:120])
+        return None
+    with _EMBED_LOCK:
+        _EMBED_CACHE[key] = vec
+        while len(_EMBED_CACHE) > EMBED_CACHE_SIZE:
+            _EMBED_CACHE.popitem(last=False)
+    return vec
+
+
+@contextmanager
+def _reuse(conn):
+    """Inside this block every tx() (for example the embedding usage counter) reuses the connection already open, instead of opening another
+    (each one is a network round trip). Does nothing for a stub connection or when a shared connection is already set."""
+    if conn is None or not hasattr(conn, "transaction") or logstore._shared.get() is not None:
+        yield
+        return
+    token = logstore._shared.set(conn)
+    try:
+        yield
+    finally:
+        logstore._shared.reset(token)
+
+
+@contextmanager
+def _savepoint(conn):
+    """A savepoint when the connection has one (so a failed search does not spoil the rest of the transaction); nothing for a plain stub."""
+    with (conn.transaction() if hasattr(conn, "transaction") else nullcontext()):
+        yield
+
+
+def _quoted(title: Any, content: Any) -> str:
+    """One passage as quoted reference text with its source label: [Document title] "text"."""
+    return f'[{str(title or "guidance").strip()[:50]}] "{" ".join(str(content or "").split())[:330]}"'
+
+
+def passages(conn, text: str, names: list[str] | None = None) -> list[str]:
+    """Short guidance passages for the question, each labelled with its document's title (only active documents, at most MAX_PASSAGES).
+    1. Meaning-based: when the question needs general reading (the planner says so), the scrubbed question is embedded and the nearest
+       chunks by cosine distance are returned (none further than MAX_VECTOR_DISTANCE).
+    2. Otherwise, or when there is no embedding (over the daily cap, no key, any error), the keyword search as before: chunks that share
+       a word with the question.
+    Never raises: any error is logged and the result is an empty list or the keyword result."""
+    try:
+        vec = embed_question(scrub(G.scrub_pii(text or ""), names or [])) if P.needs_guidance(text) else None
+    except Exception:
+        logger.exception("question embedding failed")
+        vec = None
+    if vec is not None:
+        try:
+            lit = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
+            with _savepoint(conn):
+                rows = conn.execute(
+                    """select left(c.content, 400) c, d.title t, (c.embedding <=> %(v)s::vector) dist
+                       from knowledge_chunks c join knowledge_documents d on d.id=c.document_id and d.active
+                       order by c.embedding <=> %(v)s::vector limit %(n)s""", {"v": lit, "n": MAX_PASSAGES}).fetchall()
+            return [_quoted(r["t"], r["c"]) for r in rows if r.get("dist") is None or float(r["dist"]) <= MAX_VECTOR_DISTANCE]
+        except Exception:
+            logger.exception("meaning-based knowledge search failed; using the keyword search")
+    words = [w for w in re.findall(r"[a-z]{5,}", (text or "").lower())][:5]
     if not words:
         return []
     try:
-        rows = conn.execute(
-            """select left(c.content, 400) c from knowledge_chunks c join knowledge_documents d on d.id=c.document_id and d.active
-               where c.content ilike any(%s) limit %s""", ([f"%{w}%" for w in words], MAX_PASSAGES)).fetchall()
+        with _savepoint(conn):
+            rows = conn.execute(
+                """select left(c.content, 400) c, d.title t from knowledge_chunks c join knowledge_documents d on d.id=c.document_id and d.active
+                   where c.content ilike any(%s) limit %s""", ([f"%{w}%" for w in words], MAX_PASSAGES)).fetchall()
     except Exception:
         logger.exception("knowledge search failed")
         return []
-    return [r["c"] for r in rows]
+    return [_quoted(r["t"], r["c"]) for r in rows]
 
 
 def starter_facts(conn, uid: str, today: date) -> dict[str, Any]:
@@ -701,19 +1118,22 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
     noticed = bool(tri.about_noticed_things or intent == "insights")
 
     holder: list[Context] = []
+    views = P.plan(text)             # the extra views this question needs (rules only, no model call); empty for a plain 14-day question
 
     def load() -> dict:
-        with tx() as c:
-            holder.append(build_sections(load_rows(c, uid, today, text), today))
+        with tx() as c, _reuse(c):       # ONE connection for the 14-day rows, the planned views, the guidance search and the embedding counter
+            holder.append(build_context(c, uid, today, text, views))
         if intent in ("food_ideas", "diet") or wants_food:
             holder[0].sections.append(food_ideas_section(uid))
-        return {"sections": {s.key: len(s.lines) for s in holder[0].sections}, "passages": len(holder[0].passages)}
+        return {"sections": {s.key: len(s.lines) for s in holder[0].sections}, "passages": len(holder[0].passages), "views": sorted(views)}
 
-    run.step("context", "sql", {"intent": intent}, load)
+    run.step("context", "sql", {"intent": intent, "views": sorted(views)}, load)
     ctx = holder[0]
     keys = INTENT_SECTIONS.get(intent)
     if wants_food and keys is not None:
         keys = set(keys) | {"food_ideas"}
+    if views and keys is not None:
+        keys = set(keys) | views         # a planned view is sent whatever the intent (the default sections keep their per-intent limits)
     sent = ctx.only(keys)
 
     def finish(answer: str, kind: str = "answer", verdict: str | None = "pass", sources: list[Section] | None = None) -> Outcome:
