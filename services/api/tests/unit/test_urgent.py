@@ -197,3 +197,14 @@ def test_a_demo_alert_is_refused_for_the_loaded_patient(monkeypatch):
     with pytest.raises(HTTPException) as e:
         asyncio.run(router.simulate(S.SimulateIn(value=3.4)))
     assert e.value.status_code == 409
+
+
+def test_escalating_with_no_contact_is_not_marked_escalated(monkeypatch):
+    _setup(monkeypatch, {"person": "Mr Tan", "name": None, "phone": None, "email": None})
+    c = FakeConn()
+    U.escalate(c, "u1", NOW)
+    patch = next(p for s, p in c.calls if "update notifications set payload" in s)
+    payload = json.loads(patch[0])
+    assert "escalatedAt" not in payload and payload["emailQueued"] is False and payload["escalationNote"] == "no_contact_email"
+    state = U.resolve(NOW, None, alert(note="no_contact_email"))
+    assert state["status"] == "active" and state["escalated"] is False and state["note"] == "no_contact_email"

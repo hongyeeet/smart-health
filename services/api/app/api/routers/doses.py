@@ -2,6 +2,7 @@
 
   GET  /doses/today             what is due now, what was not confirmed, and the next dose
   POST /doses/{id}/taken        "Taken" (only while the dose's window is open)
+  POST /doses/{id}/untaken      "I did not take it after all": back to waiting, and the pill goes back on the stock
   POST /doses/{id}/reason       "Why was it not confirmed?": a reason and an optional note, for a dose past its window
 
 See app/services/dose_store.py for the rules. Nothing here gives dose advice: the amount is the person's own label.
@@ -62,6 +63,23 @@ def _taken(dose_id: str) -> DoseResult:
         except (NotFound, InvalidTransition) as e:
             raise _fail(e) from None
     logger.info("dose marked taken")
+    return DoseResult(status=status)  # type: ignore[arg-type]
+
+
+@router.post("/{dose_id}/untaken", response_model=DoseResult, response_model_by_alias=True)
+async def dose_untaken(dose_id: str) -> DoseResult:
+    return await run_in_threadpool(_untaken, dose_id)
+
+
+def _untaken(dose_id: str) -> DoseResult:
+    """"I did not take it after all": the dose waits for an answer again and the pill goes back on the stock."""
+    with logstore.tx() as conn:
+        conn.row_factory = tuple_row
+        try:
+            status = store.mark_untaken(conn, str(logstore.current_user()), dose_id, _now())
+        except (NotFound, InvalidTransition) as e:
+            raise _fail(e) from None
+    logger.info("dose marked not taken")
     return DoseResult(status=status)  # type: ignore[arg-type]
 
 

@@ -391,3 +391,49 @@ def test_the_demo_user_gets_proposals_once_and_the_refill_reminder_after_confirm
     assert len(refill) == 1 and refill[0][2] == "Time to refill Rollback Test Metformin"
     assert any(x[0].startswith("question-added-") for x in rows)                    # the person is told the question was added
     assert not any(x[0].startswith("dose-") for x in rows)                          # no routine is confirmed, so no dose reminder
+
+
+# ----------------------------------------------------------------------------- Area A fixes (12 Oct)
+def test_a_rejected_barrier_is_not_proposed_again_when_its_count_changes():
+    rejected = {"barrier": "forgot", "missed_doses": 4}
+    c = FakeConn(rejected=[rejected])
+    assert adherence._propose_fact(c, "u", "barrier.forgot", "barrier", {"barrier": "forgot", "missed_doses": 5}, "x", 0.5, []) == "skipped_rejected"
+    assert c.writes == []
+
+
+def test_a_barrier_statement_is_neutral_and_names_the_window():
+    s = adherence.barrier_statement("forgot", 4)
+    assert "because" not in s and "4 times in the last 60 days" in s
+    assert adherence.BARRIER_WINDOW_DAYS == 60
+
+
+def test_an_anchor_is_proposed_without_any_miss_reason(monkeypatch):
+    rows = [{"mid": "m1", "sid": "s1", "part": "morning", "d": date(2026, 9, 1) + timedelta(days=i), "meal": "breakfast"} for i in range(15)]
+    _fixed(monkeypatch, meds={"m1": "Metformin"}, counts={}, rows=rows)
+    r = ba.run("u", write=False)
+    assert "skipped" not in r and [p["key"] for p in r["proposals"]] == [ba.anchor_key("m1", "morning")]
+
+
+def test_the_anchor_reminder_gives_way_to_the_dose_time_reminder_for_the_same_dose(monkeypatch):
+    from app.agents import dose_timing
+    now = datetime(2026, 10, 12, 8, 20, tzinfo=TZ)
+    sched = datetime(2026, 10, 12, 8, 0, tzinfo=TZ)
+    mid = "11111111-1111-1111-1111-111111111111"
+
+    class Conn:
+        def execute(self, sql, params=()):
+            s = " ".join(sql.split())
+            rows = ([{"value": {"medication_id": mid, "part": "morning"}}] if "from memory_facts" in s else
+                    [{"meal": "breakfast", "end_at": now - timedelta(minutes=10)}] if "from food_logs" in s else
+                    [{"scheduled_at": sched, "name": "Metformin", "strength": None}])
+
+            class R:
+                def fetchall(_):
+                    return rows
+            return R()
+
+    monkeypatch.setattr(ba.texts, "person_language", lambda u, conn=None: "en")
+    monkeypatch.setattr(ba, "guarded", lambda *a: pytest.fail("a fixed-template dose reminder must not use the live guard"))
+    got = ba._anchor_reminders(Conn(), "u", now, now.date(), set())
+    assert [r[0] for r in got] == [f"dose-anchor-{mid}-morning-2026-10-12"]
+    assert ba._anchor_reminders(Conn(), "u", now, now.date(), {dose_timing.dose_key(mid, sched)}) == []

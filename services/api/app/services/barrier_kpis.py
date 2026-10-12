@@ -11,7 +11,7 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from app.db.logstore import TZ, current_user, tx
-from app.db.memorystore import HIDDEN_FACT_KEYS
+from app.db.memorystore import hidden_keys
 from app.services.insights import MISS_LABELS
 
 WINDOW_DAYS = 30
@@ -76,7 +76,7 @@ def summary() -> dict[str, Any]:
         f = c.execute(
             """select count(*) filter (where status='active') active, count(*) filter (where status='proposed') proposed
                from memory_facts where user_id=%s and category::text='barrier' and key <> all(%s)""",
-            (uid, list(HIDDEN_FACT_KEYS)),
+            (uid, hidden_keys(uid)),
         ).fetchone()
     return summarise(
         today,

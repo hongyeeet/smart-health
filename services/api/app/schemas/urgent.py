@@ -30,6 +30,7 @@ class UrgentState(Camel):
     channels: Channels
     email_queued: bool = False
     escalated: bool = False
+    escalation_note: Literal["no_contact_email", "email_not_ready"] | None = None   # why no one was told, when an escalation could not be sent
     emergency_number: str
     recheck_minutes: int
     contact_after_minutes: int

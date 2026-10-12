@@ -25,6 +25,7 @@ BARRIER_LABEL = {"forgot": "forgetting", "ran_out": "running out", "side_effects
                  "cost": "cost", "felt_fine": "feeling fine", "other": "other reasons"}
 MIN_OCCURRENCES = 3   # a barrier needs this many misses before it is proposed (learning-loop LL3)
 MIN_ANCHOR_DAYS = 20  # days of evidence before a morning anchor is proposed
+BARRIER_WINDOW_DAYS = 60  # the miss reasons counted in a barrier proposal come from this many recent days
 ANCHOR_SPREAD_MIN = 25  # the middle half of the offsets must fit inside this many minutes
 
 
@@ -51,6 +52,25 @@ def barrier_weeks(user_id) -> list[dict[str, Any]]:
         for b, n in bs.items():
             out.append({"week_start": wk, "barrier": b, "n": n, "share": round(n / total, 2)})
     return out
+
+
+def barrier_totals(user_id, days: int = BARRIER_WINDOW_DAYS) -> dict[str, int]:
+    """Barrier kind -> missed doses with that reason in the last `days` days (no schema change: it reads medication_log)."""
+    with tx() as c:
+        rows = c.execute(
+            """select miss_reason::text r, count(*) n from medication_log
+               where user_id=%s and status='missed' and miss_reason is not null and scheduled_at > now() - make_interval(days => %s) group by 1""",
+            (user_id, days),
+        ).fetchall()
+    out: dict[str, int] = {}
+    for r in rows:
+        b = REASON_TO_BARRIER.get(r["r"], "other")
+        out[b] = out.get(b, 0) + int(r["n"])
+    return out
+
+
+def barrier_statement(barrier: str, n: int) -> str:
+    return f"Some missed doses were noted as {BARRIER_LABEL[barrier]} ({n} times in the last {BARRIER_WINDOW_DAYS} days)."
 
 
 def weekend_evening_cluster(user_id) -> dict[str, Any] | None:
@@ -129,7 +149,9 @@ def _propose_fact(c, user_id, key: str, category: str, value: dict, statement: s
       - a fact the person confirmed or edited is never superseded by the agent;
       - otherwise a changed value supersedes the current proposal as a new version, and an unchanged one only refreshes its evidence."""
     vjson = json.dumps(value, sort_keys=True)
-    if any(_base(r["value"]) == value for r in c.execute("select value from memory_facts where user_id=%s and key=%s and status='rejected'", (user_id, key)).fetchall()):
+    rejected = c.execute("select value from memory_facts where user_id=%s and key=%s and status='rejected'", (user_id, key)).fetchall()
+    # a barrier fact carries a running count, so a count that moved is not a new idea: a rejected barrier is never proposed again
+    if rejected and (key.startswith("barrier.") and not key.startswith("barrier.action.") or any(_base(r["value"]) == value for r in rejected)):
         return "skipped_rejected"
     cur = c.execute(
         "select id, value, version, user_confirmed_at from memory_facts where user_id=%s and key=%s and status in ('proposed','active') order by version desc limit 1",
@@ -156,13 +178,11 @@ def _propose_fact(c, user_id, key: str, category: str, value: dict, statement: s
 def run(user_id, write: bool = False) -> dict[str, Any]:
     """Compute barriers and the morning anchor; with write=True store them as proposals. Returns a report either way."""
     report: dict[str, Any] = {"on_time": on_time_by_week(user_id), "barriers": barrier_weeks(user_id), "proposals": []}
-    totals: dict[str, int] = {}
-    for b in report["barriers"]:
-        totals[b["barrier"]] = totals.get(b["barrier"], 0) + b["n"]
+    totals = barrier_totals(user_id)
     facts: list[tuple[str, str, dict, str, float, list]] = []
     for barrier, n in sorted(totals.items(), key=lambda kv: -kv[1]):
         if n >= MIN_OCCURRENCES and barrier != "other":
-            facts.append((f"barrier.{barrier}", "barrier", {"barrier": barrier, "missed_doses": n}, f"Some missed doses were because of {BARRIER_LABEL[barrier]} ({n} times).", min(0.9, 0.4 + 0.03 * n), [{"table": "medication_log", "miss_reason": barrier, "n": n}]))
+            facts.append((f"barrier.{barrier}", "barrier", {"barrier": barrier, "missed_doses": n}, barrier_statement(barrier, n), min(0.9, 0.4 + 0.03 * n), [{"table": "medication_log", "miss_reason": barrier, "n": n}]))
     wk = weekend_evening_cluster(user_id)
     report["weekend_evening"] = wk
     if wk:

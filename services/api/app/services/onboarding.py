@@ -68,6 +68,29 @@ def unknown_choice_messages(values: Mapping[str, Any], labels: Mapping[str, froz
     return out
 
 
+NAME_MAX = 100
+PHONE_SHAPE = re.compile(r"^\+?[\d\s()\-]+$")
+
+
+def name_problem(value: Any) -> str | None:
+    """Why a display name cannot be used, or None. The same rule as the chat setup: some letters, no digits and no @ (so an ID number
+    such as an NRIC is refused), at most 100 characters."""
+    t = " ".join(str(value).split())
+    if not t:
+        return "Enter the name you would like us to call you."
+    if len(t) > NAME_MAX or re.search(r"[\d@]", t):
+        return "Enter a name you would like us to call you, without numbers (an ID number is not a name)."
+    return None
+
+
+def phone_problem(value: Any) -> str | None:
+    """Why a mobile number cannot be used, or None: only digits, spaces, brackets, dashes and a leading +, with 7 to 15 digits."""
+    t = str(value).strip()
+    if not PHONE_SHAPE.match(t) or not 7 <= len(re.sub(r"\D", "", t)) <= 15:
+        return "Enter a mobile number with digits, like +65 9123 4567."
+    return None
+
+
 def check_profile(
     values: Mapping[str, Any], labels: Mapping[str, frozenset[str]], this_year: int, today: date | None = None
 ) -> list[str]:
@@ -79,6 +102,10 @@ def check_profile(
     if gender is not None and gender not in GENDERS_ACCEPTED:
         problems.append(f"gender '{gender}' is not a choice Smart Health knows. Choose male or female.")
     problems += history_problems(values, today or date(this_year, 12, 31))
+    if values.get("display_name") is not None and (p := name_problem(values["display_name"])):
+        problems.append(p)
+    if values.get("emergency_contact_phone") and (p := phone_problem(values["emergency_contact_phone"])):
+        problems.append(p)
     birth = values.get("birth_year")
     if birth is not None and birth > this_year - ADULT_AGE:
         problems.append("Smart Health is for adults aged 18 or older.")
@@ -609,8 +636,14 @@ def save_profile(
         not_saved += [HISTORY_NAMES[k] for k in history_sent]
         for k in history_sent:
             values.pop(k)
-    problems = check_profile(values, labels, this_year, today)
     existing = conn.execute("select 1 from user_profile where user_id = %s", (user,)).fetchone()
+    checked = values
+    if existing is not None and values.get("diagnosed_year") is not None and "birth_year" not in values:
+        # a diagnosis year sent alone is still checked against the birth year already saved
+        saved = conn.execute("select birth_year from user_profile where user_id = %s", (user,)).fetchone()
+        if saved and saved["birth_year"]:
+            checked = {**values, "birth_year": saved["birth_year"]}
+    problems = check_profile(checked, labels, this_year, today)
     if existing is None:
         missing = [f for f in ("birth_year", "has_diabetes") if values.get(f) is None]
         if missing:
@@ -664,11 +697,14 @@ def complete(conn: psycopg.Connection, user: Any, now: datetime) -> dict[str, An
             "insert into consents (user_id, kind, version, granted_at) values (%s, %s, %s, %s)",
             (user, CONSENT, CONSENT_VERSION, now),
         )
-    conn.execute(
-        "insert into event_log (user_id, actor, event, entity_table, entity_id, payload) "
-        "values (%s, 'user', 'onboarding_completed', 'user_profile', %s, %s::jsonb)",
-        (user, user, json.dumps({"consent_recorded": recorded})),
-    )
+    # the completion event is written once: a second call (a double tap, a reload) adds nothing
+    already = conn.execute("select 1 from event_log where user_id = %s and event = 'onboarding_completed' limit 1", (user,)).fetchone()
+    if already is None:
+        conn.execute(
+            "insert into event_log (user_id, actor, event, entity_table, entity_id, payload) "
+            "values (%s, 'user', 'onboarding_completed', 'user_profile', %s, %s::jsonb)",
+            (user, user, json.dumps({"consent_recorded": recorded})),
+        )
     return {"consent_recorded": recorded, "completed_at": now}
 
 
@@ -1017,8 +1053,8 @@ def _check(
         return f"Keep it to {step.max_len} characters or fewer."
     if sid == "reminderEmail" and not EMAIL.match(value):
         return "That does not look like an email address."
-    if sid == "contactPhone" and not 7 <= len(re.sub(r"\D", "", value)) <= 15:
-        return "Enter a mobile number with digits, like +65 9123 4567."
+    if sid == "contactPhone" and (p := phone_problem(value)):
+        return p
     if step.limits is not None and not step.limits[0] <= float(value) <= step.limits[1]:
         return f"Enter a number from {step.limits[0]} to {step.limits[1]}."
     if step.column is not None:

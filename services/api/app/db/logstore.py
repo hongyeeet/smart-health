@@ -45,6 +45,11 @@ USERS: dict[str, dict] = {
 _current: ContextVar[str] = ContextVar("app_user", default="demo")
 
 
+def is_read_only(user: object) -> bool:
+    """Mr Tan is loaded demo data: nothing may write records for him on its own (a GET must never add rows to his history)."""
+    return str(user) == str(MR_TAN_USER)
+
+
 # A person started in the app ("Start as new person") has a key of this shape. The user id is derived from the key, so the same key
 # always means the same person, and no lookup table is needed. The row itself is created by POST /users (routers/users.py).
 PERSON_KEY = re.compile(r"person-[0-9a-f]{12}")
@@ -113,13 +118,42 @@ def _dsn() -> str:
     return u._replace(scheme="postgresql", query=query).geturl()
 
 
+_shared: ContextVar[psycopg.Connection | None] = ContextVar("shared_connection", default=None)
+
+
 @contextmanager
 def tx() -> Iterator[psycopg.Connection]:
-    """One transaction: commits on success, rolls back on any error."""
+    """One transaction: commits on success, rolls back on any error.
+
+    Inside `one_connection()` this does not open a new connection (each one costs a network round trip): it reuses the open one,
+    as a savepoint, so an error in one block is rolled back without spoiling the blocks after it."""
+    shared = _shared.get()
+    if shared is not None:
+        with shared.transaction():
+            yield shared
+        return
     if not settings.database_url:
         raise RuntimeError("DATABASE_URL is not set. Add it to the repo .env.")
     with psycopg.connect(_dsn(), row_factory=dict_row, connect_timeout=20) as conn:
         yield conn
+
+
+@contextmanager
+def one_connection() -> Iterator[psycopg.Connection]:
+    """Every `tx()` in this block (and in the functions it calls, in this thread) uses ONE connection. For read paths that make
+    many small queries; the whole block is one transaction that commits at the end."""
+    shared = _shared.get()
+    if shared is not None:
+        yield shared
+        return
+    if not settings.database_url:
+        raise RuntimeError("DATABASE_URL is not set. Add it to the repo .env.")
+    with psycopg.connect(_dsn(), row_factory=dict_row, connect_timeout=20) as conn:
+        token = _shared.set(conn)
+        try:
+            yield conn
+        finally:
+            _shared.reset(token)
 
 
 def ensure_user() -> None:
@@ -192,8 +226,18 @@ def _upsert_timeline(c: psycopg.Connection, buckets: list[datetime], cols: dict[
         cur.executemany(sql, rows)
 
 
+_log_epoch: dict[str, int] = {}
+
+
+def log_epoch(user_key: str) -> int:
+    """A number that goes up each time that person's meals, workouts, symptoms or check-ins change. For caches that must not outlive a log."""
+    return _log_epoch.get(user_key, 0)
+
+
 def refresh_day(c: psycopg.Connection, d: date) -> None:
-    """Recompute the log-driven columns of that day's Gold `daily_summary` row from Silver."""
+    """Recompute the log-driven columns of that day's Gold `daily_summary` row from Silver. A day with nothing logged keeps NULL
+    (unknown), never 0."""
+    _log_epoch[current_user_key()] = log_epoch(current_user_key()) + 1
     day = (d, current_user())
     f = c.execute(
         """select count(*) n, sum(carbs_g) carbs, sum(protein_g) protein, sum(fat_g) fat, sum(sugar_g) sugar, sum(fibre_g) fibre, sum(sodium_mg) sodium
@@ -229,8 +273,8 @@ def refresh_day(c: psycopg.Connection, d: date) -> None:
              mood_avg=excluded.mood_avg, stress_self_avg=excluded.stress_self_avg, energy_avg=excluded.energy_avg,
              sleep_quality_avg=excluded.sleep_quality_avg, built_at=now()""",
         {
-            "u": current_user(), "d": d, "mn": f["n"], "carbs": f["carbs"], "protein": f["protein"], "fat": f["fat"], "sugar": f["sugar"],
-            "fibre": f["fibre"], "sodium": f["sodium"], "emin": round(float(e["mins"])), "en": e["n"], "sn": s["n"], "sw": s["worst"],
+            "u": current_user(), "d": d, "mn": f["n"] or None, "carbs": f["carbs"], "protein": f["protein"], "fat": f["fat"], "sugar": f["sugar"],
+            "fibre": f["fibre"], "sodium": f["sodium"], "emin": round(float(e["mins"])) if e["n"] else None, "en": e["n"] or None, "sn": s["n"] or None, "sw": s["worst"],
             "mood": w["mood"], "stress": w["stress"], "energy": w["energy"], "sleepq": w["sleepq"],
         },
     )
@@ -911,9 +955,16 @@ def reminder_time(key: str, day: date, lunch_start_min: int) -> datetime | None:
     return datetime(day.year, day.month, day.day, tzinfo=TZ) + timedelta(minutes=round(hour * 60))
 
 
-def notifications() -> list[dict]:
+def notifications(create: bool = True) -> list[dict]:
     """Reminders from the day's progress, kept in the `notifications` table so opening them is recorded. A reminder is only
-    created inside its time window and is hidden again once the window has passed, so nothing nags at the wrong time."""
+    created inside its time window and is hidden again once the window has passed, so nothing nags at the wrong time.
+    With create=False nothing is written (used for a GET about a person whose reminders must not change from a page view).
+    The whole call shares ONE database connection."""
+    with one_connection():
+        return _notifications(create)
+
+
+def _notifications(create: bool) -> list[dict]:
     p = progress()
     now = datetime.now(TZ)
     h = _hour(now)
@@ -951,7 +1002,14 @@ def notifications() -> list[dict]:
     # dose reminders inside their window come from the learning loop and are exempt from the cap and quiet hours (their keys start "dose-")
     from app.agents import hooks
 
-    want += hooks.dose_nudges(current_user(), now, have_keys)
+    if create:
+        try:
+            hooks.close_taken_anchors(current_user(), now)
+        except Exception:
+            logger.exception("could not close anchored reminders whose dose is done")
+        want += hooks.dose_nudges(current_user(), now, have_keys)
+    else:
+        want = []
     if lunch_slot & have_keys:
         want = [w for w in want if w[0] not in lunch_slot]   # today's lunch reminder is already there
     quiet, left, keep = in_quiet_hours(now), slots_left(created_today), []
@@ -962,7 +1020,7 @@ def notifications() -> list[dict]:
             keep.append(w)
             left -= 1
     want = keep
-    if not quiet and left > 0:
+    if create and not quiet and left > 0:
         try:
             # a lunch reminder in this same pass also takes the lunch slot, so the lunch ideas do not add a second one
             lunch_taken = have_keys | (lunch_slot if any(w[0] in lunch_slot for w in want) else set())
@@ -972,7 +1030,8 @@ def notifications() -> list[dict]:
             logger.exception("nutrition nudges failed; the other reminders are unaffected")
     with tx() as c:
         # two requests (or a request and the minute tick) can write at the same time: the lock makes each check-then-insert one step
-        c.execute("select pg_advisory_xact_lock(hashtext(%s))", (f"notifications:{current_user()}",))
+        if create:
+            c.execute("select pg_advisory_xact_lock(hashtext(%s))", (f"notifications:{current_user()}",))
         for key, kind, title, body, to, until in want:
             have = c.execute("select 1 from notifications where user_id=%s and payload->>'key'=%s", (current_user(), key)).fetchone()
             if not have and key in lunch_slot:
@@ -989,7 +1048,7 @@ def notifications() -> list[dict]:
             done = (key.startswith("meal-") and key.endswith(today) and m["count"] >= int(key.split("-")[1])) or \
                    (key.startswith("checkin-") and key.endswith(today) and items["checkin"]["done"]) or \
                    (key.startswith("workout-") and key.endswith(today) and items["workout"]["done"]) or                    (key.startswith("activity-") and key.endswith(today) and items["workout"]["done"]) or                    (key.startswith("lunch-") and key.endswith(today) and lunch_today >= 1)
-            if done:
+            if done and create:
                 c.execute("update notifications set acted_at=now(), action='logged' where id=%s", (row["id"],))
         rows = c.execute(
             "select id, kind, scheduled_for, opened_at, payload from notifications where user_id=%s and acted_at is null order by scheduled_for desc limit 30", (current_user(),)
@@ -1021,6 +1080,14 @@ def notifications() -> list[dict]:
         out.append({"id": str(r["id"]), "kind": r["kind"], "title": title, "body": body,
                     "when": _when_label(r["scheduled_for"]), "to": r["payload"].get("to"), "unread": r["opened_at"] is None})
     return out
+
+
+def notification_uuid(nid: str) -> uuid.UUID | None:
+    """The reminder id as a UUID, or None when the text is not one (the route answers 404, never 500)."""
+    try:
+        return uuid.UUID(nid)
+    except (ValueError, AttributeError, TypeError):
+        return None
 
 
 def dismiss_notification(nid: str) -> None:

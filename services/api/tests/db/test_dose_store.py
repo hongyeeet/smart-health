@@ -59,12 +59,12 @@ def add_med(conn, user, name="Metformin 500 mg", times=("08:00", "20:00"), creat
     return mid
 
 
-def test_rows_are_made_for_today_and_tomorrow_only_where_somebody_could_still_answer(conn, user):
+def test_rows_are_made_for_today_only_and_only_where_somebody_could_still_answer(conn, user):
     add_med(conn, user)
-    assert store.ensure_rows(conn, user, at(8, 14)) == 3          # 8 am today is long over (window closed at 10 am): not made up
+    assert store.ensure_rows(conn, user, at(8, 14)) == 1          # 8 am today is long over (window closed at 10 am): not made up; tomorrow is worked out in memory
     assert store.ensure_rows(conn, user, at(8, 14)) == 0          # asking again changes nothing
     rows = conn.execute("select scheduled_at, status::text from medication_log where user_id = %s order by scheduled_at", (user,)).fetchall()
-    assert [(r[0].astimezone(TZ).day, r[0].astimezone(TZ).hour, r[1]) for r in rows] == [(8, 20, "pending"), (9, 8, "pending"), (9, 20, "pending")]
+    assert [(r[0].astimezone(TZ).day, r[0].astimezone(TZ).hour, r[1]) for r in rows] == [(8, 20, "pending")]
 
 
 def test_a_dose_before_the_medicine_was_added_is_never_made_up(conn, user):

@@ -51,7 +51,10 @@ async def plan() -> S.CarePlan:
 
 @router.post("/questions", response_model=S.QuestionOut, response_model_by_alias=True)
 async def add_question(body: S.NewQuestion) -> S.QuestionOut:
-    return S.QuestionOut.model_validate(await _run(svc.add_question, body.text))
+    try:
+        return S.QuestionOut.model_validate(await _run(svc.add_question, body.text))
+    except DomainError as e:
+        raise _domain(e) from None
 
 
 @router.post("/questions/{question_id}/done", response_model=S.QuestionOut, response_model_by_alias=True)

@@ -6,6 +6,7 @@ pending clinical review and are never shown as advice.
 """
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -241,7 +242,26 @@ def load_plan(conn: psycopg.Connection, user_id: str, now: datetime) -> dict[str
     return {"next_appointment": next_visit, "upcoming": upcoming, "earlier": earlier, "preventive": preventive, "questions": questions}
 
 
+MIN_QUESTION_LETTERS = 8
+_ABOUT_PREFIX = re.compile(r"^\s*about\s+[^:]{1,80}:\s*", re.I)          # "About Metformin 500 mg: " is added by the medicine page
+_GREETING = re.compile(
+    r"^(?:hi|hello|hey|hiya|yo|test(?:ing)?|thanks?(?: you)?|ok(?:ay)?|hmm+|good (?:morning|afternoon|evening|night)|how are you)(?: (?:there|doctor|dr|doc|all))?$", re.I)
+NOT_A_QUESTION = "Please write a question for your doctor, in a few words. A greeting or a single word cannot be used."
+
+
+def check_question_text(text: str) -> str:
+    """The text of a free-typed doctor question, trimmed. Refuses an empty text, a greeting alone, and fewer than 8 letters (not counting the
+    "About <medicine>:" the medicine page adds). Raises ValidationFailed with a plain sentence."""
+    clean = " ".join((text or "").split())
+    body = _ABOUT_PREFIX.sub("", clean)
+    words = " ".join(re.sub(r"[^\w\s]", " ", body).split())
+    if sum(ch.isalpha() for ch in body) < MIN_QUESTION_LETTERS or _GREETING.match(words):
+        raise ValidationFailed(NOT_A_QUESTION)
+    return clean
+
+
 def add_question(conn: psycopg.Connection, user_id: str, text: str) -> dict[str, Any]:
+    text = check_question_text(text)
     row = conn.execute(
         """insert into doctor_questions (user_id, text, origin, status) values (%s, %s, 'user', 'open')
            returning id, text, origin, status, created_at""",

@@ -98,8 +98,8 @@ def test_usual_delay_is_rounded_to_five_minutes_and_never_zero():
 # ───────────────────────────────────────────────────────────────── the offset choice
 def test_below_seven_doses_starts_at_zero_and_explores_evenly():
     assert D.choose_offset(MED_A, fifteen_delays(6), set(), {}, ident) == 0
-    assert D.choose_offset(MED_A, fifteen_delays(6), set(), {f"{MED_A}:0": 1}, ident) == 15
-    assert D.choose_offset(MED_A, [], set(), {f"{MED_A}:0": 1, f"{MED_A}:15": 1, f"{MED_A}:30": 1}, ident) == 45
+    assert D.choose_offset(MED_A, fifteen_delays(6), set(), {D.arm_key(MED_A, 0): 1}, ident) == 15
+    assert D.choose_offset(MED_A, [], set(), {D.arm_key(MED_A, 0): 1, D.arm_key(MED_A, 15): 1, D.arm_key(MED_A, 30): 1}, ident) == 45
 
 
 def test_from_seven_doses_the_prior_is_first_and_the_policy_decides():
@@ -111,17 +111,17 @@ def test_from_seven_doses_the_prior_is_first_and_the_policy_decides():
         return keys[::-1]                                                          # the policy picks the last one
 
     assert D.choose_offset(MED_A, fifteen_delays(7, 40), set(), {}, rank) == 0
-    assert seen[0] == f"{MED_A}:30"
+    assert seen[0] == D.arm_key(MED_A, 30)
 
 
 def test_a_dismissed_offset_is_skipped_and_all_dismissed_means_none():
-    assert D.choose_offset(MED_A, [], {f"{MED_A}:0"}, {}, ident) == 15
-    assert D.choose_offset(MED_A, fifteen_delays(7, 40), {f"{MED_A}:30"}, {}, ident) == 15
-    assert D.choose_offset(MED_A, [], {f"{MED_A}:{o}" for o in D.MENU}, {}, ident) is None
+    assert D.choose_offset(MED_A, [], {D.arm_key(MED_A, 0)}, {}, ident) == 15
+    assert D.choose_offset(MED_A, fifteen_delays(7, 40), {D.arm_key(MED_A, 30)}, {}, ident) == 15
+    assert D.choose_offset(MED_A, [], {D.arm_key(MED_A, o) for o in D.MENU}, {}, ident) is None
 
 
 def test_a_dismissal_of_one_medicine_does_not_touch_another():
-    assert D.choose_offset(MED_B, [], {f"{MED_A}:0"}, {}, ident) == 0
+    assert D.choose_offset(MED_B, [], {D.arm_key(MED_A, 0)}, {}, ident) == 0
 
 
 def test_offset_is_read_back_from_when_the_reminder_was_made():
@@ -194,11 +194,11 @@ def test_a_reminder_is_made_only_inside_the_window_and_only_when_untaken():
 
 def test_the_first_reminder_waits_for_the_chosen_offset_and_records_the_try():
     s = slots_for(sched())
-    res = run_plan(s, at(20, 10), tries={f"{MED_A}:0": 1})                       # least tried is 15
+    res = run_plan(s, at(20, 10), tries={D.arm_key(MED_A, 0): 1})                       # least tried is 15
     assert res["rows"] == [] and res["tried"] == []
-    res = run_plan(s, at(20, 15), tries={f"{MED_A}:0": 1})
-    assert len(res["rows"]) == 1 and res["tried"] == [f"{MED_A}:15"]
-    assert res["rows"][0]["arm"] == f"{MED_A}:15"
+    res = run_plan(s, at(20, 15), tries={D.arm_key(MED_A, 0): 1})
+    assert len(res["rows"]) == 1 and res["tried"] == [D.arm_key(MED_A, 15)]
+    assert res["rows"][0]["arm"] == D.arm_key(MED_A, 15)
 
 
 def test_a_dose_at_2200_still_gets_its_reminder_and_is_exempt_from_quiet_hours():
@@ -246,7 +246,7 @@ def test_a_dose_taken_after_the_reminder_is_a_success_once():
     notes = {key: dict(scheduled_for=at(20, 15), acted_at=None, action=None, id=1)}
     logs = {("s-a", at(20)): ("taken", at(20, 30))}
     res = run_plan(s, at(20, 31), logs=logs, notes=notes, have={key})
-    assert res["acts"] == [{"key": key, "arm": f"{MED_A}:15"}]
+    assert res["acts"] == [{"key": key, "arm": D.arm_key(MED_A, 15)}]
     assert res["rows"] == []
     # after the write marks the reminder acted, the next tick records nothing
     notes[key]["acted_at"] = at(20, 31)
@@ -265,19 +265,57 @@ def test_a_dismissed_reminder_is_recorded_once_and_its_offset_is_not_used_again(
     s = slots_for(sched())
     key = D.dose_key(MED_A, at(20))
     notes = {key: dict(scheduled_for=at(20, 15), acted_at=at(20, 16), action="dismissed", id=1)}
-    res = run_plan(s, at(20, 40), notes=notes, have={key}, tries={f"{MED_A}:0": 5})
-    assert res["rejects"] == [{"key": key, "arm": f"{MED_A}:15"}]
+    res = run_plan(s, at(20, 40), notes=notes, have={key}, tries={D.arm_key(MED_A, 0): 5})
+    assert res["rejects"] == [{"key": key, "arm": D.arm_key(MED_A, 15)}]
     # the next day's choice avoids 15 even though it is the least tried
     tomorrow = D.make_slots([sched()], [DAY + timedelta(days=1)])
-    nxt = D.plan(tomorrow, {}, notes, {f"{MED_A}:0": 5}, {}, set(), at(20, 30).replace(day=10), ident)["rows"]
-    assert nxt[0]["arm"] == f"{MED_A}:30"
+    nxt = D.plan(tomorrow, {}, notes, {D.arm_key(MED_A, 0): 5}, {}, set(), at(20, 30).replace(day=10), ident)["rows"]
+    assert nxt[0]["arm"] == D.arm_key(MED_A, 30)
     notes[key]["action"] = "dismissed_learned"
     assert run_plan(s, at(20, 41), notes=notes, have={key})["rejects"] == []
 
 
 def test_guard_blocks_drop_the_title_and_clear_the_body_only():
-    d = D._draft(slots_for(sched(directions="Take with food."))[0], D.dose_key(MED_A, at(20)), False, f"{MED_A}:0")
+    d = D._draft(slots_for(sched(directions="Take with food."))[0], D.dose_key(MED_A, at(20)), False, D.arm_key(MED_A, 0))
     assert D._vet(d, lambda text, rule: True)[3] == "Take with food."
     assert D._vet(d, lambda text, rule: rule != "dose_reminder_body")[3] == ""
-    assert D._vet(d, lambda text, rule: rule != "dose_reminder_title") is None
+    assert D._vet(d, lambda text, rule: rule != "dose_reminder_title") is not None     # the fixed title never waits for the live guard
     assert D._vet(d, lambda text, rule: True)[4] == "B1"
+
+
+def test_a_guard_that_blocks_everything_or_is_down_never_stops_a_fixed_template_reminder():
+    for meal in ("after_meal", None):
+        d = D._draft(slots_for(sched(directions=None, meal=meal))[0], D.dose_key(MED_A, at(20)), False, D.arm_key(MED_A, 0))
+        row = D._vet(d, lambda text, rule: False)
+        assert row is not None and row[2].startswith("Time for your") and row[3] == ("Take it after a meal." if meal else "")
+    d = D._draft(slots_for(sched(directions="Take with food."))[0], D.dose_key(MED_A, at(20)), False, D.arm_key(MED_A, 0))
+    assert D._vet(d, lambda text, rule: False)[3] == ""      # the label's own text is still dropped when the guard blocks or cannot answer
+
+
+def test_dose_text_templates_pass_the_local_rules():
+    from app.services import chat_guard, texts
+    for name in ("Metformin", "Amlodipine 5 mg", "Vitamin D"):
+        for text in (D.reminder_title(name), D.renudge_title(name), D.reminder_body(None, "before_meal"), D.reminder_body(None, "after_meal"),
+                     texts.tr("en", "dose.anchor.title", part="morning"), texts.tr("en", "dose.anchor.body", meal="Breakfast", part="morning", name=name)):
+            assert chat_guard.reply_problems(text) == [], text
+            for word in ("because", "should", "increase", "reduce", "skip", "stop taking", "normal", "good", "bad"):
+                assert word not in text.lower().split(), (word, text)
+
+
+def test_dose_time_arms_use_an_allowed_policy_kind_and_a_prefixed_key():
+    assert D.ARM_KIND in ("slot", "template", "suggestion", "activity")          # nudge_policy_arm_kind_check
+    assert D.arm_key(MED_A, 15) == f"dose_time:{MED_A}:15" and D.arm_offset(D.arm_key(MED_A, 15)) == 15
+
+
+def test_a_policy_store_failure_never_drops_the_reminder(monkeypatch):
+    from contextlib import contextmanager
+    monkeypatch.setattr(D, "tx", contextmanager(lambda: (yield object())))
+    monkeypatch.setattr(D, "_gather", lambda c, u, now: {"slots": slots_for(sched()), "logs": {}, "notes": {}, "tries": {}, "delays": {}})
+    monkeypatch.setattr(D.texts, "person_language", lambda u: "en")
+    def boom(*a, **k):
+        raise RuntimeError("check constraint")
+    monkeypatch.setattr(D.nutritionstore, "policy_try", boom)
+    monkeypatch.setattr(D.nutritionstore, "rank_arms", boom)
+    monkeypatch.setattr(D, "audit", boom)
+    rows = D.nudges("u", at(20, 10), set(), 99)
+    assert len(rows) == 1 and rows[0][0].startswith("dose-")
