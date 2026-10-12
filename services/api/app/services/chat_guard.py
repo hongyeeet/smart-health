@@ -353,7 +353,7 @@ def needs_doctor_referral(intent: str, symptom_flag: bool) -> bool:
 
 
 def offers_doctor_question(intent: str, symptom_flag: bool) -> bool:
-    """Whether to ask "Would you like to add this to your doctor questions?" (a button; nothing is added until the person taps it)."""
+    """Whether to offer "Want to add this to your doctor questions?" (a link in the reply; nothing is added until the person taps it)."""
     return symptom_flag or intent in ("symptoms", "diagnosis_request", "medicine_change", "medicine_info")
 
 

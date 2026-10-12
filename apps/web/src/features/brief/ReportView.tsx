@@ -122,7 +122,7 @@ function SummarySection({ r }: { r: DoctorReport }) {
         <tbody>
           {r.summary.map((row) => (
             <tr key={row.label}>
-              <td className="rp-strong" style={{ width: 230 }}>
+              <td className="rp-strong rp-label">
                 {row.label}
               </td>
               <td>{row.value}</td>

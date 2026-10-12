@@ -486,7 +486,7 @@ def _conversation(uid: str, conv_id: str | None) -> str:
 def _history(conv: str) -> list[tuple[str, str]]:
     with tx() as c:
         rows = c.execute("select role, content from messages where conversation_id=%s order by created_at desc limit %s", (conv, HISTORY_N)).fetchall()
-    return [("user" if r["role"] == "user" else "assistant", r["content"]) for r in reversed(rows)]
+    return [("user" if r["role"] == "user" else "assistant", texts.strip_links(r["content"])) for r in reversed(rows)]
 
 
 def _save(conv: str, role: str, text: str, at: datetime, verdict: str | None = None, run_id: Any = None) -> dict[str, Any]:

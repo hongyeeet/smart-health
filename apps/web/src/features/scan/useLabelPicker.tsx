@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUploadScan } from '@/data/hooks'
 import { href } from '@/app/routeIds'
+import { shrinkImage } from '@/lib/image'
 
 /**
  * Take or upload a label photo, send it to POST /scans and go to the review screen (H3).
@@ -36,7 +37,9 @@ export function useLabelPicker(): {
     current.current = controller
     stoppedByPerson.current = false
     try {
-      const result = await upload.mutateAsync({ file, cancel: controller.signal })
+      // a phone camera photo can be over the 10 MB limit; a longer edge than the meal photo keeps small label print readable
+      const small = await shrinkImage(file, 2200)
+      const result = await upload.mutateAsync({ file: small, cancel: controller.signal })
       navigate(href('H3'), { state: { scanId: result.scanId } })
     } catch (e) {
       if (stoppedByPerson.current) return                  // the person pressed Cancel: nothing to report

@@ -15,6 +15,7 @@ Translations for zh, ms and ta are machine translations. They are listed in docs
 from __future__ import annotations
 
 import logging
+import re as _re
 import string
 import uuid
 from typing import Any
@@ -446,34 +447,34 @@ CATALOG: dict[str, dict[str, str]] = {
         "ta": "இது உங்கள் மருந்து பற்றிய பொதுவான தகவல். உங்கள் மருந்தாளுநர் அல்லது மருத்துவர் மேலும் சொல்ல முடியும்.",
     },
     "chat.offer_question": {
-        "en": "Would you like to add this to your doctor questions?",
-        "zh": "要把这个加到你给医生的问题里吗？",
-        "ms": "Adakah anda mahu menambah ini ke soalan untuk doktor anda?",
-        "ta": "இதை உங்கள் மருத்துவரிடம் கேட்கும் கேள்விகளில் சேர்க்க விரும்புகிறீர்களா?",
+        "en": "[[DQ|Want to add this to your doctor questions?]]",
+        "zh": "[[DQ|要把这个加到你给医生的问题里吗？]]",
+        "ms": "[[DQ|Mahu menambah ini ke soalan untuk doktor anda?]]",
+        "ta": "[[DQ|இதை உங்கள் மருத்துவரிடம் கேட்கும் கேள்விகளில் சேர்க்க விரும்புகிறீர்களா?]]",
     },
     "chat.sign_insights": {
-        "en": "You can see more on the Insights tab, under Overview.",
-        "zh": "你可以在“洞察”标签的“概览”中查看更多。",
-        "ms": "Anda boleh melihat lebih lanjut di tab Insight, di bawah Gambaran.",
-        "ta": "மேலும் விவரங்களை Insights தாவலில், Overview பகுதியில் பார்க்கலாம்.",
+        "en": "You can see more on the Insights tab, under [[C1|Overview]].",
+        "zh": "你可以在“洞察”标签的[[C1|概览]]中查看更多。",
+        "ms": "Anda boleh melihat lebih lanjut di tab Insight, di bawah [[C1|Gambaran]].",
+        "ta": "மேலும் விவரங்களை Insights தாவலில், [[C1|Overview]] பகுதியில் பார்க்கலாம்.",
     },
     "chat.sign_food": {
-        "en": "You can find more ideas under Me, Review suggestions, and in Lunch ideas.",
-        "zh": "你可以在“我”里的“查看建议”和“午餐灵感”中找到更多想法。",
-        "ms": "Anda boleh mendapatkan lebih banyak idea di bawah Saya, Semak cadangan, dan di Idea makan tengah hari.",
-        "ta": "மேலும் யோசனைகளை Me தாவலில் Review suggestions பகுதியிலும், Lunch ideas பகுதியிலும் காணலாம்.",
+        "en": "You can find more ideas under Me, [[K11|Review suggestions]], and in [[E8|Lunch ideas]].",
+        "zh": "你可以在“我”里的[[K11|查看建议]]和[[E8|午餐灵感]]中找到更多想法。",
+        "ms": "Anda boleh mendapatkan lebih banyak idea di bawah Saya, [[K11|Semak cadangan]], dan di [[E8|Idea makan tengah hari]].",
+        "ta": "மேலும் யோசனைகளை Me தாவலில் [[K11|Review suggestions]] பகுதியிலும், [[E8|Lunch ideas]] பகுதியிலும் காணலாம்.",
     },
     "chat.sign_meds": {
-        "en": "You can see each medicine on the Meds tab.",
-        "zh": "你可以在“药物”标签中查看每种药物。",
-        "ms": "Anda boleh melihat setiap ubat di tab Ubat.",
-        "ta": "ஒவ்வொரு மருந்தையும் Meds தாவலில் பார்க்கலாம்.",
+        "en": "You can see each medicine on the [[H1|Meds tab]].",
+        "zh": "你可以在[[H1|“药物”标签]]中查看每种药物。",
+        "ms": "Anda boleh melihat setiap ubat di [[H1|tab Ubat]].",
+        "ta": "ஒவ்வொரு மருந்தையும் [[H1|Meds தாவலில்]] பார்க்கலாம்.",
     },
     "chat.sign_care": {
-        "en": "You can see your next visit and checks in your care plan, under Me.",
-        "zh": "你可以在“我”里的护理计划中查看下次就诊和检查。",
-        "ms": "Anda boleh melihat lawatan seterusnya dan pemeriksaan dalam pelan penjagaan anda, di bawah Saya.",
-        "ta": "உங்கள் அடுத்த சந்திப்பையும் பரிசோதனைகளையும் Me தாவலில் உள்ள உங்கள் பராமரிப்புத் திட்டத்தில் பார்க்கலாம்.",
+        "en": "You can see your next visit and checks in your [[K3|care plan]], under Me.",
+        "zh": "你可以在“我”里的[[K3|护理计划]]中查看下次就诊和检查。",
+        "ms": "Anda boleh melihat lawatan seterusnya dan pemeriksaan dalam [[K3|pelan penjagaan]] anda, di bawah Saya.",
+        "ta": "உங்கள் அடுத்த சந்திப்பையும் பரிசோதனைகளையும் Me தாவலில் உள்ள உங்கள் [[K3|பராமரிப்புத் திட்டத்தில்]] பார்க்கலாம்.",
     },
     "chat.greet": {
         "en": "Hello. I can answer questions about your own Smart Health data. What would you like to know?",
@@ -585,3 +586,13 @@ def _language_from(conn: Any, uid: str) -> str:
     row = conn.execute("select language::text l from user_profile where user_id=%s", (uid,)).fetchone()
     lang = row["l"] if row else None
     return lang if lang in LANGS else DEFAULT_LANG
+
+
+# ----------------------------------------------------------------------------- links inside a reply
+# A sentence that points to a screen marks the words that open it as [[ROUTE_ID|words]]; [[DQ|words]] is the offer to add the question to the doctor questions. The app shows the words as a link; everything
+# that reads the text as plain words (the model's history, tests) uses `strip_links`.
+_LINK = _re.compile(r"\[\[([A-Z][A-Z0-9]*)\|([^\]]+)\]\]")
+
+
+def strip_links(text: str) -> str:
+    return _LINK.sub(lambda m: m.group(2), text)

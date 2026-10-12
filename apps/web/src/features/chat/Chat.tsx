@@ -7,8 +7,7 @@
  */
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGo } from '@/app/navigation'
-import { ROUTES, type RouteId } from '@/app/routeIds'
+import { ROUTES } from '@/app/routeIds'
 import { Header } from '@/ui/layout'
 import { Alert, Button, Skeleton } from '@/ui/primitives'
 import { ArrowRight, ChatCircleDots } from '@/ui/icons'
@@ -132,7 +131,6 @@ export function Chat() {
 
 function Row({ item, showFollowUps, onAsk, onRetry }: { item: Item; showFollowUps: boolean; onAsk: (t: string) => void; onRetry: () => void }) {
   const { t } = useTranslation()
-  const go = useGo()
   if (item.failed)
     return (
       <Alert tone="warn" title={t('chat.failedTitle', 'That did not go through')}>
@@ -147,25 +145,7 @@ function Row({ item, showFollowUps, onAsk, onRetry }: { item: Item; showFollowUp
   const openable = (item.sources ?? []).filter((s) => s.to in ROUTES)
   return (
     <div className="flex flex-col gap-2">
-      <Bubble item={item} />
-      {item.role === 'assistant' && openable.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <p className="text-micro text-ink3">{t('chat.whereFrom', 'Where this comes from')}</p>
-          <div className="flex flex-wrap gap-2">
-            {openable.map((s) => (
-              <button
-                key={s.to}
-                type="button"
-                onClick={() => go(s.to as RouteId)}
-                className="press inline-flex min-h-11 items-center gap-1.5 rounded-chip border-[1.5px] border-brand/40 bg-brand-soft px-3 text-sub font-bold text-brand"
-              >
-                {s.label}
-                <ArrowRight size={16} aria-hidden />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <Bubble item={item} sources={item.role === 'assistant' ? openable : undefined} askText={item.actions?.find((a) => a.kind === 'doctor_question')?.text ?? undefined} />
       <Actions item={item} />
       {showFollowUps && (item.followUps ?? []).length > 0 && (
         <div className="flex flex-wrap gap-2" aria-label={t('chat.otherAsk', 'Other things you could ask')}>

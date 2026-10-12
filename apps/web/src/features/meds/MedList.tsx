@@ -11,6 +11,7 @@ import { useLabelPicker } from '@/features/scan/useLabelPicker'
 import { ClashBox } from './ClashBox'
 import { fullName, refillSentence, refillSourceLine, showStrength } from './medicineText'
 import { StockSection } from './StockCard'
+import { UserSwitch } from '@/features/home/UserSwitch'
 
 /** H1 — Medications: three ways to add a medicine (photo, upload, type it in), and the list of what is already saved. */
 export function MedList() {
@@ -26,7 +27,7 @@ export function MedList() {
 
   return (
     <Screen tabs>
-      <Header title="Medications" sub="Add a medicine by photo or by typing it in. Dose times come from your own label." />
+      <Header title="Medications" sub="Add a medicine by photo or by typing it in. Dose times come from your own label." trailing={<UserSwitch />} />
 
       {picker.busy ? (
         <Card tone="soft" className="flex flex-col items-center gap-3 py-8">

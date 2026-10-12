@@ -152,7 +152,7 @@ function DateNav({ date, data, onMove }: { date: string; data: DayView | undefin
 function DayLinks({ data, onMove }: { data: DayView; onMove: (d: string) => void }) {
   const { t } = useTranslation()
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div className="flex w-full flex-col gap-2 md:mx-auto md:max-w-md">
       {data.prevDate && (
         <Button variant="secondary" onClick={() => onMove(data.prevDate!)}>
           {t('day.goTo', 'Go to {{day}}', { day: dayLabel(data.prevDate) })}

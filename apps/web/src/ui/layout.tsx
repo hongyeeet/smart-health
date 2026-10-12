@@ -71,7 +71,7 @@ export function TileGrid({ children, spread = false, cols = 3, className }: { ch
         'grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 md:gap-4 [&>li]:min-w-0',
         cols === 3 && 'lg:grid-cols-6 lg:[&>li]:col-span-2',
         spread && 'md:[&>li:last-child:nth-child(odd)]:col-span-2',
-        spread && cols === 3 && 'lg:[&>li:last-child:nth-child(3n+1)]:col-span-6 lg:[&>li:last-child:nth-child(3n+2)]:col-span-3 lg:[&>li:nth-last-child(2):nth-child(3n+1)]:col-span-3',
+        spread && cols === 3 && 'lg:[&>li:last-child:nth-child(3n+1)]:col-span-6! lg:[&>li:last-child:nth-child(3n+2)]:col-span-3! lg:[&>li:nth-last-child(2):nth-child(3n+1)]:col-span-3!',
         className,
       )}
     >

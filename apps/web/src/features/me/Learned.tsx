@@ -137,7 +137,7 @@ function Digest() {
             <Trans i18nKey="me.learned.noticedMany" defaults="<b>{{n}}</b> things noticed or changed" values={{ n: data.newFacts }} components={BOLD} />
           )}
         </li>
-        <li>
+        <li className="text-pretty">
           <Trans
             i18nKey="me.learned.reminderCounts"
             defaults="<b>{{sent}}</b> reminders sent, <b>{{opened}}</b> opened, <b>{{acted}}</b> acted on"

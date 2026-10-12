@@ -264,7 +264,8 @@ export function PickMany<T extends string>({ label, hint, options, value, onChan
 export function Scale({ label, max, value, onChange, lowLabel, highLabel }: { label: string; max: number; value: string | null; onChange: (v: string | null) => void; lowLabel: string; highLabel: string }) {
   return (
     <Question label={label}>
-      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${max}, minmax(0, 1fr))` }} role="group" aria-label={label}>
+      {/* more than 5 choices wrap to rows of 4 so each button is at least 44 px wide on a phone (seven in one row were 40 px) */}
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${max > 5 ? 4 : max}, minmax(0, 1fr))` }} role="group" aria-label={label}>
         {Array.from({ length: max }, (_, i) => String(i + 1)).map((n) => {
           const on = value === n
           return (

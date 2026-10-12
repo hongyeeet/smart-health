@@ -201,8 +201,11 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 /* ----------------------------------- Toggle ----------------------------------- */
 export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} className="press relative h-8 w-14 flex-none rounded-chip border border-line transition-colors" style={{ background: on ? 'var(--c-brand)' : 'var(--c-well)' }}>
-      <motion.span className="absolute left-1 top-1 h-6 w-6 rounded-full bg-card shadow" animate={{ x: on ? 24 : 0 }} transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }} />
+    // the button is the 64 x 48 target; the visible switch (56 x 32) sits inside it
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} className="press flex h-12 w-16 flex-none items-center justify-end">
+      <span className="relative block h-8 w-14 rounded-chip border border-line transition-colors" style={{ background: on ? 'var(--c-brand)' : 'var(--c-well)' }}>
+        <motion.span className="absolute left-1 top-1 h-6 w-6 rounded-full bg-card shadow" animate={{ x: on ? 24 : 0 }} transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }} />
+      </span>
     </button>
   )
 }
@@ -287,12 +290,13 @@ export function Stepper({ value, onChange, min = 0, max = 999, step = 1, format,
 
 /* ---------------------------------- Skeleton ---------------------------------- */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-card bg-well', className)} aria-hidden />
+  // a loading block is named for screen readers; sighted users see the pulse
+  return <div className={cn('animate-pulse rounded-card bg-well', className)} role="status" aria-label="Loading" />
 }
 
 export function EmptyState({ icon: Icon, children, action }: { icon: IconType; children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+    <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-6 py-10 text-center">
       <Icon size={36} className="text-ink3" aria-hidden />
       <p className="text-body text-ink2">{children}</p>
       {action}

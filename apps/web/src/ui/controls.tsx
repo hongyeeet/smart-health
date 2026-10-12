@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import { cn } from '@/lib/cn'
 import { ease } from '@/motion/tokens'
@@ -26,13 +26,24 @@ export function Segmented<T extends string | number>({ options, value, onChange,
 export function TabStrip<T extends string>({ tabs, value, onChange, label, flush }: { tabs: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string; /** Do not bleed into the screen padding from a tablet up, where the padding is wider than the strip assumes. */ flush?: boolean }) {
   const id = useId()
   const ref = useRef<HTMLDivElement>(null)
+  /** more tabs off to the right: fade the edge so a cut-off tab reads as "scroll for more" */
+  const [more, setMore] = useState(false)
+  const measure = () => {
+    const box = ref.current
+    if (box) setMore(box.scrollLeft + box.clientWidth < box.scrollWidth - 4)
+  }
   useEffect(() => {
     const box = ref.current
     const el = box?.querySelector<HTMLElement>('[aria-selected="true"]')
     if (box && el) box.scrollTo({ left: el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2 })
+    measure()
   }, [value])
+  useEffect(() => {
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
   return (
-    <div ref={ref} role="tablist" aria-label={label} className={cn('hide-scroll relative -mx-5 flex gap-1 overflow-x-auto border-b border-line px-5', flush && 'md:mx-0 md:px-0')}>
+    <div ref={ref} onScroll={measure} style={more ? { maskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)', WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)' } : undefined} role="tablist" aria-label={label} className={cn('hide-scroll relative -mx-5 flex gap-1 overflow-x-auto border-b border-line px-5', flush && 'md:mx-0 md:px-0')}>
       {tabs.map((t) => {
         const on = t.value === value
         return (
