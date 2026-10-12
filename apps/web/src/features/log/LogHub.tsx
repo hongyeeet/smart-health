@@ -20,8 +20,8 @@ import { ForkKnife, Heartbeat, PersonSimpleWalk, Smiley, Thermometer, type IconT
 function chip(i: ProgressItem | undefined, t: TFunction) {
   if (!i) return null
   if (i.status === 'done') return <span className="rounded-chip bg-ok-soft px-2 py-0.5 text-micro font-bold text-ok">{i.target != null && i.target > 1 ? t('log.hub.ofTarget', '{{count}} of {{target}}', { count: Math.min(i.count, i.target), target: i.target }) : t('log.hub.done', 'Done')}</span>
-  // inside its time window: a calm pine dot, never an amber warning or the words "due now". The tile's subtitle gives the
-  // usual time, and screen readers hear "a good time to log".
+  // inside its time window: a calm pine chip that says "Good time", never an amber warning or the words "due now". The tile's
+  // subtitle gives the usual time.
   if (i.status === 'due')
     return (
       <span className="rounded-chip bg-brand-soft px-2 py-0.5 text-micro font-bold text-brand">{t('log.hub.goodTimeShort', 'Good time')}</span>
