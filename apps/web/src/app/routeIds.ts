@@ -36,7 +36,7 @@ export const ROUTES = {
   C1: { path: '/insights', title: 'Overview', kind: 'tab', group: 'Insights', from: 'Bottom bar, D1, I1', links: [l('A day in Your week', 'D1'), l('What changed', 'C2'), l('Why am I seeing this?', 'C7'), l('Ask', 'I1')] },
   C2: { path: '/insights/glucose', title: 'Glucose', kind: 'screen', group: 'Insights', from: 'B1, D1, K2, C1', links: [l('Sprint details', 'C8'), l('Why am I seeing this?', 'C7')] },
   C3: { path: '/insights/food', title: 'Food', kind: 'screen', group: 'Insights', from: 'E6, K2', links: [l('A meal', 'D1'), l('Why am I seeing this?', 'C7')] },
-  C4: { path: '/insights/activity', title: 'Activity', kind: 'screen', group: 'Insights', from: 'B1, E6, K2, C1', links: [l('Log a workout', 'F1'), l('A workout', 'D1'), l('Why am I seeing this?', 'C7')] },
+  C4: { path: '/insights/activity', title: 'Activity', kind: 'screen', group: 'Insights', from: 'B1, E6, K2, C1', links: [l('A workout', 'D1'), l('Why am I seeing this?', 'C7')] },
   C5: { path: '/insights/sleep', title: 'Sleep and stress', kind: 'screen', group: 'Insights', from: 'B1, E6, K2', links: [l('Why am I seeing this?', 'C7')] },
   C6: { path: '/insights/medication', title: 'Medication', kind: 'screen', group: 'Insights', from: 'K2, C1', links: [l('Open my medicines', 'H1'), l('Why am I seeing this?', 'C7')] },
   C7: { path: '#why', title: 'Why am I seeing this?', kind: 'sheet', group: 'Insights', from: 'Every chart in C1 to C6', links: [l('Got it', 'C1')] },

@@ -1,10 +1,10 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import type { DoseStatus, FoodResponse, GlucoseLevel, GridCell, WeekGrid } from '@/data/types'
 import { shortDate, signed } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { duration, ease } from '@/motion/tokens'
+import { ease } from '@/motion/tokens'
 import { useUi } from '@/state/store'
 import { Check, Question, X } from '@/ui/icons'
 import { linear, useMeasure } from './useMeasure'
@@ -77,91 +77,147 @@ export function TirBar({ segments }: { segments: { level: GlucoseLevel; pct: num
   )
 }
 
-/* ----------------------------------- ring ----------------------------------- */
-export function Ring({ value, goal, size = 112, label, unit, caption }: { value: number; goal: number; size?: number; label: string; unit: string; caption: string }) {
-  const { t } = useTranslation()
-  const r = (size - 14) / 2
-  const c = 2 * Math.PI * r
-  const pct = Math.min(value / goal, 1)
+/* ------------------------------ minutes by effort ------------------------------ */
+export interface EffortBar {
+  label: string
+  partial: boolean
+  light: number
+  moderate: number
+  vigorous: number
+}
+
+/**
+ * The same fills in the bars and in the legend: light = yellow with dots, moderate = green, vigorous = orange with stripes.
+ * The pattern is a second cue, so the chart reads without colour.
+ */
+function EffortDefs({ uid }: { uid: string }) {
   return (
-    <div className="flex flex-col items-center gap-2 text-center">
-      <div className="relative" style={{ width: size, height: size }} role="img" aria-label={t('charts.ringAria', '{{label}}: {{value}} of {{goal}} {{unit}}', { label, value, goal, unit })}>
-        <svg width={size} height={size} className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--c-well)" strokeWidth={10} />
-          <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--c-brand)" strokeWidth={10} strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - pct) }} transition={{ duration: duration.chart, ease: ease.out }} />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="num text-xl leading-none">{value}</span>
-          <span className="text-micro text-ink3">{t('charts.ofGoal', 'of {{n}}', { n: goal })}</span>
-        </div>
-      </div>
-      <p className="text-sub font-bold">{caption}</p>
-    </div>
+    <defs>
+      <pattern id={`l-${uid}`} width="6" height="6" patternUnits="userSpaceOnUse">
+        <circle cx="3" cy="3" r="1.15" fill="var(--c-act-light-edge)" fillOpacity=".75" />
+      </pattern>
+      <pattern id={`v-${uid}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1="0" y1="0" x2="0" y2="6" stroke="#fff" strokeWidth="2" strokeOpacity=".75" />
+      </pattern>
+    </defs>
   )
 }
 
-/* ------------------------------ stacked weekly bars ------------------------------ */
-export function IntensityBars({ weeks }: { weeks: { label: string; light: number; moderate: number; vigorous: number }[] }) {
+function EffortSwatch({ kind }: { kind: 'light' | 'moderate' | 'vigorous' }) {
+  const uid = useId().replace(/:/g, '')
+  const fill = kind === 'light' ? 'var(--c-act-light)' : kind === 'moderate' ? 'var(--c-act-moderate)' : 'var(--c-act-vigorous)'
+  return (
+    <svg width={16} height={16} aria-hidden className="flex-none">
+      <EffortDefs uid={uid} />
+      <rect x={1} y={1} width={14} height={14} rx={4} fill={fill} stroke={kind === 'light' ? 'var(--c-act-light-edge)' : 'none'} strokeOpacity={0.7} />
+      {kind === 'light' && <rect x={1} y={1} width={14} height={14} rx={4} fill={`url(#l-${uid})`} />}
+      {kind === 'vigorous' && <rect x={1} y={1} width={14} height={14} rx={4} fill={`url(#v-${uid})`} />}
+    </svg>
+  )
+}
+
+/** Stacked bars of minutes by effort: a bar per day, week or month. The number above a bar is its total; point at or tap a bar for the three parts. */
+export function EffortBars({ bars }: { bars: EffortBar[] }) {
   const { t } = useTranslation()
   const [ref, width] = useMeasure<HTMLDivElement>()
   const ts = useUi((s) => s.textScale)
-  // a week label such as "Week of 14 Sep" is written in full when it fits under its bar, on two lines when it does not, and as the date alone when even that is too wide
-  const colW = width / weeks.length
+  const [sel, setSel] = useState<number | null>(null)
+  const n = bars.length
+  const colW = width / n
   const px = 12 * ts * 0.58
+  // a label such as "Week of 14 Sep" or "Tue 6" is written in full when it fits under its bar, on two lines when it does not, and as its last part alone when even that is too wide
   const parts = (l: string) => {
     const w = l.split(' ')
-    return w.length >= 3 ? [w.slice(0, -2).join(' '), w.slice(-2).join(' ')] : [l]
+    return w.length >= 3 ? [w.slice(0, -2).join(' '), w.slice(-2).join(' ')] : w.length === 2 ? w : [l]
   }
   const widest = (xs: string[]) => Math.max(...xs.map((x) => x.length)) * px
-  const fitsOne = weeks.every((w) => w.label.length * px <= colW - 4)
-  const fitsTwo = weeks.every((w) => widest(parts(w.label)) <= colW - 4)
-  const mode: 'one' | 'two' | 'date' = fitsOne ? 'one' : fitsTwo ? 'two' : 'date'
-  const lineOf = (l: string) => (mode === 'one' ? [l] : mode === 'two' ? parts(l) : [parts(l).at(-1)!])
-  const extra = mode === 'two' ? 16 * ts : 0
+  const fitsOne = bars.every((b) => b.label.length * px <= colW - 4)
+  const fitsTwo = bars.every((b) => widest(parts(b.label)) <= colW - 4)
+  const tail = (l: string) => parts(l).at(-1)!
+  const fitsLast = bars.every((b) => tail(b.label).length * px <= colW - 4)
+  const mode: 'one' | 'two' | 'last' | 'split' = fitsOne ? 'one' : fitsTwo ? 'two' : fitsLast ? 'last' : 'split'
+  const soFar = t('charts.soFar', 'so far')
+  const lineOf = (b: EffortBar) => {
+    const base = mode === 'one' ? [b.label] : mode === 'two' ? parts(b.label) : mode === 'last' ? [tail(b.label)] : tail(b.label).split(' ')
+    return b.partial ? [...base, soFar] : base
+  }
+  const maxLines = Math.max(...bars.map((b) => lineOf(b).length))
+  const extra = (maxLines - 1) * 16 * ts
   const h = 170 + extra
-  const max = Math.max(...weeks.map((w) => w.light + w.moderate + w.vigorous)) * 1.12
-  const sy = linear(0, max, h - 28 - extra, 22)
-  const bw = Math.min(40, (width / weeks.length) * 0.58)
+  const base = h - 28 - extra
+  const totals = bars.map((b) => b.light + b.moderate + b.vigorous)
+  const max = Math.max(...totals, 1) * 1.15
+  const sy = linear(0, max, base, 22)
+  const bw = Math.min(n > 4 ? 34 : 56, colW * 0.58)
   const uid = useId().replace(/:/g, '')
+  const pick = (clientX: number, el: SVGSVGElement) => setSel(Math.min(Math.max(Math.floor((clientX - el.getBoundingClientRect().left) / colW), 0), n - 1))
+  const s = sel != null ? bars[sel] : null
   return (
     <div ref={ref} className="w-full">
+      <p className="mb-1 min-h-6 text-sub text-ink2" aria-live="polite">
+        {s
+          ? t('charts.effortReadout', '{{label}}: light {{light}}, moderate {{moderate}}, vigorous {{vigorous}} min', {
+              label: s.label + (s.partial ? ` (${soFar})` : ''),
+              light: s.light,
+              moderate: s.moderate,
+              vigorous: s.vigorous,
+            })
+          : t('charts.effortHint', 'Point at or tap a bar to see light, moderate and vigorous minutes.')}
+      </p>
       <svg
         width={width}
         height={h}
         role="img"
-        aria-label={t('charts.intensityAria', 'Minutes by intensity: {{list}}', {
-          list: weeks.map((w) => t('charts.intensityItem', '{{label}} {{n}} moderate or vigorous', { label: w.label, n: w.moderate + w.vigorous })).join(', '),
+        aria-label={t('charts.effortAria', 'Minutes of activity by effort: {{list}}', {
+          list: bars
+            .map((b) =>
+              t('charts.effortItem', '{{label}}: {{total}} min, of which light {{light}}, moderate {{moderate}}, vigorous {{vigorous}}', {
+                label: b.label,
+                total: b.light + b.moderate + b.vigorous,
+                light: b.light,
+                moderate: b.moderate,
+                vigorous: b.vigorous,
+              }),
+            )
+            .join('; '),
         })}
-        className="overflow-visible"
+        className="touch-pan-y select-none overflow-visible"
+        onPointerDown={(e) => pick(e.clientX, e.currentTarget)}
+        onPointerMove={(e) => (e.buttons || e.pointerType === 'mouse') && pick(e.clientX, e.currentTarget)}
+        onPointerLeave={() => setSel(null)}
       >
-        <defs>
-          <pattern id={`l-${uid}`} width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.2" fill="var(--c-brand)" fillOpacity=".7" /></pattern>
-          <pattern id={`v-${uid}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#fff" strokeWidth="2" strokeOpacity=".7" /></pattern>
-        </defs>
-        {weeks.map((w, i) => {
-          const cx = ((i + 0.5) / weeks.length) * width
+        <EffortDefs uid={uid} />
+        <line x1={0} x2={width} y1={base} y2={base} stroke="var(--c-line)" />
+        {bars.map((b, i) => {
+          const cx = (i + 0.5) * colW
           const x = cx - bw / 2
-          const tot = w.light + w.moderate + w.vigorous
-          const yLight = sy(w.light)
-          const yMod = sy(w.light + w.moderate)
+          const tot = totals[i]
+          const yLight = sy(b.light)
+          const yMod = sy(b.light + b.moderate)
           const yVig = sy(tot)
-          const cur = i === weeks.length - 1
+          const on = sel === i
           return (
-            <g key={w.label} opacity={cur ? 1 : 0.95}>
-              <rect x={x} y={yLight} width={bw} height={h - 28 - extra - yLight + 0.1 || 0} rx={4} fill="var(--c-brand-soft)" stroke="var(--c-brand)" strokeOpacity={0.5} />
-              <rect x={x} y={yLight} width={bw} height={h - 28 - extra - yLight} fill={`url(#l-${uid})`} />
-              <rect x={x} y={yMod} width={bw} height={yLight - yMod} fill="var(--c-brand)" />
-              {w.vigorous > 0 && (
+            <g key={b.label} opacity={sel == null || on ? 1 : 0.55}>
+              {b.light > 0 && (
                 <>
-                  <rect x={x} y={yVig} width={bw} height={yMod - yVig} fill="var(--c-brass)" />
+                  <rect x={x} y={yLight} width={bw} height={base - yLight} fill="var(--c-act-light)" stroke="var(--c-act-light-edge)" strokeOpacity={0.7} />
+                  <rect x={x} y={yLight} width={bw} height={base - yLight} fill={`url(#l-${uid})`} />
+                </>
+              )}
+              {b.moderate > 0 && <rect x={x} y={yMod} width={bw} height={yLight - yMod} fill="var(--c-act-moderate)" />}
+              {b.vigorous > 0 && (
+                <>
+                  <rect x={x} y={yVig} width={bw} height={yMod - yVig} fill="var(--c-act-vigorous)" />
                   <rect x={x} y={yVig} width={bw} height={yMod - yVig} fill={`url(#v-${uid})`} />
                 </>
               )}
-              <text x={cx} y={yVig - 6} textAnchor="middle" fill="var(--c-ink)" className="num" style={{ fontSize: 'calc(15px * var(--ts))', fontWeight: 600 }}>
-                {w.moderate + w.vigorous}
-              </text>
-              <text x={cx} y={h - 6 - (lineOf(w.label).length - 1) * 16 * ts} textAnchor="middle" fill="var(--c-ink3)" style={{ fontSize: 'calc(12px * var(--ts))' }}>
-                {lineOf(w.label).map((ln, k) => (
+              {tot > 0 && (
+                <text x={cx} y={yVig - 6} textAnchor="middle" fill="var(--c-ink)" className="num" style={{ fontSize: 'calc(14px * var(--ts))', fontWeight: 600 }}>
+                  {tot}
+                </text>
+              )}
+              <text x={cx} y={h - 6 - (lineOf(b).length - 1) * 16 * ts} textAnchor="middle" fill={on ? 'var(--c-ink)' : 'var(--c-ink3)'} style={{ fontSize: 'calc(12px * var(--ts))' }}>
+                {lineOf(b).map((ln, k) => (
                   <tspan key={k} x={cx} dy={k === 0 ? 0 : 16 * ts}>
                     {ln}
                   </tspan>
@@ -172,20 +228,17 @@ export function IntensityBars({ weeks }: { weeks: { label: string; light: number
         })}
       </svg>
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sub text-ink2">
-        <Legend swatch="bg-brand-soft border border-brand/50" label={t('charts.light', 'Light')} />
-        <Legend swatch="bg-brand" label={t('charts.moderate', 'Moderate')} />
-        <Legend swatch="bg-brass" label={t('charts.vigorous', 'Vigorous')} />
+        <Legend kind="light" label={t('charts.light', 'Light')} />
+        <Legend kind="moderate" label={t('charts.moderate', 'Moderate')} />
+        <Legend kind="vigorous" label={t('charts.vigorous', 'Vigorous')} />
       </ul>
-      <p className="mt-1 text-micro text-ink3">
-        {t('charts.intensityNote', 'The number above a bar is moderate plus vigorous minutes, which is what counts towards the weekly goal.')}
-      </p>
     </div>
   )
 }
-function Legend({ swatch, label }: { swatch: string; label: string }) {
+function Legend({ kind, label }: { kind: 'light' | 'moderate' | 'vigorous'; label: string }) {
   return (
     <li className="flex items-center gap-1.5">
-      <span className={cn('h-3.5 w-3.5 rounded-[4px]', swatch)} aria-hidden />
+      <EffortSwatch kind={kind} />
       {label}
     </li>
   )

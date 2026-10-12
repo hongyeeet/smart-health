@@ -333,3 +333,17 @@ export function ListRow({ icon: Icon, title, sub, trailing, onClick, tone }: { i
     <div className={cls}>{inner}</div>
   )
 }
+
+/** Green, underlined text that acts as a link or an offer inside a sentence or under a list. Not a button: no box, no fill. */
+export function ProseLink({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="press inline cursor-pointer p-0 text-left font-semibold text-brand underline decoration-brand/60 underline-offset-[3px] hover:decoration-brand disabled:cursor-default disabled:no-underline disabled:opacity-60"
+    >
+      {children}
+    </button>
+  )
+}

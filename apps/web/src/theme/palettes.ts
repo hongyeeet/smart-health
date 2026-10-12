@@ -37,6 +37,11 @@ export interface Palette {
   s1: string
   s2: string
   s3: string
+  /** activity effort bars: light = yellow, moderate = green, vigorous = orange (each also has a pattern, so colour is never the only cue) */
+  actLight: string
+  actLightEdge: string
+  actModerate: string
+  actVigorous: string
   band: string
 }
 
@@ -75,6 +80,10 @@ export const palettes: Record<ThemeName, Palette> = {
     s1: '#1D4A3C',
     s2: '#9A7428',
     s3: '#2E5A85',
+    actLight: '#F2CB4B',
+    actLightEdge: '#8A6A06',
+    actModerate: '#2F8A57',
+    actVigorous: '#D86F1C',
     band: 'rgba(29, 74, 60, 0.10)',
   },
   dark: {
@@ -109,6 +118,10 @@ export const palettes: Record<ThemeName, Palette> = {
     s1: '#86C9AA',
     s2: '#D8B46C',
     s3: '#8DB6E6',
+    actLight: '#E8C64F',
+    actLightEdge: '#F3DC8A',
+    actModerate: '#4DB07A',
+    actVigorous: '#F0873A',
     band: 'rgba(134, 201, 170, 0.14)',
   },
 }

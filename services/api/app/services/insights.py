@@ -20,7 +20,6 @@ from app.core.config import settings
 TZ = ZoneInfo("Asia/Singapore")
 ALLOWED_DAYS = (7, 30, 90)
 LOW, HIGH, VERY_LOW, VERY_HIGH = 3.9, 10.0, 3.0, 13.9
-GOAL_MODERATE_MIN, GOAL_STRENGTH = 150, 2
 LATE_AFTER_MIN = 60                 # a dose taken more than an hour after its time counts as late (the dose window ends there)
 MIN_PATTERN_PAIRS = 5               # prd F10: a finding needs at least 5 matched events
 SHORT_NIGHT_H = 6.0
@@ -42,6 +41,47 @@ MISS_LABELS = {
 def _minutes_rated(rows: list[dict[str, Any]], lo: int, hi: int | None = None) -> float:
     """Minutes of sessions whose effort rating is from lo to hi (hi None: no upper limit). An unrated session (null) counts nowhere."""
     return sum(float(r["mins"]) for r in rows if r["intensity"] is not None and r["intensity"] >= lo and (hi is None or r["intensity"] <= hi))
+
+
+def bar_spans(end: date, days: int) -> tuple[str, list[tuple[str, date, date, bool]]]:
+    """The bars of the activity chart: 7 days gives one bar a day, 30 days the last 4 calendar weeks (Monday to Sunday), 90 days the last 3
+    calendar months. Each is (label, first day, last day, partial); the newest week or month is partial while it is not over."""
+    spans: list[tuple[str, date, date, bool]] = []
+    if days <= 7:
+        unit = "day"
+        for k in range(days - 1, -1, -1):
+            d = end - timedelta(days=k)
+            spans.append((f"{d.strftime('%a')} {d.day}", d, d, False))
+    elif days <= 30:
+        unit = "week"
+        wk0 = end - timedelta(days=end.weekday())
+        for k in range(3, -1, -1):
+            a = wk0 - timedelta(weeks=k)
+            b = a + timedelta(days=6)
+            spans.append((f"Week of {_short(a)}", a, b, k == 0 and end < b))
+    else:
+        unit = "month"
+        y, m = end.year, end.month
+        for k in range(2, -1, -1):
+            yy, mm = y, m - k
+            while mm < 1:
+                yy, mm = yy - 1, mm + 12
+            a = date(yy, mm, 1)
+            b = (date(yy + (mm == 12), mm % 12 + 1, 1)) - timedelta(days=1)
+            spans.append((a.strftime("%b"), a, b, k == 0 and end < b))
+    return unit, spans
+
+
+def activity_bars(rows: list[dict[str, Any]], end: date, days: int) -> tuple[str, list[dict[str, Any]]]:
+    """Minutes by effort in each bar of `bar_spans`. A day, week or month with no workout is 0 minutes; an unrated workout counts nowhere
+    (see `_minutes_rated`). Each row needs `d` (its local date), `mins` and `intensity`."""
+    unit, spans = bar_spans(end, days)
+    bars = []
+    for label, a, b, partial in spans:
+        inw = [r for r in rows if a <= r["d"] <= b]
+        bars.append({"label": label, "first_day": a.isoformat(), "last_day": min(b, end).isoformat(), "partial": partial,
+                     "light": round(_minutes_rated(inw, 1, 2)), "moderate": round(_minutes_rated(inw, 3, 3)), "vigorous": round(_minutes_rated(inw, 4))})
+    return unit, bars
 
 
 def _f(x: Any) -> float | None:
@@ -463,23 +503,15 @@ def food(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> di
 def activity(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> dict[str, Any]:
     end = anchor(conn, user, today)
     start, _ = window(end, days)
-    wk_start = end - timedelta(days=end.weekday())
-    four = wk_start - timedelta(weeks=3)
+    bar_lo = bar_spans(end, days)[1][0][1]                   # the first day of the first bar
     rows = conn.execute(
         """select e.id, e.start_at, e.type::text t, e.intensity, extract(epoch from e.end_at - e.start_at)/60 mins, r.glucose_pre_mmol pre, r.glucose_2h_mmol g2
            from exercise_logs e left join exercise_response r on r.exercise_log_id = e.id
            where e.user_id=%s and e.deleted_at is null and e.start_at >= %s and e.start_at < %s order by e.start_at desc""",
-        (user, _bounds(min(start, four))[0], _bounds(end)[1])).fetchall()
+        (user, _bounds(min(start, bar_lo))[0], _bounds(end)[1])).fetchall()
     for r in rows:
         r["d"] = r["start_at"].astimezone(TZ).date()
-    wk = [r for r in rows if r["d"] >= wk_start]
-    weeks = []
-    for k in range(3, -1, -1):
-        ws = wk_start - timedelta(weeks=k)
-        inw = [r for r in rows if ws <= r["d"] < ws + timedelta(days=7)]
-        weeks.append({"label": f"Week of {_short(ws)}",
-                      "light": round(_minutes_rated(inw, 1, 2)), "moderate": round(_minutes_rated(inw, 3, 3)),
-                      "vigorous": round(_minutes_rated(inw, 4))})
+    bar_unit, bars = activity_bars(rows, end, days)
     inp = [r for r in rows if start <= r["d"] <= end]
     mix: dict[str, dict[str, Any]] = {}
     for r in inp:
@@ -495,9 +527,7 @@ def activity(conn: psycopg.Connection[Any], user: str, days: int, today: date) -
     s_prior = [float(v["steps_total"]) for d, v in daily.items() if d < start and v.get("steps_total") is not None]
     return {
         "period": _period(end, days, bool(inp) or bool(s_in)),
-        "moderate_min": round(_minutes_rated(wk, 3)), "moderate_goal": GOAL_MODERATE_MIN,
-        "strength": sum(r["t"] == "strength" for r in wk), "strength_goal": GOAL_STRENGTH,
-        "weeks": weeks, "mix": sorted(mix.values(), key=lambda m: -m["count"]), "workouts": workouts,
+        "bar_unit": bar_unit, "bars": bars, "mix": sorted(mix.values(), key=lambda m: -m["count"]), "workouts": workouts,
         "steps": steps, "steps_avg": round(_mean([float(s) for s in s_in])) if s_in else None, "steps_baseline": round(statistics.median(s_prior)) if len(s_prior) >= 7 else None,
         "patterns": patterns_for(_patterns(conn, user), "C4"),
     }

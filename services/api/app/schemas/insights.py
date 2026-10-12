@@ -157,8 +157,12 @@ class FoodInsights(Camel):
 
 
 # ── Activity ───────────────────────────────────────────────────────────────
-class WeekBar(Camel):
+class ActivityBar(Camel):
+    """One bar of the minutes-by-effort chart: a day (7 days), a calendar week (30 days) or a calendar month (90 days)."""
     label: str
+    first_day: str
+    last_day: str     # the last day with data in the bar (the end of the period for the newest, still running, bar)
+    partial: bool     # the newest week or month is not over yet
     light: int
     moderate: int
     vigorous: int
@@ -188,11 +192,8 @@ class StepDay(Camel):
 
 class ActivityInsights(Camel):
     period: Period
-    moderate_min: int
-    moderate_goal: int
-    strength: int
-    strength_goal: int
-    weeks: list[WeekBar]
+    bar_unit: str     # 'day', 'week' or 'month'
+    bars: list[ActivityBar]
     mix: list[MixItem]
     workouts: list[WorkoutRow]
     steps: list[StepDay]

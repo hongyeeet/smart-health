@@ -1018,11 +1018,9 @@ export interface InsightsFood {
 }
 export interface InsightsActivity {
   period: InsightsPeriod
-  moderateMin: number
-  moderateGoal: number
-  strength: number
-  strengthGoal: number
-  weeks: { label: string; light: number; moderate: number; vigorous: number }[]
+  /** one bar per day (7 days), calendar week (30 days) or calendar month (90 days); the newest week or month is partial until it ends */
+  barUnit: 'day' | 'week' | 'month'
+  bars: { label: string; firstDay: string; lastDay: string; partial: boolean; light: number; moderate: number; vigorous: number }[]
   mix: { type: string; label: string; count: number; minutes: number }[]
   /** intensity is null when the session was not rated; it is never counted as moderate */
   workouts: { id: string; date: string; label: string; type: string; intensity: number | null; minutes: number; glucoseChange2h: number | null }[]

@@ -34,14 +34,14 @@ export function WhySheet({ onClose, topic = 'week' }: { onClose: () => void; top
     activity: {
       title: t('insights.why.activity.title', 'Activity'),
       shows: t(
-        'insights.why.activity.shows',
-        'Your minutes of moderate or vigorous activity and strength sessions against the weekly goals, the last 4 weeks, your workouts and your steps.',
+        'insights.why.activity.showsV2',
+        'Your steps, what you did, your heart rate and blood oxygen from your watch, your minutes of light, moderate and vigorous activity by day, week or month, and your recent workouts.',
       ),
       from: t(
-        'insights.why.activity.from',
-        'Workouts you logged and steps from your watch. The weekly goals are 150 active minutes and 2 strength sessions.',
+        'insights.why.activity.fromV2',
+        'Workouts you logged, with the effort as you rated it, and steps, heart rate and blood oxygen from your watch.',
       ),
-      limit: t('insights.why.activity.limit', 'The glucose change after a workout is shown only when the sensor was worn. Goals here are general. Your doctor can set yours.'),
+      limit: t('insights.why.activity.limitV2', 'The glucose change after a workout is shown only when the sensor was worn. A workout you did not rate is not counted in the minutes. A watch on the wrist is less accurate than a fingertip meter.'),
     },
     sleep: {
       title: t('insights.why.sleep.title', 'Sleep and stress'),

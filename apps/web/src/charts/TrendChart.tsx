@@ -110,7 +110,7 @@ export function TrendChart({
         height={height}
         className="touch-pan-y select-none overflow-visible"
         onPointerDown={(e) => pick(e.clientX, e.currentTarget)}
-        onPointerMove={(e) => e.buttons && pick(e.clientX, e.currentTarget)}
+        onPointerMove={(e) => (e.buttons || e.pointerType === 'mouse') && pick(e.clientX, e.currentTarget)}
         onPointerLeave={() => setSel(null)}
       >
         <defs>

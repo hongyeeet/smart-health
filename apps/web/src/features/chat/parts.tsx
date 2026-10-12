@@ -3,27 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { useGo } from '@/app/navigation'
 import { ROUTES, type RouteId } from '@/app/routeIds'
 import { cn } from '@/lib/cn'
+import { ProseLink } from '@/ui/primitives'
 import { Check, Warning } from '@/ui/icons'
 import { useAddDoctorQuestion, type ChatSource, type Item } from './api'
-
-/** Green, underlined and read out as a link; used for every pointer and every offer in a reply. */
-export function TextLink({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="press inline cursor-pointer p-0 text-left font-semibold text-brand underline decoration-brand/60 underline-offset-[3px] hover:decoration-brand disabled:cursor-default disabled:no-underline disabled:opacity-60"
-    >
-      {children}
-    </button>
-  )
-}
 
 /** A word or phrase in a reply that opens a screen. */
 function InlineLink({ to, children }: { to: RouteId; children: ReactNode }) {
   const go = useGo()
-  return <TextLink onClick={() => go(to)}>{children}</TextLink>
+  return <ProseLink onClick={() => go(to)}>{children}</ProseLink>
 }
 
 /** The offer to add the person's question to their doctor questions: the whole sentence is the link, and it says so once it is done. */
@@ -38,9 +25,9 @@ function DoctorQuestionLink({ text, children }: { text: string; children: ReactN
       </span>
     )
   return (
-    <TextLink disabled={add.isPending} onClick={() => add.mutate(text, { onSuccess: () => setDone(true) })}>
+    <ProseLink disabled={add.isPending} onClick={() => add.mutate(text, { onSuccess: () => setDone(true) })}>
       {children}
-    </TextLink>
+    </ProseLink>
   )
 }
 

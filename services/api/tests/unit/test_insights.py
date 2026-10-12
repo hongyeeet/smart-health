@@ -218,6 +218,43 @@ def test_activity_bands_leave_out_unrated_sessions_and_never_count_them_as_moder
     assert I._minutes_rated([{"mins": 45, "intensity": None}], 3) == 0
 
 
+def _w(d, mins, rating):
+    return {"d": d, "mins": mins, "intensity": rating}
+
+
+END = date(2026, 10, 12)                      # a Monday
+
+
+def test_seven_days_give_seven_daily_bars_with_the_three_efforts_apart():
+    rows = [_w(date(2026, 10, 12), 30, 2), _w(date(2026, 10, 12), 20, 3), _w(date(2026, 10, 10), 15, 5), _w(date(2026, 10, 10), 40, None)]
+    unit, bars = I.activity_bars(rows, END, 7)
+    assert unit == "day" and len(bars) == 7
+    assert [b["first_day"] for b in bars][0] == "2026-10-06" and bars[-1]["first_day"] == "2026-10-12"
+    last, sat = bars[-1], bars[4]
+    assert (last["light"], last["moderate"], last["vigorous"]) == (30, 20, 0)
+    assert (sat["light"], sat["moderate"], sat["vigorous"]) == (0, 0, 15)         # the unrated 40 minutes are in no bar
+    assert bars[0]["light"] == bars[0]["moderate"] == bars[0]["vigorous"] == 0      # a day with no workout is 0
+    assert not any(b["partial"] for b in bars)
+
+
+def test_thirty_days_give_the_last_four_calendar_weeks_and_the_newest_is_partial():
+    rows = [_w(date(2026, 9, 22), 60, 3), _w(date(2026, 10, 4), 30, 4), _w(date(2026, 10, 5), 25, 1), _w(date(2026, 10, 12), 10, 3)]
+    unit, bars = I.activity_bars(rows, END, 30)
+    assert unit == "week" and [b["label"] for b in bars] == ["Week of 21 Sep", "Week of 28 Sep", "Week of 5 Oct", "Week of 12 Oct"]
+    assert [(b["light"], b["moderate"], b["vigorous"]) for b in bars] == [(0, 60, 0), (0, 0, 30), (25, 0, 0), (0, 10, 0)]
+    assert [b["partial"] for b in bars] == [False, False, False, True]
+    assert bars[-1]["last_day"] == "2026-10-12"                                    # a running week ends on the last day with data
+
+
+def test_ninety_days_give_the_last_three_calendar_months_across_a_year_end():
+    unit, bars = I.activity_bars([_w(date(2025, 12, 31), 50, 3), _w(date(2026, 1, 3), 20, 4)], date(2026, 1, 15), 90)
+    assert unit == "month" and [b["label"] for b in bars] == ["Nov", "Dec", "Jan"]
+    assert [(b["moderate"], b["vigorous"]) for b in bars] == [(0, 0), (50, 0), (0, 20)]
+    assert [b["partial"] for b in bars] == [False, False, True]
+    unit, full = I.activity_bars([], date(2026, 10, 31), 90)
+    assert [b["partial"] for b in full] == [False, False, False]                   # the month is over on its last day
+
+
 def test_workout_row_accepts_an_unrated_session():
     from app.schemas.insights import WorkoutRow
     row = WorkoutRow(id="w1", date="2 Oct", label="Strength", type="strength", intensity=None, minutes=40, glucose_change_2h=None)

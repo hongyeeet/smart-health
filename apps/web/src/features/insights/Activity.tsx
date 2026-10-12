@@ -1,146 +1,60 @@
-/** C4 — Activity. Weekly goals, minutes by intensity for the last four weeks, the mix, workouts with the glucose change after them, and steps. */
+/**
+ * C4 — Activity. One card with steps, what you did, heart rate and blood oxygen; then the minutes-by-effort bars (a bar per day, week or
+ * month, following the period chosen) beside what the person's history shows; then the recent workouts.
+ */
 import { useTranslation } from 'react-i18next'
 import { useInsightsActivity } from '@/data/hooks'
-import { shortDate } from '@/lib/format'
-import { useGo } from '@/app/navigation'
-import { IntensityBars, Ring } from '@/charts/small'
-import { TrendChart } from '@/charts/TrendChart'
+import { EffortBars } from '@/charts/small'
 import { Split } from '@/ui/layout'
-import { Button, Card, SectionTitle } from '@/ui/primitives'
-import { Barbell } from '@/ui/icons'
-import { Findings, Gate, InsightsFrame, Plain, Tile, TileGrid, num, useInsightsDays } from './shared'
+import { Card, SectionTitle } from '@/ui/primitives'
+import { Findings, Gate, InsightsFrame, Plain, useInsightsDays } from './shared'
+import { ActivityOverview } from './ActivityOverview'
+import { RecentWorkouts } from './RecentWorkouts'
 import { HeartBlock } from './heart/HeartBlock'
 
 export function ActivityTab() {
   const days = useInsightsDays((s) => s.days)
   const { data, isError } = useInsightsActivity(days)
-  const go = useGo()
   const { t } = useTranslation()
-  const noMinutes = !!data && data.weeks.every((w) => w.light + w.moderate + w.vigorous === 0)
+  const noMinutes = !!data && data.bars.every((b) => b.light + b.moderate + b.vigorous === 0)
+  const unitNote = {
+    day: t('insights.activity.unitDay', 'One bar for each day.'),
+    week: t('insights.activity.unitWeek', 'One bar for each week, Monday to Sunday. The latest week is not over yet.'),
+    month: t('insights.activity.unitMonth', 'One bar for each calendar month. The latest month is not over yet.'),
+  }
+
+  const bars = data && (
+    <section className="flex min-w-0 flex-col gap-3">
+      <SectionTitle>{t('insights.activity.minutesTitle', 'Minutes of activity')}</SectionTitle>
+      <Card tone="hero" className="flex flex-col gap-3">
+        {noMinutes ? <Plain>{t('insights.activity.noWorkoutsPeriod', 'No workouts logged in this period.')}</Plain> : <EffortBars bars={data.bars} />}
+      </Card>
+      <p className="text-sub text-ink3">
+        {unitNote[data.barUnit]}{' '}
+        {t('insights.activity.effortNoteV2', 'Light, moderate and vigorous are as you rated the effort, not from your heart rate. A workout you did not rate is not counted.')}
+      </p>
+    </section>
+  )
+
   return (
     <InsightsFrame tab="C4" period={data?.period} why="activity">
       <Gate data={data} isError={isError} empty={!!data && !data.period.hasData} emptyText={t('insights.activity.empty', 'Log a workout and your activity shows up here.')}>
         {data && (
-          <Split>
-            <div className="flex flex-col gap-4">
-              <section className="flex flex-col gap-3">
-                <SectionTitle>{t('insights.activity.thisWeek', 'This week')}</SectionTitle>
-                <Plain>
-                  {t('insights.activity.weekPlain', 'Moderate or vigorous minutes, and strength sessions, against the weekly goals. Effort is as you rated it.')}
-                </Plain>
-                <Card tone="hero" className="grid grid-cols-2 gap-3">
-                  <Ring
-                    value={data.moderateMin}
-                    goal={data.moderateGoal}
-                    label={t('insights.activity.ringMinutes', 'Moderate or vigorous minutes')}
-                    unit={t('insights.activity.unitMinutes', 'minutes')}
-                    caption={t('insights.activity.captionActive', 'Active minutes')}
-                  />
-                  <Ring
-                    value={data.strength}
-                    goal={data.strengthGoal}
-                    label={t('insights.activity.ringStrength', 'Strength sessions')}
-                    unit={t('insights.activity.unitSessions', 'sessions')}
-                    caption={t('insights.activity.captionStrength', 'Strength')}
-                  />
-                </Card>
-              </section>
-              <section className="flex flex-col gap-3">
-                <SectionTitle>{t('insights.activity.last4', 'Last 4 weeks')}</SectionTitle>
-                <Card tone="hero">
-                  {noMinutes ? <p className="text-body text-ink2">{t('insights.activity.noWorkouts4', 'No workouts logged in the last 4 weeks.')}</p> : <IntensityBars weeks={data.weeks} />}
-                </Card>
-                {!noMinutes && (
-                  <p className="text-sub text-ink3">{t('insights.activity.effortNote', 'Light, moderate and vigorous are as you rated the effort, not from your heart rate.')}</p>
-                )}
-              </section>
-              {data.mix.length > 0 && (
-                <section className="flex flex-col gap-1">
-                  <SectionTitle>{t('insights.activity.whatYouDid', 'What you did')}</SectionTitle>
-                  <div className="divide-y divide-line rounded-card border border-line bg-card px-4">
-                    {data.mix.map((m) => (
-                      <div key={m.type} className="flex items-baseline justify-between py-3 text-body">
-                        <span className="font-bold">{m.label}</span>
-                        <span className="num text-ink2">
-                          {m.count === 1
-                            ? t('insights.activity.mixOne', '{{n}} session, {{min}} min', { n: m.count, min: m.minutes })
-                            : t('insights.activity.mixMany', '{{n}} sessions, {{min}} min', { n: m.count, min: m.minutes })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-              <HeartBlock days={days} />
-            </div>
-            <div className="flex flex-col gap-4">
-              {data.workouts.length > 0 && (
-                <section className="flex flex-col gap-1">
-                  <SectionTitle>{t('insights.activity.recentWorkouts', 'Recent workouts')}</SectionTitle>
-                  <div className="divide-y divide-line rounded-card border border-line bg-card px-4">
-                    {data.workouts.map((w) => (
-                      <div key={w.id} className="flex items-baseline justify-between gap-3 py-3">
-                        <span className="min-w-0">
-                          <span className="block text-body font-bold">{w.label}</span>
-                          <span className="block text-sub text-ink2">
-                            {w.intensity == null
-                              ? t('insights.activity.workoutLineUnrated', '{{date}}, {{min}} min, not rated', { date: w.date, min: w.minutes })
-                              : t('insights.activity.workoutLine', '{{date}}, {{min}} min, effort {{effort}} of 5 as you rated it', { date: w.date, min: w.minutes, effort: w.intensity })}
-                          </span>
-                        </span>
-                        {w.glucoseChange2h != null && (
-                          <span className="num flex-none text-sub text-ink2">
-                            {t('insights.activity.glucoseChange', '{{sign}}{{n}} mmol/L in 2 h', {
-                              sign: w.glucoseChange2h > 0 ? '+' : '−',
-                              n: Math.abs(w.glucoseChange2h).toFixed(1),
-                            })}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-              <section className="flex flex-col gap-3">
-                <SectionTitle>{t('insights.activity.steps', 'Steps')}</SectionTitle>
-                <Plain>
-                  {data.stepsAvg != null && data.stepsBaseline != null
-                    ? t('insights.activity.stepsBoth', 'You averaged {{avg}} steps a day. Your usual from the 60 days before is about {{base}}.', {
-                        avg: num(data.stepsAvg),
-                        base: num(data.stepsBaseline),
-                      })
-                    : data.stepsAvg != null
-                      ? t('insights.activity.stepsAvg', 'You averaged {{avg}} steps a day.', { avg: num(data.stepsAvg) })
-                      : t('insights.activity.noSteps', 'No step data in this period.')}
-                </Plain>
-                {data.stepsAvg != null && (
-                  <Card tone="hero">
-                    <TrendChart
-                      label={t('insights.activity.stepsChart', 'Steps by day')}
-                      points={data.steps.map((s) => ({ date: s.date, v: s.steps }))}
-                      format={(v) => num(v)}
-                      endLabel={shortDate(data.period.end)}
-                      drawKey={`steps-${days}`}
-                      color="var(--c-s2)"
-                    />
-                  </Card>
-                )}
-                {data.stepsAvg != null && data.stepsBaseline != null && (
-                  <TileGrid>
-                    <Tile label={t('insights.activity.thisPeriod', 'This period')} value={num(data.stepsAvg)} unit={t('insights.activity.aDay', 'a day')} />
-                    <Tile label={t('insights.activity.yourUsual', 'Your usual')} value={num(data.stepsBaseline)} unit={t('insights.activity.aDay', 'a day')} />
-                  </TileGrid>
-                )}
-              </section>
-              <Findings items={data.patterns} whyLink={false} />
-              <Button icon={Barbell} onClick={() => go('F1')}>
-                {t('insights.activity.logWorkout', 'Log a workout')}
-              </Button>
-            </div>
-          </Split>
+          <div className="flex flex-col gap-4 lg:gap-6">
+            <ActivityOverview data={data} days={days} />
+            {data.patterns.length > 0 ? (
+              <Split>
+                {bars}
+                <Findings items={data.patterns} whyLink={false} />
+              </Split>
+            ) : (
+              bars
+            )}
+            <RecentWorkouts workouts={data.workouts} />
+          </div>
         )}
       </Gate>
-      {/* with data, the heart block sits in the left column above; otherwise (loading, error, nothing logged) it still shows here */}
+      {/* with data, the heart rate sits in the overview card above; otherwise (loading, error, nothing logged) it still shows here */}
       {!(data && !isError && data.period.hasData) && <HeartBlock days={days} />}
     </InsightsFrame>
   )
