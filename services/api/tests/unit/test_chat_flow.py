@@ -137,7 +137,7 @@ def test_a_medicine_change_gets_the_fixed_reply_and_the_doctor_question_offer(wo
     o = turn("Should I stop taking metformin?")
     assert (o.kind, o.offer_question, o.verdict) == ("refused", True, "blocked_med_advice")
     assert o.text == f"{texts.tr('en', 'chat.med_change')}\n\n{DOCTOR_OFFER}"
-    assert "Would you like to add this to your doctor questions?" in o.text
+    assert "Want to add this to your doctor questions?" in o.text
     assert world["triage"] == [] and world["answer"] == []
 
 
@@ -183,7 +183,9 @@ def test_a_food_question_points_to_review_suggestions_and_lunch_ideas(world):
     world["ans"] = AI.Reply(reply=reply, reply_en=reply)
     o = turn("What should I eat for lunch?")
     sentence = "You can find more ideas under Me, Review suggestions, and in Lunch ideas."
-    assert o.kind == "answer" and o.text.count(sentence) == 1 and o.text.endswith(sentence)
+    plain = texts.strip_links(o.text)                      # the screens are marked as [[K11|words]] links inside the sentence
+    assert o.kind == "answer" and plain.count(sentence) == 1 and plain.endswith(sentence)
+    assert "[[K11|Review suggestions]]" in o.text and "[[E8|Lunch ideas]]" in o.text
     assert {a["to"] for a in o.actions} >= {"K11", "E8"}
     assert DOCTOR_OFFER not in o.text                       # a food question is not a symptom or a medicine question
 

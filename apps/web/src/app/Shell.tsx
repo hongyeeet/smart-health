@@ -86,9 +86,11 @@ function AppFrame({ fullBleed }: { fullBleed?: boolean }) {
   const { pathname } = useLocation()
   const textScale = useUi((s) => s.textScale)
   const tab = activeTab(pathname)
-  /** the Ask button belongs to Home and Insights; the layout reads `has-ask` to leave room for it (index.css) */
+  /** The floating Ask pill (phone) belongs to Home and Insights; the layout reads `has-ask` to leave room for it (index.css). */
   const rail = showRail(pathname)
   const askOn = !!built.I1 && (pathname === '/' || pathname === '/insights')
+  /** On a tablet or laptop the Ask button sits at the foot of the side rail on every screen that has the rail (the chat itself excepted). */
+  const askInRail = !!built.I1 && rail && !pathname.startsWith('/chat')
   const prevRoot = useRef(isTabRoot(pathname))
   const animate = !(prevRoot.current && isTabRoot(pathname))
   useEffect(() => {
@@ -104,7 +106,7 @@ function AppFrame({ fullBleed }: { fullBleed?: boolean }) {
         </motion.div>
       </main>
       {showTabs(pathname) && <TabBar active={tab} />}
-      {rail && <SideRail active={tab} ask={askOn} />}
+      {rail && <SideRail active={tab} ask={askInRail} />}
       {askOn && <AskButton />}
       <SheetHost />
       <Toast rail={rail} />
