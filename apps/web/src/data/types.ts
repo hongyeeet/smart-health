@@ -1078,6 +1078,10 @@ export interface InsightsMedication {
   reasons: { key: string; label: string; count: number }[]
   patterns: InsightsPattern[]
   shownDays: number
+  /** "YYYY-MM" when a month was asked for (the calendar); the other months are null at the ends: no record before, or no later day with data */
+  month?: string | null
+  prevMonth?: string | null
+  nextMonth?: string | null
 }
 export interface InsightsSprint {
   period: InsightsPeriod

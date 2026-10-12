@@ -52,8 +52,8 @@ export function WhySheet({ onClose, topic = 'week' }: { onClose: () => void; top
     medication: {
       title: t('insights.why.medication.title', 'Medication'),
       shows: t(
-        'insights.why.medication.shows',
-        'Each medicine, day by day: taken, taken late, not confirmed or missed, and the reasons you gave for missed doses.',
+        'insights.why.medication.showsV2',
+        'A calendar of your doses, month by month: for each medicine and each day, taken, taken late, not confirmed or missed, and the reasons you gave for missed doses in the month shown.',
       ),
       from: t('insights.why.medication.from', 'The doses you confirmed in the app. A dose counts as late when it was taken more than an hour after its time.'),
       limit: t(

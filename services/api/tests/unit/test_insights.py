@@ -317,3 +317,68 @@ def test_the_sleep_response_has_the_average_and_the_short_nights_but_no_usual():
     fields = set(SleepInsights.model_fields)
     assert "sleep_baseline" not in fields                    # "your usual" was removed from the page on 2026-10-12
     assert {"sleep_avg", "short_nights", "stress_avg", "mood_avg", "high_stress_days", "logged_days", "days", "patterns"} <= fields
+
+
+# ── Medication by calendar month (C6) ──
+class _MonthConn(_FakeConn):
+    """The month read also asks for the first day with any dose record: answer that one query from the logs given."""
+
+    def execute(self, sql, *args, **kwargs):
+        if re.search(r"select min\(coalesce\(scheduled_at, taken_at\)\)", sql):
+            logs = self.tables["medication_log"]
+            first = min((r["scheduled_at"] or r["taken_at"] for r in logs), default=None)
+            return _Rows([{"d": first}])
+        if re.search(r"from medication_log", sql) and args and len(args[0]) == 3:               # the doses of one span: user, from, to
+            lo, hi = args[0][1], args[0][2]
+            return _Rows([r for r in self.tables["medication_log"] if lo <= (r["scheduled_at"] or r["taken_at"]) < hi])
+        return super().execute(sql, *args, **kwargs)
+
+
+def _log_on(med, month, day, status, reason=None, hour=8):
+    sched = datetime(2026, month, day, hour, 0, tzinfo=timezone.utc)
+    return {"medication_id": med, "scheduled_at": sched, "taken_at": sched if status == "taken" else None, "status": status, "reason": reason}
+
+
+def _month(monkeypatch, month, logs, latest=date(2026, 10, 3)):
+    monkeypatch.setattr(I, "anchor", lambda conn, user, today, *a, **k: latest)
+    monkeypatch.setattr(I, "patterns_for", lambda rows, *a, **k: [])
+    monkeypatch.setattr(I, "_patterns", lambda conn, user: [])
+    return I.medication_month(_MonthConn(meds=_meds(), med_logs=logs), "u", month, latest, datetime(2026, 10, 4, 12, tzinfo=timezone.utc))
+
+
+def test_a_month_gives_its_own_days_and_its_own_numbers(monkeypatch):
+    logs = [_log_on(MED_CREST, 9, 10, "taken"), _log_on(MED_CREST, 9, 11, "missed", "forgot"), _log_on(MED_CREST, 10, 1, "taken"), _log_on(MED_CREST, 10, 2, "taken")]
+    sept = _month(monkeypatch, "2026-09", logs)
+    assert sept["month"] == "2026-09" and len(sept["dates"]) == 30 and sept["dates"][0] == "2026-09-01" and sept["dates"][-1] == "2026-09-30"
+    assert (sept["taken"], sept["missed"], sept["scheduled"], sept["adherence_pct"]) == (1, 1, 2, 50)       # the October doses are not in September
+    assert sept["reasons"] == [{"key": "forgot", "label": "Forgot", "count": 1}]
+    cells = sept["meds"][0]["cells"]
+    assert cells[9] == "taken" and cells[10] == "missed" and cells[0] == "none"                              # no record is "no dose due", not "missed"
+    octo = _month(monkeypatch, "2026-10", logs)
+    assert (octo["taken"], octo["missed"], octo["adherence_pct"]) == (2, 0, 100) and octo["reasons"] == []
+    assert octo["dates"][-1] == "2026-10-03" and len(octo["dates"]) == 3                                        # days after the latest day with data are not sent
+
+
+def test_the_arrows_stop_at_the_first_month_with_a_dose_record_and_at_the_latest_month(monkeypatch):
+    logs = [_log_on(MED_CREST, 8, 20, "taken"), _log_on(MED_CREST, 10, 1, "taken")]
+    first = _month(monkeypatch, "2026-08", logs)
+    assert first["prev_month"] is None and first["next_month"] == "2026-09"
+    middle = _month(monkeypatch, "2026-09", logs)
+    assert middle["prev_month"] == "2026-08" and middle["next_month"] == "2026-10" and middle["meds"] == []       # a month without records: no rows, not zeros
+    latest = _month(monkeypatch, None, logs)                                                                       # no month asked for: the latest month
+    assert latest["month"] == "2026-10" and latest["prev_month"] == "2026-09" and latest["next_month"] is None
+
+
+def test_a_medicine_with_no_record_in_the_month_is_left_out_and_a_year_end_month_works(monkeypatch):
+    logs = [_log_on(MED_CREST, 10, 2, "taken"), _log_on(MED_FISH, 9, 5, "taken")]
+    out = _month(monkeypatch, "2026-10", logs)
+    assert [m["name"] for m in out["meds"]] == ["CRESTOR"]
+    assert I._shift_month(date(2026, 1, 1), -1) == date(2025, 12, 1) and I._shift_month(date(2026, 12, 1), 1) == date(2027, 1, 1)
+
+
+def test_the_month_parameter_must_look_like_a_month():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    client = TestClient(app)
+    for bad in ("2026-13", "2026-1", "26-10", "october", "2026-10-01"):
+        assert client.get("/api/v1/insights/medication", params={"month": bad}, headers={"X-User": "demo"}).status_code == 422, bad

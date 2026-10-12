@@ -160,7 +160,7 @@ export interface Api {
   getInsightsFood(days: InsightsDays): Promise<InsightsFood>
   getInsightsActivity(days: InsightsDays): Promise<InsightsActivity>
   getInsightsSleep(days: InsightsDays): Promise<InsightsSleep>
-  getInsightsMedication(days: InsightsDays): Promise<InsightsMedication>
+  getInsightsMedication(month?: string): Promise<InsightsMedication>
   getInsightsSprint(): Promise<InsightsSprint>
   getInsightsHeart(days: InsightsDays): Promise<InsightsHeart>
   getInsightsBloodPressure(days: InsightsDays): Promise<InsightsBloodPressure>

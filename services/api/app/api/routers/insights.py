@@ -1,6 +1,6 @@
 """The Insights tab (screens C1 to C6 and C8):
 
-  GET /insights/overview|glucose|food|activity|sleep|medication?days=7|30|90
+  GET /insights/overview|glucose|food|activity|sleep|medication?days=7|30|90   (medication also takes ?month=YYYY-MM, the calendar)
   GET /insights/overview/days?from=YYYY-MM-DD&to=YYYY-MM-DD   (the overview calendar, at most 92 days)
   GET /insights/sprint
   GET /insights/heart?days=7|30|90         (heart rate and SpO2, C4 and C5; app/services/insights_heart.py)
@@ -10,6 +10,7 @@ Read-only. Every number is computed in code from the person's stored data (app/s
 """
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from typing import Any, Callable
 
@@ -80,7 +81,11 @@ async def sleep(days: int = Query(30)):
 
 
 @router.get("/medication", response_model=S.MedicationInsights, response_model_by_alias=True)
-async def medication(days: int = Query(30)):
+async def medication(days: int = Query(30), month: str | None = Query(None, description="YYYY-MM or \"latest\": one calendar month (the app's calendar); without it, the last `days` days")):
+    if month is not None:
+        if month != "latest" and not re.fullmatch(r"20\d\d-(0[1-9]|1[0-2])", month):
+            raise HTTPException(422, "month must look like 2026-10, or be the word latest")
+        return S.MedicationInsights.model_validate(await _run(svc.medication_month, None if month == "latest" else month, _today(), datetime.now(svc.TZ)))
     return S.MedicationInsights.model_validate(await _run(svc.medication, _days(days), _today(), datetime.now(svc.TZ)))
 
 

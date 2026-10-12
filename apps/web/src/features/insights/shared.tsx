@@ -30,7 +30,7 @@ export function WhyLink({ topic }: { topic: WhyTopic }) {
   )
 }
 
-export function InsightsFrame({ tab, period, why, children, back }: { tab: RouteId; period?: InsightsPeriod; why: WhyTopic; children: ReactNode; back?: RouteId }) {
+export function InsightsFrame({ tab, period, why, children, back, filter = true }: { tab: RouteId; period?: InsightsPeriod; why: WhyTopic; children: ReactNode; back?: RouteId; /** false on a tab that browses by month and has no 7, 30 or 90 day choice */ filter?: boolean }) {
   const go = useGo()
   const { days, setDays } = useInsightsDays()
   const { t } = useTranslation()
@@ -46,6 +46,7 @@ export function InsightsFrame({ tab, period, why, children, back }: { tab: Route
     <Screen tabs>
       <Header title={t('insights.shared.title', 'Insights')} back={!!back} backTo={back} trailing={back ? undefined : <UserSwitch />} />
       <TabStrip label={t('insights.shared.tabsLabel', 'Insights sections')} tabs={tabs} value={tab} onChange={(v) => go(v)} flush />
+      {filter && (
       <div className="md:max-w-md">
         <Segmented
           label={t('insights.shared.period', 'Period')}
@@ -58,7 +59,8 @@ export function InsightsFrame({ tab, period, why, children, back }: { tab: Route
           ]}
         />
       </div>
-      {period && <p className="-mt-1 text-sub text-ink3">{period.label}</p>}
+      )}
+      {filter && period && <p className="-mt-1 text-sub text-ink3">{period.label}</p>}
       <WhyLink topic={why} />
       {children}
     </Screen>

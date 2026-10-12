@@ -94,7 +94,7 @@ export const httpApi: Api = {
   getInsightsFood: (days) => request(`/insights/food?days=${days}`),
   getInsightsActivity: (days) => request(`/insights/activity?days=${days}`),
   getInsightsSleep: (days) => request(`/insights/sleep?days=${days}`),
-  getInsightsMedication: (days) => request(`/insights/medication?days=${days}`),
+  getInsightsMedication: (month) => request(`/insights/medication?month=${month ?? 'latest'}`),
   getInsightsSprint: () => request('/insights/sprint'),
   getInsightsHeart: (days) => request(`/insights/heart?days=${days}`),
   getInsightsBloodPressure: (days) => request(`/insights/blood-pressure?days=${days}`),

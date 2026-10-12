@@ -258,6 +258,9 @@ class MedicationInsights(Camel):
     reasons: list[Reason]
     patterns: list[Pattern]
     shown_days: int
+    month: str | None = None          # "YYYY-MM" when a month was asked for
+    prev_month: str | None = None     # null at the first month with a dose record
+    next_month: str | None = None     # null at the month of the latest day with data
 
 
 # ── Glucose sensor sprint (C8) ─────────────────────────────────────────────

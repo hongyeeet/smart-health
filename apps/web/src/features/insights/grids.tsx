@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
 import type { InsightsDoseCell, InsightsGridCell } from '@/data/types'
@@ -139,7 +138,7 @@ export function DayCalendar({ month, cells, today, measure }: { month: string; c
 }
 
 /** Taken is the solid brand green (the ok token at full strength); the other states keep a pattern so they read without colour. */
-const DOSE_CLS: Record<InsightsDoseCell, string> = {
+export const DOSE_CLS: Record<InsightsDoseCell, string> = {
   taken: 'bg-ok border-ok text-on-brand',
   late: 'bg-card border-ok border-2 text-ink',
   unconfirmed: 'border-ink3/60 text-ink2 [background:repeating-linear-gradient(45deg,var(--c-well),var(--c-well)_3px,var(--c-line)_3px,var(--c-line)_5px)]',
@@ -147,73 +146,16 @@ const DOSE_CLS: Record<InsightsDoseCell, string> = {
   none: 'border-line bg-well text-ink3',
 }
 
-const LEGEND: InsightsDoseCell[] = ['taken', 'late', 'unconfirmed', 'missed', 'none']
+export const DOSE_LEGEND: InsightsDoseCell[] = ['taken', 'late', 'unconfirmed', 'missed', 'none']
 
-/** On a phone (below 640 px) the grid shows the latest 14 days, two rows of seven squares each with its day number; from 640 px every day in the period is shown. */
-const PHONE_DAYS = 14
-/** From 640 px a period of up to a month is one row; the 90-day period wraps into rows of the same length, so a square is never a speck. */
-const ROW_MAX = 31
-
-/** One row per medicine, one square per day. The fill and the pattern both say what happened, so it reads without colour. */
-export function DoseGrid({ dates, rows }: { dates: string[]; rows: { id: string; name: string; regimen: string; counted: boolean; cells: InsightsDoseCell[] }[] }) {
+/** What each dose state is called, in words (the legend, the day list and the screen-reader text all use these). */
+export function useDoseLabels(): Record<InsightsDoseCell, string> {
   const { t } = useTranslation()
-  const DOSE_LABEL: Record<InsightsDoseCell, string> = {
+  return {
     taken: t('insights.grid.doseTaken', 'Taken'),
     late: t('insights.grid.doseLate', 'Taken late'),
     unconfirmed: t('insights.grid.doseUnconfirmed', 'Not confirmed'),
     missed: t('insights.grid.doseMissed', 'Missed'),
     none: t('insights.grid.doseNone', 'No dose due'),
   }
-  const n = dates.length
-  const phoneN = Math.min(PHONE_DAYS, n)
-  const phoneCols = Math.min(7, phoneN)
-  const allCols = n <= ROW_MAX ? n : Math.ceil(n / Math.ceil(n / ROW_MAX))
-  // Column counts and the largest square come from CSS variables so one grid serves both: the phone layout below sm, the full period from sm up.
-  const vars = { '--cols-phone': phoneCols, '--cols-all': allCols, '--cell-all': allCols <= 14 ? '2.75rem' : '2rem' } as CSSProperties
-  return (
-    <div className="flex flex-col gap-4">
-      {rows.map((r) => (
-        <div key={r.id} className="flex flex-col gap-1.5">
-          <p className="text-sub font-bold text-ink">
-            {r.name} <span className="font-normal text-ink3">{r.regimen}</span>
-          </p>
-          {!r.counted && <p className="text-micro text-ink3">{t('insights.grid.notCounted', 'Not counted in adherence')}</p>}
-          <div
-            className="grid gap-1 [grid-template-columns:repeat(var(--cols-phone),minmax(0,1fr))] sm:[grid-template-columns:repeat(var(--cols-all),minmax(0,var(--cell-all)))]"
-            style={vars}
-            role="group"
-            aria-label={t('insights.grid.dayByDay', '{{name}}, day by day', { name: r.name })}
-          >
-            {r.cells.map((c, i) => (
-              <span
-                key={i}
-                role="img"
-                aria-label={t('insights.grid.doseAria', '{{date}}: {{label}}', { date: shortDate(dates[i]!), label: DOSE_LABEL[c] })}
-                className={cn('num flex aspect-square w-full items-center justify-center rounded-[4px] border text-micro leading-none', DOSE_CLS[c], i < n - phoneN && 'hidden sm:flex')}
-              >
-                <span className={cn('sm:hidden', (c === 'missed' || c === 'unconfirmed') && 'rounded-[3px] bg-card/80 px-0.5 text-ink')} aria-hidden>
-                  {Number(dates[i]!.slice(8))}
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
-      {n > phoneN && <p className="text-micro text-ink3 sm:hidden">{t('insights.grid.phoneDays', 'On a phone the grid shows the last {{n}} days.', { n: phoneN })}</p>}
-      {n > ROW_MAX && <p className="hidden text-micro text-ink3 sm:block">{t('insights.grid.rowsNote', 'Each row carries on from the one above, oldest day first.')}</p>}
-      <div className="flex justify-between text-micro text-ink3" aria-hidden>
-        <span className="sm:hidden">{n ? shortDate(dates[n - phoneN]!) : ''}</span>
-        <span className="hidden sm:inline">{dates[0] ? shortDate(dates[0]) : ''}</span>
-        <span>{n ? shortDate(dates[n - 1]!) : ''}</span>
-      </div>
-      <ul aria-label={t('insights.grid.legend', 'Key')} className="grid grid-cols-2 gap-x-4 gap-y-2 text-sub text-ink2 sm:flex sm:flex-wrap [[data-ts='2']_&]:grid-cols-1">
-        {LEGEND.map((k) => (
-          <li key={k} className="flex items-center gap-2">
-            <span className={cn('h-5 w-5 flex-none rounded-[4px] border', DOSE_CLS[k])} aria-hidden />
-            {DOSE_LABEL[k]}
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
 }

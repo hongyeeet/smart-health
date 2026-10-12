@@ -14,7 +14,8 @@ export const useInsightsGlucose = (days: InsightsDays) => useQuery({ queryKey: [
 export const useInsightsFood = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'food', days], queryFn: () => api.getInsightsFood(days) })
 export const useInsightsActivity = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'activity', days], queryFn: () => api.getInsightsActivity(days) })
 export const useInsightsSleep = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'sleep', days], queryFn: () => api.getInsightsSleep(days) })
-export const useInsightsMedication = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'medication', days], queryFn: () => api.getInsightsMedication(days) })
+/** One calendar month of doses ("YYYY-MM"); without a month, the person's latest month. The previous month stays on screen while the next one loads. */
+export const useInsightsMedication = (month?: string) => useQuery({ queryKey: ['insights', 'medication', month ?? 'latest'], queryFn: () => api.getInsightsMedication(month), placeholderData: keepPreviousData })
 export const useInsightsSprint = () => useQuery({ queryKey: ['insights', 'sprint'], queryFn: () => api.getInsightsSprint() })
 export const useInsightsHeart = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'heart', days], queryFn: () => api.getInsightsHeart(days) })
 export const useInsightsBloodPressure = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'bloodPressure', days], queryFn: () => api.getInsightsBloodPressure(days) })

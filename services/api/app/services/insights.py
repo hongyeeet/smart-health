@@ -567,11 +567,9 @@ def sleep(conn: psycopg.Connection[Any], user: str, days: int, today: date) -> d
     }
 
 
-def medication(conn: psycopg.Connection[Any], user: str, days: int, today: date, now: datetime) -> dict[str, Any]:
-    end = anchor(conn, user, today)
-    start, _ = window(end, days)
-    shown = min(days, SHOWN_MED_DAYS)
-    dates = [start + timedelta(days=days - shown + i) for i in range(shown)]
+def _medication_core(conn: psycopg.Connection[Any], user: str, start: date, end: date, dates: list[date], now: datetime) -> dict[str, Any]:
+    """The doses of every regular medicine from `start` to `end`: one row of day cells per medicine (the cells are for `dates`), the counted
+    totals for prescription medicines, and the reasons given for missed ones. A medicine with no record in the span is left out."""
     meds = [dict(r) for r in conn.execute(
         "select id, name, frequency, kind::text kind from medications where user_id=%s and deleted_at is null and not coalesce(as_needed, false) order by name", (user,))]
     logs = conn.execute(
@@ -608,11 +606,53 @@ def medication(conn: psycopg.Connection[Any], user: str, days: int, today: date,
                      "adherence_pct": round(100 * taken / scheduled) if counts and taken + missed else None,
                      "cells": [dose_cell(per.get(d, []), now) for d in dates]})
     return {
-        "period": _period(end, days, bool(rows)), "dates": [d.isoformat() for d in dates], "meds": rows,
+        "dates": [d.isoformat() for d in dates], "meds": rows,
         "taken": taken_all, "missed": missed_all, "scheduled": sched_all, "unconfirmed": unconf_all,
         "adherence_pct": round(100 * taken_all / sched_all) if sched_all and taken_all + missed_all else None,
         "reasons": [{"key": k, "label": MISS_LABELS.get(k, k), "count": c} for k, c in reasons.most_common()],
-        "patterns": patterns_for(_patterns(conn, user), "C6"), "shown_days": shown,
+    }
+
+
+def medication(conn: psycopg.Connection[Any], user: str, days: int, today: date, now: datetime) -> dict[str, Any]:
+    end = anchor(conn, user, today)
+    start, _ = window(end, days)
+    shown = min(days, SHOWN_MED_DAYS)
+    dates = [start + timedelta(days=days - shown + i) for i in range(shown)]
+    out = _medication_core(conn, user, start, end, dates, now)
+    return {**out, "period": _period(end, days, bool(out["meds"])), "patterns": patterns_for(_patterns(conn, user), "C6"), "shown_days": shown}
+
+
+def _month_start(month: str) -> date:
+    y, m = month.split("-")
+    return date(int(y), int(m), 1)
+
+
+def _shift_month(d: date, by: int) -> date:
+    i = d.year * 12 + (d.month - 1) + by
+    return date(i // 12, i % 12 + 1, 1)
+
+
+def medication_month(conn: psycopg.Connection[Any], user: str, month: str | None, today: date, now: datetime) -> dict[str, Any]:
+    """C6: one calendar month of doses. `month` is "YYYY-MM"; without it, the month of the person's latest day with data. The days sent run
+    from the 1st to the last day of the month or the latest day with data, whichever comes first, so a day that has not come yet is absent
+    and is drawn empty. The totals, reasons and the cells are for this month only; the findings are about the person's whole history.
+    `prev_month` and `next_month` are null at the ends: the first month with a dose record, and the month of the latest day with data."""
+    end_all = anchor(conn, user, today)
+    first = conn.execute("select min(coalesce(scheduled_at, taken_at)) d from medication_log where user_id=%s", (user,)).fetchone()
+    first_month = (first["d"].astimezone(TZ).date() if first and first["d"] else end_all).replace(day=1)
+    last_month = end_all.replace(day=1)
+    cur = _month_start(month) if month else last_month
+    nxt = _shift_month(cur, 1)
+    last_day = min(nxt - timedelta(days=1), end_all)
+    dates = [cur + timedelta(days=i) for i in range((last_day - cur).days + 1)] if last_day >= cur else []
+    out = _medication_core(conn, user, cur, last_day, dates, now) if dates else _medication_core(conn, user, cur, cur, [], now)
+    return {
+        **out,
+        "period": {"start": cur.isoformat(), "end": last_day.isoformat() if dates else cur.isoformat(), "days": len(dates), "label": cur.strftime("%B %Y"), "has_data": bool(out["meds"])},
+        "patterns": patterns_for(_patterns(conn, user), "C6"), "shown_days": len(dates),
+        "month": cur.strftime("%Y-%m"),
+        "prev_month": _shift_month(cur, -1).strftime("%Y-%m") if cur > first_month else None,
+        "next_month": nxt.strftime("%Y-%m") if cur < last_month else None,
     }
 
 
