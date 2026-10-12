@@ -85,7 +85,7 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
     # the stock column is read only once migration 0032 is applied; until then it is NULL and the estimate is used
     stock_col = "stock_count" if medication_stock.stock_ready(conn) else "null::numeric"
     meds = conn.execute(
-        f"select id, name, strength, kind::text, total_quantity, start_date, source::text, pack_started_on, created_at, as_needed, {stock_col} "
+        f"select id, name, strength, kind::text, total_quantity, start_date, source::text, pack_started_on, created_at, as_needed, {stock_col}, end_date "
         "from medications where user_id = %s and deleted_at is null order by created_at, name", (user_id,)).fetchall()
     doses: dict[Any, list[tuple[time | None, Decimal, str]]] = defaultdict(list)
     for mid, t, q, rel in conn.execute(
@@ -93,16 +93,17 @@ def list_medications(conn: psycopg.Connection, user_id: str, today: date) -> lis
             "where user_id = %s and deleted_at is null order by dose_time", (user_id,)):
         doses[mid].append((t, q, rel))
     out = []
-    for mid, name, strength, kind, total, start, source, pack_start, created, flagged, stock in meds:
+    for mid, name, strength, kind, total, start, source, pack_start, created, flagged, stock, ends in meds:
         ds = doses.get(mid, [])
         as_needed = bool(flagged) or any(t is None for t, _, _ in ds)      # the column is the answer; an empty dose time still counts for older rows
         per_day = Decimal(0) if as_needed else sum((q for _, q, _ in ds), Decimal(0))    # how much is used when needed is not known
         estimate = refill_for(total, per_day, start or today, source, today, pack_start, created.astimezone(logstore.TZ).date())
-        refill, refill_source = (None, None) if as_needed else refill_with_stock(stock, per_day, estimate)
+        finished = ends is not None and ends < today                          # a course that has ended has no supply left to run out
+        refill, refill_source = (None, None) if as_needed or finished else refill_with_stock(stock, per_day, estimate)
         out.append(MedicationOut(
             id=str(mid), name=name, strength=strength or "Strength not entered", kind=kind, as_needed=as_needed,
             times=[clock12(t) for t, _, _ in ds if t is not None], with_food=any(rel != "na" for _, _, rel in ds),
-            badge=badge_for(kind), refill=refill, refill_source=refill_source,
+            badge=badge_for(kind), refill=refill, refill_source=refill_source, end_date=ends,
         ))
     return out
 

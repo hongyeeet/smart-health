@@ -62,7 +62,7 @@ export const ROUTES = {
   H2: { path: '/meds/scan', title: 'Scan a label', kind: 'screen', group: 'Medications', from: 'H1, A3', links: [l('Take photo', 'H3')] },
   H3: { path: '/meds/scan/review', title: 'Check what we read', kind: 'screen', group: 'Medications', from: 'H2', links: [l('Confirm', 'H4'), l('Retake photo', 'H2')] },
   H4: { path: '/meds/scan/plan', title: 'Your dose plan', kind: 'screen', group: 'Medications', from: 'H3', links: [l('Add to my medicines', 'H1')] },
-  H5: { path: '/meds/interaction/:id', title: 'Possible interaction', kind: 'screen', group: 'Medications', from: 'B2, H1 (clash box)', links: [l('Add to my doctor questions', 'K3'), l('Back to alerts', 'B2')], note: 'Details of one clash alert: the pair, where the flag came from, why, the next step and the sources. Never says stop or safe.' },
+  H5: { path: '/meds/interaction/:id', title: 'Review interaction', kind: 'screen', group: 'Medications', from: 'B2, H1 (clash box)', links: [l('Add to my doctor questions', 'K3'), l('Back to medications', 'H1')], note: 'Review one clash alert: where the flag came from, why it was flagged, a box for the person’s own questions and the sources. Back to medications at the bottom. Never says stop or safe.' },
   H6: { path: '/meds/:id', title: 'Medicine detail', kind: 'screen', group: 'Medications', from: 'H1, I1', links: [l('Add a question', 'K3')] },
   H7: { path: '#missed', title: 'Why was it missed?', kind: 'sheet', group: 'Medications', from: 'B1 (Tell us why)', links: [l('Add a symptom', 'E4'), l('Save or skip', 'B1')] },
   H8: { path: '/meds/add', title: 'Add a medicine by hand', kind: 'screen', group: 'Medications', from: 'H1, A3', links: [l('Save', 'H1')] },

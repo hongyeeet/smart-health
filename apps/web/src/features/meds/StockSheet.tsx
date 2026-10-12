@@ -4,13 +4,16 @@ import { useStock, useStockChange } from '@/data/hooks'
 import { useUi } from '@/state/store'
 import { Sheet } from '@/ui/Sheet'
 import { Alert, Button, Field } from '@/ui/primitives'
+import { countText, unitFor } from './MedStockCard'
 
 /** Largest number of tablets (or doses) the warehouse holds. The server enforces the same limit. */
 const MAX = 10000
 
 /**
- * "I bought more" (mode 'add': the number is added to the count) and "Change the number" (mode 'set': the exact count) for one of the
- * medicines in My stock (H1). Opened from the stock card with the medicine's id; the count is read from the shared stock list.
+ * The pop-up behind "I bought more" (mode 'add': the number is added to the count) and "Edit" (mode 'set': the exact count) on a medicine
+ * card in "All medications" (H1). Opened with the medicine's id; the count is read from the shared stock list. A medicine with no count
+ * yet has nothing to add to, so either way the pop-up asks how many the person has now and saves that as the starting count.
+ * Saving writes to the database, and the cards behind it refresh when it closes.
  */
 export function StockSheet({ onClose, medId, mode = 'set' }: { onClose: () => void; medId?: string; mode?: 'add' | 'set' }) {
   const { t } = useTranslation()
@@ -18,9 +21,10 @@ export function StockSheet({ onClose, medId, mode = 'set' }: { onClose: () => vo
   const med = data?.items.find((m) => m.id === medId)
   const save = useStockChange()
   const toast = useUi((s) => s.showToast)
-  const isAdd = mode === 'add'
-  const unit = med?.stockUnit ?? ''
-  const [value, setValue] = useState(() => (!isAdd && med?.stockCount != null ? String(med.stockCount) : ''))
+  const hasCount = med?.stockCount != null
+  const isAdd = mode === 'add' && hasCount
+  const unit = med?.stockUnit || t('stock.units', 'doses')
+  const [value, setValue] = useState(() => (!isAdd && med?.stockCount != null ? countText(med.stockCount) : ''))
 
   const parsed = value.trim() === '' ? null : Number(value.trim().replace(',', '.'))
   const problem =
@@ -30,6 +34,9 @@ export function StockSheet({ onClose, medId, mode = 'set' }: { onClose: () => vo
     : isAdd && parsed === 0 ? t('stock.addPositive', 'Enter how many you bought.')
     : null
   const canSave = med !== undefined && parsed !== null && problem === null && !save.isPending
+  const after = isAdd && parsed !== null && problem === null && med?.stockCount != null ? med.stockCount + parsed : null
+
+  const title = !hasCount ? t('stock.startTitle', 'How many do you have?') : isAdd ? t('stock.buyTitle', 'I bought more') : t('stock.editTitle', 'Edit the number')
 
   const submit = () => {
     if (!med || parsed === null || problem) return
@@ -45,21 +52,19 @@ export function StockSheet({ onClose, medId, mode = 'set' }: { onClose: () => vo
   const failure = save.isError && save.error instanceof Error && !/^\d{3}\s/.test(save.error.message) ? save.error.message : t('stock.saveError', 'We could not save that. Please try again.')
 
   return (
-    <Sheet title={isAdd ? t('stock.buyTitle', 'I bought more') : t('stock.setTitle', 'Change the number')} onClose={onClose} label={med ? `${isAdd ? t('stock.buyTitle', 'I bought more') : t('stock.setTitle', 'Change the number')}: ${med.name}` : undefined}>
+    <Sheet title={title} onClose={onClose} label={med ? `${title}: ${med.name}` : undefined}>
       {!med ? (
         <p className="text-body text-ink2">{t('stock.gone', 'This medicine is no longer in your list.')}</p>
       ) : (
         <div className="flex flex-col gap-4">
           <p className="text-body font-bold">
             {med.name}
-            {med.strength && med.strength !== 'Strength not entered' && <span className="font-normal text-ink2"> {med.strength}</span>}
+            {med.strength && med.strength !== 'Strength not entered' && !med.name.includes(med.strength) && <span className="font-normal text-ink2"> {med.strength}</span>}
           </p>
 
           {isAdd ? (
             <>
-              <p className="text-sub text-ink2">
-                {t('stock.buyLine', 'How many {{unit}} did you buy? The number is added to what you have now.', { unit: unit || t('stock.units', 'doses') })}
-              </p>
+              <p className="text-sub text-ink2">{t('stock.buyLine', 'How many {{unit}} did you buy? The number is added to what you have now.', { unit })}</p>
               {med.packSize && (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Button variant="secondary" size="md" onClick={() => setValue(String(med.packSize))}>
@@ -73,7 +78,9 @@ export function StockSheet({ onClose, medId, mode = 'set' }: { onClose: () => vo
             </>
           ) : (
             <p className="text-sub text-ink2">
-              {t('stock.setLine', 'Type the exact number you have now. You can change it at any time.')}
+              {hasCount
+                ? t('stock.setLine', 'Type the exact number you have now. You can change it at any time.')
+                : t('stock.startLine', 'How many {{unit}} do you have now? The number then goes down by itself each time you mark a dose as taken.', { unit })}
             </p>
           )}
 
@@ -83,7 +90,13 @@ export function StockSheet({ onClose, medId, mode = 'set' }: { onClose: () => vo
             onChange={setValue}
             inputMode="decimal"
             placeholder="0"
-            hint={isAdd ? t('stock.addHint', 'Your count goes up by this much.') : undefined}
+            hint={
+              isAdd && med.stockCount != null
+                ? after !== null
+                  ? t('stock.afterBuy', 'You have {{now}} {{unit}} now. After this: {{after}}.', { now: countText(med.stockCount), unit: unitFor(med.stockUnit, med.stockCount), after: countText(after) })
+                  : t('stock.haveNow', 'You have {{now}} {{unit}} now.', { now: countText(med.stockCount), unit: unitFor(med.stockUnit, med.stockCount) })
+                : undefined
+            }
             error={problem ?? undefined}
             large
           />

@@ -200,8 +200,16 @@ def test_a_status_row_becomes_the_api_shape_with_the_unit_and_no_zero_for_unset(
            "pack_size": 60, "stock_count": None, "stock_unit": None, "updated_at": None, "per_day": D(2), "days_left": None,
            "status": "unknown", "full_count": None}
     out = med_stock._out(row)
-    assert out.stock_count is None and out.stock_unit is None and out.status == "unknown"       # not set: no number, no unit
+    assert out.stock_count is None and out.stock_unit == "tablets" and out.status == "unknown"       # not set: no number (never 0), but the unit is known for the pop-up
     assert out.strength == "Strength not entered" and out.pack_size == 60
     row.update(stock_count=D(58), stock_unit=None, days_left=29, status="ok", full_count=D(60))
     out = med_stock._out(row)
     assert (out.stock_count, out.stock_unit, out.days_left, out.full_count) == (58.0, "tablets", 29, 60.0)
+
+
+def test_a_medicine_carries_the_end_date_of_its_course_in_the_api_shape():
+    from datetime import date
+    from app.schemas.medicines import MedicationOut
+    course = MedicationOut(id="x", name="Clarithromycin", strength="500 mg", kind="prescription", times=["8:00 am"], with_food=True, end_date=date(2026, 9, 19))
+    assert course.model_dump(by_alias=True, mode="json")["endDate"] == "2026-09-19"                  # the Meds page says "Course ended 19 Sept"
+    assert MedicationOut(id="y", name="Metformin", strength="500 mg", kind="prescription", times=[], with_food=False).end_date is None

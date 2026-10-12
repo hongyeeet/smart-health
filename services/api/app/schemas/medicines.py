@@ -64,6 +64,7 @@ class MedicationOut(Camel):
     refill: Refill | None = None
     refill_source: Literal["stock", "estimate"] | None = None    # 'stock': from the count in hand; 'estimate': from the pack date
     side_effects: list[str] = []
+    end_date: date | None = None                 # the last day of a course (an antibiotic): after it the medicine has no supply to show
 
 
 class WebSourceOut(Camel):

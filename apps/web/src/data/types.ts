@@ -44,6 +44,8 @@ export interface Medication {
   /** Where the refill figure comes from: the stock in hand ('stock') or the estimate from the pack date ('estimate'). */
   refillSource?: 'stock' | 'estimate' | null
   sideEffects: string[]
+  /** the last day of a course (an antibiotic), ISO date; null when there is none */
+  endDate?: string | null
 }
 
 /** One regular medicine in "My stock" (H1). `status` states a fact about the count, never advice. */

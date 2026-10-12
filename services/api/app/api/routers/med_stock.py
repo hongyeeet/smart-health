@@ -36,7 +36,7 @@ def _out(r: dict) -> StockOut:
     count = r["stock_count"]
     return StockOut(
         id=str(r["id"]), name=r["name"], strength=r["strength"] or "Strength not entered",
-        stock_count=float(count) if count is not None else None, stock_unit=unit if count is not None else r["stock_unit"],
+        stock_count=float(count) if count is not None else None, stock_unit=unit,       # the unit is known even before a count is set (the pop-up asks "how many tablets")
         days_left=r["days_left"], status=r["status"], updated_at=r["updated_at"],
         full_count=float(r["full_count"]) if r["full_count"] is not None else None, pack_size=r["pack_size"],
     )

@@ -147,12 +147,15 @@ def test_demo_placeholders_get_no_supply_estimate_and_zero_doses_never_divide():
     assert api.refill_for(60, Decimal(0), date(2026, 1, 1), "manual", date(2026, 10, 1)) is None
 
 
-def test_the_demo_patients_list_shows_supply_only_where_a_pack_start_was_given(conn):
+def test_the_demo_patients_list_shows_supply_from_the_counts_in_hand(conn):
+    """Mr Tan's medicines were given tablet counts on 2026-10-12 (scripts/seed_mr_tan_stock.py), so the "may run out" figure now comes from
+    the real count ('stock'), not the pack-date estimate: Metformin has 4 tablets at 2 a day, about 2 days. A finished course has no supply."""
     mr_tan = "dc48e209-5731-5b3d-89d9-986242c54368"
     meds = {m.name: m for m in api.list_medications(conn, mr_tan, date(2026, 10, 8))}
     assert len(meds) >= 6 and all(m.times for m in meds.values())
-    assert [(meds[n].refill.days_left, meds[n].refill.units_left) for n in ("Metformin 500 mg", "Amlodipine 5 mg", "Atorvastatin 20 mg", "Fish oil")]         == [(6, 12), (12, 12), (17, 17), (21, 21)]                   # matches the mock-up: Metformin runs out in about 6 days
-    assert meds["Clarithromycin 500 mg"].refill is None and meds["Herbal tonic (label not readable)"].refill is None   # a finished course; no pack count
+    assert [(meds[n].refill.days_left, meds[n].refill.units_left, meds[n].refill_source) for n in ("Metformin 500 mg", "Amlodipine 5 mg", "Atorvastatin 20 mg", "Fish oil")] \
+        == [(2, 4, "stock"), (23, 23, "stock"), (17, 17, "stock"), (41, 41, "stock")]
+    assert meds["Clarithromycin 500 mg"].refill is None and str(meds["Clarithromycin 500 mg"].end_date) == "2026-09-19"      # a finished course: no supply, and its end date is sent
 
 
 def test_a_pack_start_date_counts_from_that_day_not_from_when_the_medicine_began():

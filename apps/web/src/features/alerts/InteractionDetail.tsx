@@ -1,78 +1,51 @@
 /**
- * H5 — Possible interaction. The details page behind an alert, following Damien's alert design: what was compared, where
- * the flag came from, why it was flagged, the next step, and the sources.
+ * H5 — Review interaction. The page behind the notice: where the flag came from, why it was flagged, a box for the person's own questions
+ * for their doctor or pharmacist, and the sources. A back arrow at the top and a link at the bottom lead back to the medicines. Two quiet
+ * links at the very end let the person put the pair on their doctor questions, or say they have checked with their doctor (which clears it).
  *
- * Everything shown comes from the server's alert (docs/specs/f5-clash.md): the fixed sentence, the reason, the sources.
- * Left out of the design on purpose: a severity grade and "verified source" label (nothing here is clinically reviewed,
- * rules.md 1.15), a pharmacology explanation and a "consider an alternative medicine" line (medication advice, rules.md 1.1),
- * and "do not stop your medicine" (still advice). The report download waits for the doctor brief (L1).
+ * Everything shown comes from the server's alert (docs/specs/f5-clash.md): the reason and the sources. Left out on purpose: a severity
+ * grade and "verified source" label (nothing here is clinically reviewed, rules.md 1.15), a pharmacology explanation and a "consider an
+ * alternative medicine" line (medication advice, rules.md 1.1), and "do not stop your medicine" (still advice).
  */
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAskAboutClash, useClash } from '@/data/hooks'
-import { useBack } from '@/app/navigation'
+import { useAcknowledgeClash, useAskAboutClash, useClash } from '@/data/hooks'
+import { useBack, useGo } from '@/app/navigation'
 import { useUi } from '@/state/store'
 import { cn } from '@/lib/cn'
 import { Header, Screen } from '@/ui/layout'
 import { Alert, Button, Card, EmptyState, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
-import { ArrowLeft, CaretDown, CheckCircle, ClipboardText, Phone, ShieldCheck, Stethoscope } from '@/ui/icons'
-import { ClinicNote, QuestionBox, useDismissAlert } from './InteractionCard'
-import { MedPair, NotAdviceNote, originLabel, whenRaised } from './pieces'
+import { ArrowLeft, CaretDown, CheckCircle } from '@/ui/icons'
+import { QuestionBox } from './InteractionCard'
+import { originLabel } from './pieces'
 import { SourceItem, uniqueSources } from '@/features/meds/SourceLinks'
 
 export function InteractionDetail() {
   const { t } = useTranslation()
   const { id } = useParams()
-  const back = useBack('B2')
+  const back = useBack('H1')
+  const go = useGo()
   const { data, isError } = useClash()
   const ask = useAskAboutClash()
-  const dismiss = useDismissAlert()
+  const ack = useAcknowledgeClash()
   const toast = useUi((s) => s.showToast)
-  const [clinic, setClinic] = useState(false)
   const [sources, setSources] = useState(false)
   const alert = data?.alerts.find((a) => a.id === id)
 
   return (
     <Screen narrow>
-      <Header
-        back
-        backTo="B2"
-        title={t('alerts.detail.title', 'Possible interaction')}
-        sub={t('alerts.detail.sub', 'A check of your medicine list flagged this for your pharmacist or doctor to look at.')}
-      />
+      <Header back backTo="H1" title={t('alerts.detail.title', 'Review interaction')} />
       {isError && <Alert tone="warn">{t('alerts.detail.error', 'We could not load this alert.')}</Alert>}
       {!data && !isError && <Skeleton className="h-64" />}
       {data && !alert && (
-        <EmptyState icon={CheckCircle} action={<Button variant="secondary" size="md" className="!w-auto" onClick={back}>{t('alerts.detail.backToAlerts', 'Back to alerts')}</Button>}>
+        <EmptyState icon={CheckCircle} action={<Button variant="secondary" size="md" className="!w-auto" onClick={back}>{t('alerts.detail.backToMeds', 'Back to medications')}</Button>}>
           {t('alerts.detail.gone', 'This alert is no longer open. It may have been checked with your doctor, or one of the medicines was removed.')}
         </EmptyState>
       )}
 
       {alert && (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill tone="neutral" icon={ShieldCheck}>
-              {t('alerts.detail.tag', 'Medicine list check')}
-            </StatusPill>
-            {whenRaised(alert.raisedAt, t('common.today', 'Today'), t('common.yesterday', 'Yesterday')) && (
-              <time dateTime={alert.raisedAt ?? undefined} className="text-sub text-ink3">
-                {whenRaised(alert.raisedAt, t('common.today', 'Today'), t('common.yesterday', 'Yesterday'))}
-              </time>
-            )}
-          </div>
-
-          <NotAdviceNote />
-
-          <Card as="section" className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-serif text-h2 font-medium tracking-tight">{t('alerts.detail.compared', 'Medicines compared')}</h2>
-              <span className="text-sub text-ink3">{t('alerts.detail.two', '2 medicines')}</span>
-            </div>
-            <MedPair alert={alert} />
-            <p className="text-body font-bold text-ink">{alert.text}</p>
-          </Card>
-
           <Card as="section" className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-sub text-ink3">{t('alerts.detail.originLabel', 'Where this flag came from')}</p>
@@ -87,30 +60,8 @@ export function InteractionDetail() {
             {alert.sources.length === 0 && <p className="text-sub text-ink3">{t('alerts.detail.aiOnly', 'No web page was found for this. It is an AI suggestion, so please check it with your pharmacist. Not medical advice.')}</p>}
           </Card>
 
-          <Card as="section" className="flex flex-col gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-brand-soft text-brand">
-                <Stethoscope size={20} aria-hidden />
-              </span>
-              <h2 className="font-serif text-h2 font-medium tracking-tight">{t('alerts.detail.next', 'Suggested next step')}</h2>
-            </div>
-            <p className="text-body text-ink2">{t('alerts.detail.nextText', 'Ask your pharmacist or doctor to review your medicines. When you next collect a prescription or see your doctor, bring your full medicine list.')}</p>
-            <Button icon={Phone} aria-expanded={clinic} onClick={() => setClinic(!clinic)}>
-              {t('alerts.detail.contact', 'Contact my care team')}
-            </Button>
-            {clinic && <ClinicNote />}
-            {alert.questionAdded ? (
-              <p className="flex min-h-12 items-center gap-2 text-sub font-bold text-ok">
-                <CheckCircle size={22} weight="fill" aria-hidden />
-                {t('alerts.detail.added', 'Added to your doctor questions')}
-              </p>
-            ) : (
-              <Button variant="secondary" icon={ClipboardText} disabled={ask.isPending} onClick={() => ask.mutate(alert.id, { onSuccess: () => toast(t('alerts.q.toast', 'Added to your doctor questions')) })}>
-                {ask.isPending ? t('common.saving', 'Saving…') : t('alerts.detail.add', 'Add to my doctor questions')}
-              </Button>
-            )}
-            {ask.isError && <p className="text-sub text-ink2">{t('alerts.q.error', 'We could not save your question just now. Please try again.')}</p>}
-            <QuestionBox alertId={alert.id} />
+          <Card as="section">
+            <QuestionBox alertId={alert.id} bare />
           </Card>
 
           <Card as="section" className="!p-0">
@@ -137,16 +88,23 @@ export function InteractionDetail() {
           </Card>
 
           <div className="flex flex-col items-center gap-1 pb-4">
-            <TextLink icon={ArrowLeft} onClick={back}>
-              {t('alerts.detail.backToAlerts', 'Back to alerts')}
+            <TextLink icon={ArrowLeft} onClick={() => go('H1')}>
+              {t('alerts.detail.backToMeds', 'Back to medications')}
             </TextLink>
+            {alert.questionAdded ? (
+              <p className="flex min-h-11 items-center gap-2 text-sub font-bold text-ok">
+                <CheckCircle size={20} weight="fill" aria-hidden />
+                {t('alerts.detail.added', 'Added to your doctor questions')}
+              </p>
+            ) : (
+              <TextLink onClick={() => ask.mutate(alert.id, { onSuccess: () => toast(t('alerts.q.toast', 'Added to your doctor questions')) })}>
+                {ask.isPending ? t('common.saving', 'Saving…') : t('alerts.detail.addPair', 'Add this pair to my doctor questions')}
+              </TextLink>
+            )}
             <TextLink
-              onClick={() => {
-                dismiss(alert)
-                back()
-              }}
+              onClick={() => ack.mutate(alert.id, { onSuccess: () => back() })}
             >
-              {t('alerts.card.dismiss', 'Dismiss for now and add to my doctor questions')}
+              {ack.isPending ? t('common.saving', 'Saving…') : t('alerts.detail.checked', 'I have checked with my doctor')}
             </TextLink>
           </div>
         </>
