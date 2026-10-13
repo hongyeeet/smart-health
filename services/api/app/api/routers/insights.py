@@ -1,7 +1,7 @@
 """The Insights tab (screens C1 to C6 and C8):
 
   GET /insights/overview|glucose|food|activity|sleep|medication?days=7|30|90   (medication also takes ?month=YYYY-MM, the calendar)
-  GET /insights/timeline?days=7|30|90   (the overview charts on one time axis: app/services/insights_timeline.py)
+  GET /insights/timeline?days=7|30|90[&end=YYYY-MM-DD]   (the overview charts on one time axis: app/services/insights_timeline.py)
   GET /insights/overview/days?from=YYYY-MM-DD&to=YYYY-MM-DD   (the overview calendar, at most 92 days)
   GET /insights/sprint
   GET /insights/heart?days=7|30|90         (heart rate and SpO2, C4 and C5; app/services/insights_heart.py)
@@ -54,8 +54,9 @@ async def overview(days: int = Query(7)):
 
 
 @router.get("/timeline", response_model=S.Timeline, response_model_by_alias=True)
-async def timeline(days: int = Query(7)):
-    return S.Timeline.model_validate(await _run(tl_svc.timeline, _days(days), _today()))
+async def timeline(days: int = Query(7), end: date | None = Query(None)):
+    """`end` (YYYY-MM-DD) moves the period back; it is never later than the latest day with data."""
+    return S.Timeline.model_validate(await _run(tl_svc.timeline, _days(days), _today(), end))
 
 
 @router.get("/overview/days", response_model=S.OverviewDays, response_model_by_alias=True)

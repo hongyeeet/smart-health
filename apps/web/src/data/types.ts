@@ -978,12 +978,24 @@ export interface InsightsHourly {
   hi: (number | null)[]
 }
 export interface InsightsTimeline {
-  period: InsightsPeriod & { bucketMinutes: number; buckets: number }
-  series: { glucose: (number | null)[]; glucoseMin: (number | null)[]; glucoseMax: (number | null)[]; heart: (number | null)[]; spo2: (number | null)[]; steps: (number | null)[] }
+  /** latest and earliest: the first and last day with data, so the period can move back but not past them */
+  period: InsightsPeriod & { bucketMinutes: number; buckets: number; latest: string; earliest: string | null }
+  series: {
+    glucose: (number | null)[]
+    glucoseMin: (number | null)[]
+    glucoseMax: (number | null)[]
+    heart: (number | null)[]
+    heartMin: (number | null)[]
+    heartMax: (number | null)[]
+    spo2: (number | null)[]
+    spo2Min: (number | null)[]
+    spo2Max: (number | null)[]
+    steps: (number | null)[]
+  }
   baseline: {
     days: number
-    /** "before": the 60 days before the period; "period": too few days before, so the period's own average */
-    source: 'before' | 'period'
+    /** "before": the 60 days before the period; "start": too few days before, so the first 30 days of the period; "period": the whole (short) period */
+    source: 'before' | 'start' | 'period'
     from: string
     to: string
     available: boolean
@@ -991,6 +1003,8 @@ export interface InsightsTimeline {
     bpSystolic: number | null
     bpDiastolic: number | null
     bpReadings: number
+    /** for the one-point-a-day views: the mean of the person's daily averages and the middle half of them */
+    daily: Record<'glucose' | 'heart' | 'spo2', { mean: number | null; lo: number | null; hi: number | null }>
     glucose: InsightsHourly
     heart: InsightsHourly
     spo2: InsightsHourly
@@ -1006,6 +1020,38 @@ export interface InsightsTimeline {
   /** work_days: 1 = Monday ... 7 = Sunday; `set` is false when the person gave no work hours */
   work: { days: number[]; start: string | null; end: string | null; set: boolean }
   values: { avgGlucose: number | null; gmi: number | null; cv: number | null; stepsPerDay: number | null; dosesTakenPct: number | null; sensorWornPct: number | null }
+  /** one row per day of the period */
+  dayRows: InsightsTimelineDay[]
+  compare: {
+    /** the number of most recent days in `recent` (7, or 30 for a 90-day period) */
+    recentDays: number
+    glucose: InsightsTimelineMetric
+    heart: InsightsTimelineMetric
+    spo2: InsightsTimelineMetric
+    bp: InsightsTimelineMetric
+  }
+}
+export interface InsightsTimelineDay {
+  date: string
+  glucose: { avg: number | null; min: number | null; max: number | null }
+  heart: { avg: number | null; min: number | null; max: number | null }
+  spo2: { avg: number | null; min: number | null; max: number | null }
+  systolic: number | null
+  diastolic: number | null
+  steps: number | null
+  kcal: number | null
+  sugarG: number | null
+  sodiumMg: number | null
+  meals: number
+  missed: number
+  symptoms: number
+}
+/** the period set against the baseline: a number, never a verdict */
+export interface InsightsTimelineMetric {
+  baseline: number | null
+  period: number | null
+  recent: number | null
+  slopePerWeek: number | null
 }
 /** The overview calendar: one cell per day in start to end. Days after `today` are never included. */
 export interface InsightsOverviewDays {

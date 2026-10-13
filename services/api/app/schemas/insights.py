@@ -287,6 +287,8 @@ class SensorRun(Camel):
 class TLPeriod(Period):
     bucket_minutes: int
     buckets: int
+    latest: str                  # the last day with data: the period can move back from here, never past it
+    earliest: str | None         # the first day with data
 
 
 class TLSeries(Camel):
@@ -295,7 +297,11 @@ class TLSeries(Camel):
     glucose_min: list[float | None]
     glucose_max: list[float | None]
     heart: list[float | None]
+    heart_min: list[float | None]
+    heart_max: list[float | None]
     spo2: list[float | None]
+    spo2_min: list[float | None]
+    spo2_max: list[float | None]
     steps: list[int | None]
 
 
@@ -306,9 +312,22 @@ class TLHourly(Camel):
     hi: list[float | None]
 
 
+class TLDailyUsual(Camel):
+    """One number each: the person's mean daily average, and the middle half of their daily averages (for the one-point-a-day views)."""
+    mean: float | None
+    lo: float | None
+    hi: float | None
+
+
+class TLDailyUsualSet(Camel):
+    glucose: TLDailyUsual
+    heart: TLDailyUsual
+    spo2: TLDailyUsual
+
+
 class TLBaseline(Camel):
     days: int
-    source: Literal["before", "period"]
+    source: Literal["before", "start", "period"]
     from_: str = Field(alias="from")
     to: str
     available: bool
@@ -316,6 +335,7 @@ class TLBaseline(Camel):
     bp_systolic: float | None
     bp_diastolic: float | None
     bp_readings: int
+    daily: TLDailyUsualSet
     glucose: TLHourly
     heart: TLHourly
     spo2: TLHourly
@@ -378,6 +398,45 @@ class TLValues(Camel):
     sensor_worn_pct: int | None
 
 
+class TLMinMax(Camel):
+    avg: float | None
+    min: float | None
+    max: float | None
+
+
+class TLDay(Camel):
+    """One local day: the stats bar and the one-point-a-day charts read this."""
+    date: str
+    glucose: TLMinMax
+    heart: TLMinMax
+    spo2: TLMinMax
+    systolic: float | None
+    diastolic: float | None
+    steps: int | None
+    kcal: int | None
+    sugar_g: float | None
+    sodium_mg: float | None
+    meals: int
+    missed: int
+    symptoms: int
+
+
+class TLMetric(Camel):
+    """The period set against the baseline: its average, the average of its most recent days, and the drift per week (a number, never a verdict)."""
+    baseline: float | None
+    period: float | None
+    recent: float | None
+    slope_per_week: float | None
+
+
+class TLCompare(Camel):
+    recent_days: int
+    glucose: TLMetric
+    heart: TLMetric
+    spo2: TLMetric
+    bp: TLMetric
+
+
 class Timeline(Camel):
     period: TLPeriod
     series: TLSeries
@@ -386,3 +445,5 @@ class Timeline(Camel):
     events: TLEvents
     work: TLWork
     values: TLValues
+    day_rows: list[TLDay]
+    compare: TLCompare

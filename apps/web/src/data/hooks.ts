@@ -8,8 +8,9 @@ import { useUi } from '@/state/store'
 export const useHome = () => useQuery({ queryKey: ['home'], queryFn: () => api.getHome() })
 export const useInsights = (period: Period) => useQuery({ queryKey: ['insights', period], queryFn: () => api.getInsights(period) })
 export const useInsightsOverview = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'overview', days], queryFn: () => api.getInsightsOverview(days) })
-export const useInsightsTimeline = (days: InsightsDays) =>
-  useQuery({ queryKey: ['insights', 'timeline', days], queryFn: () => api.getInsightsTimeline(days), placeholderData: keepPreviousData })
+/** `end` (YYYY-MM-DD) moves the period back; leave it out for the latest days */
+export const useInsightsTimeline = (days: InsightsDays, end?: string) =>
+  useQuery({ queryKey: ['insights', 'timeline', days, end ?? 'latest'], queryFn: () => api.getInsightsTimeline(days, end), placeholderData: keepPreviousData })
 export const useInsightsOverviewDays = (from: string, to: string, enabled = true) =>
   useQuery({ queryKey: ['insights', 'overviewDays', from, to], queryFn: () => api.getInsightsOverviewDays(from, to), enabled, placeholderData: keepPreviousData })
 export const useInsightsGlucose = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'glucose', days], queryFn: () => api.getInsightsGlucose(days) })

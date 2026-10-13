@@ -8,15 +8,31 @@ import { cn } from '@/lib/cn'
 import { Alert, Card, SectionTitle, Skeleton } from '@/ui/primitives'
 import { CaretLeft, CaretRight } from '@/ui/icons'
 import { Findings, Gate, InsightsFrame, Plain, Tile, TileGrid, num, useInsightsDays } from './shared'
-import { OverviewTimeline } from './Timeline'
+import { BaselineCompare, OverviewTimeline } from './Timeline'
 import { DayCalendar, monthRange, monthTitle, shiftMonth } from './grids'
 
 const MEASURES: InsightsGridKey[] = ['meals', 'activity', 'sleep', 'stress', 'doses']
 
+/** the local date `n` days after `iso` (negative: before), as YYYY-MM-DD */
+function shiftDays(iso: string, n: number): string {
+  const d = new Date(`${iso}T12:00:00`)
+  d.setDate(d.getDate() + n)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function Overview() {
-  const days = useInsightsDays((s) => s.days)
+  const { days, setDays } = useInsightsDays()
+  // how many whole periods back from the latest data the charts are showing (0: the latest)
+  const [back, setBack] = useState(0)
+  const [latest, setLatest] = useState<string | null>(null)
+  const endIso = back > 0 && latest ? shiftDays(latest, -back * days) : undefined
   const { data } = useInsightsOverview(days)
-  const tl = useInsightsTimeline(days)
+  const tl = useInsightsTimeline(days, endIso)
+  if (tl.data && tl.data.period.latest !== latest) setLatest(tl.data.period.latest)
+  const pickDays = (d: typeof days) => {
+    setBack(0)
+    setDays(d)
+  }
   const [browsed, setBrowsed] = useState<string | null>(null)
   const [measure, setMeasure] = useState<InsightsGridKey>('meals')
   const go = useGo()
@@ -179,7 +195,7 @@ export function Overview() {
   )
 
   return (
-    <InsightsFrame tab="C1" period={data?.period ?? tlData?.period} why="week">
+    <InsightsFrame tab="C1" period={data?.period ?? tlData?.period} why="week" filter={false} wide>
       <Gate
         data={tlData}
         isError={tl.isError && !tlData}
@@ -187,10 +203,21 @@ export function Overview() {
         emptyText={t('insights.overview.empty', 'Log a few meals, a workout or a check-in and your week fills in here.')}
       >
         {tlData && (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start lg:gap-6 [&>*]:min-w-0">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16.5rem] xl:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-6 [&>*]:min-w-0">
             <div className="flex flex-col gap-6">
               <Card className="!px-3 sm:!px-4">
-                <OverviewTimeline key={`${days}:${tlData.period.start}:${tlData.period.end}`} data={tlData} />
+                <OverviewTimeline
+                  data={tlData}
+                  days={days}
+                  setDays={pickDays}
+                  nav={{
+                    canBack: !!tlData.period.earliest && tlData.period.start > tlData.period.earliest,
+                    canForward: back > 0,
+                    onBack: () => setBack((b) => b + 1),
+                    onForward: () => setBack((b) => Math.max(0, b - 1)),
+                  }}
+                  onOpenDay={(date) => go('D1', { params: { date } })}
+                />
               </Card>
               <section className="flex flex-col gap-3">
                 <SectionTitle>{t('insights.overview.yourDays', 'Your days')}</SectionTitle>
@@ -252,7 +279,8 @@ export function Overview() {
             </div>
             <aside className="flex flex-col gap-4">
               {valuesCard}
-              {data && (
+              <BaselineCompare data={tlData} />
+              {data && back === 0 && (
                 <section className="flex flex-col gap-2">
                   <SectionTitle>{t('insights.overview.whatChanged', 'What changed')}</SectionTitle>
                   {moved.map((c) => (
@@ -283,7 +311,7 @@ export function Overview() {
                   )}
                 </section>
               )}
-              {data ? (
+              {back > 0 ? null : data ? (
                 data.patterns.length > 0 ? (
                   <Findings title={t('insights.overview.learnt', 'What Smart Health has learnt')} items={data.patterns} onOpen={(to) => go(to)} />
                 ) : (

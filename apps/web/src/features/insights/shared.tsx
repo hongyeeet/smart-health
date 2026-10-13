@@ -30,7 +30,7 @@ export function WhyLink({ topic }: { topic: WhyTopic }) {
   )
 }
 
-export function InsightsFrame({ tab, period, why, children, back, filter = true }: { tab: RouteId; period?: InsightsPeriod; why: WhyTopic; children: ReactNode; back?: RouteId; /** false on a tab that browses by month and has no 7, 30 or 90 day choice */ filter?: boolean }) {
+export function InsightsFrame({ tab, period, why, children, back, filter = true, wide = false }: { tab: RouteId; /** wider than the usual 1040 px on a big screen (the overview charts) */ wide?: boolean; period?: InsightsPeriod; why: WhyTopic; children: ReactNode; back?: RouteId; /** false on a tab that browses by month and has no 7, 30 or 90 day choice */ filter?: boolean }) {
   const go = useGo()
   const { days, setDays } = useInsightsDays()
   const { t } = useTranslation()
@@ -43,7 +43,7 @@ export function InsightsFrame({ tab, period, why, children, back, filter = true 
     { value: 'C6', label: t('insights.shared.tabMedication', 'Medication') },
   ]
   return (
-    <Screen tabs>
+    <Screen tabs wide={wide}>
       <Header title={t('insights.shared.title', 'Insights')} back={!!back} backTo={back} trailing={back ? undefined : <UserSwitch />} />
       <TabStrip label={t('insights.shared.tabsLabel', 'Insights sections')} tabs={tabs} value={tab} onChange={(v) => go(v)} flush />
       {filter && (

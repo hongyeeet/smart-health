@@ -33,3 +33,11 @@ def test_mood_and_symptoms():
 def test_gmi():
     assert gmi(9.1) == 7.2
     assert gmi(None) is None
+
+
+def test_slope_per_week():
+    from app.services.insights_timeline import slope_per_week
+
+    assert round(slope_per_week([1, 2, 3, 4, 5, 6, 7]), 6) == 7.0
+    assert slope_per_week([1, None, 3, None, 5]) is None   # fewer than 5 days with a value
+    assert slope_per_week([5, 5, 5, 5, 5]) == 0

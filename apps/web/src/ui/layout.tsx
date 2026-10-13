@@ -10,16 +10,16 @@ import { ArrowLeft } from './icons'
 /**
  * Scroll container for one screen. Padding at the bottom leaves room for the tab bar, and on tab screens for the floating Ask button above it
  * (a page with a Footer or Dock has no bottom padding: that bar carries its own, and sticks to the true bottom edge).
- * Content is centred and capped: 720 px on a tablet, 1040 px on a laptop and above. A form or a single-task page passes `narrow` to stay at 640 px.
+ * Content is centred and capped: 720 px on a tablet, 1040 px on a laptop and above. A form or a single-task page passes `narrow` to stay at 640 px; a page of wide charts passes `wide` to grow to 1280 px on a big screen.
  */
-export function Screen({ children, tabs = false, className, tone = 'canvas', narrow = false }: { children: ReactNode; tabs?: boolean; className?: string; tone?: 'canvas' | 'urgent'; narrow?: boolean }) {
+export function Screen({ children, tabs = false, className, tone = 'canvas', narrow = false, wide = false }: { children: ReactNode; tabs?: boolean; className?: string; tone?: 'canvas' | 'urgent'; narrow?: boolean; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     ref.current?.scrollTo({ top: 0 })
   }, [])
   return (
     <div ref={ref} className={cn('hide-scroll scroll-area absolute inset-0 overflow-y-auto overflow-x-hidden px-5 pt-1', tabs ? 'pb-[calc(var(--tab-space)+var(--ask-space,0px)+1rem)] md:pb-10' : 'pb-[calc(2.5rem+env(safe-area-inset-bottom))]', 'has-[[data-dock]]:pb-0 md:px-8', tone === 'urgent' && 'bg-urgent pt-4', className)}>
-      <div className={cn('mx-auto flex w-full flex-col gap-4', narrow ? 'md:max-w-[640px]' : 'md:max-w-[720px] lg:max-w-[1040px]')}>{children}</div>
+      <div className={cn('mx-auto flex w-full flex-col gap-4', narrow ? 'md:max-w-[640px]' : cn('md:max-w-[720px] lg:max-w-[1040px]', wide && 'xl:max-w-[1280px]'))}>{children}</div>
     </div>
   )
 }

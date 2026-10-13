@@ -37,15 +37,18 @@ export interface Reading {
 }
 
 /** What the marker reads on one chart at `m` minutes from the start. */
-export function readAt(series: (number | null)[], h: InsightsHourly, step: number, m: number): Reading {
+export type DailyUsual = { mean: number | null; lo: number | null; hi: number | null }
+
+/** `du` is the person's usual daily average, used when each point is a whole day (a day's average is steadier than one reading, so it has its own range). */
+export function readAt(series: (number | null)[], h: InsightsHourly, step: number, m: number, du?: DailyUsual): Reading {
   const k = Math.min(series.length - 1, Math.max(0, Math.floor(m / step)))
   const value = series[k] ?? null
   const daily = step >= DAY_MIN
   // the centre of the bucket, so a 2-hour bucket is compared with the baseline at its middle
   const mid = (k * step + step / 2) % DAY_MIN
-  const baseline = hourlyAt(h.mean, mid, daily)
-  const lo = hourlyAt(h.lo, mid, daily)
-  const hi = hourlyAt(h.hi, mid, daily)
+  const baseline = daily && du ? du.mean : hourlyAt(h.mean, mid, daily)
+  const lo = daily && du ? du.lo : hourlyAt(h.lo, mid, daily)
+  const hi = daily && du ? du.hi : hourlyAt(h.hi, mid, daily)
   let compare: Compare = 'unknown'
   if (value != null && lo != null && hi != null) compare = value > hi ? 'above' : value < lo ? 'below' : 'within'
   return {
@@ -140,23 +143,30 @@ export function linePath(values: (number | null)[], x: (k: number) => number, y:
   return d
 }
 
-/** The part of a line outside the usual range, drawn thicker: pieces of consecutive buckets whose value is above `hi` or below `lo` at that time of day. */
-export function outsidePath(values: (number | null)[], h: InsightsHourly, step: number, x: (k: number) => number, y: (v: number) => number): string {
+/** The part of a line outside the usual range, drawn thicker: pieces of consecutive buckets whose value is above `hi` or below `lo` at that time of day (or, one point a day, outside the usual daily range). */
+export function outsidePath(
+  values: (number | null)[],
+  h: InsightsHourly,
+  step: number,
+  x: (k: number) => number,
+  y: (v: number) => number,
+  du?: DailyUsual,
+): string {
   const daily = step >= DAY_MIN
   const out = values.map((v, k) => {
     if (v == null) return null
     const mid = (k * step + step / 2) % DAY_MIN
-    const lo = hourlyAt(h.lo, mid, daily)
-    const hi = hourlyAt(h.hi, mid, daily)
+    const lo = daily && du ? du.lo : hourlyAt(h.lo, mid, daily)
+    const hi = daily && du ? du.hi : hourlyAt(h.hi, mid, daily)
     return lo != null && hi != null && (v > hi || v < lo) ? v : null
   })
   return linePath(out, x, y)
 }
 
 /** The baseline across the whole period as a line, one point every half hour of the day (a daily view gets one flat line). */
-export function baselinePath(h: InsightsHourly, days: number, step: number, x: (m: number) => number, y: (v: number) => number): string {
+export function baselinePath(h: InsightsHourly, days: number, step: number, x: (m: number) => number, y: (v: number) => number, du?: DailyUsual): string {
   if (step >= DAY_MIN) {
-    const v = hourlyAt(h.mean, 0, true)
+    const v = du ? du.mean : hourlyAt(h.mean, 0, true)
     return v == null ? '' : `M${x(0).toFixed(1)} ${y(v).toFixed(1)}L${x(days * DAY_MIN).toFixed(1)} ${y(v).toFixed(1)}`
   }
   const pts: (number | null)[] = []
@@ -168,9 +178,14 @@ export function baselinePath(h: InsightsHourly, days: number, step: number, x: (
   return linePath(pts, (k) => x(at[k] ?? 0), y)
 }
 
-/** The usual range as a filled band over the whole period (hourly points); empty in a daily view, where a band by hour has no meaning. */
-export function bandPath(h: InsightsHourly, days: number, step: number, x: (m: number) => number, y: (v: number) => number): string {
-  if (step >= DAY_MIN) return ''
+/** The usual range as a filled band over the whole period: hourly points, or one flat band (the usual daily range) when each point is a day. */
+export function bandPath(h: InsightsHourly, days: number, step: number, x: (m: number) => number, y: (v: number) => number, du?: DailyUsual): string {
+  if (step >= DAY_MIN) {
+    if (!du || du.lo == null || du.hi == null) return ''
+    const x0 = x(0).toFixed(1)
+    const x1 = x(days * DAY_MIN).toFixed(1)
+    return `M${x0} ${y(du.hi).toFixed(1)}L${x1} ${y(du.hi).toFixed(1)}L${x1} ${y(du.lo).toFixed(1)}L${x0} ${y(du.lo).toFixed(1)}Z`
+  }
   const top: string[] = []
   const bottom: string[] = []
   for (let m = 0; m <= days * DAY_MIN; m += 60) {
@@ -181,4 +196,21 @@ export function bandPath(h: InsightsHourly, days: number, step: number, x: (m: n
     bottom.push(`${x(m).toFixed(1)} ${y(lo).toFixed(1)}`)
   }
   return `M${top.join('L')}L${bottom.reverse().join('L')}Z`
+}
+
+/** Least-squares line through the points that have a value, as a path from the first to the last of them; '' with fewer than `min` points. */
+export function trendPath(values: (number | null)[], x: (k: number) => number, y: (v: number) => number, min = 5): { d: string; slope: number } | null {
+  const pts: [number, number][] = []
+  values.forEach((v, k) => v != null && pts.push([k, v]))
+  if (pts.length < min) return null
+  const n = pts.length
+  const mx = pts.reduce((a, [k]) => a + k, 0) / n
+  const my = pts.reduce((a, [, v]) => a + v, 0) / n
+  const den = pts.reduce((a, [k]) => a + (k - mx) ** 2, 0)
+  if (den === 0) return null
+  const slope = pts.reduce((a, [k, v]) => a + (k - mx) * (v - my), 0) / den
+  const at = (k: number) => my + slope * (k - mx)
+  const k0 = pts[0]![0]
+  const k1 = pts[n - 1]![0]
+  return { d: `M${x(k0).toFixed(1)} ${y(at(k0)).toFixed(1)}L${x(k1).toFixed(1)} ${y(at(k1)).toFixed(1)}`, slope }
 }
