@@ -11,7 +11,7 @@ import i18n from '@/i18n'
 import { Button, Field } from '@/ui/primitives'
 import { fmtDate } from '../settings/rules'
 import { PickMany, PickOne, type Option } from '@/features/onboarding/parts'
-import { labelOf } from '@/features/onboarding/options'
+import { RACE_OTHERS, labelOf } from '@/features/onboarding/options'
 import { LIMITS, inRange, num, pastDateOk, yearOk, type OnboardingAnswers } from '@/features/onboarding/useOnboarding'
 import type { ProfileBody, SavedOnboarding } from '@/features/onboarding/api'
 import { Plus } from '@/ui/icons'
@@ -99,8 +99,23 @@ export function buildFields(o: Opts): FieldDef[] {
     text('name', 'about', t('me.account.f.name', 'Name'), 'name', (v) => ({ displayName: v ?? undefined }), { required: true, noDigits: true }),
     year('birthYear', 'about', t('me.account.f.birthYear', 'Year of birth'), 'birthYear', true, (v) => ({ birthYear: v ?? undefined })),
     pick('gender', 'about', t('me.account.f.gender', 'Sex'), (a) => a.gender, o.gender, (v) => ({ gender: v })),
-    { ...text('race', 'about', t('me.account.f.race', 'Ethnic group'), 'race', (v) => ({ race: v }), { placeholder: t('me.account.f.racePlaceholder', 'For example, Chinese, Malay or Indian') }),
-      show: (a: OnboardingAnswers) => (a.race.trim() ? labelOf(o.race, a.race.trim()) : null) },
+    {
+      id: 'race', group: 'about', label: t('me.account.f.race', 'Ethnic group'),
+      show: (a: OnboardingAnswers) => (a.race.trim() ? labelOf(o.race, a.race.trim()) : null),
+      /* Chinese, Malay or Indian are picked; Others shows a box to say which (that word is what is saved). Any other saved word opens as Others. */
+      init: (a: OnboardingAnswers) => {
+        const known = o.race.some((x) => x.value !== RACE_OTHERS && x.value === a.race)
+        return { pick: known ? a.race : a.race.trim() ? RACE_OTHERS : null, other: known ? '' : a.race }
+      },
+      body: (d: { pick: string | null; other: string }) => ({ race: d.pick === RACE_OTHERS ? trimmed(d.other) : d.pick }),
+      problem: (d: { pick: string | null; other: string }) => (d.pick === RACE_OTHERS && !d.other.trim() ? t('me.account.sayWhich', 'Please say which.') : undefined),
+      editor: (d: { pick: string | null; other: string }, set: (d: { pick: string | null; other: string }) => void) => (
+        <div className="flex flex-col gap-3">
+          <PickOne label={t('me.account.f.race', 'Ethnic group')} options={o.race} value={d.pick} onChange={(pick) => set({ pick, other: pick === RACE_OTHERS ? d.other : '' })} />
+          {d.pick === RACE_OTHERS && <Field label={t('onboarding.race.otherV2', 'Please say which')} value={d.other} onChange={(other) => set({ ...d, other })} />}
+        </div>
+      ),
+    },
     numeric('heightCm', 'about', t('me.account.f.height', 'Height'), 'heightCm', LIMITS.heightCm, 'cm', (v) => ({ heightCm: v })),
     numeric('weightKg', 'about', t('me.account.f.weight', 'Weight'), 'weightKg', LIMITS.weightKg, 'kg', (v) => ({ weightKg: v })),
     numeric('waistCm', 'about', t('me.account.f.waist', 'Waist'), 'waistCm', LIMITS.waistCm, 'cm', (v) => ({ waistCm: v })),

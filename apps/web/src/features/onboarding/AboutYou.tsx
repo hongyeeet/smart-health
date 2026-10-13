@@ -1,6 +1,8 @@
 /**
- * A3 — About you, pages 3 to 11 on one route (?step=3 to 11). The step in the address is the page number, so the counter reads
- * "Step N of 11" and Back moves one page at a time. Continue saves this page to the record (usePageSave) before moving on.
+ * A3 — About you, pages 3 to 10 on one route (?step=3 to 10). The step in the address is the page number, so the counter reads
+ * "Step N of 10". Back goes to the page before (by replacing the address, so the browser history never loops) and, from the first page,
+ * to the eligibility check. Continue saves this page to the record (usePageSave) before moving on. Medicines are not asked here:
+ * they are added from the Medications tab.
  *
  * The screen records answers and nothing else: no score, stage, category or target, and no comment on any value (rules.md 1.1, 1.6).
  * The checks only catch typing slips and missing required answers, and each one says what to fix.
@@ -10,21 +12,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { appConfig } from '@/config/app'
 import { href } from '@/app/routeIds'
-import { fullName } from '@/features/meds/medicineText'
-import { useBack, useGo } from '@/app/navigation'
-import { useMeds } from '@/data/hooks'
 import { Screen } from '@/ui/layout'
-import { Alert, Button, Card, Field, Skeleton, TextLink, Toggle } from '@/ui/primitives'
-import { Camera, Plus, Trash } from '@/ui/icons'
+import { Alert, Button, Card, Field, TextLink, Toggle } from '@/ui/primitives'
+import { Plus, Trash } from '@/ui/icons'
 import { DemoNotice, Dock, Group, InfoTip, Later, LoadNotice, LoadingAnswers, PickMany, PickOne, Scale, StepHead, TopBar, UnitToggle, useStepNav } from './parts'
-import { labelOf, useOptions } from './options'
+import { RACE_OTHERS, labelOf, useOptions } from './options'
 import { emailBody, pageBody, useOnboardingSource, type ProfileBody } from './api'
 import { usePageSave } from './usePageSave'
 import { LIMITS, emailOk, inRange, pastDateOk, phoneOk, useOnboarding, yearOk, type GlucoseUnit, type Hba1cUnit, type OnboardingAnswers } from './useOnboarding'
 
-/** The first and last page on this route. Welcome (1) and eligibility (2) have their own routes. */
+/** The first and last page on this route. Welcome (1) and eligibility (2) have their own routes. Page 5 (medicines) was removed and the later pages renumbered. */
 export const FIRST_PAGE = 3
-export const LAST_PAGE = 11
+export const LAST_PAGE = 10
 /** Adults only (prd section 3). */
 const MIN_AGE = 18
 
@@ -32,9 +31,7 @@ type Errors = Partial<Record<keyof OnboardingAnswers, string>>
 
 export function AboutYou() {
   const { t } = useTranslation()
-  const go = useGo()
   const navigate = useNavigate()
-  const back = useBack('A2')
   const { review, next } = useStepNav()
   const [params] = useSearchParams()
   const raw = Number(params.get('step'))
@@ -43,7 +40,6 @@ export function AboutYou() {
   const a = useOnboarding((s) => s.answers)
   const set = useOnboarding((s) => s.set)
   const opts = useOptions()
-  const meds = useMeds()
   const src = useOnboardingSource()
   const page = usePageSave(src.loadFailed)
   /* the same route serves every page, so a message from one page is cleared when the person moves to another */
@@ -53,13 +49,12 @@ export function AboutYou() {
   const heads: Record<number, { name: string; title: string; sub: string }> = {
     3: { name: t('onboarding.s3.name', 'About you'), title: t('onboarding.s3.title', 'About you'), sub: t('onboarding.s3.sub', 'A few basics. Only the year of birth is needed to continue.') },
     4: { name: t('onboarding.s4.name', 'Diabetes history'), title: t('onboarding.s4.title', 'Your diabetes and your care'), sub: t('onboarding.s4.sub', 'When it was found, and who looks after it.') },
-    5: { name: t('onboarding.s5.name', 'Medicines'), title: t('onboarding.s5.title', 'Your medicines'), sub: t('onboarding.s5.sub', 'Scan the label of each medicine you take. You can check or change them later.') },
-    6: { name: t('onboarding.s6.name', 'Low glucose'), title: t('onboarding.s6.title', 'Low glucose (hypos)'), sub: t('onboarding.s6.sub', 'Answer what you can. Tap the i to see what a hypo is.') },
-    7: { name: t('onboarding.s7.name', 'Other conditions and checks'), title: t('onboarding.s7.title', 'Other conditions and check-ups'), sub: t('onboarding.s7.sub', 'Things a doctor has told you about, your allergies, and your last diabetes checks.') },
-    8: { name: t('onboarding.s8.name', 'Lab results'), title: t('onboarding.s8.title', 'Lab results'), sub: t('onboarding.s8.sub', 'Copy the numbers from your most recent report. Leave blank anything you do not have.') },
-    9: { name: t('onboarding.s9.name', 'Devices'), title: t('onboarding.s9.title', 'Your watch and sensor'), sub: t('onboarding.s9.sub', 'Choose what you use. Nothing is paired on this page.') },
-    10: { name: t('onboarding.s10.name', 'Your work week'), title: t('onboarding.s10.title', 'Your work week'), sub: t('onboarding.s10.sub', 'When you usually work, so reminders can fit your day.') },
-    11: { name: t('onboarding.s11.name', 'Emergency contact'), title: t('onboarding.s11.title', 'Who should we contact in an emergency?'), sub: t('onboarding.s11.sub', 'All four details are needed. They are used for safety only.') },
+    5: { name: t('onboarding.s6.name', 'Low glucose'), title: t('onboarding.s6.title', 'Low glucose (hypos)'), sub: t('onboarding.s6.sub', 'Answer what you can. Tap the i to see what a hypo is.') },
+    6: { name: t('onboarding.s7.name', 'Other conditions and checks'), title: t('onboarding.s7.title', 'Other conditions and check-ups'), sub: t('onboarding.s7.sub', 'Things a doctor has told you about, your allergies, and your last diabetes checks.') },
+    7: { name: t('onboarding.s8.name', 'Lab results'), title: t('onboarding.s8.title', 'Lab results'), sub: t('onboarding.s8.sub', 'Copy the numbers from your most recent report. Leave blank anything you do not have.') },
+    8: { name: t('onboarding.s9.name', 'Devices'), title: t('onboarding.s9.title', 'Your watch and sensor'), sub: t('onboarding.s9.sub', 'Choose what you use. Nothing is paired on this page.') },
+    9: { name: t('onboarding.s10.name', 'Your work week'), title: t('onboarding.s10.title', 'Your work week'), sub: t('onboarding.s10.sub', 'When you usually work, so reminders can fit your day.') },
+    10: { name: t('onboarding.s11.name', 'Emergency contact'), title: t('onboarding.s11.title', 'Who should we contact in an emergency?'), sub: t('onboarding.s11.sub', 'All four details are needed. They are used for safety only.') },
   }
   const head = heads[step]!
 
@@ -83,7 +78,7 @@ export function AboutYou() {
   if (hasLab && !a.labDate && !e.labDate) e.labDate = t('onboarding.err.labDate', 'Enter the date of your blood test. It is needed with the numbers.')
   const contactProblems: Errors = {}
   if (a.contactPhone.trim() && !phoneOk(a.contactPhone)) contactProblems.contactPhone = t('onboarding.err.phone', 'Enter a mobile number with digits, like +65 9123 4567.')
-  if (a.contactEmail.trim() && !emailOk(a.contactEmail)) contactProblems.contactEmail = t('onboarding.err.email', 'Enter an email address like name@gmail.com.')
+  if (a.contactEmail.trim() && !emailOk(a.contactEmail)) contactProblems.contactEmail = t('onboarding.err.emailV2', 'Enter an email address like name@example.com.')
   const working = a.workType !== null && a.workType !== 'not_working'
   const workMissing = working && (a.workDays.length === 0 || !a.workStart || !a.workEnd)
   const contactMissing = !a.contactName.trim() || !a.contactRelation.trim() || !a.contactPhone.trim() || !a.contactEmail.trim()
@@ -92,14 +87,14 @@ export function AboutYou() {
   const fieldsOnPage: Partial<Record<number, (keyof OnboardingAnswers)[]>> = {
     3: ['birthYear', 'heightCm', 'weightKg', 'waistCm'],
     4: ['diagnosedYear'],
-    8: ['labDate', 'hba1c', 'fastingGlucose', 'fastingInsulin'],
-    11: ['contactPhone', 'contactEmail'],
+    7: ['labDate', 'hba1c', 'fastingGlucose', 'fastingInsulin'],
+    10: ['contactPhone', 'contactEmail'],
   }
   const blocked =
     (fieldsOnPage[step] ?? []).some((k) => pageErrors[k]) ||
     (step === 3 && !a.birthYear.trim()) ||
-    (step === 10 && workMissing) ||
-    (step === 11 && contactMissing)
+    (step === 9 && workMissing) ||
+    (step === 10 && contactMissing)
 
   /* ---- what this page saves, and moving on ---- */
   const firstSave = !src.saved.data?.profile
@@ -123,13 +118,26 @@ export function AboutYou() {
     if (step < LAST_PAGE) return next(`${href('A3')}?step=${step + 1}`)
     next(href('A6'))
   }
-  const onBack = review ? () => navigate(href('A6')) : step === FIRST_PAGE ? back : () => navigate(`${href('A3')}?step=${step - 1}`)
+  /* Back names the page before and replaces the address, so Back never pops the history (that made pages 3 and 4 bounce between each other) */
+  const onBack = review ? () => navigate(href('A6')) : () => navigate(step === FIRST_PAGE ? href('A2') : `${href('A3')}?step=${step - 1}`, { replace: true })
 
   const setAllergy = (i: number, patch: Partial<OnboardingAnswers['allergies'][number]>) => set({ allergies: a.allergies.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
   const twoCol = "grid grid-cols-2 gap-3 [[data-ts='2']_&]:grid-cols-1"
   const hba1cUnits: { value: Hba1cUnit; label: string }[] = [{ value: '%', label: '%' }, { value: 'mmol/mol', label: 'mmol/mol' }]
   const glucoseUnits: { value: GlucoseUnit; label: string }[] = [{ value: 'mmol/L', label: 'mmol/L' }, { value: 'mg/dL', label: 'mg/dL' }]
-  const raceIsSuggestion = opts.race.some((o) => o.value === a.race)
+  /* Ethnic group: Chinese, Malay or Indian are picked; "Others" shows a box to say which. An older answer that is none of the three opens as Others. */
+  const raceIsSuggestion = opts.race.some((o) => o.value !== RACE_OTHERS && o.value === a.race)
+  const [othersTapped, setOthersTapped] = useState(false)
+  const raceOthers = othersTapped || (a.race.trim() !== '' && !raceIsSuggestion)
+  const pickRace = (v: string | null) => {
+    if (v === RACE_OTHERS) {
+      setOthersTapped(true)
+      if (raceIsSuggestion) set({ race: '' })
+    } else {
+      setOthersTapped(false)
+      set({ race: v ?? '' })
+    }
+  }
   const nextLabel = review ? t('onboarding.backToSummary', 'Back to summary') : step === LAST_PAGE ? t('onboarding.toSummary', 'Check my answers') : t('common.continue', 'Continue')
   const continueAnyway = page.holding
 
@@ -155,8 +163,8 @@ export function AboutYou() {
         <Group>
           <Field label={t('onboarding.birthYear', 'Year of birth')} inputMode="numeric" value={a.birthYear} onChange={(birthYear) => set({ birthYear })} placeholder="1965" error={e.birthYear} hint={t('onboarding.birthYearHint', 'Needed to continue.')} />
           <PickOne label={t('onboarding.gender.label', 'Sex')} options={opts.gender} value={a.gender} onChange={(gender) => set({ gender })} />
-          <PickOne label={t('onboarding.race.label', 'Ethnic group')} options={opts.race} value={raceIsSuggestion ? a.race : null} onChange={(race) => set({ race: race ?? '' })} />
-          <Field label={t('onboarding.race.other', 'Or type it in')} value={raceIsSuggestion ? '' : a.race} onChange={(race) => set({ race })} />
+          <PickOne label={t('onboarding.race.label', 'Ethnic group')} options={opts.race} value={raceOthers ? RACE_OTHERS : raceIsSuggestion ? a.race : null} onChange={pickRace} />
+          {raceOthers && <Field label={t('onboarding.race.otherV2', 'Please say which')} value={raceIsSuggestion ? '' : a.race} onChange={(race) => set({ race })} />}
           <div className={twoCol}>
             <Field label={t('onboarding.height', 'Height')} inputMode="decimal" suffix="cm" value={a.heightCm} onChange={(heightCm) => set({ heightCm })} placeholder="168" error={e.heightCm} />
             <Field label={t('onboarding.weight', 'Weight')} inputMode="decimal" suffix="kg" value={a.weightKg} onChange={(weightKg) => set({ weightKg })} placeholder="72" error={e.weightKg} />
@@ -175,36 +183,6 @@ export function AboutYou() {
 
       {step === 5 && (
         <>
-          <Group title={t('onboarding.meds.addTitle', 'Add each medicine from its label')}>
-            <p className="text-sub text-ink2">{t('onboarding.meds.intro', 'Smart Health copies what is on the label, and you check it. You can also do this later from Medications.')}</p>
-            <p className="text-sub text-ink2">{t('onboarding.meds.scope', 'Smart Health is for diabetes medicines and the medicines or supplements you take every day.')}</p>
-            <Button variant="secondary" icon={Camera} onClick={() => go('H2')}>
-              {t('onboarding.meds.scan', 'Scan a label')}
-            </Button>
-            <TextLink onClick={() => go('H8')} className="self-start">
-              {t('onboarding.meds.byHand', 'Type it in')}
-            </TextLink>
-          </Group>
-          <Group title={t('onboarding.meds.savedTitle', 'Medicines saved so far')}>
-            {meds.isPending && <Skeleton className="h-16" />}
-            {meds.isError && <Alert tone="warn">{t('onboarding.meds.error', 'We could not load your medicines just now. You can carry on, and check them later in Medications.')}</Alert>}
-            {meds.isSuccess && meds.data.length === 0 && <p className="text-body text-ink2">{t('onboarding.meds.none', 'No medicines saved yet.')}</p>}
-            {meds.isSuccess && meds.data.length > 0 && (
-              <ul className="flex flex-col gap-1.5">
-                {meds.data.map((m) => (
-                  <li key={m.id} className="break-words text-body">
-                    {fullName(m)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Group>
-          <Alert tone="info">{t('onboarding.meds.note', 'Smart Health explains and reminds. It never tells you to start, stop or change a medicine.')}</Alert>
-        </>
-      )}
-
-      {step === 6 && (
-        <>
           <Group>
             <div className="flex items-center gap-2 text-sub text-ink2">
               <span>{t('onboarding.hypo.what', 'What is a hypo?')}</span>
@@ -217,19 +195,19 @@ export function AboutYou() {
           </Group>
           <Group>
             <Scale
-              max={7}
+              max={5}
               label={t('onboarding.gold.q', 'Do you know when your hypos are starting?')}
               value={a.gold}
               onChange={(gold) => set({ gold })}
               lowLabel={t('onboarding.gold.low', '1 = always aware')}
-              highLabel={t('onboarding.gold.high', '7 = never aware')}
+              highLabel={t('onboarding.gold.highV2', '5 = never aware')}
             />
             <p className="text-sub text-ink3">{t('onboarding.gold.note', 'Leave it blank if you have never had a hypo.')}</p>
           </Group>
         </>
       )}
 
-      {step === 7 && (
+      {step === 6 && (
         <>
           <Group>
             <PickMany stack none="none" label={t('onboarding.cond.label', 'Has a doctor told you that you have any of these?')} options={opts.conditions} value={a.conditions} onChange={(conditions) => set({ conditions })} />
@@ -264,7 +242,7 @@ export function AboutYou() {
         </>
       )}
 
-      {step === 8 && (
+      {step === 7 && (
         <Group>
           <Field label={t('onboarding.labDate', 'Date of the blood test')} type="date" value={a.labDate} onChange={(labDate) => set({ labDate })} error={e.labDate} hint={hasLab ? undefined : t('onboarding.labDateHint', 'Needed if you enter any number below.')} />
           <div className="flex flex-col gap-2">
@@ -279,9 +257,9 @@ export function AboutYou() {
         </Group>
       )}
 
-      {step === 9 && <DevicesChoice a={a} set={set} commit={(body) => page.commit(body, null)} readOnly={src.readOnly} error={page.error} />}
+      {step === 8 && <DevicesChoice a={a} set={set} commit={(body) => page.commit(body, null)} readOnly={src.readOnly} error={page.error} />}
 
-      {step === 10 && (
+      {step === 9 && (
         <Group>
           <PickOne label={t('onboarding.work.label', 'Your work')} options={opts.work} value={a.workType} onChange={(workType) => set(workType === null || workType === 'not_working' ? { workType, workDays: [], workStart: '', workEnd: '' } : { workType })} />
           {working && (
@@ -297,12 +275,12 @@ export function AboutYou() {
         </Group>
       )}
 
-      {step === 11 && (
+      {step === 10 && (
         <Group>
           <Field label={t('onboarding.contact.name', 'Their name')} value={a.contactName} onChange={(contactName) => set({ contactName })} placeholder={t('onboarding.contact.namePh', 'Next of kin or caregiver')} hint={a.contactName.trim() ? undefined : t('onboarding.contact.needed', 'Needed to continue.')} />
           <Field label={t('onboarding.contact.relation', 'Who they are to you')} value={a.contactRelation} onChange={(contactRelation) => set({ contactRelation })} placeholder={t('onboarding.contact.relationPh', 'For example, wife, son or friend')} hint={a.contactRelation.trim() ? undefined : t('onboarding.contact.needed', 'Needed to continue.')} />
           <Field label={t('onboarding.contact.phone', 'Their mobile number')} type="tel" inputMode="tel" value={a.contactPhone} onChange={(contactPhone) => set({ contactPhone })} placeholder="+65 9123 4567" error={contactProblems.contactPhone} hint={a.contactPhone.trim() ? t('onboarding.contact.phoneHint', 'Digits, with an optional + at the front.') : t('onboarding.contact.needed', 'Needed to continue.')} />
-          <Field label={t('onboarding.contact.email', 'Their email')} value={a.contactEmail} onChange={(contactEmail) => set({ contactEmail })} placeholder="name@gmail.com" error={contactProblems.contactEmail} hint={a.contactEmail.trim() ? undefined : t('onboarding.contact.needed', 'Needed to continue.')} />
+          <Field label={t('onboarding.contact.email', 'Their email')} value={a.contactEmail} onChange={(contactEmail) => set({ contactEmail })} placeholder="name@example.com" error={contactProblems.contactEmail} hint={a.contactEmail.trim() ? undefined : t('onboarding.contact.needed', 'Needed to continue.')} />
           <p className="text-sub text-ink3">{t('onboarding.contact.hintV2', 'Used for safety only. You can change this later in Me, Data and account.')}</p>
         </Group>
       )}

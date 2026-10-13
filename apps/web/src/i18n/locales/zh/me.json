@@ -104,6 +104,7 @@
       "saved": "已保存至您的账户",
       "savedToAccount": "已保存至您的账户",
       "saving": "正在保存",
+      "sayWhich": "请注明。",
       "sentTo": "已发送至 {{email}}",
       "startSetup": "开始设置",
       "year": "请输入 4 位数的年份，例如 1962。",
@@ -260,6 +261,7 @@
     },
     "email": {
       "address": "Gmail 地址",
+      "addressV2": "电子邮件地址",
       "emptyHint": "如果您不想收到提醒电邮，请留空。",
       "intro": "提醒电邮会发送到您的 Gmail 地址。您可以随时在这里关闭。",
       "loadError": "目前无法使用电邮提醒。您的其他设置仍可使用。请稍后再试。",

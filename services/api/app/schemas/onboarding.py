@@ -62,7 +62,7 @@ class ProfileIn(Camel):
     healthier_sg: str | None = Field(default=None, max_length=20)          # yes, no, unsure
     # low glucose history
     hypo_last3m: str | None = Field(default=None, alias="hypoLast3m", max_length=10)   # 0, 1-2, 3+, unsure
-    hypo_awareness: str | None = Field(default=None, max_length=2)         # "1" (always notices a hypo coming) to "7" (never)
+    hypo_awareness: str | None = Field(default=None, max_length=2)         # "1" (always notices a hypo coming) to "5" (never)
     hypo_needed_help: str | None = Field(default=None, max_length=10)      # yes, no: needed someone's help in the last 12 months
     # other conditions and allergies: a sent list replaces the rows written from onboarding
     conditions: list[str] | None = Field(default=None, max_length=20)      # the form's condition codes; "none" is ignored

@@ -5,6 +5,7 @@ may change. Mr Tan's 90 days are checked for plausible shapes only (the numbers 
 Run from services/api:  python -m pytest tests/db/test_insights_heart.py -q   (needs DATABASE_URL in .env)
 """
 import os
+import uuid
 import sys
 from datetime import date
 from pathlib import Path
@@ -35,7 +36,7 @@ def conn():
 
 
 def test_a_new_person_has_no_watch_data_and_no_blood_pressure(conn):
-    user = str(logstore.person_id(logstore.new_person_key()))
+    user = str(uuid.uuid4())       # a person with no data at all
     out = H.heart(conn, user, 30, date(2026, 10, 11))
     assert out["has_data"] is False
     assert out["heart_rate"]["avg"] is None and out["spo2"]["low"] is None

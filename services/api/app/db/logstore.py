@@ -15,7 +15,6 @@ import json
 import re
 import logging
 import math
-import secrets
 import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -50,23 +49,10 @@ def is_read_only(user: object) -> bool:
     return str(user) == str(MR_TAN_USER)
 
 
-# A person started in the app ("Start as new person") has a key of this shape. The user id is derived from the key, so the same key
-# always means the same person, and no lookup table is needed. The row itself is created by POST /users (routers/users.py).
-PERSON_KEY = re.compile(r"person-[0-9a-f]{12}")
-
-
-def person_id(key: str) -> uuid.UUID:
-    return uuid.uuid5(NAMESPACE, f"user:{key}")
-
-
-def new_person_key() -> str:
-    return f"person-{secrets.token_hex(6)}"
-
-
 def set_user(key: str | None) -> str:
     """Choose who the rest of this request acts as. Unknown keys raise KeyError so a typo never silently falls back."""
     key = (key or "demo").strip().lower()
-    if key not in USERS and not PERSON_KEY.fullmatch(key):
+    if key not in USERS:                      # only the demo user and Mr Tan exist ("Start as new person" was removed on 2026-10-13)
         raise KeyError(key)
     _current.set(key)
     return key
@@ -78,7 +64,7 @@ def current_user_key() -> str:
 
 def current_user() -> uuid.UUID:
     key = _current.get()
-    return USERS[key]["id"] if key in USERS else person_id(key)
+    return USERS[key]["id"]
 BUCKET = timedelta(minutes=5)
 
 # Daily goals. Placeholders from the owner (appConfig.goals); clinical review pending, never shown as advice.

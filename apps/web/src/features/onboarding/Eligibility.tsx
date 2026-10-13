@@ -7,7 +7,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { href } from '@/app/routeIds'
-import { useBack } from '@/app/navigation'
 import { Screen } from '@/ui/layout'
 import { Segmented } from '@/ui/controls'
 import { Alert } from '@/ui/primitives'
@@ -20,7 +19,6 @@ type YN = 'yes' | 'no'
 export function Eligibility() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const back = useBack('A1')
   const set = useOnboarding((s) => s.set)
   const [t2, setT2] = useState<'yes' | 'no' | 'unsure'>('yes')
   const [adult, setAdult] = useState<YN>('yes')
@@ -60,7 +58,7 @@ export function Eligibility() {
       ) : null}
       <Later />
       <Dock
-        onBack={back}
+        onBack={() => navigate(href('A1'), { replace: true })}      // by name and replacing the address, so Back never loops
         nextDisabled={out}
         nextLabel={t('common.continue', 'Continue')}
         onNext={() => {

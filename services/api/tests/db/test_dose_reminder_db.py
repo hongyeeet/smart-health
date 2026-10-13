@@ -3,6 +3,7 @@ missed that nudge_policy's CHECK refused the old kind). Everything runs inside o
 Run from services/api:  python -m pytest tests/db/test_dose_reminder_db.py -q       Needs DATABASE_URL in the private .env.
 """
 import os
+import uuid
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -21,7 +22,7 @@ from app.api.routers import medications as meds  # noqa: E402
 from app.db import logstore  # noqa: E402
 from app.schemas.medicines import NewMedicationIn  # noqa: E402
 
-KEY = "person-aaaaaaaaaaaa"
+KEY = "test-dose-user"         # a throwaway person for this test only: it is added to the known users below and removed again
 
 
 @pytest.fixture()
@@ -29,9 +30,11 @@ def conn():
     load_env()
     c = psycopg.connect(clean_url(os.environ["DATABASE_URL"]), connect_timeout=20, row_factory=dict_row)
     token = logstore._shared.set(c)       # every tx() in the code under test uses this rolled-back transaction
+    logstore.USERS[KEY] = {"id": uuid.uuid5(logstore.NAMESPACE, f"user:{KEY}"), "label": "Test", "sub": ""}
     try:
         yield c
     finally:
+        logstore.USERS.pop(KEY, None)
         logstore._shared.reset(token)
         logstore.set_user("demo")
         c.rollback()
@@ -42,7 +45,7 @@ def test_a_dose_reminder_row_and_a_policy_row_are_really_saved(conn):
     now = datetime.now(logstore.TZ)
     if now.hour == 0 and now.minute < 10:
         pytest.skip("too close to midnight for a dose time just before now")
-    uid = logstore.person_id(KEY)
+    uid = logstore.USERS[KEY]["id"]
     conn.execute("insert into users (id, is_demo) values (%s, true) on conflict (id) do nothing", (uid,))
     when = (now - timedelta(minutes=5)).strftime("%H:%M")
     body = {"name": "Metformin 500 mg", "kind": "prescription", "strength": "500 mg", "totalQuantity": 60, "doses": [{"time": when, "quantity": 1, "mealRelation": "after_meal"}]}

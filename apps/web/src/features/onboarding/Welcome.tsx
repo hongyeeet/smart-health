@@ -1,27 +1,20 @@
 /**
- * A1 — Welcome (page 1 of 11). Your name, the reminder email (optional, with a reminder on/off switch) and the consents. There is no
+ * A1 — Welcome (page 1 of 10). Your name, the email address for reminders (needed to continue; the reminder on/off switch stays) and the consents. There is no
  * language choice. Nothing is kept on the device until the data-use consent is on, and the person cannot go further without it
  * (prd F1).
  */
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { href } from '@/app/routeIds'
-import { useSwitchUser } from '@/data/hooks'
 import { Screen } from '@/ui/layout'
-import { Alert, Field, TextLink, Toggle } from '@/ui/primitives'
+import { Alert, Field, Toggle } from '@/ui/primitives'
 import { DemoNotice, Dock, Group, Later, LoadNotice, LoadingAnswers, StepHead, TopBar, useStepNav } from './parts'
 import { emailBody, pageBody, useOnboardingSource } from './api'
 import { usePageSave } from './usePageSave'
 import { emailOk, useOnboarding } from './useOnboarding'
 
-/** The seeded persona with about 90 days of history (see UserSwitch). */
-const DEMO_PATIENT = 'mr-tan'
-
 export function Welcome() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { review, next } = useStepNav()
-  const switchUser = useSwitchUser()
   const a = useOnboarding((s) => s.answers)
   const set = useOnboarding((s) => s.set)
   const src = useOnboardingSource()
@@ -44,7 +37,7 @@ export function Welcome() {
 
   const emailTyped = a.reminderEmail.trim() !== ''
   const emailBad = emailTyped && !emailOk(a.reminderEmail)
-  const blocked = !a.consentData || emailBad
+  const blocked = !a.consentData || !emailTyped || emailBad       // the address is needed: reminders are sent by email
   const stored = src.email.data
   /* the email and the switch are saved only when they differ from what the server holds */
   const emailChanged = (a.reminderEmail.trim() || null) !== (stored?.email ?? null) || a.reminderOn !== (stored?.optIn ?? true)
@@ -79,12 +72,12 @@ export function Welcome() {
       <Group>
         <Field label={t('onboarding.name', 'What should we call you?')} value={a.name} onChange={(name) => set({ name })} placeholder={t('onboarding.namePlaceholder', 'For example, Mr Tan')} />
         <Field
-          label={t('onboarding.email.label', 'Email for reminders (optional)')}
+          label={t('onboarding.email.labelV2', 'Email address')}
           value={a.reminderEmail}
           onChange={(reminderEmail) => set({ reminderEmail })}
-          placeholder="name@gmail.com"
-          error={emailBad ? t('onboarding.err.email', 'Enter an email address like name@gmail.com, or leave it blank.') : undefined}
-          hint={emailBad ? undefined : t('onboarding.email.hint', 'We email a gentle reminder when something is due, like logging a meal. Leave it blank to add it later.')}
+          placeholder="name@example.com"
+          error={emailBad ? t('onboarding.err.emailV2', 'Enter an email address like name@example.com.') : undefined}
+          hint={emailBad ? undefined : t('onboarding.email.hintV2', 'We email a gentle reminder when something is due, like logging a meal.')}
         />
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -109,19 +102,7 @@ export function Welcome() {
         </div>
       </Group>
 
-      <Later label={t('onboarding.goHome', 'Go to Home')}>
-        {!review && (
-          <TextLink
-            onClick={() => {
-              switchUser(DEMO_PATIENT)
-              navigate(href('B1'))
-            }}
-            className="self-center"
-          >
-            {t('onboarding.demoStartV2', 'Start as demo patient')}
-          </TextLink>
-        )}
-      </Later>
+      <Later label={t('onboarding.goHome', 'Go to Home')} />
       <Dock onNext={onNext} nextDisabled={blocked || page.saving} nextLabel={continueAnyway ? t('onboarding.continueAnyway', 'Continue anyway') : review ? t('onboarding.backToSummary', 'Back to summary') : t('common.continue', 'Continue')} />
     </Screen>
   )

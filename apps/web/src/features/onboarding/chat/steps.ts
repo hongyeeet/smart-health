@@ -31,7 +31,7 @@ export interface ChatQuestion {
 export const CHAT_QUESTIONS: ChatQuestion[] = [
   /* 1 welcome */
   { id: 'name', kind: 'text', optional: false, formStep: 1, ask: 'What should we call you?', placeholder: 'Your first name is fine' },
-  { id: 'reminderEmail', kind: 'email', optional: true, formStep: 1, ask: 'Which email should reminders go to? A Gmail address works. You can leave this one blank.', placeholder: 'name@gmail.com', inputMode: 'email' },
+  { id: 'reminderEmail', kind: 'email', optional: false, formStep: 1, ask: 'Which email address should reminders go to? For example name@example.com.', placeholder: 'name@example.com', inputMode: 'email' },
   /* 2 eligibility */
   { id: 'hasDiabetes', kind: 'choice', optional: false, formStep: null, ask: 'Do you have type 2 diabetes? Say yes, or not sure.' },
   /* 3 about you */
@@ -45,33 +45,33 @@ export const CHAT_QUESTIONS: ChatQuestion[] = [
   { id: 'careSetting', kind: 'choice', optional: true, formStep: 4, ask: 'Where do you usually go for your diabetes? A polyclinic, a GP or family clinic, a hospital specialist clinic, or no regular doctor. You can leave this one blank.' },
   { id: 'healthierSg', kind: 'choice', optional: true, formStep: 4, ask: 'Are you enrolled in Healthier SG? Say yes, no, or not sure. You can leave this one blank.' },
   /* 6 low glucose */
-  { id: 'hypo3m', kind: 'choice', optional: true, formStep: 6, ask: 'How many hypos (low glucose) have you had in the last 3 months? None, 1 or 2 times, 3 times or more, or not sure. You can leave this one blank.' },
-  { id: 'severeHypo', kind: 'choice', optional: true, formStep: 6, ask: 'In the last 12 months, did you have a hypo where you needed someone else to help you? Yes or no. You can leave this one blank.' },
-  { id: 'gold', kind: 'scale', optional: true, formStep: 6, ask: 'How well do you notice a hypo coming on? Say a number from 1 (always aware) to 7 (never aware). You can leave this one blank.', placeholder: '1 to 7', inputMode: 'numeric' },
+  { id: 'hypo3m', kind: 'choice', optional: true, formStep: 5, ask: 'How many hypos (low glucose) have you had in the last 3 months? None, 1 or 2 times, 3 times or more, or not sure. You can leave this one blank.' },
+  { id: 'severeHypo', kind: 'choice', optional: true, formStep: 5, ask: 'In the last 12 months, did you have a hypo where you needed someone else to help you? Yes or no. You can leave this one blank.' },
+  { id: 'gold', kind: 'scale', optional: true, formStep: 5, ask: 'How well do you notice a hypo coming on? Say a number from 1 (always aware) to 5 (never aware). You can leave this one blank.', placeholder: '1 to 5', inputMode: 'numeric' },
   /* 7 other conditions and checks */
-  { id: 'conditions', kind: 'multi', optional: true, formStep: 7, ask: 'Has a doctor told you that you have any of these? High blood pressure, high cholesterol, kidney disease, heart disease or a past heart attack, stroke or mini-stroke, heart failure, diabetic eye disease, nerve problems in the feet, a past foot ulcer or amputation, sleep apnoea, fatty liver, or anaemia or thalassaemia. Name them, or say none. You can leave this one blank.', placeholder: 'For example, high blood pressure' },
-  { id: 'otherConditions', kind: 'free', optional: true, formStep: 7, ask: 'Any other condition? Type it in, or say none. You can leave this one blank.', placeholder: 'Or say none' },
-  { id: 'allergies', kind: 'allergy', optional: true, formStep: 7, ask: 'Are you allergic to any medicine, food or material? Name it, and what happens if you like, such as penicillin (rash). Or say none. You can leave this one blank.', placeholder: 'For example penicillin (rash)' },
-  { id: 'eyeCheck', kind: 'choice', optional: true, formStep: 7, ask: 'When did you last have an eye check, the retinal photo? In the last year, more than a year ago, or never or not sure. You can leave this one blank.' },
-  { id: 'footCheck', kind: 'choice', optional: true, formStep: 7, ask: 'When did you last have a foot check? In the last year, more than a year ago, or never or not sure. You can leave this one blank.' },
+  { id: 'conditions', kind: 'multi', optional: true, formStep: 6, ask: 'Has a doctor told you that you have any of these? High blood pressure, high cholesterol, kidney disease, heart disease or a past heart attack, stroke or mini-stroke, heart failure, diabetic eye disease, nerve problems in the feet, a past foot ulcer or amputation, sleep apnoea, fatty liver, or anaemia or thalassaemia. Name them, or say none. You can leave this one blank.', placeholder: 'For example, high blood pressure' },
+  { id: 'otherConditions', kind: 'free', optional: true, formStep: 6, ask: 'Any other condition? Type it in, or say none. You can leave this one blank.', placeholder: 'Or say none' },
+  { id: 'allergies', kind: 'allergy', optional: true, formStep: 6, ask: 'Are you allergic to any medicine, food or material? Name it, and what happens if you like, such as penicillin (rash). Or say none. You can leave this one blank.', placeholder: 'For example penicillin (rash)' },
+  { id: 'eyeCheck', kind: 'choice', optional: true, formStep: 6, ask: 'When did you last have an eye check, the retinal photo? In the last year, more than a year ago, or never or not sure. You can leave this one blank.' },
+  { id: 'footCheck', kind: 'choice', optional: true, formStep: 6, ask: 'When did you last have a foot check? In the last year, more than a year ago, or never or not sure. You can leave this one blank.' },
   /* 8 lab results */
-  { id: 'labDate', kind: 'date', optional: true, formStep: 8, ask: 'What is the date of your most recent blood test? For example 12 March 2026. You can leave this one blank.', placeholder: '12 March 2026' },
-  { id: 'hba1c', kind: 'number', optional: true, formStep: 8, ask: 'What was your HbA1c? Say the number and the unit, like 7.2% or 55 mmol/mol. You can leave this one blank.', placeholder: '7.2%', inputMode: 'decimal' },
-  { id: 'fastingGlucose', kind: 'number', optional: true, formStep: 8, ask: 'What was your fasting glucose? Say the number and the unit, like 7.4 mmol/L or 133 mg/dL. You can leave this one blank.', placeholder: '7.4 mmol/L', inputMode: 'decimal' },
-  { id: 'fastingInsulin', kind: 'number', optional: true, formStep: 8, ask: 'What was your fasting insulin, in µIU/mL? Say a number, like 11.5. You can leave this one blank.', placeholder: '11.5', inputMode: 'decimal' },
+  { id: 'labDate', kind: 'date', optional: true, formStep: 7, ask: 'What is the date of your most recent blood test? For example 12 March 2026. You can leave this one blank.', placeholder: '12 March 2026' },
+  { id: 'hba1c', kind: 'number', optional: true, formStep: 7, ask: 'What was your HbA1c? Say the number and the unit, like 7.2% or 55 mmol/mol. You can leave this one blank.', placeholder: '7.2%', inputMode: 'decimal' },
+  { id: 'fastingGlucose', kind: 'number', optional: true, formStep: 7, ask: 'What was your fasting glucose? Say the number and the unit, like 7.4 mmol/L or 133 mg/dL. You can leave this one blank.', placeholder: '7.4 mmol/L', inputMode: 'decimal' },
+  { id: 'fastingInsulin', kind: 'number', optional: true, formStep: 7, ask: 'What was your fasting insulin, in µIU/mL? Say a number, like 11.5. You can leave this one blank.', placeholder: '11.5', inputMode: 'decimal' },
   /* 9 devices */
-  { id: 'cgm', kind: 'choice', optional: true, formStep: 9, ask: 'Which glucose sensor do you use? Libre, Dexcom, another sensor, or none. You can leave this one blank.' },
-  { id: 'wearable', kind: 'choice', optional: true, formStep: 9, ask: 'Which watch do you wear? Apple, Garmin, Samsung, Fitbit, Xiaomi, another watch, or none. You can leave this one blank.' },
+  { id: 'cgm', kind: 'choice', optional: true, formStep: 8, ask: 'Which glucose sensor do you use? Libre, Dexcom, another sensor, or none. You can leave this one blank.' },
+  { id: 'wearable', kind: 'choice', optional: true, formStep: 8, ask: 'Which watch do you wear? Apple, Garmin, Samsung, Fitbit, Xiaomi, another watch, or none. You can leave this one blank.' },
   /* 10 work week */
-  { id: 'workType', kind: 'choice', optional: true, formStep: 10, ask: 'What is your work like? Mostly sitting, standing, physical, a mix, shifts, or not working? You can leave this one blank.' },
-  { id: 'workDays', kind: 'days', optional: true, workingOnly: true, formStep: 10, ask: 'Which days do you usually work? For example Mon to Fri. You can leave this one blank.', placeholder: 'Mon to Fri' },
-  { id: 'workStart', kind: 'time', optional: true, workingOnly: true, formStep: 10, ask: 'What time does work start? For example 7.30am. You can leave this one blank.', placeholder: '7.30am' },
-  { id: 'workEnd', kind: 'time', optional: true, workingOnly: true, formStep: 10, ask: 'What time does work end? For example 6pm. You can leave this one blank.', placeholder: '6pm' },
+  { id: 'workType', kind: 'choice', optional: true, formStep: 9, ask: 'What is your work like? Mostly sitting, standing, physical, a mix, shifts, or not working? You can leave this one blank.' },
+  { id: 'workDays', kind: 'days', optional: true, workingOnly: true, formStep: 9, ask: 'Which days do you usually work? For example Mon to Fri. You can leave this one blank.', placeholder: 'Mon to Fri' },
+  { id: 'workStart', kind: 'time', optional: true, workingOnly: true, formStep: 9, ask: 'What time does work start? For example 7.30am. You can leave this one blank.', placeholder: '7.30am' },
+  { id: 'workEnd', kind: 'time', optional: true, workingOnly: true, formStep: 9, ask: 'What time does work end? For example 6pm. You can leave this one blank.', placeholder: '6pm' },
   /* 11 emergency contact: all four needed */
-  { id: 'contactName', kind: 'text', optional: false, formStep: 11, ask: 'Who should we contact in an emergency? Their name, please.', placeholder: 'Next of kin or caregiver' },
-  { id: 'contactRelation', kind: 'text', optional: false, formStep: 11, ask: 'How are they to you?', placeholder: 'For example, wife, son or friend' },
-  { id: 'contactPhone', kind: 'phone', optional: false, formStep: 11, ask: 'What is their mobile number?', placeholder: '+65 9123 4567', inputMode: 'tel' },
-  { id: 'contactEmail', kind: 'email', optional: false, formStep: 11, ask: 'What is their email?', placeholder: 'name@gmail.com', inputMode: 'email' },
+  { id: 'contactName', kind: 'text', optional: false, formStep: 10, ask: 'Who should we contact in an emergency? Their name, please.', placeholder: 'Next of kin or caregiver' },
+  { id: 'contactRelation', kind: 'text', optional: false, formStep: 10, ask: 'How are they to you?', placeholder: 'For example, wife, son or friend' },
+  { id: 'contactPhone', kind: 'phone', optional: false, formStep: 10, ask: 'What is their mobile number?', placeholder: '+65 9123 4567', inputMode: 'tel' },
+  { id: 'contactEmail', kind: 'email', optional: false, formStep: 10, ask: 'What is their email?', placeholder: 'name@example.com', inputMode: 'email' },
 ]
 
 /** Translates a string: (key, English default). Passed in by the screen, so the labels follow the chosen language. */
@@ -82,8 +82,8 @@ export const diabetesOptions = (tr: Tr): Option<HasDiabetes>[] => [
   { value: 'not_sure', label: tr('setup.diabetes.notSure', 'Not sure') },
 ]
 
-/** The hypo awareness scale, 1 (always aware) to 7 (never aware). */
-const GOLD_SCALE: Option<string>[] = ['1', '2', '3', '4', '5', '6', '7'].map((n) => ({ value: n, label: n }))
+/** The hypo awareness scale, 1 (always aware) to 5 (never aware). */
+const GOLD_SCALE: Option<string>[] = ['1', '2', '3', '4', '5'].map((n) => ({ value: n, label: n }))
 
 /**
  * Whether a question is asked for the answers so far. The work week is asked only when the person works. Mirrors `_asked` in the

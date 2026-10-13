@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next'
 import type { Gender, LastCheck, WorkType, YesNo, YesNoUnsure } from './useOnboarding'
 import type { Option } from './parts'
 
+/** The "Others" choice for the ethnic group. It is never saved: the word the person types in its box is what is saved. */
+export const RACE_OTHERS = 'Others'
+
 /**
  * Every answer list in onboarding, in one place, so the form and the summary always show the same words. The lists are in
  * plain language. The second line of an answer only helps the person recognise it (a brand name, what a condition is called).
@@ -25,6 +28,7 @@ export function useOptions() {
       { value: 'Chinese', label: t('onboarding.race.chinese', 'Chinese') },
       { value: 'Malay', label: t('onboarding.race.malay', 'Malay') },
       { value: 'Indian', label: t('onboarding.race.indian', 'Indian') },
+      { value: RACE_OTHERS, label: t('onboarding.race.others', 'Others') },
     ]
     const yesNo: Option<YesNo>[] = [
       { value: 'yes', label: yes },

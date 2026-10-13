@@ -155,7 +155,7 @@ CHECK_STATUS = {"within_year": "ok", "over_year": "overdue", "never_unsure": "un
 CARE_SETTINGS = frozenset({"polyclinic", "gp", "hospital", "none"})
 HEALTHIER_SG = frozenset({"yes", "no", "unsure"})
 HYPO_3M = frozenset({"0", "1-2", "3+", "unsure"})
-AWARENESS = frozenset(str(n) for n in range(1, 8))
+AWARENESS = frozenset(str(n) for n in range(1, 6))        # 1 (always aware) to 5 (never aware); it was 1 to 7 until 2026-10-13
 YES_NO = frozenset({"yes", "no"})
 CONDITION_NAMES = {
     "hypertension": "High blood pressure", "high_cholesterol": "High cholesterol", "kidney": "Kidney disease",
@@ -780,7 +780,7 @@ class ChatStep:
 
 CHAT_STEPS: tuple[ChatStep, ...] = (
     ChatStep("name", "text", "What should we call you?", column="display_name"),
-    ChatStep("reminderEmail", "email", "Which email should reminders go to? A Gmail address works. You can leave this one blank.", optional=True),
+    ChatStep("reminderEmail", "email", "Which email address should reminders go to? For example name@example.com.", optional=False),
     ChatStep(
         "hasDiabetes", "choice", "Do you have type 2 diabetes? Say yes, or not sure.", column="has_diabetes",
         choices=(("yes", ("yes", "yeah", "yep", "i do")), ("not_sure", ("not sure", "unsure", "dunno", "don't know", "maybe", "do not know"))),
@@ -809,7 +809,7 @@ CHAT_STEPS: tuple[ChatStep, ...] = (
         "severeHypo", "choice", "In the last 12 months, did you have a hypo where you needed someone else to help you? Yes or no. You can leave this one blank.", optional=True,
         choices=(("yes", ("yes", "i needed", "i did need")), ("no", ("no", "did not", "didn't", "never needed"))),
     ),
-    ChatStep("gold", "scale", "How well do you notice a hypo coming on? Say a number from 1 (always aware) to 7 (never aware). You can leave this one blank.", optional=True),
+    ChatStep("gold", "scale", "How well do you notice a hypo coming on? Say a number from 1 (always aware) to 5 (never aware). You can leave this one blank.", optional=True),
     ChatStep(
         "conditions", "multi", "Has a doctor told you that you have any of these? High blood pressure, high cholesterol, kidney disease, heart disease or a past heart attack, stroke or mini-stroke, heart failure, diabetic eye disease, nerve problems in the feet, a past foot ulcer or amputation, sleep apnoea, fatty liver, or anaemia or thalassaemia. Name them, or say none. You can leave this one blank.",
         optional=True,
@@ -855,7 +855,7 @@ CHAT_STEPS: tuple[ChatStep, ...] = (
     ChatStep("contactName", "text", "Who should we contact in an emergency? Their name, please.", column="emergency_contact_name"),
     ChatStep("contactRelation", "text", "How are they to you? For example, wife, son or friend.", column="emergency_contact_relation", max_len=100),
     ChatStep("contactPhone", "phone", "What is their mobile number? For example +65 9123 4567.", column="emergency_contact_phone", max_len=50),
-    ChatStep("contactEmail", "email", "What is their email? For example name@gmail.com.", column="emergency_contact_email"),
+    ChatStep("contactEmail", "email", "What is their email? For example name@example.com.", column="emergency_contact_email"),
 )
 STEP_BY_ID = {s.id: s for s in CHAT_STEPS}
 
@@ -992,7 +992,7 @@ def read_fields(step: ChatStep, text: str, known: Mapping[str, Any]) -> dict[str
     if step.kind == "number":
         return _read_number(step, norm, known)
     if step.kind == "scale":
-        m = re.fullmatch(r"([1-7])(?: .*)?", norm)
+        m = re.fullmatch(r"([1-5])(?: .*)?", norm)
         return {sid: m.group(1)} if m else None
     if step.kind == "email":
         found = _EMAIL_IN_TEXT.findall(t)
@@ -1149,7 +1149,7 @@ Allowed values:
 - heightCm, weightKg, waistCm, fastingInsulin: a number, without the unit.
 - hba1c: the number with its unit if given, such as 7.2% or 55 mmol/mol. fastingGlucose: the number with its unit if given, such as 7.4 mmol/L or 133 mg/dL.
 - careSetting: polyclinic, gp, hospital or none. healthierSg: yes, no or unsure.
-- hypo3m: 0, 1-2, 3+ or unsure. severeHypo: yes or no. gold: a number from 1 to 7.
+- hypo3m: 0, 1-2, 3+ or unsure. severeHypo: yes or no. gold: a number from 1 to 5.
 - conditions: the codes, comma separated: hypertension, high_cholesterol, kidney, heart, stroke, heart_failure, eye, nerve, foot_ulcer, sleep_apnoea, fatty_liver, anaemia; or none.
 - allergies: the substance, with the reaction in brackets if given, such as penicillin (rash); or none.
 - eyeCheck, footCheck: within_year, over_year or never_unsure.

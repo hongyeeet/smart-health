@@ -108,7 +108,9 @@
     },
     "email": {
       "hint": "Kami akan menghantar e-mel peringatan mesra apabila tiba masanya, seperti merekod makanan. Biarkan kosong untuk menambahnya kemudian.",
+      "hintV2": "Kami akan menghantar e-mel peringatan mesra apabila tiba masanya, seperti merekodkan hidangan.",
       "label": "E-mel untuk peringatan (pilihan)",
+      "labelV2": "Alamat e-mel",
       "notSavedV2": "Kami tidak dapat menyimpan e-mel peringatan anda tadi. Ia disimpan pada peranti ini. Anda boleh menambahnya kemudian di bahagian Saya, Data dan akaun.",
       "on": "Hantarkan saya e-mel peringatan",
       "onSubV2": "Anda boleh mematikannya pada bila-bila masa di bahagian Saya, Data dan akaun.",
@@ -119,6 +121,7 @@
       "between": "Masukkan nombor dari {{lo}} hingga {{hi}} {{unit}}, atau biarkan kosong.",
       "diagYear": "Masukkan tahun 4 digit, bukan sebelum anda dilahirkan dan bukan pada masa depan.",
       "email": "Masukkan alamat e-mel seperti name@gmail.com, atau biarkan kosong.",
+      "emailV2": "Masukkan alamat e-mel seperti name@example.com.",
       "future": "Tarikh ini pada masa depan.",
       "labDate": "Masukkan tarikh ujian darah anda. Ia diperlukan bersama nombor ini.",
       "phone": "Masukkan nombor telefon bimbit dengan digit, seperti +65 9123 4567.",
@@ -136,6 +139,7 @@
     "goHome": "Pergi ke Laman Utama",
     "gold": {
       "high": "7 = tidak pernah sedar",
+      "highV2": "5 = tidak pernah sedar",
       "low": "1 = sentiasa sedar",
       "note": "Biarkan kosong jika anda tidak pernah mengalami hipo.",
       "q": "Adakah anda sedar apabila hipo anda mula berlaku?"
@@ -191,7 +195,9 @@
       "indian": "India",
       "label": "Kumpulan etnik",
       "malay": "Melayu",
-      "other": "Atau taipkan di sini"
+      "other": "Atau taipkan di sini",
+      "otherV2": "Sila nyatakan yang mana",
+      "others": "Lain-lain"
     },
     "s10": {
       "name": "Minggu bekerja anda",
@@ -256,6 +262,7 @@
       "finish": "Selesai",
       "foot": "Pemeriksaan kaki terakhir",
       "gold": "Tahu bila hipo bermula (1 sentiasa, 7 tidak pernah)",
+      "goldV2": "Sedar apabila hipo bermula (1 sentiasa, 5 tidak pernah)",
       "hsg": "Healthier SG",
       "hypo3m": "Hipo dalam tempoh 3 bulan yang lalu",
       "insulin": "Insulin semasa berpuasa",

@@ -28,7 +28,7 @@ THIS_YEAR = 2026
 TODAY = date(2026, 10, 11)
 # the answers already on the form that an answer depends on: a birth year, a blood test date, the units and a desk job
 KNOWN = {"birthYear": "1968", "labDate": "2026-03-12", "hba1cUnit": "%", "glucoseUnit": "mmol/L", "workType": "desk"}
-REQUIRED = ["name", "hasDiabetes", "birthYear", "gender", "contactName", "contactRelation", "contactPhone", "contactEmail"]
+REQUIRED = ["name", "reminderEmail", "hasDiabetes", "birthYear", "gender", "contactName", "contactRelation", "contactPhone", "contactEmail"]
 
 
 def must_not_run(*_):
@@ -63,7 +63,7 @@ def test_the_questions_follow_the_form_pages_in_order():
 
 
 def test_the_required_questions_are_exactly_the_ones_the_brief_names():
-    # name, birth year, sex, and the four emergency contact fields. hasDiabetes is also needed: the profile cannot be created without it.
+    # name, the reminder email (needed since 2026-10-13), birth year, sex, and the four emergency contact fields. hasDiabetes is also needed: the profile cannot be created without it.
     assert [s.id for s in CHAT_STEPS if not s.optional] == REQUIRED
 
 
@@ -116,7 +116,7 @@ VALID = [
     ("severeHypo", "No", {}, {"severeHypo": "no"}),
     ("severeHypo", "I did not need help", {}, {"severeHypo": "no"}),
     ("gold", "3", {}, {"gold": "3"}),
-    ("gold", "7 never aware", {}, {"gold": "7"}),
+    ("gold", "5 never aware", {}, {"gold": "5"}),
     ("conditions", "none", {}, {"conditions": ["none"]}),
     ("conditions", "high blood pressure and kidney disease", {}, {"conditions": ["hypertension", "kidney"]}),
     ("conditions", "heart failure", {}, {"conditions": ["heart_failure"]}),

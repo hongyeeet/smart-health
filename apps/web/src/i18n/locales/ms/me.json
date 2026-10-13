@@ -104,6 +104,7 @@
       "saved": "Disimpan ke akaun anda",
       "savedToAccount": "Disimpan ke akaun anda",
       "saving": "Menyimpan",
+      "sayWhich": "Sila nyatakan yang mana.",
       "sentTo": "Dihantar ke {{email}}",
       "startSetup": "Mulakan persediaan",
       "year": "Masukkan tahun empat digit, seperti 1962.",
@@ -260,6 +261,7 @@
     },
     "email": {
       "address": "Alamat Gmail",
+      "addressV2": "Alamat e-mel",
       "emptyHint": "Biarkan kosong jika anda tidak mahu e-mel peringatan.",
       "intro": "E-mel peringatan dihantar ke alamat Gmail anda. Anda boleh mematikannya di sini bila-bila masa.",
       "loadError": "E-mel peringatan tidak tersedia buat masa ini. Tetapan lain anda masih berfungsi. Cuba lagi kemudian.",

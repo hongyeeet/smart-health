@@ -9,8 +9,8 @@ import { startsInSetup } from './startGate'
 import { Alert, Button, Card, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
 import { Check, Leaf, Lock } from '@/ui/icons'
 
-/** The pages the person sees: Welcome (1), eligibility (2), About you (3 to 11). The summary (A6) comes after the last one and is not counted. */
-export const TOTAL_STEPS = 11
+/** The pages the person sees: Welcome (1), eligibility (2), About you (3 to 10). The summary (A6) comes after the last one and is not counted. */
+export const TOTAL_STEPS = 10
 
 /* ------------------------------------ frame ------------------------------------ */
 /** Brand row at the top of every onboarding screen. */

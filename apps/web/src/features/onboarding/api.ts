@@ -212,8 +212,7 @@ const whole = (v: string) => {
 const decimal = (v: string) => num(v)
 
 /**
- * What one page saves, from the answers. Pages 2 and 5 save nothing (eligibility is not stored, medicines come from the scan
- * screens). `firstSave` adds the fields the server needs before it can create the profile (birth year and the diabetes
+ * What one page saves, from the answers. Page 2 saves nothing (eligibility is not stored); medicines are not part of set-up. `firstSave` adds the fields the server needs before it can create the profile (birth year and the diabetes
  * answer), so the first save never fails for a missing one.
  */
 export function pageBody(page: number, a: OnboardingAnswers, firstSave: boolean): ProfileBody | null {
@@ -236,9 +235,9 @@ export function pageBody(page: number, a: OnboardingAnswers, firstSave: boolean)
       }
     case 4:
       return { diagnosedYear: whole(a.diagnosedYear), careSetting: a.careSetting, healthierSg: a.healthierSg }
-    case 6:
+    case 5:
       return { hypoLast3m: a.hypo3m, hypoAwareness: a.gold, hypoNeededHelp: a.severeHypo }
-    case 7:
+    case 6:
       return {
         conditions: a.conditions.filter((c) => c !== 'none'),
         otherCondition: trimmed(a.otherConditions),
@@ -246,19 +245,19 @@ export function pageBody(page: number, a: OnboardingAnswers, firstSave: boolean)
         eyeCheck: a.eyeCheck,
         footCheck: a.footCheck,
       }
-    case 8: {
+    case 7: {
       const body: ProfileBody = { labDate: a.labDate || null, hba1c: decimal(a.hba1c), fastingGlucose: decimal(a.fastingGlucose), fastingInsulin: decimal(a.fastingInsulin) }
       if (body.hba1c !== null) body.hba1cUnit = a.hba1cUnit
       if (body.fastingGlucose !== null) body.glucoseUnit = a.glucoseUnit
       return body
     }
-    case 9:
+    case 8:
       return { watchModel: a.wearable, cgmModel: a.cgm }
-    case 10: {
+    case 9: {
       const working = a.workType !== null && a.workType !== 'not_working'
       return { workType: a.workType, workDays: working ? [...a.workDays] : [], workStart: working ? trimmed(a.workStart) : null, workEnd: working ? trimmed(a.workEnd) : null }
     }
-    case 11:
+    case 10:
       return {
         emergencyContactName: a.contactName.trim(),
         emergencyContactRelation: a.contactRelation.trim(),
@@ -275,7 +274,7 @@ export function allPagesBody(a: OnboardingAnswers, firstSave: boolean): ProfileB
   const body: ProfileBody = {}
   const name = a.name.trim()
   if (name) body.displayName = name
-  for (const page of [3, 4, 6, 7, 8, 9, 10, 11]) Object.assign(body, pageBody(page, a, firstSave))
+  for (const page of [3, 4, 5, 6, 7, 8, 9, 10]) Object.assign(body, pageBody(page, a, firstSave))
   return body
 }
 

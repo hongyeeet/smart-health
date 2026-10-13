@@ -58,7 +58,7 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   A3: AboutYou,
   A4: ChatSetup,
   /** Folded into A3: devices is step 9 there. */
-  A5: () => <Navigate to="/welcome/about?step=9" replace />,
+  A5: () => <Navigate to="/welcome/about?step=8" replace />,
   A6: Summary,
   B1: Home,
   C1: Overview,

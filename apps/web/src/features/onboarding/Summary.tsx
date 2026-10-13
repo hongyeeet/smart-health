@@ -14,7 +14,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { href } from '@/app/routeIds'
-import { useMeds } from '@/data/hooks'
 import { useUi } from '@/state/store'
 import { Screen } from '@/ui/layout'
 import { Alert, Card, TextLink } from '@/ui/primitives'
@@ -38,7 +37,6 @@ export function Summary() {
   const set = useOnboarding((s) => s.set)
   const o = useOptions()
   const src = useOnboardingSource()
-  const meds = useMeds()
   const save = useSaveStep()
   const complete = useCompleteOnboarding()
   /* null when nothing has gone wrong; otherwise the reason, which may be an empty string */
@@ -110,33 +108,17 @@ export function Summary() {
       ],
     },
     {
-      title: t('onboarding.s5.name', 'Medicines'),
-      edit: step(5),
-      rows: [
-        {
-          label: t('onboarding.sum.medicines', 'Saved medicines'),
-          value: meds.isPending
-            ? t('onboarding.sum.loading', 'Loading…')
-            : meds.isError
-              ? t('onboarding.sum.medsError', 'Could not load them just now')
-              : meds.data.length === 0
-                ? t('onboarding.meds.none', 'No medicines saved yet.')
-                : list(meds.data.map((m) => `${m.name} ${m.strength}`.trim())),
-        },
-      ],
-    },
-    {
       title: t('onboarding.s6.name', 'Low glucose'),
-      edit: step(6),
+      edit: step(5),
       rows: [
         { label: t('onboarding.sum.hypo3m', 'Hypos in the last 3 months'), value: labelOf(o.hypo3m, a.hypo3m) },
         { label: t('onboarding.sum.severe', 'Needed help with a hypo in the last 12 months'), value: labelOf(o.yesNo, a.severeHypo) },
-        { label: t('onboarding.sum.gold', 'Knows when a hypo is starting (1 always, 7 never)'), value: a.gold ?? '' },
+        { label: t('onboarding.sum.goldV2', 'Knows when a hypo is starting (1 always, 5 never)'), value: a.gold ?? '' },
       ],
     },
     {
       title: t('onboarding.s7.name', 'Other conditions and checks'),
-      edit: step(7),
+      edit: step(5),
       rows: [
         { label: t('onboarding.sum.conditions', 'Conditions'), value: list([...a.conditions.map((c) => labelOf(o.conditions, c)), a.otherConditions.trim()]) },
         {
@@ -149,7 +131,7 @@ export function Summary() {
     },
     {
       title: t('onboarding.s8.name', 'Lab results'),
-      edit: step(8),
+      edit: step(5),
       rows: [
         { label: t('onboarding.sum.labDate', 'Date of the blood test'), value: date(a.labDate) },
         { label: t('onboarding.hba1c', 'HbA1c'), value: unit(a.hba1c, a.hba1cUnit) },
@@ -159,7 +141,7 @@ export function Summary() {
     },
     {
       title: t('onboarding.s9.name', 'Devices'),
-      edit: step(9),
+      edit: step(5),
       rows: [
         { label: t('onboarding.sum.watch', 'Smart watch'), value: labelOf(o.wearable, a.wearable) },
         { label: t('onboarding.sum.cgm', 'Glucose sensor'), value: labelOf(o.cgm, a.cgm) },
@@ -167,7 +149,7 @@ export function Summary() {
     },
     {
       title: t('onboarding.s10.name', 'Your work week'),
-      edit: step(10),
+      edit: step(5),
       rows: [
         { label: t('onboarding.sum.work', 'Work'), value: labelOf(o.work, a.workType) },
         { label: t('onboarding.sum.workDays', 'Work days'), value: working ? many(o.weekdays, a.workDays.map(String)) : '' },

@@ -4,7 +4,7 @@
  * nothing is saved until the person finishes, and Finish saves through the same requests as the form.
  *
  * The transcript and the next question are read from the answers store, so the chat and the form always agree, and a person
- * can switch between them. Medicines are not asked here: the screen points to Scan a label. Nothing here scores, stages or
+ * can switch between them. Medicines are not part of set-up: they are added from the Medications tab. Nothing here scores, stages or
  * judges an answer (rules.md 1.1, 1.6).
  */
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
@@ -14,7 +14,7 @@ import { href } from '@/app/routeIds'
 import { cn } from '@/lib/cn'
 import { Screen } from '@/ui/layout'
 import { Alert, Button, Card, TextLink } from '@/ui/primitives'
-import { Camera, ListChecks, PencilSimple } from '@/ui/icons'
+import { ListChecks, PencilSimple } from '@/ui/icons'
 import { DemoNotice, Dock, Later, LoadNotice, LoadingAnswers, TopBar } from './parts'
 import { useOptions } from './options'
 import { allPagesBody, emailBody, useOnboardingSource, useSaveStep } from './api'
@@ -162,13 +162,6 @@ export function ChatSetup() {
           ))}
         </div>
       </div>
-
-      <Alert tone="info">
-        <p>{t('setup.meds', 'Medicines are not asked here. Scan the label of each medicine you take instead.')}</p>
-        <TextLink icon={Camera} onClick={() => navigate(href('H2'))} className="mt-1.5 self-start">
-          {t('setup.scan', 'Scan a label')}
-        </TextLink>
-      </Alert>
 
       {src.loadFailed && <LoadNotice />}
       {src.readOnly && <DemoNotice />}

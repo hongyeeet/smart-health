@@ -180,10 +180,10 @@ function EmailSheet({ current, optIn, onClose }: { current: string | null; optIn
     <Sheet title={current ? t('me.account.changeEmail', 'Change email address') : t('me.account.addEmail', 'Add an email address')} onClose={onClose}>
       <div className="flex flex-col gap-4">
         <Field
-          label={t('me.email.address', 'Gmail address')}
+          label={t('me.email.addressV2', 'Email address')}
           value={value}
           onChange={setValue}
-          placeholder="name@gmail.com"
+          placeholder="name@example.com"
           error={err}
           hint={trimmed ? undefined : t('me.email.emptyHint', 'Leave this empty if you do not want reminder emails.')}
         />

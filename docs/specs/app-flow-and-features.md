@@ -40,7 +40,7 @@
 
 | Area | Feature | Where |
 |---|---|---|
-| Onboarding | Eleven pages: welcome with the reminder email and consents, eligibility, about you, diabetes history, medicines (scan only), low glucose, other conditions and check-ups, lab results, devices, work week, emergency contact. Each page saves to the record. Set up by chat (A4). "Start as new person" | A1 to A6 |
+| Onboarding | Ten pages: welcome with the reminder email (needed) and consents, eligibility, about you, diabetes history, low glucose, other conditions and check-ups, lab results, devices, work week, emergency contact. Each page saves to the record. Set up by chat (A4). "Start as new person" | A1 to A6 |
 | Home | Alert strip, one banner (an unfinished meal, or a food habit), dose card (or "Start here" for a new person), today's logging ring, one "for you" card. Everything else sits behind "See more" | B1 |
 | Notifications | Medicine clash alerts and a dated history of reminders (grouped by day, nothing is cleared), with filters | B2 |
 | Insights | Overview (month calendar, what changed, findings), Glucose, Food (macros, recent entries, calendar), Activity (heart rate and SpO2 block), Sleep and stress (heart rate and SpO2 block, blood pressure), Medication, glucose sensor sprint, "Why am I seeing this?" | C1 to C8 |
@@ -92,12 +92,12 @@ These come from [rules.md](rules.md), [design.md](design.md) and decisions D-0xx
 | Screen wrapper | `Screen` (page padding, optional tab bar space, `tone="urgent"` for J1, `narrow` for forms: 640 px), `Header` (title, back arrow, `backTo` route id, optional sub-title and trailing item), `Footer` (sticky action area), `Split` (two columns from 1024 px), `Reveal` (fold-away), `TileGrid` (a list of tiles: one column on a phone, two on a tablet, three on a laptop, equal heights) |
 | Sheets | Bottom sheets (`Sheet`) opened with `go(id, { sheet: {...} })`; from 768 px they are centred and 560 px wide. Registered sheets: **E7** entry, **C7** why, **D2** marker, **L2** share, **H7** missed dose |
 | Outside the frame | `/brief/a4` (printable report) and `/s/:token` (doctor's shared report) have no tab bar |
-| User switch | `UserSwitch` in the header of Home, Meds and Me. Switches between `demo`, `mr-tan` and any new person. "Start as new person" creates a new person (`POST /users`), clears that person's device copy and opens onboarding at page 1 |
+| User switch | `UserSwitch` in the header of Home, Meds and Me. Switches between `demo` and `mr-tan` ("Start as new person" was removed on 2026-10-13; a device that still holds a removed person's key goes back to the demo user). Switching to the demo user opens set-up |
 | Navigation helper | `useGo()` takes a route id (`go('K3')`), so screens never hard-code paths. The registry `app/routeIds.ts` is the single list of screens |
 
 ### 3.2 Persisted client state (`smart-health-ui`)
 
-`theme` (light, dark, system), `textScale` (1 or 2), `locale` (en, zh, ms, ta; the locale files exist per language and area, and the screens are English text), `userKey` (`demo`, `mr-tan` or a new person's key). A live workout session is also held on the device. Translations exist for the Insights, Log and Me areas in Chinese, Malay and Tamil (`i18n/locales/<lang>/<area>.json`); the other screens show English text.
+`theme` (light, dark, system), `textScale` (1 or 2), `locale` (en, zh, ms, ta; the locale files exist per language and area, and the screens are English text), `userKey` (`demo` or `mr-tan`). A live workout session is also held on the device. Translations exist for the Insights, Log and Me areas in Chinese, Malay and Tamil (`i18n/locales/<lang>/<area>.json`); the other screens show English text.
 
 Onboarding answers are kept on the device under **`smart-health-onboarding:<user>`**: one copy per person, so one person's answers never show for another. The copy is kept only while the data-use consent is on. The database is the source of truth: the form reads `GET /onboarding` first and uses the device copy only for a field the server has nothing for. The old unkeyed copy is removed when the app loads. Mr Tan's onboarding is read only.
 
@@ -107,7 +107,7 @@ Other device copies, **one per person** so one person's choice never shows for a
 
 ```
 Launch
- ├─ A1 Welcome ─ A2 Eligibility ─ A3 About you (pages 3 to 11) ─ A6 Summary ─ B1 Home
+ ├─ A1 Welcome ─ A2 Eligibility ─ A3 About you (pages 3 to 10) ─ A6 Summary ─ B1 Home
  │      └─ A4 Set up by chat (the same questions, in a chat) ─ A3 form or A6
  └─ Tabs
     ├─ B1 Home ── B2 Notifications and alerts ── H5 Possible interaction
@@ -139,30 +139,29 @@ Folder `features/onboarding/`. The answers are saved to the record **one page at
 
 **Reminder email before a profile exists.** The profile row is created by the first save, and the server refuses the email before then (`PUT /notify/email` returns 409). So an email typed earlier is kept by the screen and saved with **page 3** (the first About you page), with **Finish**, or in the chat with its first save, whichever comes first.
 
-**Who sees setup.** A person started with "Start as new person" (their key begins `person-`) is sent to onboarding at `/` until setup is finished, that is until the data-use consent is on **and** the profile exists (`features/onboarding/startGate.ts`). The demo user and Mr Tan are never sent there.
+**Who sees setup.** The demo user is sent to set-up every time the app opens on Home and every time someone switches to it, with a **Skip** link in place of "Finish later" (`features/onboarding/startGate.ts`). Mr Tan is never sent there. There are no other people: "Start as new person" was removed on 2026-10-13.
 
 **A1 Welcome** · `/welcome` · from app start, Me ("Set up again")
-- Preferred name, the **reminder email** (optional, with a reminder on or off), and **three consents**: use my health data (**required**), share a doctor brief (optional), use my data for research (optional).
+- Preferred name, the **email address** for reminders (**needed to continue**, example `name@example.com`; the reminder on/off switch stays), and **three consents**: use my health data (**required**), share a doctor brief (optional), use my data for research (optional).
 - The language choice has been removed from this page.
-- A "Start as demo patient" shortcut goes straight to Home.
+- The "Start as demo patient" shortcut was removed (2026-10-13); use the switcher.
 - Next goes to A2.
 
 **A2 Is this app right for you?** · `/welcome/eligibility`
 - Questions that stop out-of-scope people with a clear, kind message: type 1 diabetes, pregnancy, under 18. Otherwise Continue to A3.
 
-**A3 About you** · `/welcome/about?step=3` to `?step=11` (one route; the step in the address is the page number)
+**A3 About you** · `/welcome/about?step=3` to `?step=10` (one route; the step in the address is the page number)
 
 | Page | Content |
 |---|---|
-| 3 About you | Year of birth (required to continue; adults only, 18 or over), **sex: male or female only**, ethnic group (a choice or typed in), height, weight, **waist (optional, saved to `body_measurements`)** |
+| 3 About you | Year of birth (required to continue; adults only, 18 or over), **sex: male or female only**, ethnic group (Chinese, Malay, Indian, or **Others**, which shows a box to say which), height, weight, **waist (optional, saved to `body_measurements`)** |
 | 4 Diabetes history | Year you were told you have type 2 diabetes (4 digits, not before birth, not in the future), where you usually go for care (polyclinic, GP or family clinic, hospital specialist clinic, none), Healthier SG (yes, no, not sure) |
-| 5 Medicines | **Scan a label only** (H2), or add by hand (H8). Shows "Medicines saved so far". The tick lists of diabetes medicines and other medicines have been removed |
-| 6 Low glucose | Hypos in the last 3 months (0, 1 to 2, 3 or more, not sure), a hypo that needed someone else's help in the last 12 months (yes or no), how well a hypo is noticed coming (1 always to 7 never). A small "i" explains what a hypo is |
-| 7 Other conditions and checks | Conditions the doctor has named (multi-choice, with "none"), any other condition in words, **allergies** (substance and reaction, or none), last eye check and last foot check (within a year, over a year ago, never or not sure) |
-| 8 Lab results | Date of the most recent blood test (not in the future), HbA1c (% or mmol/mol), fasting glucose (mmol/L or mg/dL), fasting insulin (µIU/mL). Kidney (eGFR) and blood pressure are no longer asked here |
-| 9 Your watch and sensor | Choose the glucose sensor and the watch. A **Connect** button saves the choice ("Chosen: ... It is not paired yet") and "Not now" leaves it for later. Nothing is paired on this page. The choice is kept on the profile and as `devices` rows with no status |
-| 10 Your work week | Type of work (mostly sitting, standing, physical, a mix, shifts, not working). If the person works: which days, start time and end time |
-| 11 Emergency contact | **Name, relationship, mobile number and email, all four required**, with checks on the phone and email shape |
+| 5 Low glucose | Hypos in the last 3 months (0, 1 to 2, 3 or more, not sure), a hypo that needed someone else's help in the last 12 months (yes or no), how well a hypo is noticed coming (**1 always to 5 never**; it was 1 to 7, the Gold score, until 2026-10-13). A small "i" explains what a hypo is |
+| 6 Other conditions and checks | Conditions the doctor has named (multi-choice, with "none"), any other condition in words, **allergies** (substance and reaction, or none), last eye check and last foot check (within a year, over a year ago, never or not sure) |
+| 7 Lab results | Date of the most recent blood test (not in the future), HbA1c (% or mmol/mol), fasting glucose (mmol/L or mg/dL), fasting insulin (µIU/mL). Kidney (eGFR) and blood pressure are no longer asked here |
+| 8 Your watch and sensor | Choose the glucose sensor and the watch. A **Connect** button saves the choice ("Chosen: ... It is not paired yet") and "Not now" leaves it for later. Nothing is paired on this page. The choice is kept on the profile and as `devices` rows with no status |
+| 9 Your work week | Type of work (mostly sitting, standing, physical, a mix, shifts, not working). If the person works: which days, start time and end time |
+| 10 Emergency contact | **Name, relationship, mobile number and email, all four required**, with checks on the phone and email shape |
 
 - "Check my answers" on page 11 goes to A6.
 
@@ -441,9 +440,9 @@ Folder `features/brief/`. Everything is computed by the server (`doctor_report.p
 
 ## 5. The main journeys, step by step
 
-**J-A First use.** A1 consent (and the reminder email) → A2 eligibility → A3 pages 3 to 11 (each page is saved when Continue is pressed; page 5 scans the medicines; page 10 is the work week; page 11 needs all four contact details) → A6 review → Home. The medicine scanned on page 5 starts a clash check and gets reminders. A person can instead use A4, the chat, and finish on the same record.
+**J-A First use.** A1 consent (and the reminder email) → A2 eligibility → A3 pages 3 to 10 (each page is saved when Continue is pressed; page 9 is the work week; page 10 needs all four contact details; Back always goes to the page before) → A6 review → Home. Medicines are not part of set-up: they are added from the Meds tab. A person can instead use A4, the chat, and finish on the same record.
 
-**J-A2 A new person.** UserSwitch → "Start as new person" → a new key is made in the database (no profile, no consent, no data) → onboarding opens at page 1 with nothing filled in. Until setup is finished (consent on and profile saved), the app opens onboarding at `/` for this person. A reminder email typed before the profile exists is saved with page 3 or Finish.
+**J-A2 Trying set-up.** Switch to the demo user (top right) → set-up opens at page 1 with **Skip** instead of "Finish later".
 
 **J-B Add a medicine by scan.** H1 Add → H2 photo (masked on device) → H3 check what was read (the name needs a tick below 0.85; a low-confidence field goes to the typed form) → H4 kind and dose times → Add. Server: save, link to the drug list, start the clash check in the background, create calendar events when calendar sync is on. The medicine is saved as a **daily** medicine. Its stock starts from the pack size (the total supplied). H1 shows the card; ClashBox appears by itself when a clash is found (the page checks every 3 seconds only while the check is running).
 
@@ -519,12 +518,12 @@ Other rules: the bottom bar and the Ask pill are hidden from 768 px (`md:hidden`
 
 ## 7. Backend: endpoints
 
-FastAPI, `services/api/app/api/routers`, camelCase JSON, the `X-User` header selects the person (`demo`, `mr-tan` or a new person). All routes are under `/api/v1` except `/health`. The list below comes from the routers and `app/main.py`.
+FastAPI, `services/api/app/api/routers`, camelCase JSON, the `X-User` header selects the person (`demo` or `mr-tan`). All routes are under `/api/v1` except `/health`. The list below comes from the routers and `app/main.py`.
 
 | Router (prefix) | Endpoints |
 |---|---|
 | onboarding (`/onboarding`) | `GET /onboarding`, `PUT /onboarding/profile` (one page; only the keys sent are written), `POST /onboarding/complete`, `POST /onboarding/chat` (reads one chat answer; saves nothing) |
-| users (`/users`) and misc | `GET /api/v1/users` (the switcher list), `POST /api/v1/users` (start as new person; nothing else is written) |
+| users (`/users`) and misc | `GET /api/v1/users` (the switcher list; `POST` was removed with "Start as new person") |
 | scans (`/scans`) | `POST /scans` (photo), `GET /scans/{id}`, `POST /scans/{id}/confirm` |
 | medications (`/medications`) | `GET /medications`, `POST /medications`, `DELETE /medications/{id}`, `GET /medications/stock` (the stock list), `POST /medications/{id}/stock` (`{"add": n}` bought more, or `{"set": n}` the exact count), `GET /medications/scope` (is the name one the app is for), `GET /medications/{id}` (the medicine page), `POST /medications/{id}/explanation` (`?refresh=true`; 404 when no reliable page, 429 at the daily text limit, 503 when the model cannot be reached, 502 when the answer cannot be read), `POST /medications/{id}/questions` |
 | calendar (`/medications`) | `GET /medications/{id}/calendar`, `POST /medications/{id}/calendar/retry` |

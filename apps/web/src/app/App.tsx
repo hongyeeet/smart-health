@@ -7,47 +7,27 @@ import { ROUTES, href } from './routeIds'
 import { ReportA4 } from '@/features/brief/ReportA4'
 import { SharedReport } from '@/features/brief/SharedReport'
 import { Day } from '@/features/day/Day'
-import { request } from '@/data/repositories/http'
 import { useUi } from '@/state/store'
-import type { SavedOnboarding } from '@/features/onboarding/api'
-import { NEW_PERSON_PREFIX, needsSetup, startsInSetup } from '@/features/onboarding/startGate'
+import { startsInSetup } from '@/features/onboarding/startGate'
 
 /* Set when the app opened at "/": only that first visit is checked. Later visits to Home (for example "Go to Home" from setup) are not. */
 const openedAtHome = typeof window !== 'undefined' && window.location.pathname === '/'
 let startChecked = false
 
 /**
- * Home, after the start-up check. A new person who has not finished setup is sent to Welcome once, when the app opens on Home. The demo
- * user is sent there every time the app opens on Home (set-up has a Skip link for it). If the record cannot be read, Home opens as usual,
- * so no one is kept from it.
+ * Home, after the start-up check. The demo user is sent to set-up every time the app opens on Home (set-up has a Skip link for it).
+ * Mr Tan is never sent there.
  */
 function StartGate({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const user = useUi((s) => s.userKey)
-  const [checking, setChecking] = useState(() => openedAtHome && !startChecked && (user.startsWith(NEW_PERSON_PREFIX) || startsInSetup(user)))
+  const [checking, setChecking] = useState(() => openedAtHome && !startChecked && startsInSetup(user))
   useEffect(() => {
     startChecked = true
     if (!checking) return
-    if (startsInSetup(user)) {                      // the demo user does not need the record read: set-up opens first
-      navigate(href('A1'), { replace: true })
-      setChecking(false)
-      return
-    }
-    let live = true
-    request<SavedOnboarding>('/onboarding')
-      .then((saved) => {
-        if (live && needsSetup(user, saved)) navigate(href('A1'), { replace: true })
-      })
-      .catch(() => {
-        /* the record could not be read: Home opens */
-      })
-      .finally(() => {
-        if (live) setChecking(false)
-      })
-    return () => {
-      live = false
-    }
-  }, [checking, user, navigate])
+    navigate(href('A1'), { replace: true })
+    setChecking(false)
+  }, [checking, navigate])
   if (checking) return <div role="status" aria-live="polite" className="h-full"><span className="sr-only">Loading</span></div>
   return <>{children}</>
 }
