@@ -18,6 +18,7 @@ export {
   CaretDown,
   CaretLeft,
   CaretRight,
+  CaretUp,
   ChartLineUp,
   ChatCircleDots,
   Check,
