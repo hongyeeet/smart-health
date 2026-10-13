@@ -3,7 +3,8 @@
   GET  /medications/{id}/calendar         how far the reminders are (the loading page polls this after a medicine is saved)
   POST /medications/{id}/calendar/retry   make the reminders that are missing (also for a medicine saved before this existed)
 
-The reminders are made in the background by a Workato recipe, one repeating Google Calendar event per dose time. A failure here never stops
+The reminders are made in the background by a Workato recipe, one Google Calendar event per dose time per day for the next 14 days (topped up daily),
+and only when the person has turned on the calendar consent. A failure here never stops
 a medicine from being saved: the medicine is already in the database before any of this starts.
 """
 from __future__ import annotations
@@ -33,6 +34,7 @@ MESSAGES = {
     "skipped": "No calendar reminders were added.",
     "skipped:as_needed": "This medicine is only taken when needed, so there are no reminders to add.",
     "skipped:not_configured": "Calendar reminders are not set up yet, so none were added. Your medicine is saved.",
+    "skipped:no_consent": "Calendar reminders are off. Turn them on in Me, Data and account, under Consents. Your medicine is saved.",
 }
 
 
@@ -50,7 +52,7 @@ def schedule_sync(background: BackgroundTasks, user: str, med_id: str) -> None:
         client = WorkatoClient.from_settings()
         with logstore.tx() as conn:
             conn.row_factory = tuple_row
-            sync_id, go = sync.queue(conn, user, med_id, configured=client.configured)
+            sync_id, go = sync.queue(conn, user, med_id, configured=client.configured, consent=sync.allowed(conn, user))
         if go:
             background.add_task(sync.run, sync_id, client)
     except Exception:   # noqa: BLE001 - calendar problems must never undo or hide a saved medicine

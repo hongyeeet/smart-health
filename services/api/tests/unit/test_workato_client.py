@@ -46,6 +46,12 @@ def test_a_good_answer_returns_the_event_id_and_sends_the_token_in_the_named_hea
     assert url == URL and body == PAYLOAD and headers["API-TOKEN"] == TOKEN and timeout == 30.0
 
 
+def test_a_plain_ok_with_no_event_id_is_enough():
+    """A plain Workato webhook can only answer {"status": "ok"}: the app then names the event itself (option A, 2026-10-13)."""
+    ev = client(Session(Resp(200, {"status": "ok"}))).create_event(PAYLOAD)
+    assert ev.event_id == "" and ev.link is None
+
+
 def test_a_link_that_is_not_https_is_dropped():
     assert client(Session(Resp(200, {"status": "ok", "event_id": "e", "link": "http://x"}))).create_event(PAYLOAD).link is None
 
@@ -67,9 +73,8 @@ def test_a_refusal_is_not_retried():
 
 
 @pytest.mark.parametrize("answer,code", [(Resp(200, bad_json=True), "workato_bad_answer"), (Resp(200, {"status": "error"}), "workato_failed"),
-                                         (Resp(200, ["x"]), "workato_failed"), (Resp(200, {"status": "ok"}), "workato_bad_answer"),
-                                         (Resp(200, {"status": "ok", "event_id": "  "}), "workato_bad_answer")])
-def test_an_answer_that_is_not_a_clear_ok_with_an_event_id_is_an_error_not_a_guess(answer, code):
+                                         (Resp(200, ["x"]), "workato_failed"), (Resp(200, {"status": "OK?"}), "workato_failed")])
+def test_an_answer_that_is_not_a_clear_ok_is_an_error_not_a_guess(answer, code):
     with pytest.raises(ExternalServiceError) as e:
         client(Session(answer)).create_event(PAYLOAD)
     assert e.value.code == code

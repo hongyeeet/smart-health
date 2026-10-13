@@ -1,4 +1,5 @@
-"""Calendar reminders for a medicine against the real tables, with a fake Workato client and a fixed clock.
+"""Calendar reminders for a medicine against the real tables, with a fake Workato client and a fixed clock (2026-10-08 14:00 Singapore).
+One event per dose time per day for the next 14 days (option A, 2026-10-13): 08:00 has 13 (today's has passed), 20:00 has 14.
 
 Everything runs inside one transaction that is rolled back, so the shared database is left untouched.
 Run from services/api:  python -m pytest tests/db/test_calendar_sync.py -q       Needs DATABASE_URL in the private .env.
@@ -79,32 +80,38 @@ def add(conn, user, name="CRESTOR", times=("08:00",), strength="10 mg", **over):
 
 
 # ------------------------------------------------------------------ the plan
-def test_one_repeating_event_per_dose_time_named_by_what_to_take(conn, user):
+def test_one_event_per_dose_time_per_day_named_by_what_to_take(conn, user):
     mid = add(conn, user, "Metformin 500 mg", times=("08:00", "20:00"), strength="500 mg")
     p = sync.plan(conn, user, mid, NOW)
-    assert [(e["time"], e["title"]) for e in p] == [("08:00", "Take Metformin, 1 Tab"), ("20:00", "Take Metformin, 1 Tab")]
-    assert p[0]["start"] == "2026-10-09T08:00:00+08:00" and p[1]["start"] == "2026-10-08T20:00:00+08:00"       # the next time each is due
-    assert p[0]["end"] == "2026-10-09T08:15:00+08:00" and p[0]["recurrence"] == "RRULE:FREQ=DAILY"
-    assert p[0]["reminder_minutes"] == 0 and p[0]["timezone"] == "Asia/Singapore" and p[0]["source"] == "smart-health"
-    assert p[0]["request_id"].startswith(f"{mid}:") and "strength" not in str(p[0]).lower()
-    assert "500 mg" not in p[0]["title"] and "with food" not in p[0]["description"]
+    morning = [e for e in p if e["time"] == "08:00"]
+    evening = [e for e in p if e["time"] == "20:00"]
+    assert (len(morning), len(evening)) == (13, 14)                                  # today's 08:00 has passed; 14 days in all
+    assert morning[0]["summary"] == "Take Metformin, 1 Tab" and morning[0]["date"] == "2026-10-09" and morning[-1]["date"] == "2026-10-21"
+    assert evening[0]["date"] == "2026-10-08" and evening[-1]["date"] == "2026-10-21"
+    assert morning[0]["start"] == {"dateTime": "2026-10-09T08:00:00+08:00", "timeZone": "Asia/Singapore"}
+    assert morning[0]["end"] == {"dateTime": "2026-10-09T08:15:00+08:00", "timeZone": "Asia/Singapore"}
+    assert "recurrence" not in morning[0] and morning[0]["source"] == "smart-health"
+    assert morning[0]["request_id"].startswith(f"{mid}:") and morning[0]["request_id"].endswith(":2026-10-09") and "strength" not in str(morning[0]).lower()
+    assert "500 mg" not in morning[0]["summary"] and "with food" not in morning[0]["description"]
+    assert [(e["date"], e["time"]) for e in p] == sorted((e["date"], e["time"]) for e in p)
 
 
 def test_a_medicine_taken_with_food_says_so_in_the_event_note(conn, user):
     mid = add(conn, user, doses=[{"time": "08:00", "quantity": 2, "mealRelation": "after_meal"}])
-    [e] = sync.plan(conn, user, mid, NOW)
-    assert e["title"] == "Take CRESTOR, 2 Tabs" and ", with food" in e["description"]
+    e = sync.plan(conn, user, mid, NOW)[0]
+    assert e["summary"] == "Take CRESTOR, 2 Tabs" and ", with food" in e["description"]
 
 
 def test_a_medicine_that_starts_in_the_future_starts_its_reminders_then(conn, user):
     mid = add(conn, user, startDate="2026-10-20")
-    assert sync.plan(conn, user, mid, NOW)[0]["start"] == "2026-10-20T08:00:00+08:00"
+    p = sync.plan(conn, user, mid, NOW)
+    assert [e["date"] for e in p] == ["2026-10-20", "2026-10-21"]                    # inside the 14 days only
 
 
-def test_a_course_with_an_end_date_stops_repeating_at_the_end_of_that_day(conn, user):
+def test_a_course_with_an_end_date_gets_no_events_after_that_day(conn, user):
     mid = add(conn, user, "Clarithromycin 500 mg", times=("09:00",))
     conn.execute("update medications set end_date = '2026-10-12' where id = %s", (mid,))
-    assert sync.plan(conn, user, mid, NOW)[0]["recurrence"] == "RRULE:FREQ=DAILY;UNTIL=20261012T155959Z"      # 23:59:59 in Singapore is 15:59:59 UTC
+    assert [e["date"] for e in sync.plan(conn, user, mid, NOW)] == ["2026-10-09", "2026-10-10", "2026-10-11", "2026-10-12"]
 
 
 def test_a_finished_course_and_an_only_when_needed_medicine_get_no_events(conn, user):
@@ -126,10 +133,10 @@ def test_someone_elses_medicine_or_a_bad_id_is_not_found(conn, user):
 
 
 # ------------------------------------------------------------------ queue and run
-def test_a_new_medicine_is_queued_then_made_one_dose_time_at_a_time_with_progress_saved_each_step(conn, user):
-    mid = add(conn, user, times=("08:00", "13:00", "20:00"))
+def test_a_new_medicine_is_queued_then_made_one_event_at_a_time_with_progress_saved_each_step(conn, user):
+    mid = add(conn, user, times=("08:00", "13:00", "20:00"))                         # 13 + 13 + 14 = 40 events
     sid, go = sync.queue(conn, user, mid, configured=True, now=NOW)
-    assert go is True and sync.status(conn, user, mid) == {"status": "queued", "reason": None, "events_done": 0, "events_total": 3, "error_code": None}
+    assert go is True and sync.status(conn, user, mid) == {"status": "queued", "reason": None, "events_done": 0, "events_total": 40, "error_code": None}
     seen = []
 
     class Watching(FakeClient):
@@ -138,24 +145,70 @@ def test_a_new_medicine_is_queued_then_made_one_dose_time_at_a_time_with_progres
             return super().create_event(payload)
 
     sync.run(sid, Watching(), now_fn=lambda: NOW)
-    assert seen == [0, 1, 2]
-    assert sync.status(conn, user, mid) == {"status": "done", "reason": None, "events_done": 3, "events_total": 3, "error_code": None}
+    assert seen == list(range(40))
+    assert sync.status(conn, user, mid) == {"status": "done", "reason": None, "events_done": 40, "events_total": 40, "error_code": None}
     events = conn.execute("select events from calendar_syncs where medication_id = %s", (mid,)).fetchone()[0]
-    assert [(e["time"], e["event_id"]) for e in events] == [("08:00", "ev-1"), ("13:00", "ev-2"), ("20:00", "ev-3")]
+    assert [(e["date"], e["time"], e["event_id"]) for e in events][:2] == [("2026-10-08", "20:00", "ev-1"), ("2026-10-09", "08:00", "ev-2")]
 
 
 def test_a_failed_event_leaves_the_others_made_and_a_retry_only_makes_the_missing_one(conn, user):
-    mid = add(conn, user, times=("08:00", "20:00"))
+    mid = add(conn, user, times=("08:00", "20:00"))                                  # 13 + 14 = 27 events
     sid, _ = sync.queue(conn, user, mid, configured=True, now=NOW)
     first = FakeClient("ev-a", ExternalServiceError("down", code="workato_unavailable"))
     sync.run(sid, first, now_fn=lambda: NOW)
-    assert sync.status(conn, user, mid) == {"status": "failed", "reason": None, "events_done": 1, "events_total": 2, "error_code": "workato_unavailable"}
+    assert sync.status(conn, user, mid) == {"status": "failed", "reason": None, "events_done": 26, "events_total": 27, "error_code": "workato_unavailable"}
     sid2, go = sync.queue(conn, user, mid, configured=True, now=NOW)
-    assert sid2 == sid and go is True and sync.status(conn, user, mid)["events_done"] == 1
+    assert sid2 == sid and go is True and sync.status(conn, user, mid)["events_done"] == 26
     second = FakeClient("ev-b")
     sync.run(sid, second, now_fn=lambda: NOW)
-    assert [c["time"] for c in second.calls] == ["20:00"]                  # nothing is made twice
-    assert sync.status(conn, user, mid)["status"] == "done" and sync.status(conn, user, mid)["events_done"] == 2
+    assert [(c["date"], c["time"]) for c in second.calls] == [("2026-10-09", "08:00")]       # only the one that failed; nothing is made twice
+    assert sync.status(conn, user, mid)["status"] == "done" and sync.status(conn, user, mid)["events_done"] == 27
+
+
+def test_a_plain_ok_with_no_event_id_still_counts_and_the_event_is_named_by_its_request(conn, user):
+    mid = add(conn, user)
+
+    class Plain(FakeClient):
+        def create_event(self, payload):
+            self.calls.append(payload)
+            return CalendarEvent(event_id="")
+
+    sid, _ = sync.queue(conn, user, mid, configured=True, now=NOW)
+    sync.run(sid, Plain(), now_fn=lambda: NOW)
+    events = conn.execute("select events from calendar_syncs where medication_id = %s", (mid,)).fetchone()[0]
+    assert sync.status(conn, user, mid)["status"] == "done" and events[0]["event_id"] == f"{mid}:{events[0]['schedule_id']}:2026-10-09"
+
+
+def test_without_the_calendar_consent_nothing_is_queued_or_called(conn, user):
+    mid = add(conn, user)
+    _, go = sync.queue(conn, user, mid, configured=True, now=NOW, consent=False)
+    s = sync.status(conn, user, mid)
+    assert go is False and (s["status"], s["reason"]) == ("skipped", "no_consent")
+    assert sync.allowed(conn, user) is False
+    conn.execute("insert into consents (user_id, kind, version, granted_at) values (%s, 'calendar_access', 'v1', now())", (user,))
+    assert sync.allowed(conn, user) is True
+    conn.execute("update consents set revoked_at = now() where user_id = %s and kind = 'calendar_access'", (user,))
+    assert sync.allowed(conn, user) is False
+
+
+def test_the_daily_top_up_only_serves_people_who_agreed(conn, user, monkeypatch):
+    mid = add(conn, user)
+    monkeypatch.setitem(logstore.USERS, "topup-test", {"id": uuid.UUID(user), "label": "t", "sub": ""})
+    from app.core.config import settings as app_settings
+    monkeypatch.setattr(app_settings, "scheduler_users", "topup-test")
+    try:
+        client = FakeClient()
+        assert sync.top_up_all(client, now_fn=lambda: NOW)["people"] == 0 and client.calls == []      # no consent yet
+        conn.execute("insert into consents (user_id, kind, version, granted_at) values (%s, 'calendar_access', 'v1', now())", (user,))
+        out = sync.top_up_all(client, now_fn=lambda: NOW)
+        assert out["people"] == 1 and out["medicines"] == 1 and len(client.calls) == 13
+        again = FakeClient()
+        sync.top_up_all(again, now_fn=lambda: NOW)
+        assert again.calls == []                                                                       # a second pass makes nothing twice
+        assert sync.top_up_all(FakeClient(configured=False), now_fn=lambda: NOW) == {"people": 0, "medicines": 0, "events": 0, "failed": 0}
+    finally:
+        pass
+    assert mid
 
 
 def test_everything_already_made_is_done_without_calling_workato_again(conn, user):
@@ -204,7 +257,7 @@ def test_the_event_log_holds_counts_and_codes_never_the_medicine_name(conn, user
     sid, _ = sync.queue(conn, user, mid, configured=True, now=NOW)
     sync.run(sid, FakeClient(), now_fn=lambda: NOW)
     ev = [str(r[0]) for r in conn.execute("select payload from event_log where user_id = %s and event = 'calendar.sync.finished'", (user,)).fetchall()]
-    assert len(ev) == 1 and "Secretdrug" not in ev[0] and "'events': 1" in ev[0]
+    assert len(ev) == 1 and "Secretdrug" not in ev[0] and "'events': 13" in ev[0]
 
 
 # ------------------------------------------------------------------ the routes
@@ -213,7 +266,7 @@ def test_the_status_route_speaks_plainly_for_every_state(conn, user):
     assert route._status(user, mid).status == "none" and route._status(user, mid).can_retry is True
     sid, _ = sync.queue(conn, user, mid, configured=True, now=NOW)
     q = route._status(user, mid)
-    assert (q.status, q.events_total, q.can_retry) == ("queued", 1, False) and "Google Calendar" in q.message
+    assert (q.status, q.events_total, q.can_retry) == ("queued", 13, False) and "Google Calendar" in q.message
     sync.run(sid, FakeClient(ExternalServiceError("x", code="workato_refused")), now_fn=lambda: NOW)
     f = route._status(user, mid)
     assert f.status == "failed" and f.can_retry is True and "try again" in f.message
@@ -240,6 +293,7 @@ def test_queueing_from_the_save_endpoints_never_raises_even_if_everything_is_bro
 
 def test_scheduling_queues_the_row_and_hands_the_background_job_to_the_response(conn, user, monkeypatch):
     mid = add(conn, user)
+    conn.execute("insert into consents (user_id, kind, version, granted_at) values (%s, 'calendar_access', 'v1', now())", (user,))
     monkeypatch.setenv("WORKATO_WEBHOOK_URL", "https://hooks.example.test/x")
     monkeypatch.setenv("WORKATO_WEBHOOK_TOKEN", "t")
     from app.core import settings as cfg

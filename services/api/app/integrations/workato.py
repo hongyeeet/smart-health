@@ -1,6 +1,6 @@
-"""Workato: the recipe that puts one dose time on Google Calendar (docs/specs/f4-calendar.md, D-074).
+"""Workato: the recipe that puts one dose on Google Calendar (docs/specs/f4-calendar.md, D-074).
 
-One call makes one repeating calendar event. The call is a POST of JSON to the recipe's webhook, with the token in a header. The recipe
+One call makes one calendar event (option A, chosen 2026-10-13: one event per day for the next 14 days). The call is a POST of JSON to the recipe's webhook, with the token in a header. The recipe
 answers with the id of the event it made. Timeout and retry follow rules.md section 6: timeouts, connection errors and 429 and 5xx are
 retried with backoff, any other 4xx is refused at once. The address, the token and the payload (which holds a medicine name) are never
 logged, and an error message never contains them.
@@ -67,7 +67,8 @@ class WorkatoClient:
 
     @staticmethod
     def _parse(r: requests.Response) -> CalendarEvent:
-        """The recipe answers {"status": "ok", "event_id": "...", "link": "..."}; anything else is an error, not a guess."""
+        """The recipe answers {"status": "ok"} (a plain Workato webhook cannot send more); a reply that also carries an "event_id" and a
+        "link" is used as it is. Anything that is not a clear ok is an error, not a guess."""
         try:
             body = r.json()
         except ValueError:
@@ -75,7 +76,6 @@ class WorkatoClient:
         if not isinstance(body, dict) or str(body.get("status", "")).lower() != "ok":
             raise ExternalServiceError("Workato said the event was not made", code="workato_failed")
         event_id = body.get("event_id")
-        if not isinstance(event_id, str) or not event_id.strip():
-            raise ExternalServiceError("Workato did not return an event id", code="workato_bad_answer")
         link = body.get("link")
-        return CalendarEvent(event_id=event_id.strip(), link=link if isinstance(link, str) and link.startswith("https://") else None)
+        return CalendarEvent(event_id=event_id.strip() if isinstance(event_id, str) else "",
+                             link=link if isinstance(link, str) and link.startswith("https://") else None)

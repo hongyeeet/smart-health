@@ -49,6 +49,17 @@ def emails() -> None:
         logger.exception("email dispatch failed")
 
 
+def calendar_top_up() -> None:
+    """Every day: the next 14 days of medicine reminders on Google Calendar for the people who agreed to them (services/calendar_sync.py)."""
+    try:
+        from app.integrations.workato import WorkatoClient
+        from app.services import calendar_sync
+
+        calendar_sync.top_up_all(WorkatoClient.from_settings())
+    except Exception:   # noqa: BLE001 - a calendar problem never stops the other jobs
+        logger.exception("the daily calendar top-up crashed")
+
+
 def warm_review() -> None:
     """Fill the reviewer queue's cache for the people the scheduler serves, so the screen opens at once (the first lookup takes about 25 seconds)."""
     from app.services import review
@@ -99,6 +110,8 @@ def start() -> None:
     _scheduler.add_job(tick, IntervalTrigger(seconds=60), id="tick", max_instances=1, coalesce=True)
     _scheduler.add_job(emails, IntervalTrigger(seconds=60), id="emails", max_instances=1, coalesce=True)
     _scheduler.add_job(nightly, CronTrigger(hour=2, minute=0, timezone="Asia/Singapore"), id="nightly", max_instances=1, coalesce=True)
+    _scheduler.add_job(calendar_top_up, CronTrigger(hour=3, minute=0, timezone="Asia/Singapore"), id="calendar_top_up", max_instances=1, coalesce=True)
+    _scheduler.add_job(calendar_top_up, id="calendar_top_up_start", next_run_time=datetime.now(TZ) + timedelta(seconds=90), max_instances=1)   # after a restart
     _scheduler.add_job(warm_review, id="warm_review", next_run_time=datetime.now(TZ) + timedelta(seconds=30), max_instances=1)
     _scheduler.add_job(lambda: nightly(catch_up=True), id="nightly_catch_up", next_run_time=datetime.now(TZ), max_instances=1)  # after a restart
     _scheduler.start()

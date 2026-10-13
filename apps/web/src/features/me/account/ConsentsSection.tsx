@@ -34,6 +34,11 @@ export function ConsentsSection() {
       sub: t('me.privacy.briefSub', 'Lets you make a link to your doctor brief. You choose each time, and you can turn a link off.'),
     },
     {
+      kind: 'calendar_access',
+      title: t('me.privacy.calendarTitleV2', 'Put my medicine reminders on Google Calendar'),
+      sub: t('me.privacy.calendarSubV2', 'Lets Smart Health add your dose times to Google Calendar, so your phone reminds you. You can turn this off at any time.'),
+    },
+    {
       kind: 'caregiver_view',
       title: t('me.privacy.caregiverTitle', 'Let a caregiver see my data'),
       sub: t('me.privacy.caregiverSub', 'Lets someone you choose view your readings and summaries.'),

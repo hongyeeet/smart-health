@@ -440,6 +440,7 @@
       "noCheckins": "Tiada semakan masuk mood atau tekanan dalam tempoh ini.",
       "noSleep": "Tiada data tidur dalam tempoh ini. Data ini datang daripada jam tangan yang disambungkan.",
       "outOf5": "daripada 5",
+      "readoutMood": "Perasaan: {{n}}",
       "readoutStress": "Stres: {{n}}",
       "scaleNote": "1 adalah paling rendah dan 5 paling tinggi, mengikut penilaian anda.",
       "sleep": "Tidur",
