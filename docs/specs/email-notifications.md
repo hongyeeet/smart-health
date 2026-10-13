@@ -28,7 +28,7 @@ dispatcher records: delivery_status = sent | failed | skipped, delivered_at, del
 
 Existing notifications at the time of migration 0031 were all marked `skipped`, so no old reminder is ever emailed.
 
-## The webhook (what Joely builds in Workato)
+## The webhook (the message the recipe receives)
 
 A new recipe, separate from the calendar one. Trigger: webhook, "auth token" mode, header `API-TOKEN` (the same convention as the calendar recipe).
 Our API sets `WORKATO_EMAIL_WEBHOOK_URL` and `WORKATO_EMAIL_WEBHOOK_TOKEN`.
@@ -48,10 +48,34 @@ Request body (JSON):
 }
 ```
 
-Recipe steps: (1) webhook trigger; (2) Gmail "Send email": To = `to`, Subject = `subject`, Body (HTML) = `html`, plain-text alternative = `text` if the connector has one;
-(3) respond to the webhook with HTTP 200 and `{"status": "ok"}`. Any other answer is treated as a failure: 4xx is final, 429 and 5xx are retried.
 `idempotencyKey` is the notification id: if the recipe can, drop a repeat of the same key (a retry after a timeout could otherwise send twice).
 `audience` is `person` for a reminder and `contact` for an urgent alert to an emergency contact.
+
+## Build the recipe in Workato (step by step)
+
+In the same Workato project as the calendar recipe (`smart-health`, sandbox `app.trial.workato.com`). Two steps only; **no "respond to webhook" step is needed**,
+because a plain webhook trigger answers `200 {"status":"ok"}` by itself (the same finding as the calendar recipe, see f4-calendar.md).
+
+1. **Create a recipe** named "Reminder emails". **Trigger:** Webhooks, "New event via webhook". Under Authentication choose **Auth token** and set a long random token. Keep the header name `API-TOKEN`.
+   Paste this sample into "Event structure" (or use "Generate schema from JSON") so the fields appear as data pills:
+   `{"to":"a@b.com","toName":"Mr Tan","subject":"s","preheader":"p","text":"t","html":"<p>h</p>","tags":{"kind":"nudge","key":"meal-2-2026-10-10","audience":"person"},"idempotencyKey":"id"}`
+2. **Action:** Gmail, "Send email" (connect the shared demo Gmail account once). Map **To** = `to`, **Subject** = `subject`, **Body** = `html` and set the body type to **HTML**.
+   Map the plain-text alternative to `text` if the connector shows that field. Leave CC and BCC empty.
+3. **Start the recipe** and copy the webhook address from the trigger.
+
+Optional but wise: add a first step "Lookup / dedupe" on `idempotencyKey` if you want repeats dropped. The app already never sends the same notification twice in the normal case; a retry after a timeout is the only repeat.
+
+## Switch it on (checklist)
+
+1. Put `WORKATO_EMAIL_WEBHOOK_URL` and `WORKATO_EMAIL_WEBHOOK_TOKEN` in `.env` (see Settings). For the unsubscribe link also set `API_PUBLIC_URL` and `NOTIFY_SECRET`; set `APP_BASE_URL` to where the email's button should open.
+2. `python scripts/email_recipe_check.py --fake` proves our side with no network. It must say "Our side is fine."
+3. `python scripts/email_recipe_check.py --to you@example.com` sends ONE real test email (subject starts with "[Test]"). If nothing arrives, open the recipe's job history in Workato.
+4. Restart the API. The dispatcher runs every minute from the scheduler and sends nothing until both settings are present.
+5. In the app, Me, Privacy, "send a test email" (`POST /api/v1/notify/test`) checks the saved address end to end.
+
+**What happens to reminders already waiting.** The first run after the webhook is set works through the `pending` rows. A row with no expiry that is more than 6 hours old (2 for urgent) is skipped as "too old"; an
+expired one is skipped; the rest go to people who have an address and have not turned emails off, within the daily limit and outside quiet hours. So the first minute can send a few real reminders to the addresses on file.
+Check who has an address first (`user_profile.notification_email`), or switch the recipe on only after the test above passed.
 
 ## Settings (`.env`)
 
