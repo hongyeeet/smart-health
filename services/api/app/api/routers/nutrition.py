@@ -5,6 +5,8 @@ Singapore food database (only as a shelf of lighter dishes), in code; see app/db
 """
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -37,6 +39,19 @@ async def lunch() -> dict:
         with logstore.one_connection():          # many small queries: one connection, not one each
             start, end = nutritionstore.lunch_window(uid)
             return {"windowStart": f"{start // 60:02d}:{start % 60:02d}", "windowEnd": f"{end // 60 % 24:02d}:{end % 60:02d}", "options": nutritionstore.lunch_options(uid)}
+
+    return await run_in_threadpool(run)
+
+
+@router.get("/meal-ideas")
+async def meal_ideas(meal: Literal["lunch", "dinner"]) -> dict:
+    """Ideas for the next lunch or dinner, same shape as /nutrition/lunch plus the meal. Read only: nothing is written."""
+    uid = logstore.current_user()
+
+    def run():
+        with logstore.one_connection():
+            start, end = nutritionstore.meal_window(uid, meal)
+            return {"meal": meal, "windowStart": f"{start // 60:02d}:{start % 60:02d}", "windowEnd": f"{end // 60 % 24:02d}:{end % 60:02d}", "options": nutritionstore.meal_options(uid, meal)}
 
     return await run_in_threadpool(run)
 

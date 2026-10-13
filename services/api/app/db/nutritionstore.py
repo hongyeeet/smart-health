@@ -351,22 +351,45 @@ def reflect_habits(user_id, write: bool = False) -> list[dict[str, Any]]:
 
 
 # ----------------------------------------------------------------------------- lunch suggestions (LL5)
-def lunch_window(user_id) -> tuple[int, int]:
-    """Minutes since midnight: (nudge time, window end). Learned from when lunches are logged; default 12:00 to 13:30."""
+MEALS = ("lunch", "dinner")
+# default windows (minutes since midnight) when fewer than 5 meals of that kind are logged; the start floor keeps a learned window from opening too early
+_DEFAULT_WINDOW = {"lunch": (12 * 60 - 30, 13 * 60 + 30), "dinner": (18 * 60, 20 * 60)}
+_START_FLOOR = {"lunch": 10 * 60, "dinner": 16 * 60}
+# shelf rules for the general tier: dinner is slightly lighter and has no breakfast-type dishes
+_SHELF_KCAL = {"lunch": (350, 600), "dinner": (300, 550)}
+_NOT_BREAKFAST = " and name not ilike '%%breakfast%%' and name not ilike '%%porridge%%' and name not ilike '%%congee%%' and name not ilike '%%cereal%%' and name not ilike '%%oat%%'"
+
+
+def window_from_minutes(meal: str, mins: list[int]) -> tuple[int, int]:
+    """Pure rule: median of the last 20 log times (needs 5); window = median - 30 to median + 90, start not before the floor."""
+    if len(mins) >= 5:
+        med = int(statistics.median(mins))
+        return max(_START_FLOOR[meal], med - 30), med + 90
+    return _DEFAULT_WINDOW[meal]
+
+
+def meal_window(user_id, meal: str) -> tuple[int, int]:
+    """Minutes since midnight: (nudge time, window end). Learned from when that meal is logged."""
+    if meal not in MEALS:
+        raise ValueError("meal must be lunch or dinner")
     with tx() as c:
         rows = c.execute(
             """select (extract(hour from start_at at time zone 'Asia/Singapore') * 60 + extract(minute from start_at at time zone 'Asia/Singapore'))::int m
-               from food_logs where user_id=%s and meal_type='lunch' and deleted_at is null order by start_at desc limit 20""",
-            (user_id,),
+               from food_logs where user_id=%s and meal_type=%s and deleted_at is null order by start_at desc limit 20""",
+            (user_id, meal),
         ).fetchall()
-    if len(rows) >= 5:
-        med = int(statistics.median(r["m"] for r in rows))
-        return max(10 * 60, med - 30), med + 90
-    return 12 * 60 - 30, 13 * 60 + 30
+    return window_from_minutes(meal, [r["m"] for r in rows])
 
 
-def lunch_options(user_id, limit: int = 3, rng: random.Random | None = None) -> list[dict[str, Any]]:
-    now = datetime.now(TZ)
+def lunch_window(user_id) -> tuple[int, int]:
+    """Lunch window; same as before (default 11:30 to 13:30)."""
+    return meal_window(user_id, "lunch")
+
+
+def meal_options(user_id, meal: str, limit: int = 3, rng: random.Random | None = None) -> list[dict[str, Any]]:
+    """Ideas for the next lunch or dinner: swap from a food habit, the person's own meals with a lower measured rise, then general database options."""
+    if meal not in MEALS:
+        raise ValueError("meal must be lunch or dinner")
     opts: list[dict[str, Any]] = []
     with tx() as c:
         med = c.execute("select percentile_cont(0.5) within group (order by rise_mmol) m from meal_response where user_id=%s and rise_mmol is not null", (user_id,)).fetchone()["m"]
@@ -374,20 +397,20 @@ def lunch_options(user_id, limit: int = 3, rng: random.Random | None = None) -> 
         own = c.execute(
             """select lower(f.food) key, min(f.food) food, count(*) n, avg(m.rise_mmol) rise, avg(f.carbs_g) carbs, avg(f.sodium_mg) sodium
                from food_logs f join meal_response m on m.food_log_id=f.id
-               where f.user_id=%s and f.deleted_at is null and f.meal_type='lunch' and f.start_at > now() - interval '60 days' and m.rise_mmol is not null
+               where f.user_id=%s and f.deleted_at is null and f.meal_type=%s and f.start_at > now() - interval '60 days' and m.rise_mmol is not null
                group by 1 having count(*) >= 2 order by avg(m.rise_mmol)""",
-            (user_id,),
+            (user_id, meal),
         ).fetchall()
-    # tier 1: the person's own lunches with a lower measured rise than their typical meal
+    # tier 1: the person's own meals of this kind with a lower measured rise than their typical meal
     for r in own:
         if med is not None and float(r["rise"]) < float(med) and r["key"] not in recent:
-            opts.append({"key": f"own:{r['key']}", "name": r["food"], "source": "own", "why": f"After this lunch your glucose rose {float(r['rise']):.1f} mmol/L on average (you had it {int(r['n'])} times), less than after your typical meal ({float(med):.1f}).",
+            opts.append({"key": f"own:{r['key']}", "name": r["food"], "source": "own", "why": f"After this {meal} your glucose rose {float(r['rise']):.1f} mmol/L on average (you had it {int(r['n'])} times), less than after your typical meal ({float(med):.1f}).",
                          "carbs": _f(r["carbs"]), "sodium": _f(r["sodium"])})
     # tier 0: the habit the memory loop noticed, with a lighter dish to have instead (compared with the person's own logged numbers)
     try:
         habits = food_habits(user_id)
     except Exception:
-        logger.exception("food habits unavailable; lunch ideas continue without the swap tier")
+        logger.exception("food habits unavailable; %s ideas continue without the swap tier", meal)
         habits = []
     lang = texts.person_language(user_id)
     for h in habits:
@@ -398,10 +421,12 @@ def lunch_options(user_id, limit: int = 3, rng: random.Random | None = None) -> 
                          "sodium": next((c["to"] for c in alt["changes"] if c["nutrient"] == "sodium_mg"), None)})
     # tier 3: no history yet, so general options from the database, clearly labelled as not personal
     if len(opts) < limit:
+        lo, hi = _SHELF_KCAL[meal]
+        extra = _NOT_BREAKFAST if meal == "dinner" else ""
         with tx() as c:
             rows = c.execute(
                 f"select {foodagent._COLS} from foods where source=%s and subgroup in ('Rice-based dishes', 'Noodle/Pasta-based dishes', 'Soup-based dishes') "
-                "and kcal between 350 and 600 and carbs_g <= 60 and sodium_mg <= 900 and sodium_mg is not null and protein_g >= 15 and name not ilike '%%raw%%' and 'hawker' = any(flags) "
+                f"and kcal between {int(lo)} and {int(hi)} and carbs_g <= 60 and sodium_mg <= 900 and sodium_mg is not null and protein_g >= 15 and name not ilike '%%raw%%' and 'hawker' = any(flags){extra} "
                 "order by (sodium_mg / 900.0 + carbs_g / 60.0 - coalesce(fibre_g, 0) / 10.0) limit 30",
                 (foodagent.SOURCE,),
             ).fetchall()
@@ -424,6 +449,10 @@ def lunch_options(user_id, limit: int = 3, rng: random.Random | None = None) -> 
     tier = {"swap": 0, "own": 1, "general": 2}
     uniq.sort(key=lambda o: (tier[o["source"]], rank[o["key"]]))
     return uniq[:limit]
+
+
+def lunch_options(user_id, limit: int = 3, rng: random.Random | None = None) -> list[dict[str, Any]]:
+    return meal_options(user_id, "lunch", limit, rng)
 
 
 # ----------------------------------------------------------------------------- salt day: swap first, gentle activity second (LL9)

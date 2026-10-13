@@ -17,8 +17,8 @@ const TONE_TEXT: Record<StatusTone, string> = { ok: 'text-ok', warn: 'text-warn'
 function Status({ line }: { line: StatusLine }) {
   const Icon = line.icon === 'smiley' ? Smiley : line.icon === 'up' ? ArrowUp : line.icon === 'down' ? ArrowDown : null
   return (
-    <p className={cn('flex items-start gap-1.5 text-micro font-bold', TONE_TEXT[line.tone])}>
-      {Icon && <Icon size={18} weight="bold" aria-hidden className="mt-px flex-none" />}
+    <p className={cn('flex items-center gap-1.5 text-micro font-bold leading-tight', TONE_TEXT[line.tone])}>
+      {Icon && <Icon size={18} weight="bold" aria-hidden className="flex-none" />}
       <span className="min-w-0 break-words">{line.text}</span>
     </p>
   )

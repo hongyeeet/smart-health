@@ -9,7 +9,7 @@
  */
 import { useReducer, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDoses, useLearned, useLunchIdeas, useMarkTaken } from '@/data/hooks'
+import { useDoses, useLearned, useLunchIdeas, useMarkTaken, useMealIdeas } from '@/data/hooks'
 import type { LunchIdeas } from '@/data/types'
 import { useGo } from '@/app/navigation'
 import { MealBanner } from '@/features/log/MealBanner'
@@ -62,6 +62,7 @@ export function HomeBanners() {
   const { data: doses } = useDoses()
   const { data: food } = useFoodBanner()
   const { data: lunch } = useLunchIdeas()
+  const { data: dinner } = useMealIdeas(food?.meal === 'dinner' ? 'dinner' : null)
   const { data: learned } = useLearned()
   const mark = useMarkTaken()
   const [, redraw] = useReducer((n: number) => n + 1, 0)
@@ -123,7 +124,28 @@ export function HomeBanners() {
           />
         ),
       })
-    if (food?.meal)
+    /* the open dinner time: a suggested dinner from the person's own past dinners, when there is one; the plain prompt below covers the rest */
+    const dinnerTop = food?.meal === 'dinner' ? dinner?.options[0] : undefined
+    if (dinnerTop)
+      candidates.push({
+        id: 'idea:dinner',
+        node: (
+          <Banner
+            tone="brass"
+            icon={<ForkKnife size={20} aria-hidden />}
+            title={t('home.banner.suggestedDinner', 'Suggested dinner')}
+            sub={dinnerTop.name}
+            action={
+              <button type="button" onClick={() => go('E2')} className={cn(BTN, 'bg-brand text-on-brand')}>
+                {t('home.banner.logDinner', 'Log dinner')}
+              </button>
+            }
+            onClose={() => hide('idea:dinner')}
+            closeLabel={close}
+          />
+        ),
+      })
+    if (food?.meal && !(food.meal === 'dinner' && dinnerTop))
       candidates.push({
         id: `meal:${food.meal}`,
         node: (

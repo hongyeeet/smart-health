@@ -12,7 +12,7 @@
 import { dateLocale } from '@/lib/locale'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { useClash, useHomeOverview, useNotices } from '@/data/hooks'
+import { useClash, useHomeOverview, useNotices, useUsers } from '@/data/hooks'
 import { useDismissed } from '@/features/alerts/pieces'
 import { useGo } from '@/app/navigation'
 import { useUi } from '@/state/store'
@@ -39,6 +39,9 @@ export function Home() {
   const { data: clash } = useClash()
   const setAside = useDismissed((s) => s.ids)
   const userKey = useUi((s) => s.userKey)
+  const { data: users } = useUsers()
+  /** the signed-in person's name, from the same list the avatar uses; nothing is said when it is not known yet */
+  const name = users?.users.find((u) => u.key === userKey)?.label?.trim() || null
 
   /** medicine alerts the person has not set aside */
   const openAlerts = (clash?.alerts ?? []).filter((a) => !setAside.includes(a.id))
@@ -50,7 +53,7 @@ export function Home() {
   return (
     <Screen tabs>
       <Header
-        title={greeting(now.getHours(), t)}
+        title={name ? t('home.greeting.named', '{{greeting}}, {{name}}', { greeting: greeting(now.getHours(), t), name }) : greeting(now.getHours(), t)}
         sub={dateLabel}
         trailing={
           <div className="flex items-center gap-2">
@@ -74,7 +77,7 @@ export function Home() {
 
       {/* 5. your numbers */}
       <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3">
-        <h2 className="text-h2 font-bold">{t('home.numbers.title', 'Your numbers')}</h2>
+        <h2 className="text-h2 font-bold">{t('home.numbers.title', "Today's summary")}</h2>
         <p className="text-sub text-ink2">{t('home.numbers.sub', 'Compared with your usual')}</p>
       </div>
       {data ? (

@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './repositories'
 import type { BloodPressureLogInput, LogInput, NewMedication } from './repositories/types'
-import type { ClashStatus, HomeOverview, InsightsDays, MedicineStock, MissAnswer, Period, ReportDays, StockList, UserList } from './types'
+import type { ClashStatus, HomeOverview, InsightsDays, LunchIdeas, MedicineStock, MissAnswer, Period, ReportDays, StockList, UserList } from './types'
 import { request } from './repositories/http'
 import { useUi } from '@/state/store'
 
@@ -30,6 +30,9 @@ export const useLogProgress = () => useQuery({ queryKey: ['logProgress'], queryF
 export const useHomeOverview = () => useQuery({ queryKey: ['homeOverview'], queryFn: () => request<HomeOverview>('/home/overview'), refetchInterval: 60_000 })
 export const useFoodFlags = () => useQuery({ queryKey: ['foodFlags'], queryFn: () => api.getFoodFlags() })
 export const useLunchIdeas = () => useQuery({ queryKey: ['lunchIdeas'], queryFn: () => api.getLunchIdeas() })
+/** Ideas for the open mealtime built from the person's own past meals of that kind (GET /nutrition/meal-ideas); off until a meal is named. */
+export const useMealIdeas = (meal: 'lunch' | 'dinner' | null) =>
+  useQuery({ queryKey: ['mealIdeas', meal], queryFn: () => request<LunchIdeas>(`/nutrition/meal-ideas?meal=${meal}`), enabled: meal != null, staleTime: 5 * 60_000 })
 export const useAcceptSuggestion = () => useWrite((key: string) => api.acceptSuggestion(key))
 export const useLearned = () => useQuery({ queryKey: ['learned'], queryFn: () => api.getLearned() })
 export const useDigest = () => useQuery({ queryKey: ['digest'], queryFn: () => api.getDigest() })
