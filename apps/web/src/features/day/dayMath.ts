@@ -1,4 +1,5 @@
 import i18n from '@/i18n'
+import { dateLocale } from '@/lib/locale'
 import { clock } from '@/lib/format'
 import type { DayMarker, DoseState } from './api'
 
@@ -64,7 +65,7 @@ export function glucoseSummary(values: (number | null)[], low: number, high: num
 export function dayLabel(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number)
   const date = new Date(y!, (m ?? 1) - 1, d ?? 1)
-  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+  return date.toLocaleDateString(dateLocale('en-GB'), { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
 /** Counts of what was logged, in words: "2 meals, 3 medicine times, 1 symptom". */

@@ -120,7 +120,7 @@ export function useRequestDeletion() {
 
 /** Downloads the person's own data as a JSON file. Uses the same X-User header as every other call. */
 export async function downloadMyData(): Promise<void> {
-  const res = await fetch(`${appConfig.apiBaseUrl}/me/export`, { credentials: 'include', headers: { 'X-User': useUi.getState().userKey } })
+  const res = await fetch(`${appConfig.apiBaseUrl}/me/export`, { credentials: 'include', headers: { 'X-User': useUi.getState().userKey, 'X-Lang': useUi.getState().locale } })
   if (!res.ok) {
     const detail = ((await res.json().catch(() => null)) as { detail?: unknown } | null)?.detail
     throw new Error(typeof detail === 'string' ? detail : `${res.status} ${res.statusText}`)

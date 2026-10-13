@@ -120,7 +120,7 @@ OLD_ENGLISH = [
     ("action.ran_out", {"n": 2, "days": 7}, "You ran out 2 times. Get a refill reminder 7 days before you run out?"),
     ("action.away", {"n": 3}, "You missed 3 doses when you were away. Keep a note on your phone for those days?"),
     ("preventive.overdue", {"name": "eye screening", "day": "2 Sep 2025"}, "Your eye screening was due on 2 Sep 2025. Plan one?"),
-    ("preventive.due", {"name": "HbA1c blood test"}, "Your HbA1c blood test is due. You can plan it in your care plan."),
+    ("preventive.due", {"name": "HbA1c blood test"}, "Your HbA1c blood test is due. You can add a visit in Track appointments."),
     ("check.gp_review", {}, "GP review"),
     ("glucose.swap.same", {"dish": "Laksa", "kind": "noodle dishes", "nb": 5, "na": 6},
      "After you switched to Laksa, your glucose rise after noodle dishes was about the same (based on 5 meals before and 6 after). This is an observation from your data, not proof."),
@@ -249,7 +249,7 @@ def test_barrier_and_preventive_helpers_default_to_english():
     assert B.action_text("ran_out", 2, False) == "You ran out 2 times. Get a refill reminder 7 days before you run out?"
     assert B.meal_label("breakfast") == "Breakfast" and B.meal_label("supper") == "Meal"
     assert P.overdue_statement("gp_review", date(2025, 9, 2)) == "Your GP review was due on 2 Sep 2025. Plan one?"
-    assert P.nudge_text("gp_review", "zh") == "你的家庭医生检查到期了。你可以在护理计划中安排。"
+    assert P.nudge_text("gp_review", "zh") == "你的家庭医生检查到期了。你可以在“预约追踪”中添加就诊。"
 
 
 def test_glucose_observations_keep_the_english_text_for_the_guard():

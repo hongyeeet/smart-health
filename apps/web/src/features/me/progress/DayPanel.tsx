@@ -1,11 +1,12 @@
 /** The totals and meals of the day picked on the K10 calendar, with a link to that day in the Day view (D1). */
+import { dateLocale } from '@/lib/locale'
 import { useTranslation } from 'react-i18next'
 import type { DietDay } from '@/data/types'
 import { useGo } from '@/app/navigation'
 import { NumbersTag } from '@/features/insights/food/NumbersTag'
 import { Button, Card, Skeleton } from '@/ui/primitives'
 
-const longDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+const longDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString(dateLocale('en-GB'), { weekday: 'long', day: 'numeric', month: 'long' })
 
 function Total({ label, value, unit }: { label: string; value: number | null; unit: string }) {
   return (

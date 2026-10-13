@@ -1,0 +1,205 @@
+{
+  "alerts": {
+    "card": {
+      "onList": "这组药物已加入要问医生的问题",
+      "review": "查看相互作用",
+      "tag": "用药检查",
+      "title": "可能存在的药物相互作用"
+    },
+    "checking": "正在检查您的药物是否存在冲突……",
+    "clashError": "我们无法加载您的用药提醒。这并不代表药物之间没有冲突。",
+    "day": {
+      "today": "今天，{{date}}",
+      "yesterday": "昨天，{{date}}"
+    },
+    "detail": {
+      "addPair": "将这组药物加入要问医生的问题",
+      "added": "已加入要问医生的问题",
+      "aiOnly": "未找到相关网页。这是人工智能建议，请向您的药剂师核对。这不属于医疗建议。",
+      "backToMeds": "返回药物列表",
+      "checked": "我已向医生咨询过",
+      "error": "我们无法加载此提醒。",
+      "gone": "此提醒已失效。可能您已向医生咨询过，或已删除了其中一种药物。",
+      "noSources": "未记录此提示的来源页面。",
+      "noSummary": "未记录此提示的说明。您的药剂师或医生可以告诉您这是否会对您有影响。",
+      "originLabel": "此提示的来源",
+      "sources": "此信息的来源",
+      "sourcesNote": "这些页面未经临床医生专为 Smart Health 进行审核。这不属于医疗建议。",
+      "title": "查看相互作用",
+      "unreviewed": "未经临床医生审核",
+      "why": "为何会有此提示"
+    },
+    "empty": "目前这里没有内容。新的警告和提醒会显示在这里。",
+    "filter": {
+      "all": "全部 ({{n}})",
+      "label": "显示",
+      "medicines": "药物 ({{n}})",
+      "reminders": "提醒 ({{n}})"
+    },
+    "footer": "用药提醒来源于药品标签规则以及对您所保存药物的人工智能网络检索。这不属于医疗建议。没有提醒并不意味着该药物组合已经过检查且确认安全。",
+    "incomplete": "未能完成对您药物的最新检查，稍后可能会有更多内容。这并不代表药物之间没有冲突。",
+    "markRead": "将所有提醒标为已读",
+    "new": "新",
+    "note": "此提醒并非诊断。您的药剂师或医生可以为您复核药物。",
+    "origin": {
+      "ai": "AI 网络搜索",
+      "both": "药品说明规则与 AI 网络搜索",
+      "database": "药品说明规则"
+    },
+    "pair": {
+      "marker": "可能存在的相互作用"
+    },
+    "q": {
+      "draft": "草稿",
+      "error": "刚才无法保存您的问题。请重试。",
+      "hint": "输入要在就诊时询问的问题或笔记。",
+      "label": "想问医生或药剂师的问题",
+      "placeholder": "例如：我应该在一天的不同时间服用这些药吗？",
+      "save": "保存问题",
+      "saved": "已保存",
+      "toast": "已添加到您的就医问题"
+    },
+    "remindersError": "无法加载您的提醒。",
+    "restore": "恢复",
+    "setAside": "{{a}} 和 {{b}}：已搁置，已记录在您的就医问题中",
+    "sub": "关于您药物的提醒，以及帮助您保持完整记录的温馨提示。",
+    "title": "通知与提醒"
+  },
+  "brief": {
+    "aiInsight": "AI 分析。",
+    "aiNote": "这些内容是由 AI 根据本报告中的数据生成的。这些数据来自您的记录。此内容并非医疗建议，须由您的医生来判定其含义。",
+    "alerts": "报告中的提醒",
+    "days14": "14 天",
+    "days30": "30 天",
+    "days7": "7 天",
+    "days90": "90 天",
+    "error": "刚才无法生成您的报告。请稍后重试。",
+    "findings": "主要发现",
+    "nextAppointment": "您的下一次预约",
+    "noAlerts": "在此期间未根据您的高低数据发出任何提醒。但这并不意味着无需注意任何情况。",
+    "noAppointment": "尚未安排任何预约。",
+    "noQuestions": "您目前没有待问的问题。可以从药物或护理计划中添加问题。",
+    "note": "这些数据是根据您和您的设备所记录的内容，通过固定规则统计得出的。在主要发现注明“AI 分析”之处，是由 AI 根据这些数据生成的文字。这些内容供您的医生参考解读。Smart Health 不提供诊断或用药建议。",
+    "open": "打开可打印的报告",
+    "openCareV2": "查看我的预约",
+    "openQuestions": "打开我的问题",
+    "period": "时段",
+    "questions": "您想问的问题",
+    "share": "与我的医生分享",
+    "sources": "来源：{{sources}}。传感器佩戴时长：{{wear}}。",
+    "sub": "包含您的读数、症状和药物记录的报告，供您在下次就诊时带去。您看到的内容与医生看到的一模一样。",
+    "tag": {
+      "interaction": "药物相互作用",
+      "review": "需复查",
+      "urgent": "紧急"
+    },
+    "title": "医生摘要",
+    "worth": "建议讨论",
+    "worthEmpty": "目前没有特别情况。随着您记录，列表会更新。"
+  },
+  "charts": {
+    "effortAria": "按强度的活动分钟数：{{list}}",
+    "effortHint": "指向或轻触柱状图，查看轻度、中度和高强度分钟数。",
+    "effortItem": "{{label}}：{{total}} min，其中轻度 {{light}}，中等 {{moderate}}，剧烈 {{vigorous}}",
+    "effortReadout": "{{label}}：轻度 {{light}}、中度 {{moderate}}、高强度 {{vigorous}} 分钟",
+    "gapKey": "斜线条纹：这些天没有数据。",
+    "soFar": "目前为止"
+  },
+  "common": {
+    "back": "返回",
+    "cancel": "取消",
+    "close": "关闭",
+    "continue": "继续",
+    "day": {
+      "fri": "周五",
+      "mon": "周一",
+      "sat": "周六",
+      "sun": "周日",
+      "thu": "周四",
+      "tue": "周二",
+      "wed": "周三"
+    },
+    "details": "详情",
+    "loading": "加载中",
+    "no": "否",
+    "notSure": "不确定",
+    "save": "保存",
+    "saving": "正在保存…",
+    "source": "来源：",
+    "today": "今天",
+    "unverified": "未经验证。仅相关，并非起因。",
+    "yes": "是",
+    "yesterday": "昨天"
+  },
+  "controls": {
+    "decimal": "小数点",
+    "delete": "删除",
+    "less": "减少{{label}}",
+    "more": "增加{{label}}",
+    "numberPad": "数字键盘"
+  },
+  "day": {
+    "logged": {
+      "pressureMany": "{{n}} 次血压读数",
+      "pressureOne": "{{n}} 次血压读数"
+    },
+    "tl": {
+      "lanes": {
+        "pressure": "血压"
+      },
+      "readingPart": "，{{reading}}"
+    }
+  },
+  "home": {
+    "itemLabel": {
+      "blood_pressure": "血压",
+      "checkin": "情绪与睡眠",
+      "meals": "餐食",
+      "symptom": "症状",
+      "workout": "运动"
+    }
+  },
+  "review": {
+    "titleV2": "餐食建议"
+  },
+  "screen": {
+    "key": "英文文本"
+  },
+  "setup": {
+    "failed": "设置尚未完成。您的回答仍保存在此设备上。请检查您的网络连接，然后再次点击“核对我的回答”。",
+    "meds": "此处不询问药物。请扫描您服用的每种药物的标签。",
+    "noRead": "无法读取您已保存的回答，因此目前未保存任何内容。请检查您的网络连接，然后重试。",
+    "scan": "扫描标签"
+  },
+  "share": {
+    "consentLine": "创建链接会开启“隐私”中的“分享我的医生摘要”。您可以在那里将其关闭。",
+    "offLast": "那是您最后一个有效的链接。“隐私”中的分享功能将保持开启，直到您在其中关闭。",
+    "turnOffInPrivacy": "在“隐私”中关闭分享"
+  },
+  "shell": {
+    "ask": "提问",
+    "askAria": "询问 Smart Health",
+    "mainNav": "主页"
+  },
+  "sources": {
+    "openPage": "打开页面",
+    "viaGoogle": "{{name}}，通过 Google 打开"
+  },
+  "switch": {
+    "menu": "切换使用者",
+    "newPerson": "新使用者",
+    "person": "使用者",
+    "startFailed": "刚才无法开始新使用者。请检查您的网络连接，然后重试。",
+    "startNew": "作为新使用者开始",
+    "startNewSub": "从第 1 步全新开始。其他人的数据不会改变。",
+    "startedHere": "在此设备上开始",
+    "starting": "正在启动…",
+    "user": {
+      "demo": "演示用户",
+      "demoSub": "用来试用的空白账户",
+      "tanSub": "约 90 天的记录"
+    },
+    "viewing": "正在以 {{name}} 的身份查看。切换使用者",
+    "viewingAs": "正在查看"
+  }
+}

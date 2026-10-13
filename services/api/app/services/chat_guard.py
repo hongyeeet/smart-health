@@ -334,7 +334,7 @@ def signposts(intent: str, wants_food: bool, noticed: bool) -> list[Signpost]:
     if intent == "medicine_info":
         out.append(Signpost("chat.sign_meds", "H1", "Open my medicines"))
     if intent == "appointments":
-        out.append(Signpost("chat.sign_care", "K3", "Open my care plan"))
+        out.append(Signpost("chat.sign_care", "K3", "Open Track appointments"))
     return out
 
 

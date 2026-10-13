@@ -42,11 +42,13 @@ from app.core.config import settings
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-async def _act_as(x_user: str | None = Header(default=None)) -> None:
+async def _act_as(x_user: str | None = Header(default=None), x_lang: str | None = Header(default=None)) -> None:
     """Who this request acts as: the `X-User` header ("demo" or "mr-tan"; none means demo). Async on purpose, so the choice
     is set in the same context the endpoint (and its threadpool work) runs in."""
     from app.db import logstore
+    from app.services import texts
 
+    texts.set_request_language((x_lang or "").strip().lower() or None)    # the language the person chose in the app, for wording the server builds
     try:
         logstore.set_user(x_user)
     except KeyError:

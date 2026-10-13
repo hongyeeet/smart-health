@@ -19,7 +19,7 @@ const SHADE = [18, 38, 62, 92] as const
 const shade = (level: number) => `color-mix(in oklab, var(--c-brand) ${SHADE[level - 1]}%, var(--c-card))`
 
 export function DietCalendar() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const today = useMemo(() => sgToday(), [])
   const current = useMemo(() => monthOf(today), [today])
   const [shown, setShown] = useState<Month>(current)
@@ -27,7 +27,7 @@ export function DietCalendar() {
   const range = monthRange(shown)
   const { data, isError } = useDietDays(range.start, range.end)
   const byDate = useMemo(() => new Map((data?.days ?? []).map((d) => [d.date, d])), [data])
-  const weekdays = useMemo(() => weekdayHeaders(), [])
+  const weekdays = useMemo(() => weekdayHeaders(), [i18n.language])
   const label = monthLabel(shown)
   const canGoForward = compareMonths(shown, current) < 0
   const monthEmpty = !!data && data.days.every((d) => d.meals === 0)
@@ -58,7 +58,7 @@ export function DietCalendar() {
               type="button"
               onClick={() => go(-1)}
               aria-label={t('me.diet.prevMonth', 'Previous month')}
-              className="press flex h-12 w-12 items-center justify-center rounded-field border border-line bg-card text-ink"
+              className="press flex h-12 w-12 flex-none items-center justify-center rounded-field border border-line bg-card text-ink"
             >
               <CaretLeft size={22} aria-hidden />
             </button>
@@ -70,7 +70,7 @@ export function DietCalendar() {
               onClick={() => go(1)}
               disabled={!canGoForward}
               aria-label={t('me.diet.nextMonth', 'Next month')}
-              className="press flex h-12 w-12 items-center justify-center rounded-field border border-line bg-card text-ink disabled:opacity-40 disabled:pointer-events-none"
+              className="press flex h-12 w-12 flex-none items-center justify-center rounded-field border border-line bg-card text-ink disabled:opacity-40 disabled:pointer-events-none"
             >
               <CaretRight size={22} aria-hidden />
             </button>

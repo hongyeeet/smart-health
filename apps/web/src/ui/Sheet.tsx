@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { motion, useDragControls } from 'motion/react'
 import { duration, ease } from '@/motion/tokens'
 import { X } from './icons'
@@ -11,6 +12,7 @@ import { X } from './icons'
  * behind it is scrolled (inside a scrolled page it used to appear at the top of the page's content).
  */
 export function Sheet({ title, onClose, children, label }: { title: ReactNode; onClose: () => void; children: ReactNode; label?: string }) {
+  const { t } = useTranslation()
   const controls = useDragControls()
   const panel = useRef<HTMLDivElement>(null)
 
@@ -32,7 +34,7 @@ export function Sheet({ title, onClose, children, label }: { title: ReactNode; o
     <div className="absolute inset-0 z-40 flex flex-col justify-end">
       <motion.button
         type="button"
-        aria-label="Close"
+        aria-label={t('common.close', 'Close')}
         tabIndex={-1}
         className="absolute inset-0 bg-overlay"
         initial={{ opacity: 0 }}
@@ -45,7 +47,7 @@ export function Sheet({ title, onClose, children, label }: { title: ReactNode; o
         ref={panel}
         role="dialog"
         aria-modal="true"
-        aria-label={label ?? (typeof title === 'string' ? title : 'Details')}
+        aria-label={label ?? (typeof title === 'string' ? title : t('common.details', 'Details'))}
         tabIndex={-1}
         className="relative mx-auto flex max-h-[90%] w-full flex-col rounded-t-sheet border border-b-0 border-line bg-card shadow-sheet outline-none md:mb-8 md:max-w-[560px] md:rounded-b-sheet md:border-b"
         initial={{ y: '100%' }}
@@ -65,7 +67,7 @@ export function Sheet({ title, onClose, children, label }: { title: ReactNode; o
           <div className="mx-auto h-1.5 w-11 rounded-full bg-line" />
           <div className="mt-3 flex items-start justify-between gap-3">
             <h2 className="font-serif text-h1 font-medium tracking-tight text-ink">{title}</h2>
-            <button type="button" aria-label="Close" onClick={onClose} className="press -mr-2 flex h-12 w-12 flex-none items-center justify-center rounded-full text-ink2 hover:bg-well">
+            <button type="button" aria-label={t('common.close', 'Close')} onClick={onClose} className="press -mr-2 flex h-12 w-12 flex-none items-center justify-center rounded-full text-ink2 hover:bg-well">
               <X size={24} aria-hidden />
             </button>
           </div>

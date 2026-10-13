@@ -1,4 +1,6 @@
+import i18n from '@/i18n'
 import { useState } from 'react'
+import { dateLocale } from '@/lib/locale'
 import { useTranslation } from 'react-i18next'
 import { useRemoveMed } from '@/data/hooks'
 import type { Medication, MedicineStock } from '@/data/types'
@@ -12,7 +14,12 @@ import { fullName, showStrength } from './medicineText'
 export const countText = (n: number) => Number(n.toFixed(2)).toString()
 
 /** "tablet" for one, "tablets" for more. The unit is the stored word. */
-export const unitFor = (unit: string | null, n: number) => (unit ? (n === 1 ? unit.replace(/s$/, '') : unit) : '')
+/** The unit word for a count ('tablets', or 'tablet' for one), in the person's language. A word with no translation is shown as it is. */
+export const unitFor = (unit: string | null, n: number) => {
+  if (!unit) return ''
+  const word = n === 1 ? unit.replace(/s$/, '') : unit
+  return i18n.t(`stock.unit.${word}`, { defaultValue: word })
+}
 
 /**
  * One medicine on the Meds screen (H1, "All medications"): its name and strength with Remove at the top right, the dose times and tags,
@@ -197,7 +204,7 @@ function StockBlock({ s, onEdit }: { s: MedicineStock; onEdit: () => void }) {
       )}
       {s.updatedAt && (
         <p className="text-micro text-ink3">
-          {t('stock.updated', 'Last changed {{date}}', { date: new Date(s.updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) })}
+          {t('stock.updated', 'Last changed {{date}}', { date: new Date(s.updatedAt).toLocaleDateString(dateLocale('en-GB'), { day: 'numeric', month: 'short' }) })}
         </p>
       )}
     </div>

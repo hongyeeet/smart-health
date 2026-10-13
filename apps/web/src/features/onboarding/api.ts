@@ -332,7 +332,7 @@ async function putReminderEmail(body: { email: string | null; optIn: boolean }):
   const res = await fetch(`${appConfig.apiBaseUrl}/notify/email`, {
     method: 'PUT',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', 'X-User': useUi.getState().userKey },
+    headers: { 'Content-Type': 'application/json', 'X-User': useUi.getState().userKey, 'X-Lang': useUi.getState().locale },
     body: JSON.stringify(body),
   })
   if (res.status === 409) return { waiting: true }

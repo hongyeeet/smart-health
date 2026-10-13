@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 import psycopg
 
 from app.core.errors import InvalidTransition, NotFound, ValidationFailed
+from app.services import texts
 from psycopg.types.json import Jsonb
 
 TZ = ZoneInfo("Asia/Singapore")
@@ -61,12 +62,11 @@ APPT_COLS = "id, kind, status, scheduled_for, location, suggested_reason, confir
 
 # ───────────────────────────────────────────────────────────────── pure helpers
 def _day(d: date) -> str:
-    return f"{d.day} {d:%b} {d.year}"
+    return texts.day_month_year(d)
 
 
 def _clock(dt: datetime) -> str:
-    h = dt.hour % 12 or 12
-    return f"{h}:{dt.minute:02d} {'am' if dt.hour < 12 else 'pm'}"
+    return texts.clock12(dt.hour, dt.minute)
 
 
 def _local(dt: datetime) -> datetime:
@@ -95,22 +95,23 @@ def preventive_status(next_due_on: date | None, today: date) -> str:
 
 def preventive_detail(status: str, last_done_on: date | None, next_due_on: date | None) -> str:
     """One plain line: what is on record, nothing more."""
-    last = f"Last done {_day(last_done_on)}." if last_done_on else "No date for the last one on record."
+    lang = texts.request_lang()
+    last = texts.tr(lang, "care.prev.last", date=_day(last_done_on)) if last_done_on else texts.tr(lang, "care.prev.no_last")
     if next_due_on is None:
-        return f"{last} No next date on record." if last_done_on else "No date on record yet."
+        return texts.tr(lang, "care.prev.no_next", last=last) if last_done_on else texts.tr(lang, "care.prev.none")
     if status == "overdue":
-        return f"{last} Was due {_day(next_due_on)}."
-    return f"{last} Next due {_day(next_due_on)}."
+        return texts.tr(lang, "care.prev.overdue", last=last, date=_day(next_due_on))
+    return texts.tr(lang, "care.prev.next", last=last, date=_day(next_due_on))
 
 
 def scheduled_label(dt: datetime) -> str:
     local = _local(dt)
-    return f"{local:%a} {local.day} {local:%b}, {_clock(local)}"
+    return f"{texts.weekday_short(local)} {texts.day_month(local.date())}, {_clock(local)}"
 
 
 def short_when(dt: datetime) -> str:
     local = _local(dt)
-    return f"{local.day} {local:%b} {local:%H:%M}"
+    return f"{texts.day_month(local.date())} {local:%H:%M}"
 
 
 def suggested_text(reason: Any) -> str | None:
@@ -127,30 +128,29 @@ def freshness(last_at: datetime | None, now: datetime) -> str:
 
 def source_row(key: str, model: str | None, last_at: datetime | None, now: datetime) -> dict[str, Any]:
     """One feed: connected or not, when the last data came, and a plain note. Connecting is not available yet."""
-    label = SOURCE_LABELS[key]
+    lang = texts.request_lang()
+    label = texts.tr(lang, f"care.source.{key}")
     if key == "camera":
-        return {"key": key, "label": label, "model": None, "status": "on_device", "status_label": "On this device",
-                "last_data_at": None, "freshness": "none",
-                "note": "Meal photos and medicine labels use this device's camera. There is nothing to connect."}
+        return {"key": key, "label": label, "model": None, "status": "on_device", "status_label": texts.tr(lang, "care.src.on_device"),
+                "last_data_at": None, "freshness": "none", "note": texts.tr(lang, "care.src.note.camera")}
     if not model:
-        return {"key": key, "label": label, "model": None, "status": "not_connected", "status_label": "Not connected",
-                "last_data_at": None, "freshness": "none",
-                "note": f"Connecting a {label.lower()} is not available yet."}
+        return {"key": key, "label": label, "model": None, "status": "not_connected", "status_label": texts.tr(lang, "care.src.not_connected"),
+                "last_data_at": None, "freshness": "none", "note": texts.tr(lang, "care.src.note.not_available", label=label.lower())}
     fresh = freshness(last_at, now)
     if last_at is None:
-        return {"key": key, "label": label, "model": model, "status": "connected_no_data", "status_label": "Connected, no data yet",
-                "last_data_at": None, "freshness": "none", "note": "Readings will show here once they arrive."}
-    note = "Up to date." if fresh == "up_to_date" else "No new data for more than a day."
-    return {"key": key, "label": label, "model": model, "status": "connected", "status_label": f"Connected, last data {short_when(last_at)}",
+        return {"key": key, "label": label, "model": model, "status": "connected_no_data", "status_label": texts.tr(lang, "care.src.connected_no_data"),
+                "last_data_at": None, "freshness": "none", "note": texts.tr(lang, "care.src.note.no_data")}
+    note = texts.tr(lang, "care.src.note.fresh" if fresh == "up_to_date" else "care.src.note.stale")
+    return {"key": key, "label": label, "model": model, "status": "connected", "status_label": texts.tr(lang, "care.src.connected_last", when=short_when(last_at)),
             "last_data_at": last_at, "freshness": fresh, "note": note}
 
 
 def _kind_label(kind: str) -> str:
-    return KIND_LABELS[kind]
+    return texts.tr(texts.request_lang(), f"care.kind.{kind}") if texts.has(f"care.kind.{kind}") else KIND_LABELS[kind]
 
 
 def _visit_kind_label(kind: str) -> str:
-    return APPOINTMENT_KIND_LABELS.get(kind) or KIND_LABELS[kind]
+    return _kind_label(kind) if (kind in APPOINTMENT_KIND_LABELS or kind in KIND_LABELS) else kind
 
 
 def appointment_out(row: dict[str, Any]) -> dict[str, Any]:
@@ -173,7 +173,7 @@ def question_out(row: dict[str, Any]) -> dict[str, Any]:
         "id": str(row["id"]),
         "text": row["text"],
         "origin": row["origin"],
-        "origin_label": ORIGIN_LABELS.get(row["origin"] or "", "Saved"),
+        "origin_label": texts.tr(texts.request_lang(), f"care.origin.{row['origin']}") if texts.has(f"care.origin.{row['origin']}") else texts.tr(texts.request_lang(), "care.origin.saved"),
         "status": row["status"],
         "created_at": row["created_at"],
         "can_remove": row["status"] in (OPEN_STATUS, DONE_STATUS),   # both are on the list; archived ones are not returned

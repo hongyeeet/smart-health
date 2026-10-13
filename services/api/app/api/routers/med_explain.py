@@ -34,7 +34,7 @@ from app.schemas.medicines import (
     WebSourceOut,
 )
 from app.services import med_explain_store as store
-from app.services import medicine_scope, usage
+from app.services import medicine_scope, texts, ui_translate, usage
 from app.services.web_sources import clean as clean_sources
 
 logger = logging.getLogger(__name__)
@@ -57,13 +57,29 @@ def _lock_for(med_id: str) -> threading.Lock:
 
 def to_out(saved: dict[str, Any]) -> ExplanationOut:
     parts = saved.get("parts")
-    return ExplanationOut(
+    out = ExplanationOut(
         status=saved["status"], purpose=saved["purpose"] or "",
         parts=ExplanationPartsOut(for_diabetes=parts.get("for_diabetes", ""), how_it_works=parts.get("how_it_works", ""),
                                   what_you_may_notice=parts.get("what_you_may_notice", ""),
                                   why_timing_matters=parts.get("why_timing_matters", "")) if parts else None,
         side_effects=list(saved["side_effects"] or []), tell_doctor=saved["tell_doctor"] or "",
         sources=[WebSourceOut(title=s["title"], url=s["url"]) for s in clean_sources(saved["sources"])], generated_at=saved["generated_at"])
+    return _in_chosen_language(out)
+
+
+def _in_chosen_language(out: ExplanationOut) -> ExplanationOut:
+    """The model wrote the explanation in English. In another language it is translated (translation only, see services/ui_translate.py)."""
+    if texts.request_lang() == "en":
+        return out
+    p = out.parts
+    flat = [out.purpose, out.tell_doctor, *(out.side_effects or [])] + ([p.for_diabetes, p.how_it_works, p.what_you_may_notice, p.why_timing_matters] if p else [])
+    got = ui_translate.translate(None, flat)
+    out.purpose, out.tell_doctor = got[0], got[1]
+    n = len(out.side_effects or [])
+    out.side_effects = got[2:2 + n]
+    if p:
+        p.for_diabetes, p.how_it_works, p.what_you_may_notice, p.why_timing_matters = got[2 + n:6 + n]
+    return out
 
 
 def _input_key(med: dict[str, Any]) -> str:

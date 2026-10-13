@@ -49,7 +49,7 @@
 | Workouts | Quick workout log (how hard it felt is optional; an unrated workout is saved and is not counted toward active minutes), live strength tracker with heart-rate effort from the server, labelled "Estimated from your heart rate" | F1, F2 |
 | Medicines | List with "My stock" and a refill estimate, scan a label (name threshold 0.6), check what we read (the name needs a tick below the standard bar), dose plan (every day), add by hand, medicine detail with the four-part explanation, clash box, clash details, "why was it missed", remove a medicine | H1 to H8 |
 | Urgent | Low-glucose alert (two tiers), call buttons, "I'm okay", email the emergency contact, demo trigger | J1 |
-| Me | Hub of eight cards: what Smart Health has learned, care plan, questions for your doctor, doctor brief, reminders, connected sources, language and display, data and account. **Data and account** holds the person's details (each with an edit), emergency contacts (more than one), consents and the data download or deletion | K1 to K12 |
+| Me | Hub of eight cards: what Smart Health has learned, track appointments, questions for your doctor, doctor brief, reminders, connected sources, language and display, data and account. **Data and account** holds the person's details (each with an edit), emergency contacts (more than one), consents and the data download or deletion | K1 to K12 |
 | Doctor brief | Brief home, share by link, printable A4 report with AI-worded key findings (with a fallback), read-only page for the doctor | L1, L2, L3, `/s/:token` |
 | Chat | "Ask Smart Health": a personal assistant that reads the person's own data (glucose, meals, food ideas, activity, sleep, blood pressure, medicines, symptoms they logged, doctor questions, what the app noticed) with its own guardrails: no diagnosis, no medicine advice, no verdicts, always a doctor referral for symptoms and an offer to add a doctor question, fixed pointers to Insights, Lunch ideas and Review suggestions. See [chat-guardrails.md](chat-guardrails.md). The Ask button is in the side rail on every screen from 768 px (not on the chat itself), and a floating pill above the tab bar on Home and the Insights overview on a phone | I1 |
 | Background | Reminders every minute, reminder emails, nightly learning, calendar events for doses (backend built; the recipe is paused, see section 11) | scheduler |
@@ -119,7 +119,7 @@ Launch
     ├─ E1 Log ── E2 Meal · E3 Blood pressure · E4 Symptom (red flag → J1) · E5 Check-in
     │          ├─ F1 Workout (→ F2 live) · E7 entry sheet → E6 Saved
     ├─ H1 Meds ── H2 Scan → H3 Review → H4 Plan · H8 By hand · H6 Detail · H5 Clash detail · My stock sheet
-    └─ K1 Me ── K2 Learned · K3 Care plan (→ K7 Log an appointment)
+    └─ K1 Me ── K2 Learned · K3 Track appointments (→ K7 Log an appointment)
                ├─ K12 Questions for your doctor · L1 Brief (→ L2 share, L3 A4)
                └─ B2 Reminders · K4 Sources · K5 Language · K8 Data and account (details, contacts, consents)
     (K6, K9, K10 open their new place; K11 Meal suggestions is a card at the bottom of E1 Log; A1 opens first for the demo user)
@@ -350,7 +350,7 @@ Folder `features/me/`.
 
 **K1 Me** · `/me` (tab) · a list of cards with an icon, title, one-line description and arrow, in this order:
 1. What Smart Health has learned (K2), with a count of ideas to confirm
-2. Care plan (K3)
+2. Track appointments (K3, formerly Care plan; renamed 2026-10-13)
 3. Questions for your doctor (K12), with a count of open questions
 4. Doctor brief (L1)
 5. Reminders (B2)
@@ -368,14 +368,12 @@ Moved out on 2026-10-13: Diet tracking (the starting point and the calendar are 
 - The **audit list ("See what it did") has been removed** from this screen; the audit data is kept in the database.
 - Statement: "It only suggests. It never changes your medicines, your numbers or its own safety rules."
 
-**K3 Care plan** · `/me/care`
-- **Next visit** card (a planned visit or "No visit is planned yet") with **Log an appointment** (K7). **One rule for the next visit** (`care.is_next_visit`), also used for "Your next appointment" in the doctor brief: a visit the person confirmed (status planned, so not cancelled, missed or completed) whose time is now or later. A visit whose time has passed and is still marked planned is not next: it is listed under **Earlier visits** with the status **"Past"**, never as planned.
+**K3 Track appointments** · `/me/care`
+- **Upcoming visits** (planned visits, each with Cancel; or "No visit is planned yet") and the **Add a visit** form (see K7). **One rule for the next visit** (`care.is_next_visit`), also used for "Your next appointment" in the doctor brief: a visit the person confirmed (status planned, so not cancelled, missed or completed) whose time is now or later. A visit whose time has passed and is still marked planned is not next: it is listed under **Earlier visits** with the status **"Past"**, never as planned.
 - **Checks and screenings**: eye, foot, kidney, HbA1c test, flu vaccine, diabetes review, each with a status pill (up to date, due soon, overdue, no date) based only on the dates on record.
 - The link to Questions for your doctor (K12) and the Generate my doctor brief button were **removed on 2026-10-13**: both have their own cards on Me, so this page is only the next visit and the checks.
 
-**K7 Log an appointment** · `/me/appointment`
-- Form for **kind**, **date** and **time** (Singapore time). The kinds: GP review, diabetes review, eye screening, foot screening, kidney test, **blood test** (the old "HbA1c" label), other. **There is no Place field.** Vaccination and dental are no longer offered; an old visit of those kinds still shows with its old label, and a suggested visit keeps its kind so the person sees what they confirm.
-- Upcoming visits are listed with Cancel (cancel keeps the row). Or confirm a visit Smart Health suggested. No calendar is called from here.
+**K7 Log an appointment** · `/me/appointment`: moved on 2026-10-13. The address opens Track appointments (K3), which now holds the **Add a visit** form (kind, date, time in Singapore time; a time in the future) and the **Upcoming visits** list with Cancel (cancel keeps the row). The kinds: GP review, diabetes review, eye screening, foot screening, kidney test, blood test, other (no Place field). **Visits Smart Health suggested are no longer shown or confirmed**; the person adds a visit themselves. No calendar is called from here.
 
 **K12 Questions for your doctor** · `/me/questions` (`features/me/Questions.tsx`)
 - Left: the add-question box, then **Suggested by Smart Health** as a plain ruled list (six fixed starter questions that ask, never advise; each has an Add link; one already on the list is not offered again; an added one is stored with origin `agent_suggested`, key checked against `care.SUGGESTED_QUESTIONS`). Right: **Your questions log**, a ruled list (not boxes): open questions first, then asked ones; each shows the question, where it came from and the date, **Remove** (underlined, top right, with a confirm), and **Already asked** (or **Not asked yet** to put it back). There is no "To ask" pill.
@@ -459,7 +457,7 @@ Folder `features/brief/`. Everything is computed by the server (`doctor_report.p
 
 **J-F Low glucose.** Sensor reading below 4.0 → `notifications` row → B1 banner → J1 → I'm okay (re-check in 15 minutes) or no answer for 5 minutes → one email to the emergency contact → call 995 when very low.
 
-**J-G Prepare for the doctor.** K3 Care plan (next visit) → K12 questions (add, mark done) → L1 brief (key findings, questions, alerts) → L3 print, or L2 link to the doctor → doctor opens `/s/:token`. L3 "Back to the app" returns to L1.
+**J-G Prepare for the doctor.** K3 Track appointments (next visit) → K12 questions (add, mark done) → L1 brief (key findings, questions, alerts) → L3 print, or L2 link to the doctor → doctor opens `/s/:token`. L3 "Back to the app" returns to L1.
 
 **J-H Understand a medicine.** H1 card → H6 explanation (four parts, additional information) → add a question → appears in K12 and in the brief.
 

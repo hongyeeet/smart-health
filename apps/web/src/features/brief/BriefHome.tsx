@@ -122,7 +122,7 @@ export function BriefHome() {
               <p className="text-body text-ink2">{t('brief.noAppointment', 'No appointment is planned yet.')}</p>
             )}
             <div>
-              <TextLink onClick={() => go('K3')}>{t('brief.openCare', 'Open my care plan')}</TextLink>
+              <TextLink onClick={() => go('K3')}>{t('brief.openCareV2', 'Track my appointments')}</TextLink>
             </div>
           </Card>
 

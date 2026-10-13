@@ -2,6 +2,7 @@
  * What is behind "See more" on Home: this week's bars and the full "What to log today" list (GET /logs/today).
  * Rows and bars are the ones Home always had; only where they sit has changed.
  */
+import { progressLabel } from './labels'
 import { useTranslation } from 'react-i18next'
 import { useGo } from '@/app/navigation'
 import { cn } from '@/lib/cn'
@@ -21,13 +22,13 @@ function Row({ item, onOpen }: { item: ProgressItem; onOpen: () => void }) {
   const status = item.status
   const now = status === 'due'
   return (
-    <button type="button" onClick={onOpen} aria-label={now ? t('home.row.due', '{{label}}. A good time to log this.', { label: item.label }) : undefined} className={cn('press flex min-h-12 items-center gap-3 py-3 text-left', now ? '-mx-4 w-[calc(100%+2rem)] rounded-[14px] bg-brand-soft/70 px-4' : 'w-full')}>
+    <button type="button" onClick={onOpen} aria-label={now ? t('home.row.due', '{{label}}. A good time to log this.', { label: progressLabel(t, item.key, item.label) }) : undefined} className={cn('press flex min-h-12 items-center gap-3 py-3 text-left', now ? '-mx-4 w-[calc(100%+2rem)] rounded-[14px] bg-brand-soft/70 px-4' : 'w-full')}>
       <span className={cn('flex h-11 w-11 flex-none items-center justify-center rounded-full', status === 'done' ? 'bg-ok-soft text-ok' : now ? 'bg-brand text-on-brand' : 'bg-well text-ink2')}>
         <Icon size={22} aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2 text-body font-bold leading-snug">
-          {item.label}
+          {progressLabel(t, item.key, item.label)}
           {item.target != null && (
             <span className="num text-sub font-normal text-ink3">
               {Math.min(item.count, item.target)} of {item.target}

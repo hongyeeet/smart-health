@@ -16,6 +16,7 @@ import json
 from typing import Any, Callable, Iterable
 
 from app.agents import food
+from app.services import texts
 from app.db import nutritionstore as ns
 
 RATED_EVENT = "review.rated"
@@ -146,12 +147,11 @@ def queue_message(source: str, dishes: list[dict[str, Any]], items: list[dict[st
     if items and len(items) >= limit:
         return None
     if source == "sample":
-        return "No lighter swaps were found for the sample dishes." if not items else None
+        return texts.tr(texts.request_lang(), "review.msg.sample_none") if not items else None
     if not dishes:
-        return (f"No dish you have logged yet is eaten {MIN_TIMES_LOGGED} times or more, so there is nothing to check. "
-                "Log a few meals and the swaps for your usual dishes will appear here. You can also try the sample dishes.")
+        return texts.tr(texts.request_lang(), "review.msg.no_dishes", n=MIN_TIMES_LOGGED)
     if not items:
-        return "We found no lighter swap for your usual dishes yet. You can try the sample dishes."
+        return texts.tr(texts.request_lang(), "review.msg.no_swaps")
     return None
 
 

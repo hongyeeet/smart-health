@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import { cn } from '@/lib/cn'
@@ -59,6 +60,7 @@ export function TabStrip<T extends string>({ tabs, value, onChange, label, flush
 
 /** Number pad for glucose and similar entries. */
 export function NumberPad({ value, onChange, max = 5 }: { value: string; onChange: (v: string) => void; max?: number }) {
+  const { t } = useTranslation()
   const press = (k: string) => {
     if (k === 'back') return onChange(value.slice(0, -1))
     if (k === '.' && value.includes('.')) return
@@ -67,9 +69,9 @@ export function NumberPad({ value, onChange, max = 5 }: { value: string; onChang
   }
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back']
   return (
-    <div className="grid grid-cols-3 gap-2" role="group" aria-label="Number pad">
+    <div className="grid grid-cols-3 gap-2" role="group" aria-label={t('controls.numberPad', 'Number pad')}>
       {keys.map((k) => (
-        <button key={k} type="button" onClick={() => press(k)} aria-label={k === 'back' ? 'Delete' : k === '.' ? 'Decimal point' : k} className="press flex min-h-16 items-center justify-center rounded-card border border-line bg-card font-serif text-xl font-medium text-ink">
+        <button key={k} type="button" onClick={() => press(k)} aria-label={k === 'back' ? t('controls.delete', 'Delete') : k === '.' ? t('controls.decimal', 'Decimal point') : k} className="press flex min-h-16 items-center justify-center rounded-card border border-line bg-card font-serif text-xl font-medium text-ink">
           {k === 'back' ? <ArrowLeft size={24} aria-hidden /> : k}
         </button>
       ))}

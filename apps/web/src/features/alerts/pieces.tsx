@@ -5,6 +5,7 @@
  * Wording rules that hold everywhere here: the alert says two medicines "may" interact and who to ask. It never says to
  * stop, skip or change a medicine, and it never says a combination is safe (rules.md 1.1, 1.7; docs/specs/f5-clash.md).
  */
+import { dateLocale } from '@/lib/locale'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useTranslation } from 'react-i18next'
@@ -36,12 +37,12 @@ export function whenRaised(iso: string | null | undefined, today: string, yester
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  const time = d.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()
+  const time = d.toLocaleTimeString(dateLocale('en-SG'), { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()
   const day = (x: Date) => x.toLocaleDateString('sv-SE')
   const now = new Date()
   const y = new Date(now)
   y.setDate(now.getDate() - 1)
-  const label = day(d) === day(now) ? today : day(d) === day(y) ? yesterday : d.toLocaleDateString('en-SG', { day: 'numeric', month: 'short' })
+  const label = day(d) === day(now) ? today : day(d) === day(y) ? yesterday : d.toLocaleDateString(dateLocale('en-SG'), { day: 'numeric', month: 'short' })
   return `${label}, ${time}`
 }
 

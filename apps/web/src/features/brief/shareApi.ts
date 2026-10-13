@@ -2,6 +2,7 @@
  * Data for sharing the doctor report by link (L2), the shared page (/s/:token) and the links on L1.
  * The authenticated calls go through `request`. The public read does not send X-User: the token is the only key.
  */
+import { dateLocale } from '@/lib/locale'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { appConfig } from '@/config/app'
 import { request } from '@/data/repositories/http'
@@ -105,4 +106,4 @@ export const APPOINTMENT_KIND: Record<string, string> = {
 const WHEN = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Singapore' } as const
 
 /** "Sat 11 Oct, 10:00" in the clinic's time zone (Singapore). */
-export const formatWhen = (iso: string) => new Date(iso).toLocaleString('en-SG', WHEN)
+export const formatWhen = (iso: string) => new Date(iso).toLocaleString(dateLocale('en-SG'), WHEN)

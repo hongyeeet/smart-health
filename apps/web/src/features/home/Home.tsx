@@ -11,6 +11,7 @@
  * what to log today, and any other "for you" cards. Each block still decides for itself whether it has something to say.
  * Everything comes from the database; the bell opens the reminders (B2).
  */
+import { dateLocale } from '@/lib/locale'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useClash, useDoses, useLogProgress, useNotices, useRecent } from '@/data/hooks'
@@ -58,7 +59,7 @@ export function Home() {
   /** unread reminders plus open medicine alerts */
   const unread = (notices?.filter((n) => n.unread).length ?? 0) + openAlerts.length
   const now = new Date()
-  const dateLabel = now.toLocaleDateString('en-SG', { weekday: 'long', day: 'numeric', month: 'long' })
+  const dateLabel = now.toLocaleDateString(dateLocale('en-SG'), { weekday: 'long', day: 'numeric', month: 'long' })
   /** nothing logged yet and no medicines: show "Start here" instead of an empty page */
   const firstTime = !!data && !!doses && !!recent && data.done === 0 && !doses.hasMedicines && recent.length === 0
 

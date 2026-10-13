@@ -20,7 +20,8 @@ const todo = (name: string) => async (): Promise<never> => {
 }
 
 /** Every call says who it is for. Uploads (FormData) leave Content-Type alone so the browser can set the boundary. */
-const asUser = (extra?: Record<string, string>): Record<string, string> => ({ 'X-User': useUi.getState().userKey, ...extra })
+/** The language is sent too (X-Lang), so wording the server builds (units, labels, dates) is in the language the person chose. */
+const asUser = (extra?: Record<string, string>): Record<string, string> => ({ 'X-User': useUi.getState().userKey, 'X-Lang': useUi.getState().locale, ...extra })
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${appConfig.apiBaseUrl}${path}`, { credentials: 'include', ...init, headers: asUser({ 'Content-Type': 'application/json', ...(init?.headers as Record<string, string> | undefined) }) })

@@ -12,6 +12,8 @@ export interface Month {
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
+import { dateLocale } from '@/lib/locale'
+
 /** Today in Singapore as YYYY-MM-DD. */
 export function sgToday(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
@@ -46,12 +48,12 @@ export function isoDays(m: Month): string[] {
   return Array.from({ length: daysInMonth(m) }, (_, i) => `${m.year}-${pad(m.month)}-${pad(i + 1)}`)
 }
 
-export function monthLabel(m: Month, locale = 'en-GB'): string {
+export function monthLabel(m: Month, locale = dateLocale('en-GB')): string {
   return new Date(Date.UTC(m.year, m.month - 1, 1)).toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
 /** Weekday names for a Monday-first header, short form. */
-export function weekdayHeaders(locale = 'en-GB'): string[] {
+export function weekdayHeaders(locale = dateLocale('en-GB')): string[] {
   // 2026-10-05 is a Monday
   return Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(2026, 9, 5 + i)).toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' }))
 }

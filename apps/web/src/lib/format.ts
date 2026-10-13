@@ -1,3 +1,4 @@
+import { dateLocale } from './locale'
 import type { GlucoseLevel } from '@/data/types'
 import { appConfig } from '@/config/app'
 
@@ -43,9 +44,9 @@ export const nowMinutes = () => {
 
 export function shortDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString(dateLocale('en-GB'), { day: 'numeric', month: 'short' })
 }
 export function weekdayShort(iso: string): string {
   const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-GB', { weekday: 'short' })
+  return d.toLocaleDateString(dateLocale('en-GB'), { weekday: 'short' })
 }

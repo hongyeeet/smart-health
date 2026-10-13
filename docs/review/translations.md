@@ -249,3 +249,22 @@ These sentences and labels come from `services/api/app/services/insights.py` and
 
 - Plural lines use separate keys for one and many (`insights.activity.mixOne`/`mixMany`, `insights.sleep.nightOne`/`nightMany`, `day.logged.*`, `charts.day.dosesOne`/`dosesMany`, and the review unsafe lines). Chinese has no plural, so both keys are the same in zh.
 - Tamil "a day" is placed after the number, as in English (`insights.activity.aDay`).
+
+## Whole app (2026-10-13)
+
+Joely asked that choosing Chinese, Malay or Tamil in Language and display changes everything in the app. Every string in the web app that had no translation (about 1,100 per language) was machine translated with `scripts/translate_locales.py` (Gemini `gemini-3.8-flash`; each batch keeps the placeholders and the numbered tags, uses a glossary from the earlier translations, and is refused if the English comes back unchanged). **All of these are machine translations that a native speaker still has to review**, like the sections above.
+
+**Files:** `apps/web/src/i18n/locales/<zh|ms|ta>/` now has `app.json` (alerts, brief, common, switch and the small areas), `meds.json` (add by hand, medicine detail, stock, scan screens, medicines list), `onboarding.json`, and the earlier `insights.json`, `log.json`, `me.json` (new keys were added to those). To fill future gaps: `npm run i18n:extract` in `apps/web`, then `python scripts/translate_locales.py` from the repository root (a dry run first with `--dry-run`).
+
+**Also changed:** dates, weekdays, months and clock times follow the chosen language (`apps/web/src/lib/locale.ts`, `dateLocale()`); numbers and units stay the same everywhere. The bottom tabs, Back, Close, Loading and similar labels are now translatable.
+
+**Still English on purpose:** the printable doctor report (L3) and the shared doctor page, because the doctor reads them. Medicine and food names, and names of devices.
+
+### Wording the server builds (2026-10-13)
+
+The web app now sends the chosen language with every call (header `X-Lang`), and changing the language reloads the screens' data. The server follows it for the wording it builds: dose units and phrases ("1 Tab", "today at 8:00 pm", "This morning's dose"), the Care plan labels and dates, connected-source labels, the Insights period label, the chat starter chips and the meal-swap messages. Those texts are in `services/api/app/services/texts_ui.json` (machine translated by `scripts/translate_server_texts.py`); month and weekday names are tables in `texts.py`.
+
+- A reminder stored in English is shown in the chosen language by finding its wording again in the catalog (`texts.retranslate`), so the reviewed translation is used, never a new guess.
+- The medicine explanation (written by the model in English) is translated when the page is opened in another language (`services/ui_translate.py`): translation only, numbers must survive or English is kept, and the result is remembered in memory. It is the one place a model translates health text, so a clinician/native reviewer should look at a few.
+
+**Still English:** the printable doctor report and the page the doctor opens, names and notes the person typed, medicine and dish names, error messages that come from the server for rare problems, and any text in a part of the app nobody has opened yet in another language (check with the crawl described in the session notes).

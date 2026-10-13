@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { dateLocale } from '@/lib/locale'
 import { cn } from '@/lib/cn'
 import type { InsightsDoseCell, InsightsGridCell } from '@/data/types'
 import { shortDate } from '@/lib/format'
@@ -24,12 +25,12 @@ export function shiftMonth(month: string, by: number): string {
 /** "October 2026" for a "YYYY-MM" month. */
 export function monthTitle(month: string): string {
   const [y, m] = month.split('-').map(Number) as [number, number]
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(dateLocale('en-GB'), { month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
 /** Monday-first weekday names in the reader's words, such as "Mon". 5 January 2026 was a Monday. */
 function weekdayNames(): string[] {
-  const fmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' })
+  const fmt = new Intl.DateTimeFormat(dateLocale('en-GB'), { weekday: 'short', timeZone: 'UTC' })
   return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2026, 0, 5 + i))))
 }
 

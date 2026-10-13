@@ -1,4 +1,5 @@
 import type { Macros } from '@/data/types'
+import { dateLocale } from '@/lib/locale'
 
 /** The nutrient keys in the order the macro card shows them (after calories, which is shown big). */
 export type NutrientKey = keyof Macros
@@ -18,7 +19,7 @@ export const fmtPortion = (v: number) => (v === 0.5 ? '½' : v === 1.5 ? '1½' :
 
 export const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
-export const clock = (iso: string | number | Date) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+export const clock = (iso: string | number | Date) => new Date(iso).toLocaleTimeString(dateLocale('en-US'), { hour: 'numeric', minute: '2-digit' }).toLowerCase()
 
 /**
  * Reads what the person typed in a number box. A blank box means "not known" (null), never 0.

@@ -26,7 +26,7 @@ from psycopg.types.json import Jsonb
 
 from app.db.logstore import is_read_only
 from app.core.errors import InvalidTransition, NotFound, ValidationFailed
-from app.services import medication_stock
+from app.services import medication_stock, texts
 
 TZ = ZoneInfo("Asia/Singapore")
 WINDOW = timedelta(hours=2)
@@ -64,11 +64,15 @@ def amount_text(quantity: Decimal) -> str:
     return format(quantity.normalize(), "f")
 
 
+def unit_text(unit: str, many: bool) -> str:
+    """The unit word in the language of the request ('Tab' or 'Tabs'; Chinese has no plural)."""
+    return texts.tr(texts.request_lang(), f"dose.units.{unit}" if many else f"dose.unit.{unit}") if texts.has(f"dose.unit.{unit}") else unit
+
+
 def dose_title(name: str, strength: str | None, kind: str, directions: str | None, quantity: Decimal) -> str:
     """'Metformin, 1 Tab': what the person needs to take, not how strong it is."""
     unit = dose_unit(kind, directions)
-    plural = "s" if quantity > 1 and unit != "ml" else ""
-    return f"{short_name(name, strength)}, {amount_text(quantity)} {unit}{plural}"
+    return f"{short_name(name, strength)}, {amount_text(quantity)} {unit_text(unit, quantity > 1)}"
 
 
 def clock12(t: time) -> str:
@@ -80,20 +84,23 @@ def period_word(hour: int) -> str:
 
 
 def day_phrase(sched: datetime, now: datetime) -> str:
-    """'Yesterday's evening dose', 'This morning's dose', "Monday's morning dose"."""
+    """'Yesterday's evening dose', 'This morning's dose', "Monday's morning dose" (in the language of the request)."""
+    lang = texts.request_lang()
     local, today = sched.astimezone(TZ), now.astimezone(TZ).date()
-    p = period_word(local.hour)
+    p = texts.tr(lang, f"dose.period.{period_word(local.hour)}")
     if local.date() == today:
-        return f"This {p}'s dose"
+        return texts.tr(lang, "dose.day.this", period=p)
     if local.date() == today - timedelta(days=1):
-        return f"Yesterday's {p} dose"
-    return f"{local.strftime('%A')}'s {p} dose"
+        return texts.tr(lang, "dose.day.yesterday", period=p)
+    return texts.tr(lang, "dose.day.weekday", weekday=texts.weekday_long(local, lang), period=p)
 
 
 def when_phrase(sched: datetime, now: datetime) -> str:
+    lang = texts.request_lang()
     local, today = sched.astimezone(TZ), now.astimezone(TZ).date()
-    day = "today" if local.date() == today else "tomorrow" if local.date() == today + timedelta(days=1) else local.strftime("%A")
-    return f"{day} at {clock12(local.timetz().replace(tzinfo=None))}"
+    day = (texts.tr(lang, "dose.when.today") if local.date() == today else texts.tr(lang, "dose.when.tomorrow") if local.date() == today + timedelta(days=1)
+           else texts.weekday_long(local, lang))
+    return texts.tr(lang, "dose.when", day=day, time=texts.clock12(local.hour, local.minute, lang))
 
 
 def _local(day: date, t: time) -> datetime:

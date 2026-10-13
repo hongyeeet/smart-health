@@ -33,12 +33,12 @@ def test_overdue_statement_names_the_check_and_the_date():
 
 
 def test_nudge_text_is_the_fixed_template():
-    assert P.nudge_text("eye_screening") == "Your eye screening is due. You can plan it in your care plan."
+    assert P.nudge_text("eye_screening") == "Your eye screening is due. You can add a visit in Track appointments."
 
 
 def test_acronyms_keep_their_capitals_in_sentences():
-    assert P.nudge_text("hba1c_test") == "Your HbA1c blood test is due. You can plan it in your care plan."
-    assert P.nudge_text("gp_review") == "Your GP review is due. You can plan it in your care plan."
+    assert P.nudge_text("hba1c_test") == "Your HbA1c blood test is due. You can add a visit in Track appointments."
+    assert P.nudge_text("gp_review") == "Your GP review is due. You can add a visit in Track appointments."
 
 
 @pytest.mark.parametrize("kind", list(P.KIND_LABELS))
@@ -76,7 +76,7 @@ def test_the_most_overdue_check_is_chosen_and_its_key_is_per_item_and_week():
     rows = [item(FOOT, "foot_screening", date(2025, 11, 1)), item(EYE, "eye_screening", date(2025, 9, 2))]
     n = P.pick_nudge(rows, NOW, set(), {}, set(), set())
     assert n["key"] == f"preventive-{EYE}-{THIS_WEEK}"
-    assert n["body"] == "Your eye screening is due. You can plan it in your care plan."
+    assert n["body"] == "Your eye screening is due. You can add a visit in Track appointments."
     assert n["route"] == "K3" and n["kind"] == "nudge"
     assert n["valid_until"] == NOW + timedelta(days=3)
 
@@ -194,7 +194,7 @@ def test_nudges_returns_the_row_shape_the_hooks_expect(monkeypatch):
     monkeypatch.setattr(P.nutritionstore, "excluded_keys", lambda u, k: set())
     monkeypatch.setattr(P, "guarded", lambda u, text, rule: True)
     out = P.nudges("someone", NOW, set(), 1)
-    assert out == [(f"preventive-{EYE}-{THIS_WEEK}", "nudge", "A check is due", "Your eye screening is due. You can plan it in your care plan.", "K3", NOW + timedelta(days=3))]
+    assert out == [(f"preventive-{EYE}-{THIS_WEEK}", "nudge", "A check is due", "Your eye screening is due. You can add a visit in Track appointments.", "K3", NOW + timedelta(days=3))]
 
 
 def test_nudges_is_silent_when_the_guard_blocks_the_text(monkeypatch):

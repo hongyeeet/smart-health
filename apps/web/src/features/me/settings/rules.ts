@@ -1,4 +1,5 @@
 import i18n from '@/i18n'
+import { dateLocale } from '@/lib/locale'
 
 /** Quick checks on the phone; the server has the final say. Spaces and dashes are allowed, as the server allows them. */
 export const PHONE_RE = /^\+?\d{7,15}$/
@@ -28,7 +29,7 @@ export function contactProblem(f: { name: string; relation: string; phone: strin
   return undefined
 }
 
-const dateFmt = new Intl.DateTimeFormat('en-SG', { day: 'numeric', month: 'short', year: 'numeric' })
+const dateFmt = () => new Intl.DateTimeFormat(dateLocale('en-SG'), { day: 'numeric', month: 'short', year: 'numeric' })
 
 /** "3 Oct 2026". Dates are shown in words, never as numbers only. */
-export const fmtDate = (iso: string) => dateFmt.format(new Date(iso))
+export const fmtDate = (iso: string) => dateFmt().format(new Date(iso))

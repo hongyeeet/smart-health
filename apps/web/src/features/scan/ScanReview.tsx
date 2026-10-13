@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { dateLocale } from '@/lib/locale'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useScan } from '@/data/hooks'
@@ -270,7 +271,7 @@ function pretty(f: ScanField, t: Translate): string {
       return v === '1' ? t('scanReview.onceADay', 'Once a day') : t('scanReview.timesADay', '{{n}} times a day', { n: v })
     case 'start_date': {
       const d = new Date(`${v}T00:00:00`)
-      return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString(dateLocale('en-GB'), { day: 'numeric', month: 'short', year: 'numeric' })
     }
     default:
       return v

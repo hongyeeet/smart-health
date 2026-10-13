@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { motion } from 'motion/react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
 import { duration, ease } from '@/motion/tokens'
 import { useBack } from '@/app/navigation'
@@ -26,11 +27,12 @@ export function Screen({ children, tabs = false, className, tone = 'canvas', nar
 /** Title row (back button, title, trailing control). The one-line description sits under the row and runs the full width, so a trailing control never squeezes it. */
 export function Header({ title, back, backTo, trailing, sub }: { title: ReactNode; back?: boolean; backTo?: RouteId; trailing?: ReactNode; sub?: ReactNode }) {
   const goBack = useBack(backTo)
+  const { t } = useTranslation()
   return (
     <header className="flex flex-col pb-1 pt-1">
       <div className="flex items-start gap-2">
         {back && (
-          <button type="button" onClick={goBack} aria-label="Back" className="press -ml-3 flex h-12 w-12 flex-none items-center justify-center rounded-full text-ink hover:bg-well">
+          <button type="button" onClick={goBack} aria-label={t('common.back', 'Back')} className="press -ml-3 flex h-12 w-12 flex-none items-center justify-center rounded-full text-ink hover:bg-well">
             <ArrowLeft size={26} aria-hidden />
           </button>
         )}

@@ -40,7 +40,6 @@ import { ChatSetup } from '@/features/onboarding/ChatSetup'
 import { Care } from '@/features/me/Care'
 import { Sources } from '@/features/me/Sources'
 import { Language } from '@/features/me/Language'
-import { Appointment } from '@/features/me/Appointment'
 import { Questions } from '@/features/me/Questions'
 import { DataAccount } from '@/features/me/DataAccount'
 import { Urgent } from '@/features/urgent/Urgent'
@@ -78,7 +77,8 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   K5: Language,
   /** Moved into Data and account (consents section). */
   K6: () => <Navigate to="/me/data#consents" replace />,
-  K7: Appointment,
+  /** Moved: adding a visit is on the Care plan page. */
+  K7: () => <Navigate to="/me/care" replace />,
   K12: Questions,
   K8: DataAccount,
   /** Moved into Data and account (emergency contacts section). */

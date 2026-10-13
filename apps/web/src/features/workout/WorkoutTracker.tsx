@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { dateLocale } from '@/lib/locale'
 import { Trans, useTranslation } from 'react-i18next'
 import { api } from '@/data/repositories'
 import type { Felt, WorkoutExercise, WorkoutSession, WorkoutSummary } from '@/data/types'
@@ -35,7 +36,7 @@ const numberIn = (text: string, lo: number, hi: number): number | null => {
 
 const mmss = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 const hhmmss = (total: number) => (total >= 3600 ? `${Math.floor(total / 3600)}:${mmss(total % 3600)}` : mmss(total))
-const clockOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+const clockOf = (iso: string) => new Date(iso).toLocaleTimeString(dateLocale('en-US'), { hour: 'numeric', minute: '2-digit' }).toLowerCase()
 
 /** Reps times weight, summed. Plain arithmetic on what the person typed; bodyweight sets add nothing. */
 const volumeOf = (e: WorkoutExercise) => e.sets.reduce((a, s) => a + (s.weightKg ? s.reps * s.weightKg : 0), 0)

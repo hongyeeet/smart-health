@@ -118,7 +118,7 @@ export function Welcome() {
             }}
             className="self-center"
           >
-            {t('onboarding.demo', 'Start as demo patient')}
+            {t('onboarding.demoStartV2', 'Start as demo patient')}
           </TextLink>
         )}
       </Later>

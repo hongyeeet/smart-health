@@ -4,6 +4,7 @@
  * without colour. The letters on a marker (from a laptop up) say which medicine it is; a key above lists them. Tap a day for the words.
  * A day with no record for a medicine is "no dose due", never "missed". Days after the latest day with data are dashed and empty.
  */
+import { dateLocale } from '@/lib/locale'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { InsightsMedication } from '@/data/types'
@@ -26,7 +27,7 @@ function shortNames(meds: Med[]): string[] {
 }
 
 const weekdays = () => {
-  const fmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' })
+  const fmt = new Intl.DateTimeFormat(dateLocale('en-GB'), { weekday: 'short', timeZone: 'UTC' })
   return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2026, 0, 5 + i))))
 }
 

@@ -1076,7 +1076,8 @@ def _notifications(create: bool, history: bool = False) -> list[dict]:
         # older records (the seeded history) carry no wording: a refill row names the medicine, anything else with no words is not shown
         if not title and r["kind"] == "refill" and p.get("medication"):
             return texts.tr(lang, "refill.title", name=p["medication"]), texts.tr(lang, "refill.low")
-        return title, body
+        # a reminder stored in English is shown in the language of this request, using the catalog's reviewed wording
+        return texts.retranslate(texts.request_lang(), title), texts.retranslate(texts.request_lang(), body)
 
     out = []
     for r in rows:

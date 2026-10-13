@@ -70,7 +70,7 @@ export function Button({
 
 export function TextLink({ children, onClick, icon: Icon, className }: { children: ReactNode; onClick?: () => void; icon?: IconType; className?: string }) {
   return (
-    <button type="button" onClick={onClick} className={cn('press inline-flex min-h-12 items-center gap-1.5 text-sub font-bold text-brand underline decoration-1 underline-offset-4', className)}>
+    <button type="button" onClick={onClick} className={cn('press inline-flex min-h-12 max-w-full items-center gap-1.5 text-sub font-bold text-brand underline decoration-1 underline-offset-4', className)}>
       {Icon && <Icon size={20} aria-hidden />}
       {children}
     </button>
@@ -142,11 +142,13 @@ export function ConfidenceChip({ level }: { level: 'high' | 'check' | 'unreadabl
 }
 
 export function SourceTag({ children }: { children: ReactNode }) {
-  return <span className="inline-flex items-center gap-1 text-micro text-ink3">Source: {children}</span>
+  const { t } = useTranslation()
+  return <span className="inline-flex items-center gap-1 text-micro text-ink3">{t('common.source', 'Source:')} {children}</span>
 }
 
 export function UnverifiedTag() {
-  return <StatusPill tone="brass" icon={Info}>Unverified. Associated with, not a cause.</StatusPill>
+  const { t } = useTranslation()
+  return <StatusPill tone="brass" icon={Info}>{t('common.unverified', 'Unverified. Associated with, not a cause.')}</StatusPill>
 }
 
 /* ------------------------------- Confidence dots ------------------------------- */
@@ -275,13 +277,14 @@ export function Field({
 
 /* ----------------------------------- Stepper ----------------------------------- */
 export function Stepper({ value, onChange, min = 0, max = 999, step = 1, format, label }: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; format?: (v: number) => string; label: string }) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center justify-between gap-3 rounded-card border border-line bg-card p-2" role="group" aria-label={label}>
-      <button type="button" aria-label={`Less ${label}`} onClick={() => onChange(Math.max(min, value - step))} className="press flex h-12 w-12 items-center justify-center rounded-full bg-well text-h2 font-bold text-ink">
+      <button type="button" aria-label={t('controls.less', 'Less {{label}}', { label })} onClick={() => onChange(Math.max(min, value - step))} className="press flex h-12 w-12 items-center justify-center rounded-full bg-well text-h2 font-bold text-ink">
         {'−'}
       </button>
       <span className="num text-xl">{format ? format(value) : value}</span>
-      <button type="button" aria-label={`More ${label}`} onClick={() => onChange(Math.min(max, value + step))} className="press flex h-12 w-12 items-center justify-center rounded-full bg-well text-h2 font-bold text-ink">
+      <button type="button" aria-label={t('controls.more', 'More {{label}}', { label })} onClick={() => onChange(Math.min(max, value + step))} className="press flex h-12 w-12 items-center justify-center rounded-full bg-well text-h2 font-bold text-ink">
         +
       </button>
     </div>
@@ -291,7 +294,8 @@ export function Stepper({ value, onChange, min = 0, max = 999, step = 1, format,
 /* ---------------------------------- Skeleton ---------------------------------- */
 export function Skeleton({ className }: { className?: string }) {
   // a loading block is named for screen readers; sighted users see the pulse
-  return <div className={cn('animate-pulse rounded-card bg-well', className)} role="status" aria-label="Loading" />
+  const { t } = useTranslation()
+  return <div className={cn('animate-pulse rounded-card bg-well', className)} role="status" aria-label={t('common.loading', 'Loading')} />
 }
 
 export function EmptyState({ icon: Icon, children, action }: { icon: IconType; children: ReactNode; action?: ReactNode }) {

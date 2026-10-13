@@ -49,7 +49,9 @@ export function UserSwitch() {
   const started = people
     .filter((p) => !base.some((u) => u.key === p.key))
     .map((p) => ({ key: p.key, label: p.label, sub: t('switch.startedHere', 'Started on this device') }))
-  const users = [...base, ...started]
+  const users = [...base, ...started].map((u) =>
+    u.key === 'demo' ? { ...u, label: t('switch.user.demo', 'Demo user'), sub: t('switch.user.demoSub', 'A blank account for trying things') } : u.key === 'mr-tan' ? { ...u, sub: t('switch.user.tanSub', 'About 90 days of history') } : u,
+  )
   const me = users.find((u) => u.key === current) ?? { key: current, label: t('switch.person', 'Person'), sub: '' }
 
   useEffect(() => {

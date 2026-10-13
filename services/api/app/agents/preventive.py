@@ -24,7 +24,7 @@ FACT_CONFIDENCE = 0.8     # a due date on record is a plain reading of the store
 FACT_CATEGORY = "routine"  # memory category (fact_category enum has no "activity")
 NUDGE_VALID_DAYS = 3
 NUDGE_GAP_DAYS = 30       # at most one nudge per check in this many days
-NUDGE_ROUTE = "K3"        # the care plan
+NUDGE_ROUTE = "K3"        # Track appointments (was the care plan)
 NUDGE_KEY = "preventive-{item}-{week}"
 
 

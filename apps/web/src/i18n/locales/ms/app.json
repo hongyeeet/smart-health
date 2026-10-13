@@ -1,0 +1,213 @@
+{
+  "alerts": {
+    "card": {
+      "onList": "Pasangan ini ada dalam soalan doktor anda",
+      "review": "Semak tindak balas",
+      "tag": "Semakan ubat",
+      "title": "Kemungkinan tindak balas ubat"
+    },
+    "checking": "Memeriksa ubat anda jika ada yang bertembung…",
+    "clashError": "Kami tidak dapat memuatkan amaran ubat anda. Ini tidak sama seperti semuanya selamat.",
+    "day": {
+      "today": "Hari ini, {{date}}",
+      "yesterday": "Semalam, {{date}}"
+    },
+    "detail": {
+      "addPair": "Tambah pasangan ini pada soalan doktor saya",
+      "added": "Ditambahkan pada soalan doktor anda",
+      "aiOnly": "Tiada laman web dijumpai untuk ini. Ini ialah cadangan AI, jadi sila periksa dengan ahli farmasi anda. Bukan nasihat perubatan.",
+      "backToMeds": "Kembali ke ubat-ubatan",
+      "checked": "Saya telah semak dengan doktor saya",
+      "error": "Kami tidak dapat memuatkan amaran ini.",
+      "gone": "Amaran ini tidak lagi aktif. Ia mungkin telah disemak dengan doktor anda, atau salah satu ubat telah dikeluarkan.",
+      "noSources": "Tiada halaman sumber direkodkan untuk amaran ini.",
+      "noSummary": "Tiada penjelasan direkodkan untuk amaran ini. Ahli farmasi atau doktor anda boleh memberitahu sama ada ini penting untuk anda.",
+      "originLabel": "Dari mana datangnya amaran ini",
+      "sources": "Dari mana maklumat ini diperoleh",
+      "sourcesNote": "Laman-laman ini belum disemak oleh pakar klinikal untuk Smart Health. Bukan nasihat perubatan.",
+      "title": "Semak tindak balas",
+      "unreviewed": "Belum disemak oleh pakar klinikal",
+      "why": "Sebab ini ditandakan"
+    },
+    "empty": "Tiada apa-apa di sini buat masa ini. Amaran dan peringatan baharu akan dipaparkan di sini.",
+    "filter": {
+      "all": "Semua ({{n}})",
+      "label": "Tunjukkan",
+      "medicines": "Ubat-ubatan ({{n}})",
+      "reminders": "Peringatan ({{n}})"
+    },
+    "footer": "Amaran ubat datang daripada peraturan label ubat dan carian web AI untuk ubat yang anda simpan. Ini bukan nasihat perubatan. Tiada amaran tidak bermakna gabungan itu telah diperiksa dan selamat.",
+    "incomplete": "Pemeriksaan terkini ubat anda tidak dapat diselesaikan, jadi mungkin ada lagi yang akan dipaparkan kemudian. Ini tidak sama seperti semuanya selamat.",
+    "markRead": "Tanda semua peringatan sebagai telah dibaca",
+    "new": "Baharu",
+    "note": "Amaran ini bukan diagnosis. Ahli farmasi atau doktor anda boleh menyemak ubat anda.",
+    "origin": {
+      "ai": "Carian web AI",
+      "both": "Peraturan label ubat dan carian web AI",
+      "database": "Peraturan label ubat"
+    },
+    "pair": {
+      "marker": "Kemungkinan interaksi"
+    },
+    "q": {
+      "draft": "Draf",
+      "error": "Kami tidak dapat menyimpan soalan anda sebentar tadi. Sila cuba lagi.",
+      "hint": "Tulis soalan atau nota untuk dibawa ke lawatan anda.",
+      "label": "Soalan untuk doktor atau ahli farmasi anda",
+      "placeholder": "Contohnya: Patutkah saya ambil ubat ini pada waktu yang berbeza dalam sehari?",
+      "save": "Simpan soalan",
+      "saved": "Disimpan",
+      "toast": "Ditambah ke soalan doktor anda"
+    },
+    "remindersError": "Kami tidak dapat memuatkan peringatan anda.",
+    "restore": "Pulihkan",
+    "setAside": "{{a}} dan {{b}}: diketepikan, dalam soalan doktor anda",
+    "sub": "Amaran tentang ubat anda, dan peringatan mesra untuk memastikan rekod anda lengkap.",
+    "title": "Pemberitahuan dan amaran"
+  },
+  "brief": {
+    "aiInsight": "Analisis AI.",
+    "aiNote": "Ayat-ayat ini ditulis oleh AI berdasarkan nombor dalam laporan ini. Nombor-nombor ini datang daripada data anda. Bukan nasihat perubatan. Doktor anda yang menentukan maksudnya.",
+    "alerts": "Amaran dalam laporan",
+    "days14": "14 hari",
+    "days30": "30 hari",
+    "days7": "7 hari",
+    "days90": "90 hari",
+    "error": "Kami tidak dapat menyediakan laporan anda sebentar tadi. Sila cuba lagi sebentar lagi.",
+    "findings": "Dapatan utama",
+    "nextAppointment": "Temu janji anda yang seterusnya",
+    "noAlerts": "Tiada amaran dikeluarkan daripada data anda dalam tempoh ini. Ini tidak bermakna tiada perkara yang memerlukan perhatian.",
+    "noAppointment": "Belum ada temu janji yang dirancang.",
+    "noQuestions": "Anda belum mempunyai soalan terbuka. Tambah satu daripada ubat atau daripada pelan penjagaan anda.",
+    "note": "Nombor-nombor ini ialah kiraan daripada apa yang anda dan peranti anda rekodkan, yang dikira mengikut peraturan tetap. Jika dapatan utama menyatakan analisis AI, AI menulis ayat-ayat tersebut berdasarkan nombor-nombor itu. Ia adalah untuk ditafsirkan oleh doktor anda. Smart Health tidak membuat diagnosis atau memberi nasihat tentang ubat.",
+    "open": "Buka laporan yang boleh dicetak",
+    "openCareV2": "Jejak temu janji saya",
+    "openQuestions": "Buka soalan saya",
+    "period": "Tempoh",
+    "questions": "Soalan yang ingin anda tanya",
+    "share": "Kongsi dengan doktor saya",
+    "sources": "Daripada: {{sources}}. Sensor dipakai: {{wear}}.",
+    "sub": "Laporan bacaan, gejala dan ubat anda untuk dibawa ke lawatan anda yang seterusnya. Anda melihat tepat apa yang doktor anda lihat.",
+    "tag": {
+      "interaction": "Tindak balas",
+      "review": "Semakan",
+      "urgent": "Segera"
+    },
+    "title": "Ringkasan untuk doktor",
+    "worth": "Wajar dibincangkan",
+    "worthEmpty": "Belum ada apa-apa yang ketara. Senarai ini akan terisi apabila anda merekod."
+  },
+  "charts": {
+    "effortAria": "Minit aktiviti mengikut usaha: {{list}}",
+    "effortHint": "Halakan atau ketik bar untuk melihat minit aktiviti ringan, sederhana dan cergas.",
+    "effortItem": "{{label}}: {{total}} min, iaitu ringan {{light}}, sederhana {{moderate}}, cergas {{vigorous}}",
+    "effortReadout": "{{label}}: ringan {{light}}, sederhana {{moderate}}, cergas {{vigorous}} min",
+    "gapKey": "Lorekan: tiada data pada hari-hari tersebut.",
+    "soFar": "setakat ini"
+  },
+  "common": {
+    "back": "Kembali",
+    "cancel": "Batal",
+    "close": "Tutup",
+    "continue": "Teruskan",
+    "day": {
+      "fri": "Jum",
+      "mon": "Isn",
+      "sat": "Sab",
+      "sun": "Ahd",
+      "thu": "Kha",
+      "tue": "Sel",
+      "wed": "Rab"
+    },
+    "details": "Butiran",
+    "estimated": "Anggaran",
+    "loading": "Memuatkan",
+    "no": "Tidak",
+    "notSure": "Tidak pasti",
+    "save": "Simpan",
+    "saving": "Menyimpan…",
+    "source": "Sumber:",
+    "today": "Hari ini",
+    "unverified": "Belum disahkan. Berkaitan dengan, bukan punca.",
+    "yes": "Ya",
+    "yesterday": "Semalam"
+  },
+  "controls": {
+    "decimal": "Titik perpuluhan",
+    "delete": "Padam",
+    "less": "Kurangkan {{label}}",
+    "more": "Tambah {{label}}",
+    "numberPad": "Pad nombor"
+  },
+  "day": {
+    "logged": {
+      "pressureMany": "{{n}} bacaan tekanan darah",
+      "pressureOne": "{{n}} bacaan tekanan darah"
+    },
+    "tl": {
+      "lanes": {
+        "pressure": "Tekanan darah"
+      },
+      "readingPart": ", {{reading}}"
+    }
+  },
+  "home": {
+    "itemLabel": {
+      "blood_pressure": "Tekanan darah",
+      "checkin": "Mood dan tidur",
+      "meals": "Makanan",
+      "symptom": "Gejala",
+      "workout": "Senaman"
+    }
+  },
+  "nav": {
+    "home": "Utama",
+    "insights": "Wawasan",
+    "log": "Rekod",
+    "me": "Saya",
+    "meds": "Ubat"
+  },
+  "review": {
+    "titleV2": "Cadangan hidangan"
+  },
+  "screen": {
+    "key": "Teks bahasa Inggeris"
+  },
+  "setup": {
+    "failed": "Persediaan belum selesai lagi. Jawapan anda masih ada pada peranti ini. Periksa sambungan anda, kemudian ketik Semak jawapan saya sekali lagi.",
+    "meds": "Ubat-ubatan tidak ditanya di sini. Sebaliknya, imbas label setiap ubat yang anda ambil.",
+    "noRead": "Jawapan anda yang disimpan tidak dapat dibaca, jadi tiada apa yang disimpan buat masa ini. Periksa sambungan anda, kemudian cuba lagi.",
+    "scan": "Imbas label"
+  },
+  "share": {
+    "consentLine": "Mencipta pautan akan menghidupkan 'Kongsi ringkasan doktor saya' dalam Privasi. Anda boleh mematikannya di sana.",
+    "offLast": "Itu pautan aktif terakhir anda. Perkongsian kekal dihidupkan dalam Privasi sehingga anda mematikannya di sana.",
+    "turnOffInPrivacy": "Matikan perkongsian dalam Privasi"
+  },
+  "shell": {
+    "ask": "Tanya",
+    "askAria": "Tanya Smart Health",
+    "mainNav": "Utama"
+  },
+  "sources": {
+    "openPage": "Buka halaman",
+    "viaGoogle": "{{name}}, dibuka melalui Google"
+  },
+  "switch": {
+    "menu": "Tukar individu",
+    "newPerson": "Individu baharu",
+    "person": "Individu",
+    "startFailed": "Kami tidak dapat memulakan individu baharu tadi. Periksa sambungan anda, kemudian cuba lagi.",
+    "startNew": "Mula sebagai individu baharu",
+    "startNewSub": "Mula dari awal di langkah 1. Tiada orang lain yang diubah.",
+    "startedHere": "Dimulakan pada peranti ini",
+    "starting": "Memulakan…",
+    "user": {
+      "demo": "Pengguna demo",
+      "demoSub": "Akaun kosong untuk mencuba",
+      "tanSub": "Kira-kira 90 hari sejarah"
+    },
+    "viewing": "Melihat sebagai {{name}}. Tukar individu",
+    "viewingAs": "Melihat sebagai"
+  }
+}

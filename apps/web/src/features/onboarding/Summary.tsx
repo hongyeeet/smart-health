@@ -9,6 +9,7 @@
  * Smart Health does not classify the person or set targets (rules.md 1.1, 1.6, 1.15). What is kept is the read-back, plain
  * arithmetic (age, BMI, unit conversions, no category), and a short list of gaps worth raising with the doctor.
  */
+import { dateLocale } from '@/lib/locale'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -60,7 +61,7 @@ export function Summary() {
   const list = (xs: string[]) => xs.filter(Boolean).join(', ')
   const many = <T extends string>(options: { value: T; label: string }[], values: T[]) => list(values.map((v) => labelOf(options, v)))
   const step = (n: number) => `${href('A3')}?step=${n}&review=1`
-  const date = (iso: string) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+  const date = (iso: string) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString(dateLocale('en-SG'), { day: 'numeric', month: 'short', year: 'numeric' }) : '')
   const working = a.workType !== null && a.workType !== 'not_working'
 
   /* the reminder email as the server holds it. The box on the device is not what is saved until the server has it. */
@@ -244,7 +245,7 @@ export function Summary() {
   const savedLine = src.readOnly
     ? t('onboarding.sum.demo', 'Mr Tan is demo data. Nothing you see here is saved to his record.')
     : savedAt
-      ? t('onboarding.sum.savedAt', 'Your record was last saved on {{date}}.', { date: new Date(savedAt).toLocaleString('en-SG', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) })
+      ? t('onboarding.sum.savedAt', 'Your record was last saved on {{date}}.', { date: new Date(savedAt).toLocaleString(dateLocale('en-SG'), { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) })
       : t('onboarding.sum.notSaved', 'Not saved to your record yet. Tap Finish to save it.')
 
   const table = (rows: Row[]) => (

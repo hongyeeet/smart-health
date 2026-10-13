@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { appConfig } from '@/config/app'
+import { useTranslation } from 'react-i18next'
 import { useUi } from '@/state/store'
 import { cn } from '@/lib/cn'
 import { ChartLineUp, ChatCircleDots, House, Pill, Plus, UserCircle, type IconType } from '@/ui/icons'
@@ -139,6 +140,7 @@ function useAskVisible() {
 }
 
 function AskButton({ inRail }: { inRail?: boolean }) {
+  const { t } = useTranslation()
   const go = useGo()
   const visible = useAskVisible()
   const away = !inRail && !visible
@@ -146,7 +148,7 @@ function AskButton({ inRail }: { inRail?: boolean }) {
     <button
       type="button"
       onClick={() => go('I1')}
-      aria-label="Ask Smart Health"
+      aria-label={t('shell.askAria', 'Ask Smart Health')}
       tabIndex={away ? -1 : undefined}
       className={cn(
         'press flex min-h-12 items-center gap-2 bg-ink px-4 text-ctl font-bold text-canvas',
@@ -155,26 +157,35 @@ function AskButton({ inRail }: { inRail?: boolean }) {
       )}
     >
       <ChatCircleDots size={22} weight="regular" aria-hidden />
-      Ask
+      {t('shell.ask', 'Ask')}
     </button>
   )
 }
 
-const TABS: { key: TabKey; label: string; icon: IconType }[] = [
-  { key: 'home', label: 'Home', icon: House },
-  { key: 'insights', label: 'Insights', icon: ChartLineUp },
-  { key: 'log', label: 'Log', icon: Plus },
-  { key: 'meds', label: 'Medications', icon: Pill },
-  { key: 'me', label: 'Me', icon: UserCircle },
+const TABS: { key: TabKey; icon: IconType }[] = [
+  { key: 'home', icon: House },
+  { key: 'insights', icon: ChartLineUp },
+  { key: 'log', icon: Plus },
+  { key: 'meds', icon: Pill },
+  { key: 'me', icon: UserCircle },
 ]
+
+/** The tab names, in the person's language (the Medications tab is called Meds on the bar). */
+function useTabLabels(): Record<TabKey, string> {
+  const { t } = useTranslation()
+  return { home: t('nav.home', 'Home'), insights: t('nav.insights', 'Insights'), log: t('nav.log', 'Log'), meds: t('nav.meds', 'Meds'), me: t('nav.me', 'Me') }
+}
 
 /** No animation on tab switches: they happen all day. Only the press acknowledges the tap. */
 function TabBar({ active }: { active: TabKey | null }) {
+  const { t } = useTranslation()
+  const labels = useTabLabels()
   const navigate = useNavigate()
   return (
-    <nav aria-label="Main" className="absolute inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md md:hidden">
+    <nav aria-label={t('shell.mainNav', 'Main')} className="absolute inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md md:hidden">
       <ul className="grid grid-cols-[repeat(5,minmax(0,1fr))] items-end px-2">
-        {TABS.map(({ key, label, icon: Icon }) => {
+        {TABS.map(({ key, icon: Icon }) => {
+        const label = labels[key]
           const on = active === key
           const centre = key === 'log'
           return (
@@ -187,7 +198,7 @@ function TabBar({ active }: { active: TabKey | null }) {
                 ) : (
                   <Icon size={26} weight={on ? 'fill' : 'regular'} className={on ? 'text-brand' : 'text-ink2'} aria-hidden />
                 )}
-                <span className={cn('text-tab font-bold', on ? 'text-brand' : 'text-ink2')}>{label === 'Medications' ? 'Meds' : label}</span>
+                <span className={cn('tab-label text-tab font-bold', on ? 'text-brand' : 'text-ink2')}>{label}</span>
               </button>
             </li>
           )
@@ -199,16 +210,19 @@ function TabBar({ active }: { active: TabKey | null }) {
 
 /** Tablet and laptop navigation: the bottom bar is too far from the hand on a wide screen, so it becomes a rail on the left. */
 function SideRail({ active, ask }: { active: TabKey | null; ask: boolean }) {
+  const { t } = useTranslation()
+  const labels = useTabLabels()
   const navigate = useNavigate()
   return (
-    <nav aria-label="Main" className="absolute inset-y-0 left-0 z-20 hidden w-24 flex-col gap-1 border-r border-line bg-card px-2 py-5 md:flex lg:w-60 lg:px-4">
+    <nav aria-label={t('shell.mainNav', 'Main')} className="absolute inset-y-0 left-0 z-20 hidden w-24 flex-col gap-1 border-r border-line bg-card px-2 py-5 md:flex lg:w-60 lg:px-4">
       <p className="mb-4 hidden px-3 font-serif text-h2 font-medium text-ink lg:block">{appConfig.name}</p>
-      {TABS.map(({ key, label, icon: Icon }) => {
+      {TABS.map(({ key, icon: Icon }) => {
+        const label = labels[key]
         const on = active === key
         return (
           <button key={key} type="button" aria-label={label} aria-current={on ? 'page' : undefined} onClick={() => navigate(href(TAB_ROUTE[key]))} className={cn('press flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-card px-2 lg:flex-row lg:justify-start lg:gap-3 lg:px-4', on ? 'bg-brand/10 text-brand' : 'text-ink2 hover:bg-well')}>
             <Icon size={26} weight={on || key === 'log' ? 'fill' : 'regular'} aria-hidden />
-            <span className="text-tab font-bold lg:text-btn">{label === 'Medications' ? 'Meds' : label}</span>
+            <span className="text-tab font-bold lg:text-btn">{label}</span>
           </button>
         )
       })}

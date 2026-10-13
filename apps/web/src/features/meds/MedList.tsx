@@ -31,32 +31,32 @@ export function MedList() {
 
   return (
     <Screen tabs>
-      <Header title="Medications" sub="Add a medicine by photo or by typing it in. Dose times come from your own label." trailing={<UserSwitch />} />
+      <Header title={t('meds.title', 'Medications')} sub={t('meds.sub', 'Add a medicine by photo or by typing it in. Dose times come from your own label.')} trailing={<UserSwitch />} />
 
       {picker.busy ? (
         <Card tone="soft" className="flex flex-col items-center gap-3 py-8">
           <Skeleton className="h-24 w-full" />
-          <p className="text-body font-bold text-ink2">Reading your label…</p>
-          <p className="text-sub text-ink3">This takes a few seconds.</p>
+          <p className="text-body font-bold text-ink2">{t('meds.reading', 'Reading your label…')}</p>
+          <p className="text-sub text-ink3">{t('meds.fewSeconds', 'This takes a few seconds.')}</p>
         </Card>
       ) : (
         <Card className="flex flex-col gap-2">
-          <SectionTitle>Add a medicine</SectionTitle>
+          <SectionTitle>{t('meds.addTitle', 'Add a medicine')}</SectionTitle>
           <div className="flex flex-col gap-2 md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3">
             <Button className="md:col-span-2 lg:col-span-1" icon={Camera} onClick={picker.takePhoto}>
-              Take a photo
+              {t('meds.takePhoto', 'Take a photo')}
             </Button>
             <Button variant="secondary" icon={ImageIcon} onClick={picker.uploadPhoto}>
-              Upload a photo
+              {t('meds.uploadPhoto', 'Upload a photo')}
             </Button>
             <Button variant="ghost" icon={PencilSimple} onClick={() => navigate(href('H8'))}>
-              Type it in by hand
+              {t('meds.byHand', 'Type it in by hand')}
             </Button>
           </div>
         </Card>
       )}
       {picker.error && (
-        <Alert tone="danger" title="Could not read the label">
+        <Alert tone="danger" title={t('meds.couldNotRead', 'Could not read the label')}>
           {picker.error}
         </Alert>
       )}
@@ -74,10 +74,10 @@ export function MedList() {
         {isLoading && <Skeleton className="h-40" />}
         {isError && (
           <Alert tone="warn" onClick={() => void refetch()}>
-            We could not load your medicines. Tap to try again.
+            {t('meds.loadError', 'We could not load your medicines. Tap to try again.')}
           </Alert>
         )}
-        {data && data.length === 0 && <EmptyState icon={Pill}>No medicines yet. Add your first one above.</EmptyState>}
+        {data && data.length === 0 && <EmptyState icon={Pill}>{t('meds.empty', 'No medicines yet. Add your first one above.')}</EmptyState>}
         {data && data.length > 0 && (
           <TileGrid spread>
             {data.map((m, i) => (

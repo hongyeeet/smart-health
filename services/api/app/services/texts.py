@@ -281,9 +281,9 @@ CATALOG: dict[str, dict[str, str]] = {
     },
     "nudge.check_due.title": {"en": "A check is due", "zh": "有一项检查到期了", "ms": "Satu pemeriksaan sudah tiba", "ta": "ஒரு பரிசோதனை செய்ய வேண்டிய நேரம்"},
     "preventive.due": {
-        "en": "Your {name} is due. You can plan it in your care plan.", "zh": "你的{name}到期了。你可以在护理计划中安排。",
-        "ms": "{name} anda sudah tiba masanya. Anda boleh merancangnya dalam pelan penjagaan anda.",
-        "ta": "உங்கள் {name} செய்ய வேண்டிய நேரம். உங்கள் பராமரிப்பு திட்டத்தில் திட்டமிடலாம்.",
+        "en": "Your {name} is due. You can add a visit in Track appointments.", "zh": "你的{name}到期了。你可以在“预约追踪”中添加就诊。",
+        "ms": "{name} anda sudah tiba masanya. Anda boleh menambah lawatan dalam Jejak temu janji.",
+        "ta": "உங்கள் {name} செய்ய வேண்டிய நேரம். Track appointments பகுதியில் சந்திப்பைச் சேர்க்கலாம்.",
     },
     # ------------------------------------------------------------------ reminder emails (notify_email)
     "email.subject.urgent": {
@@ -306,7 +306,7 @@ CATALOG: dict[str, dict[str, str]] = {
     "email.button.F1": {"en": "Log a workout", "zh": "记录一次运动", "ms": "Catat senaman", "ta": "ஒரு உடற்பயிற்சியைப் பதிவு செய்"},
     "email.button.E8": {"en": "See my lunch ideas", "zh": "查看我的午餐建议", "ms": "Lihat idea makan tengah hari saya", "ta": "என் மதிய உணவு யோசனைகளைப் பார்"},
     "email.button.H1": {"en": "Open my medicines", "zh": "打开我的药物", "ms": "Buka ubat saya", "ta": "என் மருந்துகளைத் திற"},
-    "email.button.K3": {"en": "Open my care plan", "zh": "打开我的护理计划", "ms": "Buka pelan penjagaan saya", "ta": "என் பராமரிப்பு திட்டத்தைத் திற"},
+    "email.button.K3": {"en": "Track my appointments", "zh": "打开预约追踪", "ms": "Buka Jejak temu janji", "ta": "Track appointments-ஐத் திற"},
     "email.button.default": {"en": "Open Smart Health", "zh": "打开 Smart Health", "ms": "Buka Smart Health", "ta": "Smart Health ஐத் திற"},
     "email.foot.contact": {
         "en": "You are getting this because someone added you as their emergency contact in Smart Health.",
@@ -471,10 +471,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "ta": "ஒவ்வொரு மருந்தையும் [[H1|Meds தாவலில்]] பார்க்கலாம்.",
     },
     "chat.sign_care": {
-        "en": "You can see your next visit and checks in your [[K3|care plan]], under Me.",
-        "zh": "你可以在“我”里的[[K3|护理计划]]中查看下次就诊和检查。",
-        "ms": "Anda boleh melihat lawatan seterusnya dan pemeriksaan dalam [[K3|pelan penjagaan]] anda, di bawah Saya.",
-        "ta": "உங்கள் அடுத்த சந்திப்பையும் பரிசோதனைகளையும் Me தாவலில் உள்ள உங்கள் [[K3|பராமரிப்புத் திட்டத்தில்]] பார்க்கலாம்.",
+        "en": "You can see your next visit and checks in [[K3|Track appointments]], under Me.",
+        "zh": "你可以在“我”里的[[K3|预约追踪]]中查看下次就诊和检查。",
+        "ms": "Anda boleh melihat lawatan seterusnya dan pemeriksaan dalam [[K3|Jejak temu janji]], di bawah Saya.",
+        "ta": "உங்கள் அடுத்த சந்திப்பையும் பரிசோதனைகளையும் Me தாவலில் [[K3|Track appointments]] பகுதியில் பார்க்கலாம்.",
     },
     "chat.greet": {
         "en": "Hello. I can answer questions about your own Smart Health data. What would you like to know?",
@@ -596,3 +596,138 @@ _LINK = _re.compile(r"\[\[([A-Z][A-Z0-9]*)\|([^\]]+)\]\]")
 
 def strip_links(text: str) -> str:
     return _LINK.sub(lambda m: m.group(2), text)
+
+
+# ----------------------------------------------------------------------------- the language of THIS request
+# The web app sends the language the person has chosen on every call (header X-Lang). Wording the server builds for a screen (a label,
+# a date, a unit) follows it at once, even before the language is saved on the profile. Reminders written in the background have no
+# request and keep using the language saved on the profile (person_language).
+import json as _json
+from contextvars import ContextVar
+from datetime import date as _date, datetime as _datetime
+from pathlib import Path as _Path
+
+_REQUEST_LANG: ContextVar[str | None] = ContextVar("request_lang", default=None)
+
+
+def set_request_language(code: str | None) -> None:
+    _REQUEST_LANG.set(code if code in LANGS else None)
+
+
+def request_lang() -> str:
+    """The language of the request being answered; English when there is none (background work, tests)."""
+    return _REQUEST_LANG.get() or DEFAULT_LANG
+
+
+def current_lang(user: Any = None, conn: Any = None) -> str:
+    """The request's language when it has one, otherwise the person's saved language."""
+    return _REQUEST_LANG.get() or person_language(user, conn)
+
+
+# Fixed wording for the screens (units, labels, dates), kept in a data file so the three translations are easy to review.
+try:
+    CATALOG.update(_json.loads(_Path(__file__).with_name("texts_ui.json").read_text(encoding="utf-8")))
+except Exception:  # a broken file must not stop the server: the screens then show English
+    logger.exception("could not read texts_ui.json")
+
+_WD_SHORT = {
+    "en": ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+    "zh": ("周一", "周二", "周三", "周四", "周五", "周六", "周日"),
+    "ms": ("Isn", "Sel", "Rab", "Kha", "Jum", "Sab", "Ahd"),
+    "ta": ("திங்.", "செவ்.", "புத.", "வியா.", "வெள்.", "சனி", "ஞாயி."),
+}
+_WD_LONG = {
+    "en": ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+    "zh": ("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"),
+    "ms": ("Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu", "Ahad"),
+    "ta": ("திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"),
+}
+_MON = {
+    "en": ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
+    "zh": tuple(f"{i}月" for i in range(1, 13)),
+    "ms": ("Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"),
+    "ta": ("ஜன.", "பிப்.", "மார்.", "ஏப்.", "மே", "ஜூன்", "ஜூலை", "ஆக.", "செப்.", "அக்.", "நவ.", "டிச."),
+}
+# day-and-month order: English "13 Oct", Chinese "10月13日"
+_DM = {"en": "{d} {mon}", "ms": "{d} {mon}", "ta": "{d} {mon}", "zh": "{mon}{d}日"}
+_DMY = {"en": "{d} {mon} {y}", "ms": "{d} {mon} {y}", "ta": "{d} {mon} {y}", "zh": "{y}年{mon}{d}日"}
+
+
+def _lang(lang: str | None) -> str:
+    return lang if lang in LANGS else request_lang()
+
+
+def weekday_short(day: _date | _datetime, lang: str | None = None) -> str:
+    return _WD_SHORT[_lang(lang)][day.weekday()]
+
+
+def weekday_long(day: _date | _datetime, lang: str | None = None) -> str:
+    return _WD_LONG[_lang(lang)][day.weekday()]
+
+
+def day_month(d: _date, lang: str | None = None) -> str:
+    """'13 Oct' (Chinese '10月13日')."""
+    lg = _lang(lang)
+    return _DM[lg].format(d=d.day, mon=_MON[lg][d.month - 1])
+
+
+def day_month_year(d: _date, lang: str | None = None) -> str:
+    """'2 Sep 2024' (Chinese '2024年9月2日')."""
+    lg = _lang(lang)
+    return _DMY[lg].format(d=d.day, mon=_MON[lg][d.month - 1], y=d.year)
+
+
+def clock12(hour: int, minute: int, lang: str | None = None) -> str:
+    """'8:00 pm' (Chinese '下午8:00', Malay '8:00 petang')."""
+    key = "fmt.clock.am" if hour < 12 else "fmt.clock.pm"
+    return tr(_lang(lang), key, h=hour % 12 or 12, mm=f"{minute:02d}")
+
+
+# ----------------------------------------------------------------------------- a stored English reminder, shown in another language
+_REVERSE: list[tuple[Any, str]] | None = None
+_SCREEN_PREFIXES = ("care.", "fmt.", "insights.", "review.msg", "chat.starter", "dose.unit", "dose.units", "dose.period", "dose.day", "dose.when")
+
+
+def _reverse_index() -> list[tuple[Any, str]]:
+    """Every English wording in the catalog as a pattern, so a reminder stored in English can be shown in the person's language."""
+    global _REVERSE
+    if _REVERSE is None:
+        out: list[tuple[Any, str]] = []
+        for key, entry in CATALOG.items():
+            en = entry.get("en", "")
+            if key.startswith(_SCREEN_PREFIXES) or len(en) < 8:
+                continue
+            seen: set[str] = set()
+            parts = []
+            for lit, field, _spec, _conv in string.Formatter().parse(en):
+                parts.append(_re.escape(lit))
+                if field:
+                    parts.append(f"(?P=f_{field})" if field in seen else f"(?P<f_{field}>.+?)")
+                    seen.add(field)
+            try:
+                out.append((_re.compile("^" + "".join(parts) + "$", _re.S), key))
+            except _re.error:
+                continue
+        _REVERSE = out
+    return _REVERSE
+
+
+def retranslate(lang: str | None, english: str) -> str:
+    """`english` in `lang` when it is exactly one of the catalog's English wordings (with any values filled in); otherwise unchanged.
+
+    Reminders are stored when they are made, in the person's language at that moment. A reminder made in English can be shown in
+    another language by finding its wording again here, so the translation is the reviewed one in the catalog, never a new guess.
+    """
+    if lang not in LANGS or lang == "en" or not english:
+        return english
+    for pattern, key in _reverse_index():
+        m = pattern.match(english)
+        if m:
+            vars = {k[2:]: v for k, v in m.groupdict().items()}
+            if "meal" in vars:                                  # the word for the meal is itself translated ('lunch')
+                vars["meal"] = label(lang, "meal.word", vars["meal"])
+            try:
+                return tr(lang, key, **vars)
+            except Exception:  # noqa: BLE001
+                return english
+    return english

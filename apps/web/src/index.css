@@ -119,6 +119,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;
+  /* A long word (Tamil and Malay words are long, and 200% text makes them wider) breaks instead of pushing the page sideways. */
+  overflow-wrap: anywhere;
 }
 
 button,
@@ -204,4 +206,22 @@ p {
   body {
     background: #fff !important;
   }
+}
+
+/* Not in a layer, so it wins over Tailwind's utility: the break-words class lets a long word overflow when its box is a flex item; anywhere also lowers the minimum width. */
+.break-words {
+  overflow-wrap: anywhere;
+}
+
+/* The bottom tab names are one short word each. A long word in Tamil or Malay is kept whole and the size follows the screen width, instead of being broken in the middle (5 tabs share 375 px). */
+.tab-label {
+  overflow-wrap: normal;
+}
+html:not([lang='en']) .tab-label {
+  font-size: min(var(--text-tab), 3.2vw);
+}
+
+/* Tamil and Malay words are long: at 200% the page title grows less, so it is not broken in the middle of a word next to the buttons. */
+html:not([lang='en']) [data-ts='2'] {
+  --text-h1: calc(28px * 1.35);
 }

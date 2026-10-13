@@ -15,6 +15,8 @@ from zoneinfo import ZoneInfo
 
 import psycopg
 
+from app.services import texts
+
 from app.core.config import settings
 
 TZ = ZoneInfo("Asia/Singapore")
@@ -108,11 +110,11 @@ def _percentile(xs: list[float], p: float) -> float:
 
 
 def _short(d: date) -> str:
-    return f"{d.day} {d.strftime('%b')}"
+    return texts.day_month(d)
 
 
 def _label(start: date, end: date, days: int) -> str:
-    return f"{_short(start)} to {_short(end)} {end.year} ({days} days)"
+    return texts.tr(texts.request_lang(), "insights.period", start=_short(start), end=_short(end), year=end.year, days=days)
 
 
 def window(end: date, days: int) -> tuple[date, date]:

@@ -1,4 +1,5 @@
 /** Small pieces shared by K3, K4 and K7: the status words, Singapore dates and the plain card for one visit. */
+import { dateLocale } from '@/lib/locale'
 import { useTranslation } from 'react-i18next'
 import { StatusPill, type Tone } from '@/ui/primitives'
 import { CheckCircle, Clock, Question, WarningCircle, type IconType } from '@/ui/icons'
@@ -28,11 +29,11 @@ export function PreventiveStatusPill({ status }: { status: Preventive['status'] 
   )
 }
 
-const SG_STAMP = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Singapore', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
+const stamp = () => new Intl.DateTimeFormat(dateLocale('en-GB'), { timeZone: 'Asia/Singapore', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
 
 /** "29 Sep, 20:00" in Singapore time, for "You confirmed this on ...". */
 export function singaporeStamp(iso: string): string {
-  return SG_STAMP.format(new Date(iso)).replace(',', '')
+  return stamp().format(new Date(iso)).replace(',', '')
 }
 
 /** Today's date in Singapore as YYYY-MM-DD, so the form's default day is right whatever the device clock zone. */

@@ -449,14 +449,14 @@ def build_starters(f: dict[str, Any]) -> list[str]:
     """Pure: starter chips from what the person has. With nothing at all there is one honest starter."""
     out: list[str] = []
     if f["cgm_days"] >= STARTER_CGM_DAYS:
-        out.append("How was my glucose this week?")
+        out.append(texts.tr(texts.request_lang(), "chat.starter.glucose"))
     med = next((_strength_free(m) for m in f["medicines"] if "not readable" not in m.lower()), None)
     if med:
-        out.append(f"What is {med} for?")
+        out.append(texts.tr(texts.request_lang(), "chat.starter.med", med=med))
     if f["questions"] > 0:
-        out.append("What should I ask my doctor?")
+        out.append(texts.tr(texts.request_lang(), "chat.starter.doctor"))
     if not out:
-        out.append("What can you help me with?")
+        out.append(texts.tr(texts.request_lang(), "chat.starter.help"))
     return out[:MAX_STARTERS]
 
 
@@ -774,7 +774,7 @@ def send(user_key: str, uid: str, raw_text: str, conv_id: str | None) -> dict[st
     text = clean_text(raw_text)
     if not text:
         raise ValueError("Please type a message.")
-    lang = texts.person_language(uid)
+    lang = texts.current_lang(uid)
     conv = _conversation(uid, conv_id)
     history = _history(conv)
     today = datetime.now(TZ).date()

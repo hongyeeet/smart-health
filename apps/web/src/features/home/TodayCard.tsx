@@ -2,6 +2,7 @@
  * Block 4 on Home: today's logging ring, with the single next thing to log (GET /logs/today). Moved out of Home.tsx unchanged in
  * its wording; Home decides where it sits.
  */
+import { progressLabel } from './labels'
 import { useTranslation } from 'react-i18next'
 import { useGo } from '@/app/navigation'
 import type { LogProgress } from '@/data/types'
@@ -47,7 +48,7 @@ export function TodayCard({ data }: { data: LogProgress }) {
               : data.nextUp?.prompt
                 ? data.nextUp.prompt
                 : data.nextUp
-                  ? t('home.hero.next', 'Next: {{label}}', { label: data.nextUp.label.toLowerCase() })
+                  ? t('home.hero.next', 'Next: {{label}}', { label: progressLabel(t, data.nextUp.key, data.nextUp.label).toLowerCase() })
                   : t('home.hero.nothingDue', 'Nothing more is due for now.')}
           </p>
           {data.streakDays > 0 && (
