@@ -18,6 +18,8 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.db import logstore, nutritionstore
+from app.schemas.home import HomeOverview
+from app.services import home_overview
 
 router = APIRouter(prefix="/home", tags=["home"])
 logger = logging.getLogger(__name__)
@@ -90,3 +92,9 @@ def cached_banner(now: float | None = None) -> dict:
 @router.get("/banner")
 async def banner() -> dict:
     return await run_in_threadpool(cached_banner)
+
+
+@router.get("/overview", response_model=HomeOverview, response_model_by_alias=True)
+async def overview() -> HomeOverview:
+    """Today's plan, the four KPI cards and the 7-day chart (docs/specs/home-overview.md). Read only; always 200."""
+    return HomeOverview.model_validate(await run_in_threadpool(home_overview.overview))

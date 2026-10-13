@@ -2,11 +2,15 @@
  * Block 1 on Home: the alert strip. The active low-glucose alert comes first (red, opens J1), then the open medicine clash alerts
  * the person has not set aside (opens B2, where each has its own actions). Renders nothing when there is no alert.
  */
+import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGo } from '@/app/navigation'
 import { useStock } from '@/data/hooks'
 import type { ClashAlert, MedicineStock } from '@/data/types'
+import { useDismissed } from '@/features/alerts/pieces'
 import { useUrgentState } from '@/features/urgent/api'
+import { useUi } from '@/state/store'
+import { dismissedToday, rememberDismissed } from './FoodBanner'
 import { WarningCircle } from '@/ui/icons'
 import { Alert } from '@/ui/primitives'
 
@@ -27,11 +31,18 @@ function UrgentBanner() {
 function ClashStrip({ alerts }: { alerts: ClashAlert[] }) {
   const { t } = useTranslation()
   const go = useGo()
+  const setAside = useDismissed((s) => s.dismiss)
   const first = alerts[0]
   if (!first) return null
   const more = alerts.length - 1
   return (
-    <Alert tone="warn" title={t('home.clash.title', 'Medicines may clash. Check with your doctor.')} onClick={() => go('B2')}>
+    <Alert
+      tone="warn"
+      title={t('home.clash.title', 'Medicines may clash. Check with your doctor.')}
+      onClick={() => go('B2')}
+      onClose={() => setAside(first.id)}
+      closeLabel={t('home.clash.close', 'Set this alert aside')}
+    >
       <span className="block">{first.text}</span>
       {more > 0 && <span className="mt-1 block font-bold text-ink2">{t('home.clash.more', '{{n}} more to review.', { n: more })}</span>}
     </Alert>
@@ -45,8 +56,11 @@ function ClashStrip({ alerts }: { alerts: ClashAlert[] }) {
 function LowStockStrip({ items }: { items: MedicineStock[] }) {
   const { t } = useTranslation()
   const go = useGo()
+  const user = useUi((s) => s.userKey)
+  const [, redraw] = useReducer((n: number) => n + 1, 0)
+  const hidden = dismissedToday(user)
   const low = items
-    .filter((i) => (i.status === 'low' || i.status === 'out') && i.daysLeft != null)
+    .filter((i) => (i.status === 'low' || i.status === 'out') && i.daysLeft != null && !hidden.has(`stock:${i.id}`))
     .sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0))
   const first = low[0]
   if (!first) return null
@@ -58,7 +72,16 @@ function LowStockStrip({ items }: { items: MedicineStock[] }) {
         ? t('home.stock.lowOne', '{{name}} is running low: about 1 day left', { name: first.name })
         : t('home.stock.low', '{{name}} is running low: about {{n}} days left', { name: first.name, n: first.daysLeft })
   return (
-    <Alert tone="info" title={t('home.stock.title', 'Medicine stock')} onClick={() => go('H1')}>
+    <Alert
+      tone="info"
+      title={t('home.stock.title', 'Medicine stock')}
+      onClick={() => go('H1')}
+      onClose={() => {
+        rememberDismissed(user, `stock:${first.id}`)
+        redraw()
+      }}
+      closeLabel={t('home.stock.close', 'Hide this for today')}
+    >
       <span className="block">{line}</span>
       {more > 0 && <span className="mt-1 block font-bold text-ink2">{t('home.stock.more', '{{n}} more running low.', { n: more })}</span>}
     </Alert>

@@ -4,9 +4,11 @@
  */
 export {
   ArrowCounterClockwise,
+  ArrowDown,
   ArrowLeft,
   ArrowRight,
   ArrowsClockwise,
+  ArrowUp,
   Barbell,
   Bell,
   Brain,

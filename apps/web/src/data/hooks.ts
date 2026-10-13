@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './repositories'
 import type { BloodPressureLogInput, LogInput, NewMedication } from './repositories/types'
-import type { ClashStatus, InsightsDays, MedicineStock, MissAnswer, Period, ReportDays, StockList, UserList } from './types'
+import type { ClashStatus, HomeOverview, InsightsDays, MedicineStock, MissAnswer, Period, ReportDays, StockList, UserList } from './types'
 import { request } from './repositories/http'
 import { useUi } from '@/state/store'
 
@@ -22,6 +22,12 @@ export const useInsightsBloodPressure = (days: InsightsDays) => useQuery({ query
 export const useDay = (date: string) => useQuery({ queryKey: ['day', date], queryFn: () => api.getDay(date) })
 export const useDayList = () => useQuery({ queryKey: ['dayList'], queryFn: () => api.getDayList() })
 export const useLogProgress = () => useQuery({ queryKey: ['logProgress'], queryFn: () => api.getLogProgress(), refetchInterval: 60_000 })
+/**
+ * Home: today's plan, the four numbers and the 7-day chart in one read. Refreshed every minute (the plan follows the clock).
+ * Every write goes through useWrite (mark a dose taken, save a meal or any log), which refreshes every read, so this key
+ * ['homeOverview'] is refreshed with ['doses'] and ['logProgress'] without being named.
+ */
+export const useHomeOverview = () => useQuery({ queryKey: ['homeOverview'], queryFn: () => request<HomeOverview>('/home/overview'), refetchInterval: 60_000 })
 export const useFoodFlags = () => useQuery({ queryKey: ['foodFlags'], queryFn: () => api.getFoodFlags() })
 export const useLunchIdeas = () => useQuery({ queryKey: ['lunchIdeas'], queryFn: () => api.getLunchIdeas() })
 export const useAcceptSuggestion = () => useWrite((key: string) => api.acceptSuggestion(key))

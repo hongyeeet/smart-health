@@ -2,7 +2,7 @@ import { useId, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
-import { Check, Info, Question, WarningCircle, Warning, CheckCircle, type IconType } from './icons'
+import { Check, Info, Question, WarningCircle, Warning, CheckCircle, X, type IconType } from './icons'
 
 /* ---------------------------------- Card ---------------------------------- */
 export function Card({
@@ -163,7 +163,7 @@ export function Dots({ n, of = 3, label }: { n: number; of?: number; label?: str
 }
 
 /* ---------------------------------- Alert ---------------------------------- */
-export function Alert({ tone = 'warn', icon, children, onClick, title }: { tone?: Exclude<Tone, 'neutral' | 'brand' | 'brass'>; icon?: IconType; children: ReactNode; onClick?: () => void; title?: string }) {
+export function Alert({ tone = 'warn', icon, children, onClick, title, onClose, closeLabel }: { tone?: Exclude<Tone, 'neutral' | 'brand' | 'brass'>; icon?: IconType; children: ReactNode; onClick?: () => void; title?: string; onClose?: () => void; closeLabel?: string }) {
   const Icon = icon ?? toneIcon[tone]
   const color = { ok: 'border-ok/50 bg-ok-soft', warn: 'border-warn/50 bg-warn-soft', danger: 'border-danger/50 bg-danger-soft', info: 'border-info/40 bg-info-soft' }[tone]
   const iconColor = { ok: 'text-ok', warn: 'text-warn', danger: 'text-danger', info: 'text-info' }[tone]
@@ -176,13 +176,23 @@ export function Alert({ tone = 'warn', icon, children, onClick, title }: { tone?
       </div>
     </>
   )
-  const cls = cn('flex w-full items-start gap-3 rounded-card border-[1.5px] p-3.5 text-left', color, onClick && 'press')
-  return onClick ? (
+  const cls = cn('flex w-full items-start gap-3 rounded-card border-[1.5px] p-3.5 text-left', color, onClick && 'press', onClose && 'pr-12')
+  const main = onClick ? (
     <button type="button" onClick={onClick} className={cls}>
       {body}
     </button>
   ) : (
     <div className={cls}>{body}</div>
+  )
+  if (!onClose) return main
+  // the close button sits beside the alert, not inside it: a button inside a button is not valid and not reachable by keyboard
+  return (
+    <div className="relative">
+      {main}
+      <button type="button" onClick={onClose} aria-label={closeLabel ?? 'Close'} className="press absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-full text-ink">
+        <X size={20} aria-hidden />
+      </button>
+    </div>
   )
 }
 

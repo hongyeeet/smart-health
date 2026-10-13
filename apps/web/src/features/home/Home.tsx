@@ -1,38 +1,30 @@
 /**
- * B1 — Home: what to do now, in order of importance.
- *
- * At most five blocks show at once, top to bottom (the order is the point: the most urgent thing is always first):
- *   1. the alert strip: the active low-glucose alert, then open medicine clash alerts
- *   2. one banner: an unfinished meal, or else the food banner (a meal due and not logged, or a food habit high in salt or sugar)
- *   3. the dose card: what to take now, or the next dose (a first-time person sees "Start here" instead)
- *   4. today's logging ring with the single next thing to log
- *   5. one "for you" card: to-confirm ideas, then a lunch idea, then a food habit worth a look (the first with content)
- * Everything else sits behind "See more" (collapsed by default, remembered on this device): this week's bars, the full list of
- * what to log today, and any other "for you" cards. Each block still decides for itself whether it has something to say.
- * Everything comes from the database; the bell opens the reminders (B2).
+ * B1 — Home, top to bottom:
+ *   1. the header (greeting and date, the bell, the person switch)
+ *   2. the alert strip: the active low-glucose alert, then open medicine clash alerts
+ *   3. up to two thin banners, each with an x: a dose due now, then the food banner (HomeBanners)
+ *   4. "Today's plan": the day's meals and medicines as one flow (a brand-new person sees "Start here")
+ *   5. "Your numbers": four cards compared with the person's own usual range
+ *   6. "Health overview": the 7-day bar chart
+ * Plan, numbers and chart come from one read (GET /home/overview, refreshed every minute); the bell opens the reminders (B2).
+ * A phone stacks everything; a laptop (lg) spreads the plan across and puts the four cards in one row.
  */
 import { dateLocale } from '@/lib/locale'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { useClash, useDoses, useLogProgress, useNotices, useRecent } from '@/data/hooks'
+import { useClash, useHomeOverview, useNotices } from '@/data/hooks'
 import { useDismissed } from '@/features/alerts/pieces'
-import { useMealSession } from '@/features/log/useMealSession'
 import { useGo } from '@/app/navigation'
-import { MealBanner } from '@/features/log/MealBanner'
 import { useUi } from '@/state/store'
-import { cn } from '@/lib/cn'
 import { Header, Screen } from '@/ui/layout'
-import { Alert, Skeleton } from '@/ui/primitives'
+import { Alert } from '@/ui/primitives'
 import { Bell } from '@/ui/icons'
-import { DoseCard } from './DoseCard'
 import { UserSwitch } from './UserSwitch'
 import { AlertStrip } from './AlertStrip'
-import { FoodBanner, useFoodBanner } from './FoodBanner'
-import { TodayCard, TodayCardSkeleton } from './TodayCard'
-import { useForYou } from './ForYou'
-import { ProgressDetails } from './ProgressDetails'
-import { SeeMoreButton, useSeeMore } from './SeeMore'
-import { StartHere } from './StartHere'
+import { HomeBanners } from './HomeBanners'
+import { TodayPlan } from './TodayPlan'
+import { KpiCards, KpiCardsSkeleton } from './KpiCards'
+import { HealthOverview, HealthOverviewSkeleton } from './HealthOverview'
 import { useSimulate } from '@/features/urgent/api'
 
 function greeting(h: number, t: TFunction) {
@@ -42,17 +34,11 @@ function greeting(h: number, t: TFunction) {
 export function Home() {
   const { t } = useTranslation()
   const go = useGo()
-  const { data, isError, refetch } = useLogProgress()
+  const { data, isError, refetch } = useHomeOverview()
   const { data: notices } = useNotices()
   const { data: clash } = useClash()
-  const { data: doses } = useDoses()
-  const { data: recent } = useRecent()
-  const { data: food } = useFoodBanner()
-  const forYou = useForYou()
-  const { meal } = useMealSession()
   const setAside = useDismissed((s) => s.ids)
   const userKey = useUi((s) => s.userKey)
-  const [moreOpen, toggleMore] = useSeeMore()
 
   /** medicine alerts the person has not set aside */
   const openAlerts = (clash?.alerts ?? []).filter((a) => !setAside.includes(a.id))
@@ -60,8 +46,6 @@ export function Home() {
   const unread = (notices?.filter((n) => n.unread).length ?? 0) + openAlerts.length
   const now = new Date()
   const dateLabel = now.toLocaleDateString(dateLocale('en-SG'), { weekday: 'long', day: 'numeric', month: 'long' })
-  /** nothing logged yet and no medicines: show "Start here" instead of an empty page */
-  const firstTime = !!data && !!doses && !!recent && data.done === 0 && !doses.hasMedicines && recent.length === 0
 
   return (
     <Screen tabs>
@@ -79,39 +63,32 @@ export function Home() {
         }
       />
 
-      {/* 1. alerts */}
+      {/* 2. alerts */}
       <AlertStrip clashAlerts={openAlerts} />
 
-      {/* 2. one banner: an unfinished meal first, otherwise the food banner */}
-      {meal ? <MealBanner /> : <FoodBanner banner={food} />}
+      {/* 3. the dose banner, then the food banner */}
+      <HomeBanners />
 
-      {/* 3. medicines */}
-      {isError && (
-        <Alert tone="warn" onClick={() => void refetch()}>
-          {t('home.loadError', "We could not load today's logs. Tap to try again.")}
-        </Alert>
-      )}
-      {/* 3 to 5: a phone and a tablet stack them in this order; a laptop puts the dose card beside today's logging and the "for you" card, the same height */}
-      <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-        <div className="flex">{firstTime ? <StartHere /> : <DoseCard />}</div>
-        <div className="flex flex-col gap-4">
-          {data ? (
-            <div className="flex flex-1">
-              <TodayCard data={data} />
-            </div>
-          ) : isError ? null : (
-            <TodayCardSkeleton />
-          )}
-          {forYou.cards[0] ?? (forYou.loading ? <Skeleton className="h-24" /> : null)}
-        </div>
-        <div className="lg:col-span-2">
-          <SeeMoreButton open={moreOpen} onToggle={toggleMore} />
-        </div>
-        <section id="home-more" className={cn('gap-4 lg:col-span-2 lg:grid-cols-2 [&>*:last-child:nth-child(odd)]:lg:col-span-2', moreOpen ? 'grid' : 'hidden')}>
-          {moreOpen && data && <ProgressDetails data={data} />}
-          {moreOpen && forYou.cards.slice(1)}
-        </section>
+      {/* 4. today's plan */}
+      <TodayPlan plan={data?.plan} loading={!data && !isError} error={isError && !data} onRetry={() => void refetch()} />
+
+      {/* 5. your numbers */}
+      <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3">
+        <h2 className="text-h2 font-bold">{t('home.numbers.title', 'Your numbers')}</h2>
+        <p className="text-sub text-ink2">{t('home.numbers.sub', 'Compared with your usual')}</p>
       </div>
+      {data ? (
+        <KpiCards data={data} />
+      ) : isError ? (
+        <Alert tone="warn" onClick={() => void refetch()}>
+          {t('home.numbers.loadError', 'We could not load your numbers. Tap to try again.')}
+        </Alert>
+      ) : (
+        <KpiCardsSkeleton />
+      )}
+
+      {/* 6. health overview */}
+      {data ? <HealthOverview chart={data.chart} /> : isError ? null : <HealthOverviewSkeleton />}
 
       {userKey === 'demo' && <DemoLowLink />}
     </Screen>

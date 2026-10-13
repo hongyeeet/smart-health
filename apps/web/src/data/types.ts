@@ -1099,3 +1099,53 @@ export interface InsightsSprint {
   gentlest: { name: string; medianRise: number; n: number }[]
   spikiest: { name: string; medianRise: number; n: number }[]
 }
+
+/* ---------------- Home overview (GET /home/overview): today's plan, the four numbers and the 7-day chart ---------------- */
+export type RangeState = 'within' | 'above' | 'below' | 'unknown'
+/** How a number compares with the person's OWN usual range (25th to 75th percentile of their daily values over the 60 days before). */
+export interface KpiStatus {
+  state: RangeState
+  usualLow: number | null
+  usualHigh: number | null
+  usualMedian: number | null
+  /** the current value minus the usual median, in the unit of the value */
+  delta: number | null
+}
+export interface PlanItem {
+  kind: 'meal' | 'dose'
+  /** the person's own label ("Breakfast", "Metformin 500 mg"), never a suggestion */
+  title: string
+  status: 'done' | 'due' | 'later' | 'missed'
+  /** kind dose: the pending dose row id (what Taken sends) */
+  doseId: string | null
+  mealType: 'breakfast' | 'lunch' | 'dinner' | null
+}
+export interface PlanStep {
+  /** "08:00", Singapore time */
+  time: string
+  /** "8:00 am" */
+  label: string
+  state: 'done' | 'now' | 'later' | 'missed'
+  items: PlanItem[]
+}
+export interface HomePlan {
+  date: string
+  done: number
+  total: number
+  nowIndex: number | null
+  steps: PlanStep[]
+}
+export interface Nutrient {
+  state: 'ok' | 'high' | 'unknown'
+  highMeals: number | null
+  meals: number
+}
+export interface HomeOverview {
+  asOf: string | null
+  plan: HomePlan
+  glucose: { value: number | null; unit: 'mmol/L'; day: string | null; inRangePct: number | null; spark: (number | null)[]; status: KpiStatus } | null
+  steps: { avg: number | null; spark: (number | null)[]; status: KpiStatus } | null
+  calories: { avgKcal: number | null; sugar: Nutrient; salt: Nutrient; spark: (number | null)[]; status: KpiStatus } | null
+  heart: { bpm: number | null; restingBpm: number | null; spo2: number | null; status: KpiStatus; spo2Status: KpiStatus } | null
+  chart: { days: string[]; glucose: (number | null)[]; steps: (number | null)[]; calories: (number | null)[]; heartRate: (number | null)[] }
+}
