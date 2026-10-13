@@ -9,7 +9,7 @@ import type {
   HomeData,
   Insights,
   InsightsDays,
-  InsightsOverview,
+  InsightsOverview, InsightsTimeline,
   InsightsOverviewDays,
   InsightsGlucose,
   InsightsFood,
@@ -155,6 +155,7 @@ export interface Api {
 
   getInsights(period: Period): Promise<Insights>
   getInsightsOverview(days: InsightsDays): Promise<InsightsOverview>
+  getInsightsTimeline(days: InsightsDays): Promise<InsightsTimeline>
   getInsightsOverviewDays(from: string, to: string): Promise<InsightsOverviewDays>
   getInsightsGlucose(days: InsightsDays): Promise<InsightsGlucose>
   getInsightsFood(days: InsightsDays): Promise<InsightsFood>

@@ -87,13 +87,13 @@ export function Plain({ children, why }: { children: ReactNode; why?: WhyTopic }
 }
 
 /** Findings from the person's own history. Always labelled unverified: they compare two things, they do not prove a cause. Pass `whyLink={false}` on a tab that has its own top link. */
-export function Findings({ items, onOpen, whyLink = true, twoColumns = false }: { items: InsightsPattern[]; onOpen?: (to: InsightsTab) => void; whyLink?: boolean; /** from a laptop up, two findings side by side (for a full-width section) */ twoColumns?: boolean }) {
+export function Findings({ items, onOpen, whyLink = true, twoColumns = false, title }: { items: InsightsPattern[]; /** the heading; default "What your history shows" */ title?: string; onOpen?: (to: InsightsTab) => void; whyLink?: boolean; /** from a laptop up, two findings side by side (for a full-width section) */ twoColumns?: boolean }) {
   const go = useGo()
   const { t } = useTranslation()
   if (!items.length) return null
   return (
     <section className="flex flex-col gap-2">
-      <SectionTitle>{t('insights.shared.findings', 'What your history shows')}</SectionTitle>
+      <SectionTitle>{title ?? t('insights.shared.findings', 'What your history shows')}</SectionTitle>
       <div className={cn('flex flex-col gap-2', twoColumns && 'lg:grid lg:grid-cols-2 lg:items-start lg:gap-3')}>
         {items.map((p) => (
           <Card key={p.key} className="flex flex-col gap-2">

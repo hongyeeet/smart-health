@@ -8,6 +8,8 @@ import { useUi } from '@/state/store'
 export const useHome = () => useQuery({ queryKey: ['home'], queryFn: () => api.getHome() })
 export const useInsights = (period: Period) => useQuery({ queryKey: ['insights', period], queryFn: () => api.getInsights(period) })
 export const useInsightsOverview = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'overview', days], queryFn: () => api.getInsightsOverview(days) })
+export const useInsightsTimeline = (days: InsightsDays) =>
+  useQuery({ queryKey: ['insights', 'timeline', days], queryFn: () => api.getInsightsTimeline(days), placeholderData: keepPreviousData })
 export const useInsightsOverviewDays = (from: string, to: string, enabled = true) =>
   useQuery({ queryKey: ['insights', 'overviewDays', from, to], queryFn: () => api.getInsightsOverviewDays(from, to), enabled, placeholderData: keepPreviousData })
 export const useInsightsGlucose = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'glucose', days], queryFn: () => api.getInsightsGlucose(days) })

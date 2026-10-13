@@ -970,6 +970,43 @@ export interface InsightsOverview {
   changes: InsightsChange[]
   patterns: InsightsPattern[]
 }
+/** The overview charts on one shared time axis (GET /insights/timeline). Times (`m`) are minutes since local midnight of the first day. */
+export interface InsightsHourly {
+  /** 24 numbers, hour 0 to 23: the person's own average, and the middle half (25th to 75th percentile) */
+  mean: (number | null)[]
+  lo: (number | null)[]
+  hi: (number | null)[]
+}
+export interface InsightsTimeline {
+  period: InsightsPeriod & { bucketMinutes: number; buckets: number }
+  series: { glucose: (number | null)[]; glucoseMin: (number | null)[]; glucoseMax: (number | null)[]; heart: (number | null)[]; spo2: (number | null)[]; steps: (number | null)[] }
+  baseline: {
+    days: number
+    /** "before": the 60 days before the period; "period": too few days before, so the period's own average */
+    source: 'before' | 'period'
+    from: string
+    to: string
+    available: boolean
+    bpAvailable: boolean
+    bpSystolic: number | null
+    bpDiastolic: number | null
+    bpReadings: number
+    glucose: InsightsHourly
+    heart: InsightsHourly
+    spo2: InsightsHourly
+  }
+  bp: { m: number; systolic: number; diastolic: number }[]
+  events: {
+    meals: { m: number; type: string; food: string }[]
+    exercise: { m0: number; m1: number; type: string }[]
+    symptoms: { m: number; type: string }[]
+    missed: { m: number }[]
+    mood: { m: number; mood: number; stress: number | null }[]
+  }
+  /** work_days: 1 = Monday ... 7 = Sunday; `set` is false when the person gave no work hours */
+  work: { days: number[]; start: string | null; end: string | null; set: boolean }
+  values: { avgGlucose: number | null; gmi: number | null; cv: number | null; stepsPerDay: number | null; dosesTakenPct: number | null; sensorWornPct: number | null }
+}
 /** The overview calendar: one cell per day in start to end. Days after `today` are never included. */
 export interface InsightsOverviewDays {
   start: string

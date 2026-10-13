@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Literal
 
+from pydantic import Field
+
 from app.schemas.medicines import Camel
 
 
@@ -279,3 +281,108 @@ class SensorRun(Camel):
     bands: list[Band]
     gentlest: list[SprintFood]
     spikiest: list[SprintFood]
+
+
+# ── Overview timeline (GET /insights/timeline) ──────────────────────────────
+class TLPeriod(Period):
+    bucket_minutes: int
+    buckets: int
+
+
+class TLSeries(Camel):
+    """One value per bucket (null where there is no reading), all on the same time axis."""
+    glucose: list[float | None]
+    glucose_min: list[float | None]
+    glucose_max: list[float | None]
+    heart: list[float | None]
+    spo2: list[float | None]
+    steps: list[int | None]
+
+
+class TLHourly(Camel):
+    """Per hour of the day (24 numbers): the person's average and the middle half (25th to 75th percentile)."""
+    mean: list[float | None]
+    lo: list[float | None]
+    hi: list[float | None]
+
+
+class TLBaseline(Camel):
+    days: int
+    source: Literal["before", "period"]
+    from_: str = Field(alias="from")
+    to: str
+    available: bool
+    bp_available: bool
+    bp_systolic: float | None
+    bp_diastolic: float | None
+    bp_readings: int
+    glucose: TLHourly
+    heart: TLHourly
+    spo2: TLHourly
+
+
+class TLBp(Camel):
+    m: int
+    systolic: int
+    diastolic: int
+
+
+class TLMeal(Camel):
+    m: int
+    type: str
+    food: str
+
+
+class TLSpan(Camel):
+    m0: int
+    m1: int
+    type: str
+
+
+class TLSymptom(Camel):
+    m: int
+    type: str
+
+
+class TLAt(Camel):
+    m: int
+
+
+class TLMood(Camel):
+    m: int
+    mood: int
+    stress: int | None
+
+
+class TLEvents(Camel):
+    meals: list[TLMeal]
+    exercise: list[TLSpan]
+    symptoms: list[TLSymptom]
+    missed: list[TLAt]
+    mood: list[TLMood]
+
+
+class TLWork(Camel):
+    days: list[int]
+    start: str | None
+    end: str | None
+    set: bool
+
+
+class TLValues(Camel):
+    avg_glucose: float | None
+    gmi: float | None
+    cv: int | None
+    steps_per_day: int | None
+    doses_taken_pct: int | None
+    sensor_worn_pct: int | None
+
+
+class Timeline(Camel):
+    period: TLPeriod
+    series: TLSeries
+    baseline: TLBaseline
+    bp: list[TLBp]
+    events: TLEvents
+    work: TLWork
+    values: TLValues

@@ -1,6 +1,7 @@
 """The Insights tab (screens C1 to C6 and C8):
 
   GET /insights/overview|glucose|food|activity|sleep|medication?days=7|30|90   (medication also takes ?month=YYYY-MM, the calendar)
+  GET /insights/timeline?days=7|30|90   (the overview charts on one time axis: app/services/insights_timeline.py)
   GET /insights/overview/days?from=YYYY-MM-DD&to=YYYY-MM-DD   (the overview calendar, at most 92 days)
   GET /insights/sprint
   GET /insights/heart?days=7|30|90         (heart rate and SpO2, C4 and C5; app/services/insights_heart.py)
@@ -22,6 +23,7 @@ from app.schemas import insights as S
 from app.schemas import insights_heart as HS
 from app.services import insights as svc
 from app.services import insights_heart as heart_svc
+from app.services import insights_timeline as tl_svc
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -49,6 +51,11 @@ def _today():
 @router.get("/overview", response_model=S.Overview, response_model_by_alias=True)
 async def overview(days: int = Query(7)):
     return S.Overview.model_validate(await _run(svc.overview, _days(days), _today()))
+
+
+@router.get("/timeline", response_model=S.Timeline, response_model_by_alias=True)
+async def timeline(days: int = Query(7)):
+    return S.Timeline.model_validate(await _run(tl_svc.timeline, _days(days), _today()))
 
 
 @router.get("/overview/days", response_model=S.OverviewDays, response_model_by_alias=True)
