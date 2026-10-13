@@ -15,7 +15,7 @@ import { Header, Screen, Reveal } from '@/ui/layout'
 import { Card, TextLink } from '@/ui/primitives'
 import { cn } from '@/lib/cn'
 import { UserSwitch } from '@/features/home/UserSwitch'
-import { ForkKnife, Heartbeat, PersonSimpleWalk, Smiley, Thermometer, type IconType } from '@/ui/icons'
+import { CaretRight, ForkKnife, Heartbeat, ListChecks, PersonSimpleWalk, Smiley, Thermometer, type IconType } from '@/ui/icons'
 
 function chip(i: ProgressItem | undefined, t: TFunction) {
   if (!i) return null
@@ -73,6 +73,17 @@ export function LogHub() {
         <p className="text-sub text-ink2">{t('log.hub.seeFoodLead', 'Your recent entries and what you ate are in Insights.')}</p>
         <TextLink onClick={() => go('C3')}>{t('log.hub.seeFood', 'See what you ate in Insights → Food')}</TextLink>
       </div>
+      {/* the meal ideas Smart Health made, to rate: moved here from Me (Review suggestions) */}
+      <Card onClick={() => go('K11')} className="flex items-center gap-3">
+        <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-brand-soft text-brand">
+          <ListChecks size={24} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-body font-bold">{t('log.hub.suggestions', 'Meal suggestions')}</span>
+          <span className="block text-sub text-ink2">{t('log.hub.suggestionsSub', 'The meal ideas Smart Health made. Rate each one: reasonable, not reasonable or unsafe.')}</span>
+        </span>
+        <CaretRight size={20} className="flex-none text-ink3" aria-hidden />
+      </Card>
     </Screen>
   )
 }

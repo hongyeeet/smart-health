@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     workato_token_header: str = "API-TOKEN"
     # Fields the scanner is less sure of than this must be typed in by the user (backlog E3-1 used 0.85).
     scan_confidence_threshold: float = 0.85
+    # True (the default): the local text reader blacks out name, ID, phone and address on a label photo before it leaves the machine, and
+    # its text checks what the model quotes. False (SCAN_OCR_ENABLED=false): the photo is sent as it is. Joely's test switch, 2026-10-12.
+    scan_ocr_enabled: bool = True
 
 
 @lru_cache

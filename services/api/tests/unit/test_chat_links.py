@@ -23,7 +23,7 @@ def test_the_marked_screens_are_the_ones_the_signposts_open():
 
 
 def test_strip_links_leaves_only_the_words():
-    assert texts.strip_links(texts.tr("en", "chat.sign_food")) == "You can find more ideas under Me, Review suggestions, and in Lunch ideas."
+    assert texts.strip_links(texts.tr("en", "chat.sign_food")) == "You can find more ideas in Meal suggestions, on the Log tab, and in Lunch ideas."
     assert "[[" not in texts.strip_links(texts.tr("zh", "chat.sign_meds"))
     assert texts.strip_links("no markers here") == "no markers here"
 

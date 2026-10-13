@@ -13,6 +13,7 @@ import { request } from '@/data/repositories/http'
 import { useSwitchUser, useUsers } from '@/data/hooks'
 import { useUi } from '@/state/store'
 import { clearDeviceCopy } from '@/features/onboarding/useOnboarding'
+import { startsInSetup } from '@/features/onboarding/startGate'
 import { cn } from '@/lib/cn'
 import { Check } from '@/ui/icons'
 
@@ -110,7 +111,10 @@ export function UserSwitch() {
                 aria-checked={on}
                 onClick={() => {
                   setOpen(false)
-                  if (!on) switchTo(u.key)
+                  if (!on) {
+                    switchTo(u.key)
+                    if (startsInSetup(u.key)) navigate(href('A1'), { replace: true })      // the demo user starts in set-up, with a Skip link
+                  }
                 }}
                 className={cn('press flex min-h-14 w-full items-center gap-3 rounded-[12px] px-3 py-2', on ? 'bg-brand-soft' : 'hover:bg-well')}
               >

@@ -1,17 +1,24 @@
 /**
- * K8. Download my data as a file, and ask for the account and its data to be deleted.
+ * K8. Data and account: the one home for the person's own information. From the top: their details (each with an "edit"), their
+ * emergency contacts (more than one allowed), their consents (including the reminder emails), then download my data and delete my account.
  * A deletion is only recorded here (in the activity log) and processed within 30 days; nothing is deleted by this screen.
+ * The old Privacy and consent (K6) and Emergency contact (K9) screens open here, at their section.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { useUi } from '@/state/store'
 import { Header, Screen } from '@/ui/layout'
 import { Download, Trash } from '@/ui/icons'
 import { Alert, Button, Card, Field, SectionTitle } from '@/ui/primitives'
 import { downloadMyData, useRequestDeletion, type DeletionRequest } from './settings/api'
 import { fmtDate } from './settings/rules'
+import { ConsentsSection } from './account/ConsentsSection'
+import { ContactsSection } from './account/ContactsSection'
+import { InfoSection } from './account/InfoSection'
 
-export function DataAccount() {
+/** Download my data, and ask for the account and its data to be deleted. The delete card is last and outlined in red. */
+function YourData() {
   const { t } = useTranslation()
   const showToast = useUi((s) => s.showToast)
   const [downloading, setDownloading] = useState(false)
@@ -43,11 +50,10 @@ export function DataAccount() {
     })
 
   return (
-    <Screen>
-      <Header title={t('me.data.title', 'Data and account')} back backTo="K1" />
-
+    <section id="data" className="flex scroll-mt-4 flex-col gap-3">
+      <SectionTitle>{t('me.account.dataTitle', 'Your data')}</SectionTitle>
       {/* the two cards side by side, equal height, from a laptop up */}
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-6 [&>*]:min-w-0">
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch [&>*]:min-w-0">
       <Card as="section" className="flex h-full flex-col gap-3">
         <SectionTitle>{t('me.data.download', 'Download my data')}</SectionTitle>
         <p className="text-body text-ink2">
@@ -113,6 +119,30 @@ export function DataAccount() {
       </Card>
       </div>
 
+    </section>
+  )
+}
+
+export function DataAccount() {
+  const { t } = useTranslation()
+  const { hash } = useLocation()
+
+  // K6 and K9 land here with #consents or #contacts: scroll to that section once the page is on screen
+  useEffect(() => {
+    if (!hash) return
+    const id = window.setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' }), 120)
+    return () => window.clearTimeout(id)
+  }, [hash])
+
+  return (
+    <Screen>
+      <Header title={t('me.data.title', 'Data and account')} back backTo="K1" />
+      <InfoSection />
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8 [&>*]:min-w-0">
+        <ContactsSection />
+        <ConsentsSection />
+      </div>
+      <YourData />
       <p className="text-sub text-ink3">{t('me.data.log', 'Requests and changes to your settings are kept in an activity log that cannot be changed.')}</p>
     </Screen>
   )

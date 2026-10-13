@@ -182,10 +182,10 @@ def test_a_food_question_points_to_review_suggestions_and_lunch_ideas(world):
     world["ideas"] = IDEAS
     world["ans"] = AI.Reply(reply=reply, reply_en=reply)
     o = turn("What should I eat for lunch?")
-    sentence = "You can find more ideas under Me, Review suggestions, and in Lunch ideas."
+    sentence = "You can find more ideas in Meal suggestions, on the Log tab, and in Lunch ideas."
     plain = texts.strip_links(o.text)                      # the screens are marked as [[K11|words]] links inside the sentence
     assert o.kind == "answer" and plain.count(sentence) == 1 and plain.endswith(sentence)
-    assert "[[K11|Review suggestions]]" in o.text and "[[E8|Lunch ideas]]" in o.text
+    assert "[[K11|Meal suggestions]]" in o.text and "[[E8|Lunch ideas]]" in o.text
     assert {a["to"] for a in o.actions} >= {"K11", "E8"}
     assert DOCTOR_OFFER not in o.text                       # a food question is not a symptom or a medicine question
 

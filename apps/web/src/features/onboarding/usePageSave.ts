@@ -61,7 +61,7 @@ export function usePageSave(cannotRead = false) {
         return false
       }
       setEmailWaiting(false)
-      if (res.email === 'failed') parts.push(t('onboarding.email.notSaved', 'We could not save your reminder email just now. It is kept on this device. You can add it later in Me, Privacy.'))
+      if (res.email === 'failed') parts.push(t('onboarding.email.notSavedV2', 'We could not save your reminder email just now. It is kept on this device. You can add it later in Me, Data and account.'))
       setNotice(parts.length ? parts.join(' ') : null)
       return true
     } catch (e) {

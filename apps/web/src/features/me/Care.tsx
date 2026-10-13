@@ -1,18 +1,17 @@
 /**
- * K3. Care plan: the next visit, the checks and screenings on record, and a link to the questions for the doctor (K12).
- * Dates only, nothing here says what to do about a check. The doctor brief is one tap away (L1).
+ * K3. Care plan: the next visit and the checks and screenings on record. Dates only, nothing here says what to do about a check.
+ * The questions for the doctor (K12) and the doctor brief (L1) have their own cards on Me, so they are not repeated here.
  */
 import { useTranslation } from 'react-i18next'
 import { useGo } from '@/app/navigation'
 import { Header, Screen } from '@/ui/layout'
-import { Alert, Button, Card, SectionTitle, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
-import { CalendarBlank, ChatCircleDots, Stethoscope } from '@/ui/icons'
+import { Alert, Button, Card, SectionTitle, Skeleton, StatusPill } from '@/ui/primitives'
+import { CalendarBlank } from '@/ui/icons'
 import { useCarePlan, type Appointment } from './care/api'
 import { PreventiveStatusPill } from './care/parts'
 
 export function Care() {
   const { t } = useTranslation()
-  const go = useGo()
   const { data, isError, isLoading } = useCarePlan()
   return (
     <Screen>
@@ -66,19 +65,6 @@ export function Care() {
             </ul>
           </section>
           </div>
-
-          <div>
-            <TextLink icon={ChatCircleDots} onClick={() => go('K12')}>
-              {t('me.care.questionsLink', 'Questions for your doctor')}
-            </TextLink>
-          </div>
-
-          <Card tone="soft" className="flex flex-col gap-3 lg:max-w-xl">
-            <p className="text-sub text-ink2">{t('me.menu.briefSub', 'A printable report of your readings, symptoms and medicines for your next visit.')}</p>
-            <Button icon={Stethoscope} onClick={() => go('L1')}>
-              {t('me.care.brief', 'Generate my doctor brief')}
-            </Button>
-          </Card>
         </>
       )}
     </Screen>

@@ -42,14 +42,14 @@
 |---|---|---|
 | Onboarding | Eleven pages: welcome with the reminder email and consents, eligibility, about you, diabetes history, medicines (scan only), low glucose, other conditions and check-ups, lab results, devices, work week, emergency contact. Each page saves to the record. Set up by chat (A4). "Start as new person" | A1 to A6 |
 | Home | Alert strip, one banner (an unfinished meal, or a food habit), dose card (or "Start here" for a new person), today's logging ring, one "for you" card. Everything else sits behind "See more" | B1 |
-| Notifications | Medicine clash alerts and reminders, with filters | B2 |
+| Notifications | Medicine clash alerts and a dated history of reminders (grouped by day, nothing is cleared), with filters | B2 |
 | Insights | Overview (month calendar, what changed, findings), Glucose, Food (macros, recent entries, calendar), Activity (heart rate and SpO2 block), Sleep and stress (heart rate and SpO2 block, blood pressure), Medication, glucose sensor sprint, "Why am I seeing this?" | C1 to C8 |
 | Day | One day on one clock, with tappable markers | D1, D2 |
 | Logging | Log hub with five tiles (meal, symptom, blood pressure, mood and sleep, workout), meal by photo (redesigned), blood pressure, symptom, check-in, "Saved" screen, edit or delete an entry, lunch ideas | E1 to E8 |
 | Workouts | Quick workout log (how hard it felt is optional; an unrated workout is saved and is not counted toward active minutes), live strength tracker with heart-rate effort from the server, labelled "Estimated from your heart rate" | F1, F2 |
 | Medicines | List with "My stock" and a refill estimate, scan a label (name threshold 0.6), check what we read (the name needs a tick below the standard bar), dose plan (every day), add by hand, medicine detail with the four-part explanation, clash box, clash details, "why was it missed", remove a medicine | H1 to H8 |
 | Urgent | Low-glucose alert (two tiers), call buttons, "I'm okay", email the emergency contact, demo trigger | J1 |
-| Me | Hub with every screen listed, what Smart Health has learned (with a row of numbers), diet tracking (baseline and calendar), care plan, questions for your doctor, log an appointment, review suggestions, connected sources, language and display, privacy and consent, appointment, data and account, emergency contact | K1 to K12 |
+| Me | Hub of eight cards: what Smart Health has learned, care plan, questions for your doctor, doctor brief, reminders, connected sources, language and display, data and account. **Data and account** holds the person's details (each with an edit), emergency contacts (more than one), consents and the data download or deletion | K1 to K12 |
 | Doctor brief | Brief home, share by link, printable A4 report with AI-worded key findings (with a fallback), read-only page for the doctor | L1, L2, L3, `/s/:token` |
 | Chat | "Ask Smart Health": a personal assistant that reads the person's own data (glucose, meals, food ideas, activity, sleep, blood pressure, medicines, symptoms they logged, doctor questions, what the app noticed) with its own guardrails: no diagnosis, no medicine advice, no verdicts, always a doctor referral for symptoms and an offer to add a doctor question, fixed pointers to Insights, Lunch ideas and Review suggestions. See [chat-guardrails.md](chat-guardrails.md). The Ask button is in the side rail on every screen from 768 px (not on the chat itself), and a floating pill above the tab bar on Home and the Insights overview on a phone | I1 |
 | Background | Reminders every minute, reminder emails, nightly learning, calendar events for doses (backend built; the recipe is paused, see section 11) | scheduler |
@@ -119,10 +119,10 @@ Launch
     ├─ E1 Log ── E2 Meal · E3 Blood pressure · E4 Symptom (red flag → J1) · E5 Check-in
     │          ├─ F1 Workout (→ F2 live) · E7 entry sheet → E6 Saved
     ├─ H1 Meds ── H2 Scan → H3 Review → H4 Plan · H8 By hand · H6 Detail · H5 Clash detail · My stock sheet
-    └─ K1 Me ── K2 Learned · K10 Diet tracking · K3 Care plan (→ K7 Log an appointment)
+    └─ K1 Me ── K2 Learned · K3 Care plan (→ K7 Log an appointment)
                ├─ K12 Questions for your doctor · L1 Brief (→ L2 share, L3 A4)
-               ├─ B2 Reminders · K4 Sources · K5 Language · K6 Privacy · K8 Data · K9 Emergency contact
-               └─ K11 Review suggestions · A1 Set up again
+               └─ B2 Reminders · K4 Sources · K5 Language · K8 Data and account (details, contacts, consents)
+    (K6, K9, K10 open their new place; K11 Meal suggestions is a card at the bottom of E1 Log; A1 opens first for the demo user)
 ```
 
 Resolved on 2026-10-11: **K1 (Me) lists every screen** (13 rows, in `features/me/Me.tsx`), so no built screen is orphaned. Only K7 is reached from another screen (K3), and K12 is on the Me list as well as from K3 and L1. The Me page is still a flat list; see section 12.1.
@@ -199,7 +199,7 @@ Not on Home: a low-stock note (the stock count shows on H1 only; see section 11)
 
 **B2 Notifications and alerts** · `/notifications`
 - **Clash alert cards** first (open alerts): tag "Medication review", time raised, the two medicines with a "Possible interaction" marker, the fixed sentence, the note that this does not mean the medicines are unsafe, and the buttons **Review interaction** (H5), **Contact clinic** (says there is no clinic number yet), **Ask a question** (typed question saved to the doctor questions, K12) and **Dismiss for now and add to my doctor questions** (hides on this device, with Restore).
-- **Reminders list**: each opens its screen (a meal reminder opens E2, a check-in E5, a lunch reminder E8, a refill H1). Filter chips **All / Medicines / Reminders**, "Mark all reminders as read", "Not for me" on a reminder. `POST /notifications/{id}/open` and `/dismiss`.
+- **Reminders list**: each opens its screen (a meal reminder opens E2, a check-in E5, a lunch reminder E8, a refill H1). Filter chips **All / Medicines / Reminders** (refill and dose reminders sit with Medicines). The list is the **last 45 days, grouped by day** (Today, Yesterday, then the date), newest first, from `GET /notifications/history`. **Nothing is cleared**: opening a reminder (`POST /notifications/{id}/open`) only marks it seen (the dot goes); a past or done one no longer opens a log screen. **"Not for me" is gone** (2026-10-13): the learning loop now learns only from opened or never opened. `/dismiss` stays in the API for older clients.
 - Empty state when there is nothing.
 
 ### 4C. Insights (C1 to C8)
@@ -350,18 +350,15 @@ Folder `features/me/`.
 
 **K1 Me** · `/me` (tab) · a list of cards with an icon, title, one-line description and arrow, in this order:
 1. What Smart Health has learned (K2), with a count of ideas to confirm
-2. Diet tracking (K10)
-3. Care plan (K3)
-4. Questions for your doctor (K12), with a count of open questions
-5. Doctor brief (L1)
-6. Reminders (B2)
-7. Connected sources (K4)
-8. Emergency contact (K9)
-9. Language and display (K5)
-10. Privacy and consent (K6)
-11. Data and account (K8)
-12. Review suggestions (K11): "For reviewers: rate the suggestions Smart Health made."
-13. Set up again (A1)
+2. Care plan (K3)
+3. Questions for your doctor (K12), with a count of open questions
+4. Doctor brief (L1)
+5. Reminders (B2)
+6. Connected sources (K4)
+7. Language and display (K5)
+8. Data and account (K8)
+
+Moved out on 2026-10-13: Diet tracking (the starting point and the calendar are at the bottom of Insights, Food), Emergency contact and Privacy and consent (now in Data and account), Review suggestions (now **Meal suggestions**, a card at the bottom of the Log page), Set up again (removed; the set-up pages stay at A1).
 
 **K2 What Smart Health has learned** · `/me/learned` (`features/me/Learned.tsx`)
 - **AI use today**: one line per kind of AI call (photo and label reads, text written for you, search lookups, safety checks, other AI use), with the paused note "Paused until tomorrow" when a kind has reached its daily limit (section 10).
@@ -374,17 +371,16 @@ Folder `features/me/`.
 **K3 Care plan** · `/me/care`
 - **Next visit** card (a planned visit or "No visit is planned yet") with **Log an appointment** (K7). **One rule for the next visit** (`care.is_next_visit`), also used for "Your next appointment" in the doctor brief: a visit the person confirmed (status planned, so not cancelled, missed or completed) whose time is now or later. A visit whose time has passed and is still marked planned is not next: it is listed under **Earlier visits** with the status **"Past"**, never as planned.
 - **Checks and screenings**: eye, foot, kidney, HbA1c test, flu vaccine, diabetes review, each with a status pill (up to date, due soon, overdue, no date) based only on the dates on record.
-- **Questions for your doctor**: a link to K12. The question list no longer sits on this page.
-- **Generate my doctor brief** (L1).
+- The link to Questions for your doctor (K12) and the Generate my doctor brief button were **removed on 2026-10-13**: both have their own cards on Me, so this page is only the next visit and the checks.
 
 **K7 Log an appointment** · `/me/appointment`
 - Form for **kind**, **date** and **time** (Singapore time). The kinds: GP review, diabetes review, eye screening, foot screening, kidney test, **blood test** (the old "HbA1c" label), other. **There is no Place field.** Vaccination and dental are no longer offered; an old visit of those kinds still shows with its old label, and a suggested visit keeps its kind so the person sees what they confirm.
 - Upcoming visits are listed with Cancel (cancel keeps the row). Or confirm a visit Smart Health suggested. No calendar is called from here.
 
 **K12 Questions for your doctor** · `/me/questions` (`features/me/Questions.tsx`)
-- Add a question (text box). The list shows **open questions first**. Each question can be marked done or not done, or removed. Each one shows where it came from: added by you, suggested by Smart Health, from your chat, or from your check-in.
+- Left: the add-question box, then **Suggested by Smart Health** as a plain ruled list (six fixed starter questions that ask, never advise; each has an Add link; one already on the list is not offered again; an added one is stored with origin `agent_suggested`, key checked against `care.SUGGESTED_QUESTIONS`). Right: **Your questions log**, a ruled list (not boxes): open questions first, then asked ones; each shows the question, where it came from and the date, **Remove** (underlined, top right, with a confirm), and **Already asked** (or **Not asked yet** to put it back). There is no "To ask" pill.
 - Open questions go into the doctor brief (L1 and L3).
-- Endpoints: `POST /care/questions`, `POST /care/questions/{id}/done`, `DELETE /care/questions/{id}`.
+- Endpoints: `POST /care/questions` (`text`, optional `suggestedKey`), `POST /care/questions/{id}/done`, `DELETE /care/questions/{id}`.
 
 **K4 Connected sources** · `/me/sources`
 - Read only list of where data comes from (glucose sensor, watch, logs) with last data time and a "not connected" state. Sensor sprint link. No connect or disconnect flows.
@@ -392,22 +388,19 @@ Folder `features/me/`.
 **K5 Language and display** · `/me/language`
 - Language (saved to the profile), **text size** (100% / 200%, with a live preview), **colour theme** (light, dark, system). The language list offers English, Chinese, Malay and Tamil; see section 3.2 for which screens are translated.
 
-**K6 Privacy and consent** · `/me/privacy`
-- One toggle per consent: using health data (required), sharing the doctor brief, adding to calendar, caregiver view, research use. Turning off "using health data" asks for confirmation. A history of when each was turned on and off. **Email reminders card** (`EmailCard`): the notification email address and the on/off switch.
+**K6 Privacy and consent** and **K9 Emergency contact** · `/me/privacy`, `/me/contact`: these addresses now open Data and account at the Consents and Emergency contacts sections.
 
-**K8 Data and account** · `/me/data`
-- **Download my data** (`GET /me/export`, a file). The export now includes the 2026-10-11 data: the onboarding answers on the profile (diagnosis year, care setting, Healthier SG, low-glucose history), body measurements (weight and waist), conditions, allergies, devices, lab results, blood pressure readings, medicine stock counts, doctor questions and appointments. **Delete my account and data**: type DELETE to confirm; the request is recorded and processed within 30 days; nothing is deleted by the screen.
+**K8 Data and account** · `/me/data` (`features/me/DataAccount.tsx`, parts in `features/me/account/`). Sections from the top:
+1. **Your information**: what the person told Smart Health at set-up (name, year of birth, sex, ethnic group, height, weight, waist; diagnosis year, where care is given, Healthier SG, lows in 3 months, help with a low; conditions, allergies, eye and foot checks; latest results; watch and sensor; work). Each answer has a grey underlined **edit** (or **add** when empty) that opens a pop-up with that one question and Save, written with `PUT /onboarding/profile` (only that answer). The list is data (`account/fields.tsx`), so a question can be dropped or added in one place. Mr Tan's record is shown, never changed (the pop-up says so and Save is off). With no profile yet it offers "Start set-up".
+2. **Emergency contacts**: a list (name, relationship, phone, email, edit, remove) and **Add another emergency contact**. After a save the pop-up closes, a toast says it is saved, and the contact shows a green "Saved to your account" mark. The first contact stays on `user_profile` (set-up, chat and the alert read it there); later ones are rows in `extra_emergency_contacts` (migration 0038, soft delete). Removing the first moves the next one up. The urgent alert emails every contact that has a valid email (one request each). Endpoints: `GET/POST /me/contacts`, `PUT/DELETE /me/contacts/{id}` (`primary` is the first); `GET/PUT /me/contact` kept.
+3. **Consents**: Use my health data (asks before turning off), Share my doctor brief, Let a caregiver see my data, Use my data for research, and **Allow reminder notifications** (reminders for medicines and for logs such as food and exercise, sent by email; it is the existing email opt-in, `GET/PUT /notify/email`) with an underlined **Change email address**. The calendar consent is no longer shown (the stored value is untouched). No On/Off captions, no history card.
+4. **Your data**: **Download my data** (`GET /me/export`, which now also lists extra emergency contacts) and **Delete my account and data** (type DELETE; recorded, processed within 30 days).
 
-**K9 Emergency contact** · `/me/contact`
-- Name, relationship, mobile number, email (with inline validation). Explains that if glucose is very low and the person does not answer, this contact is emailed. Warns when email is not set up. Save contact.
+**K10 Diet tracking** · `/me/progress`: opens Insights, Food (C3). There, below Recent entries: **Your starting point** (the baseline of the first two full weeks; not a score) and **Each day**, the month calendar (tap a day for its meals and totals; an unknown value is a dash).
 
-**K10 Diet tracking** · `/me/progress` (formerly "How it is going")
-- **Your starting point**: one card with the **baseline**, the first two full weeks the person logged (calories and salt per logged meal, and the share of doses taken on time). It is not a score.
-- **A calendar** of the month: each day shows the meals logged, and tapping a day opens its meals and the day's totals (calories, carbohydrate, protein, fat). A macro total is shown only when every meal that day has that value; an unknown value is a dash, never a lower number.
-- "Each week" has been removed. The page says it does not prove the app caused any change.
+**K11 Meal suggestions** · `/log/suggestions` (was Review suggestions on Me), a card at the bottom of the Log page (E1). For the care team and reviewers: rate each suggestion the app made (reasonable, not reasonable, unsafe). `GET /review/queue`, `POST /review/ratings`, `GET /review/score`.
 
-**K11 Review suggestions** · `/me/review`
-- For the care team and reviewers: rate each suggestion the app made (reasonable, not reasonable, unsafe). The score endpoints are `GET /review/queue`, `POST /review/ratings`, `GET /review/score`.
+**Demo user and set-up (A1)**: the demo user opens in set-up every time the person switches to it (and when the app opens on Home as demo); the link out reads **Skip** instead of "Finish later" and goes to Home. Mr Tan and new people are unchanged. Joely will scope which set-up questions stay; the answers are edited in Data and account.
 
 ### 4J. Doctor brief (L1 to L3)
 

@@ -327,7 +327,7 @@ def signposts(intent: str, wants_food: bool, noticed: bool) -> list[Signpost]:
     """Where in the app to look next, chosen by code from the triage labels. The model never decides a link."""
     out: list[Signpost] = []
     if wants_food or intent == "food_ideas":
-        out.append(Signpost("chat.sign_food", "K11", "Open Review suggestions"))
+        out.append(Signpost("chat.sign_food", "K11", "Open Meal suggestions"))
         out.append(Signpost("chat.sign_food", "E8", "Open Lunch ideas"))
     if noticed or intent == "insights":
         out.append(Signpost("chat.sign_insights", "C1", "Open Insights, Overview"))

@@ -290,3 +290,5 @@ class Notification(Camel):
     when: str
     to: str | None = None
     unread: bool
+    date: str | None = None            # only on the Reminders page list: the Singapore day the reminder belongs to, YYYY-MM-DD
+    current: bool | None = None        # only on that list: still waiting and inside its time window (not yet done or past)

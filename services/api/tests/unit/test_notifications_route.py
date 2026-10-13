@@ -15,7 +15,7 @@ def client(monkeypatch):
     app.include_router(route.router)
     route.invalidate()
     calls = []
-    monkeypatch.setattr(logstore, "notifications", lambda create=True: calls.append(create) or [])
+    monkeypatch.setattr(logstore, "notifications", lambda create=True, history=False: calls.append(("history", create) if history else create) or [])
     monkeypatch.setattr(logstore, "open_notification", lambda nid: calls.append(("open", nid)))
     monkeypatch.setattr(logstore, "dismiss_notification", lambda nid: calls.append(("dismiss", nid)))
     yield TestClient(app), calls
@@ -54,3 +54,23 @@ def test_the_list_is_cached_for_a_short_time_and_a_tap_clears_it(client):
     c.post("/notifications/6f1c2d3e-4a5b-5c6d-8e7f-9a0b1c2d3e4f/dismiss")
     c.get("/notifications")
     assert calls.count(True) == 2
+
+
+def test_the_reminders_page_list_is_its_own_read_and_writes_nothing_for_mr_tan(client):
+    c, calls = client
+    logstore.set_user("mr-tan")
+    c.get("/notifications/history")
+    logstore.set_user("demo")
+    c.get("/notifications/history")
+    c.get("/notifications")
+    assert calls == [("history", False), ("history", True), True]          # the Home list and the page list are cached apart
+
+
+def test_opening_a_reminder_clears_both_cached_lists(client):
+    c, calls = client
+    c.get("/notifications")
+    c.get("/notifications/history")
+    c.post("/notifications/6f1c2d3e-4a5b-5c6d-8e7f-9a0b1c2d3e4f/open")
+    c.get("/notifications")
+    c.get("/notifications/history")
+    assert calls.count(True) == 2 and calls.count(("history", True)) == 2

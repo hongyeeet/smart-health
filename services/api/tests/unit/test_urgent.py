@@ -208,3 +208,20 @@ def test_escalating_with_no_contact_is_not_marked_escalated(monkeypatch):
     assert "escalatedAt" not in payload and payload["emailQueued"] is False and payload["escalationNote"] == "no_contact_email"
     state = U.resolve(NOW, None, alert(note="no_contact_email"))
     assert state["status"] == "active" and state["escalated"] is False and state["note"] == "no_contact_email"
+
+
+def test_escalate_emails_every_contact_that_has_an_email(monkeypatch):
+    _setup(monkeypatch, {"person": "Mr Tan", "name": "Ann", "phone": "91234567", "email": "ann@x.com",
+                         "others": [{"name": "Ben", "phone": None, "email": "ben@x.com"}, {"name": "Cy", "phone": "81234567", "email": None}]})
+    c = FakeConn()
+    _, events = U.escalate(c, "u1", NOW)
+    sent = [json.loads(p[2]) for s, p in c.calls if "insert into notifications" in s]
+    assert [(m["contactName"], m["contactEmail"]) for m in sent] == [("Ann", "ann@x.com"), ("Ben", "ben@x.com")]
+    assert len({m["key"] for m in sent}) == 2                                    # each contact has its own request
+    assert "ben@x.com" not in json.dumps(events, default=str)
+
+
+def test_another_contact_alone_is_enough_for_the_alert_screen():
+    contact = {"person": "Mr Tan", "name": None, "phone": None, "email": None, "others": [{"name": "Ben", "phone": "81234567", "email": "ben@x.com"}]}
+    v = U.view(U.resolve(NOW, None, None), contact, NOW)
+    assert v["has_contact"] and v["channels"] == {"phone": True, "email": True} and v["contact_name"] == "Ben"

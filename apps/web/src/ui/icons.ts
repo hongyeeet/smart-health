@@ -55,6 +55,7 @@ export {
   PersonSimpleSwim,
   PersonSimpleTaiChi,
   SoccerBall,
+  Envelope,
   Phone,
   Pill,
   Plus,

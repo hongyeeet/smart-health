@@ -955,16 +955,18 @@ def reminder_time(key: str, day: date, lunch_start_min: int) -> datetime | None:
     return datetime(day.year, day.month, day.day, tzinfo=TZ) + timedelta(minutes=round(hour * 60))
 
 
-def notifications(create: bool = True) -> list[dict]:
+def notifications(create: bool = True, history: bool = False) -> list[dict]:
     """Reminders from the day's progress, kept in the `notifications` table so opening them is recorded. A reminder is only
     created inside its time window and is hidden again once the window has passed, so nothing nags at the wrong time.
     With create=False nothing is written (used for a GET about a person whose reminders must not change from a page view).
+    With history=True (the Reminders page) nothing is hidden for being old, done or past its window: the last 45 days of in-app reminders
+    come back newest first, each with its local `date` and `current` (still waiting and inside its window). Home keeps the short list.
     The whole call shares ONE database connection."""
     with one_connection():
-        return _notifications(create)
+        return _notifications(create, history)
 
 
-def _notifications(create: bool) -> list[dict]:
+def _notifications(create: bool, history: bool = False) -> list[dict]:
     p = progress()
     now = datetime.now(TZ)
     h = _hour(now)
@@ -1050,9 +1052,15 @@ def _notifications(create: bool) -> list[dict]:
                    (key.startswith("workout-") and key.endswith(today) and items["workout"]["done"]) or                    (key.startswith("activity-") and key.endswith(today) and items["workout"]["done"]) or                    (key.startswith("lunch-") and key.endswith(today) and lunch_today >= 1)
             if done and create:
                 c.execute("update notifications set acted_at=now(), action='logged' where id=%s", (row["id"],))
-        rows = c.execute(
-            "select id, kind, scheduled_for, opened_at, payload from notifications where user_id=%s and acted_at is null order by scheduled_for desc limit 30", (current_user(),)
-        ).fetchall()
+        if history:
+            rows = c.execute(
+                "select id, kind, scheduled_for, opened_at, acted_at, payload from notifications where user_id=%s and channel='in_app' and kind <> 'urgent' "
+                "and scheduled_for > now() - interval '45 days' and scheduled_for <= now() + interval '2 hours' order by scheduled_for desc limit 80", (current_user(),)
+            ).fetchall()
+        else:
+            rows = c.execute(
+                "select id, kind, scheduled_for, opened_at, acted_at, payload from notifications where user_id=%s and acted_at is null order by scheduled_for desc limit 30", (current_user(),)
+            ).fetchall()
 
     def live(r) -> bool:
         until = r["payload"].get("until")
@@ -1072,13 +1080,19 @@ def _notifications(create: bool) -> list[dict]:
 
     out = []
     for r in rows:
-        if not live(r):
+        if not history and not live(r):
             continue
         title, body = text(r)
         if not title and not body:
             continue
-        out.append({"id": str(r["id"]), "kind": r["kind"], "title": title, "body": body,
-                    "when": _when_label(r["scheduled_for"]), "to": r["payload"].get("to"), "unread": r["opened_at"] is None})
+        item = {"id": str(r["id"]), "kind": r["kind"], "title": title, "body": body,
+                "when": _when_label(r["scheduled_for"]), "to": r["payload"].get("to"), "unread": r["opened_at"] is None}
+        if history:
+            local = _aware(r["scheduled_for"]).astimezone(TZ)
+            item["when"] = local.strftime("%I:%M %p").lstrip("0").lower()      # the day is the heading above it, so the row shows only the time
+            item["date"] = local.date().isoformat()
+            item["current"] = r["acted_at"] is None and live(r)
+        out.append(item)
     return out
 
 

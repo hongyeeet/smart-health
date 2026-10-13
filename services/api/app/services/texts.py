@@ -459,10 +459,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "ta": "மேலும் விவரங்களை Insights தாவலில், [[C1|Overview]] பகுதியில் பார்க்கலாம்.",
     },
     "chat.sign_food": {
-        "en": "You can find more ideas under Me, [[K11|Review suggestions]], and in [[E8|Lunch ideas]].",
-        "zh": "你可以在“我”里的[[K11|查看建议]]和[[E8|午餐灵感]]中找到更多想法。",
-        "ms": "Anda boleh mendapatkan lebih banyak idea di bawah Saya, [[K11|Semak cadangan]], dan di [[E8|Idea makan tengah hari]].",
-        "ta": "மேலும் யோசனைகளை Me தாவலில் [[K11|Review suggestions]] பகுதியிலும், [[E8|Lunch ideas]] பகுதியிலும் காணலாம்.",
+        "en": "You can find more ideas in [[K11|Meal suggestions]], on the Log tab, and in [[E8|Lunch ideas]].",
+        "zh": "你可以在“记录”页的[[K11|餐食建议]]和[[E8|午餐灵感]]中找到更多想法。",
+        "ms": "Anda boleh mendapatkan lebih banyak idea di [[K11|Cadangan makanan]], di tab Log, dan di [[E8|Idea makan tengah hari]].",
+        "ta": "மேலும் யோசனைகளை Log தாவலில் [[K11|Meal suggestions]] பகுதியிலும், [[E8|Lunch ideas]] பகுதியிலும் பார்க்கலாம்.",
     },
     "chat.sign_meds": {
         "en": "You can see each medicine on the [[H1|Meds tab]].",

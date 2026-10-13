@@ -167,21 +167,43 @@ def load_alert(conn: psycopg.Connection, user: Any) -> dict | None:
             "note": p.get("escalationNote")}
 
 
+def _extra_contacts(conn: psycopg.Connection, user: Any) -> list[dict[str, Any]]:
+    """The contacts added after the first (migration 0038), oldest first. [] while the table is not there yet."""
+    if not conn.execute("select to_regclass('public.extra_emergency_contacts') t").fetchone()["t"]:
+        return []
+    rows = conn.execute(
+        "select name, phone, email from extra_emergency_contacts where user_id=%s and deleted_at is null order by created_at, id", (user,)
+    ).fetchall()
+    out = []
+    for r in rows:
+        email = (r["email"] or "").strip() or None
+        out.append({"name": (r["name"] or "").strip() or None, "phone": (r["phone"] or "").strip() or None, "email": email if valid_email(email) else None})
+    return out
+
+
 def load_contact(conn: psycopg.Connection, user: Any) -> dict[str, Any]:
+    """The first contact (user_profile) plus `others`: every contact added later. The screen offers a phone or an email if ANY contact has one."""
     email_col = "emergency_contact_email" if delivery_columns_exist(conn) else "null::text"
     r = conn.execute(
         f"select display_name, emergency_contact_name n, emergency_contact_phone ph, {email_col} em from user_profile where user_id=%s", (user,)
     ).fetchone()
+    others = _extra_contacts(conn, user)
     if not r:
-        return {"person": None, "name": None, "phone": None, "email": None}
+        return {"person": None, "name": None, "phone": None, "email": None, "others": others}
     phone = (r["ph"] or "").strip() or None
     email = (r["em"] or "").strip() or None
-    return {"person": r["display_name"], "name": (r["n"] or "").strip() or None, "phone": phone, "email": email if valid_email(email) else None}
+    return {"person": r["display_name"], "name": (r["n"] or "").strip() or None, "phone": phone, "email": email if valid_email(email) else None, "others": others}
 
 
-def insert_contact_request(conn: psycopg.Connection, user: Any, alert_id: str, title: str, body: str, fields: dict[str, Any]) -> None:
-    """The only SQL that touches the 0031 columns. Call it only when delivery_columns_exist() is true."""
-    payload = {"key": f"urgent-{alert_id}-contact", "role": "contact", "title": title, "body": body, "to": "J1", **fields}
+def contact_emails(contact: dict[str, Any]) -> list[tuple[str | None, str]]:
+    """Every (name, email) the alert should be sent to: the first contact, then the others. Contacts without a usable email are left out."""
+    people = [contact, *contact.get("others", [])]
+    return [(c["name"], c["email"]) for c in people if c.get("email")]
+
+
+def insert_contact_request(conn: psycopg.Connection, user: Any, alert_id: str, title: str, body: str, fields: dict[str, Any], suffix: str = "") -> None:
+    """The only SQL that touches the 0031 columns. Call it only when delivery_columns_exist() is true. `suffix` tells the contacts apart."""
+    payload = {"key": f"urgent-{alert_id}-contact{suffix}", "role": "contact", "title": title, "body": body, "to": "J1", **fields}
     # acted_at is set so the person does not see their contact's email text in their own notification list
     conn.execute(
         "insert into notifications (user_id, kind, scheduled_for, acted_at, action, channel, payload, delivery_status, delivery_to) "
@@ -217,9 +239,10 @@ def view(state: dict[str, Any], contact: dict[str, Any], now: datetime) -> dict[
         "id": state["id"], "status": state["status"], "tier": state["tier"], "value": state["value"], "since": since,
         "age_minutes": max(0, int((now - since).total_seconds() // 60)) if since else None,
         "recheck_at": state["recheck_at"], "contact_after": state["contact_after"], "demo": state["demo"],
-        "has_contact": bool(contact["name"] or contact["phone"] or contact["email"]),
-        "contact_name": contact["name"], "contact_phone": contact["phone"],
-        "channels": {"phone": bool(contact["phone"]), "email": bool(contact["email"])},
+        "has_contact": bool(contact["name"] or contact["phone"] or contact["email"] or contact.get("others")),
+        "contact_name": contact["name"] or next((o["name"] for o in contact.get("others", []) if o.get("name")), None),
+        "contact_phone": contact["phone"] or next((o["phone"] for o in contact.get("others", []) if o.get("phone")), None),
+        "channels": {"phone": bool(contact["phone"] or any(o.get("phone") for o in contact.get("others", []))), "email": bool(contact_emails(contact))},
         "email_queued": state["email_queued"], "escalated": state["escalated"], "escalation_note": state.get("note"),
         "emergency_number": EMERGENCY_NUMBER, "recheck_minutes": RECHECK_MINUTES, "contact_after_minutes": CONTACT_AFTER_MINUTES,
     }
@@ -272,13 +295,15 @@ def escalate(conn: psycopg.Connection, user: Any, now: datetime) -> tuple[dict, 
     contact = load_contact(conn, user)
     title, body = contact_message(contact["person"], state["value"], state["since"], state["demo"], texts.person_language(user, conn=conn))
     queued, reason = False, None
-    if not contact["email"]:
+    targets = contact_emails(contact)
+    if not targets:
         reason = "no_contact_email"
     elif not delivery_columns_exist(conn):
         reason = "email_not_ready"
     else:
-        insert_contact_request(conn, user, aid, title, body, {
-            "tier": state["tier"], "value": state["value"], "demo": state["demo"], "contactName": contact["name"], "contactEmail": contact["email"]})
+        for i, (cname, cemail) in enumerate(targets):       # one email request per contact
+            insert_contact_request(conn, user, aid, title, body, {
+                "tier": state["tier"], "value": state["value"], "demo": state["demo"], "contactName": cname, "contactEmail": cemail}, suffix="" if i == 0 else f"-{i + 1}")
         queued = True
     if queued:
         _patch(conn, aid, escalatedAt=now.isoformat(), emailQueued=True, escalationNote=None)
@@ -286,7 +311,7 @@ def escalate(conn: psycopg.Connection, user: Any, now: datetime) -> tuple[dict, 
         _patch(conn, aid, emailQueued=False, escalationNote=reason, escalationTriedAt=now.isoformat())
     events.append(("urgent.escalated", aid, {"tier": state["tier"], "value": state["value"], "demo": state["demo"], "emailQueued": queued, "reason": reason}))
     if queued:
-        events.append(("urgent.contact_email_requested", aid, {"demo": state["demo"], "contactName": contact["name"]}))  # the address itself is not logged
+        events.append(("urgent.contact_email_requested", aid, {"demo": state["demo"], "contactName": targets[0][0], "contacts": len(targets)}))  # the address itself is not logged
     return get_state(conn, user, now), events
 
 

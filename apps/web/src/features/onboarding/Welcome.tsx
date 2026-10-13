@@ -89,7 +89,7 @@ export function Welcome() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-body font-bold">{t('onboarding.email.on', 'Send me reminder emails')}</p>
-            <p className="text-sub text-ink2">{t('onboarding.email.onSub', 'You can turn this off any time in Me, Privacy.')}</p>
+            <p className="text-sub text-ink2">{t('onboarding.email.onSubV2', 'You can turn this off any time in Me, Data and account.')}</p>
           </div>
           <Toggle on={a.reminderOn} onChange={(reminderOn) => set({ reminderOn })} label={t('onboarding.email.on', 'Send me reminder emails')} />
         </div>

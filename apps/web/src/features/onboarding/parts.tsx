@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { appConfig } from '@/config/app'
 import { href } from '@/app/routeIds'
 import { cn } from '@/lib/cn'
+import { useUi } from '@/state/store'
+import { startsInSetup } from './startGate'
 import { Alert, Button, Card, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
 import { Check, Leaf, Lock } from '@/ui/icons'
 
@@ -162,16 +164,17 @@ export function Dock({ onBack, onNext, nextLabel, nextDisabled }: { onBack?: () 
 
 /**
  * The secondary links, in the page flow above the Dock (not inside the sticky bar). "Finish later" leaves for Home at any point:
- * each page is already saved when Continue works, and the rest can be done later from Me, Replay onboarding.
+ * each page is already saved when Continue works, and the rest can be changed later in Me, Data and account.
  */
 export function Later({ children, label }: { children?: ReactNode; label?: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const demo = startsInSetup(useUi((s) => s.userKey))      // the demo user skips set-up instead of finishing it later
   return (
     <div className="flex flex-col items-center gap-1 pt-2">
       {children}
       <TextLink onClick={() => navigate(href('B1'))} className="self-center">
-        {label ?? t('onboarding.later', 'Finish later')}
+        {demo ? t('onboarding.skipV2', 'Skip') : (label ?? t('onboarding.later', 'Finish later'))}
       </TextLink>
     </div>
   )

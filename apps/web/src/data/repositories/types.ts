@@ -234,9 +234,9 @@ export interface Api {
   revokeShareLink(): Promise<void>
 
   listNotices(): Promise<Notice[]>
+  /** The Reminders page: the last 45 days, newest first; nothing leaves the list when it is done or opened */
+  listNoticeHistory(): Promise<Notice[]>
   openNotice(id: string): Promise<void>
-  /** "Not for me": removes the reminder and tells the learning loop */
-  dismissNotice(id: string): Promise<void>
   listSources(): Promise<ConnectedSource[]>
   syncSources(): Promise<void>
 

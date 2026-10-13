@@ -18,7 +18,6 @@ import { LogWorkout } from '@/features/workout/LogWorkout'
 import { Home } from '@/features/home/Home'
 import { Me } from '@/features/me/Me'
 import { Learned } from '@/features/me/Learned'
-import { Progress } from '@/features/me/Progress'
 import { LunchIdeas } from '@/features/log/LunchIdeas'
 import { Notifications } from '@/features/home/Notifications'
 import { InteractionDetail } from '@/features/alerts/InteractionDetail'
@@ -41,11 +40,9 @@ import { ChatSetup } from '@/features/onboarding/ChatSetup'
 import { Care } from '@/features/me/Care'
 import { Sources } from '@/features/me/Sources'
 import { Language } from '@/features/me/Language'
-import { Privacy } from '@/features/me/Privacy'
 import { Appointment } from '@/features/me/Appointment'
 import { Questions } from '@/features/me/Questions'
 import { DataAccount } from '@/features/me/DataAccount'
-import { Contact } from '@/features/me/Contact'
 import { Urgent } from '@/features/urgent/Urgent'
 import { ROUTES, routeIds, type RouteId } from './routeIds'
 
@@ -79,16 +76,19 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   K3: Care,
   K4: Sources,
   K5: Language,
-  K6: Privacy,
+  /** Moved into Data and account (consents section). */
+  K6: () => <Navigate to="/me/data#consents" replace />,
   K7: Appointment,
   K12: Questions,
   K8: DataAccount,
-  K9: Contact,
+  /** Moved into Data and account (emergency contacts section). */
+  K9: () => <Navigate to="/me/data#contacts" replace />,
   B2: Notifications,
   K1: Me,
   L1: BriefHome,
   K2: Learned,
-  K10: Progress,
+  /** Moved: the starting point and the calendar are on Insights, Food. */
+  K10: () => <Navigate to="/insights/food" replace />,
   F1: LogWorkout,
   F2: WorkoutTracker,
   H1: MedList,

@@ -69,3 +69,16 @@ class ContactOut(Camel):
     phone: str | None = None
     email: str | None = None
     email_supported: bool                      # False until migration 0031 adds the column; the screen says so
+
+
+class ContactItem(Camel):
+    id: str                                    # "primary" for the first contact, a uuid for the others
+    name: str | None = None
+    relation: str | None = None
+    phone: str | None = None
+    email: str | None = None
+
+
+class ContactsOut(Camel):
+    contacts: list[ContactItem]
+    email_supported: bool

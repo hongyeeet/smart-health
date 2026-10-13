@@ -79,7 +79,7 @@ def save_scan(conn: psycopg.Connection, user_id: str, masked: MaskResult | None,
     bronze_id = _one(
         conn, "insert into bronze_medication (user_id, source, payload, object_key, checksum, processing_status) values (%s, 'scan', %s, %s, %s, 'processed') "
         "on conflict (user_id, checksum) do update set checksum = excluded.checksum returning id",
-        (user_id, Jsonb({"kind": "prescription_scan_upload", "masked": True, "mask_summary": outcome.mask_summary}), key, checksum))[0]
+        (user_id, Jsonb({"kind": "prescription_scan_upload", "masked": not (outcome.mask_summary or {}).get("ocr_off"), "mask_summary": outcome.mask_summary}), key, checksum))[0]
     run_id = _one(conn,
         "insert into agent_runs (user_id, agent, trigger, model_id, prompt_version, status, input_tokens, output_tokens, latency_ms, finished_at) "
         "values (%s, 'scan_extractor', 'scan', %s, %s, %s, %s, %s, %s, now()) returning id",

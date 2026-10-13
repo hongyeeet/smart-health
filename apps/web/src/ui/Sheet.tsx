@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, useDragControls } from 'motion/react'
 import { duration, ease } from '@/motion/tokens'
 import { X } from './icons'
@@ -6,6 +7,8 @@ import { X } from './icons'
 /**
  * Bottom sheet. Slides up on the drawer curve, leaves faster than it arrives, closes on a quick flick
  * (velocity) and not only on distance, and keeps focus inside while open.
+ * It is drawn into the app frame (the element with data-ts), not where it is written, so it always covers the screen even when the page
+ * behind it is scrolled (inside a scrolled page it used to appear at the top of the page's content).
  */
 export function Sheet({ title, onClose, children, label }: { title: ReactNode; onClose: () => void; children: ReactNode; label?: string }) {
   const controls = useDragControls()
@@ -13,7 +16,7 @@ export function Sheet({ title, onClose, children, label }: { title: ReactNode; o
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null
-    panel.current?.focus()
+    panel.current?.focus({ preventScroll: true })      // the panel starts below the frame; a plain focus() would scroll the frame up to it
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -24,7 +27,8 @@ export function Sheet({ title, onClose, children, label }: { title: ReactNode; o
     }
   }, [onClose])
 
-  return (
+  const host = typeof document !== 'undefined' ? document.querySelector('[data-ts]') : null
+  const sheet = (
     <div className="absolute inset-0 z-40 flex flex-col justify-end">
       <motion.button
         type="button"
@@ -70,4 +74,5 @@ export function Sheet({ title, onClose, children, label }: { title: ReactNode; o
       </motion.div>
     </div>
   )
+  return host ? createPortal(sheet, host) : sheet
 }

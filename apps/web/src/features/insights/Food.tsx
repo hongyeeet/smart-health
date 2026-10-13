@@ -1,12 +1,13 @@
 /**
  * C3 — Food. What was eaten, day by day (calories, carbohydrate, protein, fat and salt), how each food moved glucose, the recent
- * entries with the detail of every meal, and the macro calendar at the bottom (tap a day for its meals).
+ * entries with the detail of every meal, then "Your starting point" (the first two full weeks) and the macro calendar at the bottom (tap a day for its meals).
  */
 import { useTranslation } from 'react-i18next'
-import { useDietDaysFor, useInsightsFood } from '@/data/hooks'
+import { useDietDaysFor, useInsightsFood, useProgress } from '@/data/hooks'
 import type { InsightsPattern } from '@/data/types'
 import { Split } from '@/ui/layout'
 import { Card, SectionTitle, UnverifiedTag } from '@/ui/primitives'
+import { BaselineCard } from '@/features/me/progress/BaselineCard'
 import { DietCalendar } from '@/features/me/progress/DietCalendar'
 import { Gate, InsightsFrame, Plain, useInsightsDays } from './shared'
 import { MacroCharts } from './food/MacroCharts'
@@ -38,6 +39,7 @@ export function FoodTab() {
   const { data, isError } = useInsightsFood(days)
   // the day totals use the same period as the food read, so the charts and the ranking cover the same days
   const diet = useDietDaysFor(data?.period.start, data?.period.end)
+  const progress = useProgress()
   const { t } = useTranslation()
   return (
     <InsightsFrame tab="C3" period={data?.period} why="food">
@@ -63,6 +65,7 @@ export function FoodTab() {
         )}
       </Gate>
       <RecentEntries />
+      {progress.data && <BaselineCard progress={progress.data} />}
       <DietCalendar />
     </InsightsFrame>
   )

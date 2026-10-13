@@ -303,7 +303,7 @@ export function AboutYou() {
           <Field label={t('onboarding.contact.relation', 'Who they are to you')} value={a.contactRelation} onChange={(contactRelation) => set({ contactRelation })} placeholder={t('onboarding.contact.relationPh', 'For example, wife, son or friend')} hint={a.contactRelation.trim() ? undefined : t('onboarding.contact.needed', 'Needed to continue.')} />
           <Field label={t('onboarding.contact.phone', 'Their mobile number')} type="tel" inputMode="tel" value={a.contactPhone} onChange={(contactPhone) => set({ contactPhone })} placeholder="+65 9123 4567" error={contactProblems.contactPhone} hint={a.contactPhone.trim() ? t('onboarding.contact.phoneHint', 'Digits, with an optional + at the front.') : t('onboarding.contact.needed', 'Needed to continue.')} />
           <Field label={t('onboarding.contact.email', 'Their email')} value={a.contactEmail} onChange={(contactEmail) => set({ contactEmail })} placeholder="name@gmail.com" error={contactProblems.contactEmail} hint={a.contactEmail.trim() ? undefined : t('onboarding.contact.needed', 'Needed to continue.')} />
-          <p className="text-sub text-ink3">{t('onboarding.contact.hint', 'Used for safety only. You can change this later in Me.')}</p>
+          <p className="text-sub text-ink3">{t('onboarding.contact.hintV2', 'Used for safety only. You can change this later in Me, Data and account.')}</p>
         </Group>
       )}
 

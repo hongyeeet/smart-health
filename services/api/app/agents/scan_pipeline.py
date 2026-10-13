@@ -22,8 +22,11 @@ _state: dict[str, Any] = {}
 def _components(conn: psycopg.Connection) -> dict[str, Any]:
     if not _state:
         s = get_settings()
-        _state["client"] = VertexClient(s.google_api_key.get_secret_value(), s.google_cloud_project, s.google_cloud_region)
-        _state["ocr"] = default_ocr()          # slow to load: once
+        # A photo read normally takes 10 to 30 seconds. A call that stalls is cut off at 40 s and tried once more, so the worst case is about 85 s
+        # (the web app waits 100 s), not the 3 minutes four tries of 45 s could take.
+        _state["client"] = VertexClient(s.google_api_key.get_secret_value(), s.google_cloud_project, s.google_cloud_region, timeout_s=40.0, max_retries=1)
+        _state["ocr_enabled"] = s.scan_ocr_enabled
+        _state["ocr"] = default_ocr() if s.scan_ocr_enabled else None          # slow to load: once (not loaded when the text reader is off)
         _state["model"] = s.llm_vision_model
         _state["threshold"] = s.scan_confidence_threshold
     return _state
@@ -38,4 +41,4 @@ def run(image: bytes, conn: psycopg.Connection, user_id: str) -> tuple[ScanOutco
         return ScanOutcome(status="failed", review_mode="manual", reasons=["model_unavailable"]), None
     names = [r[0] for r in conn.execute("select display_name from user_profile where user_id = %s", (user_id,)).fetchall() if r[0]]
     return extract_scan(image, client=c["client"], model=c["model"], ocr=c["ocr"], known_names=names,
-                        threshold=c["threshold"])
+                        threshold=c["threshold"], ocr_enabled=c["ocr_enabled"])

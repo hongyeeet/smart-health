@@ -37,6 +37,20 @@ export interface Contact {
   emailSupported: boolean
 }
 
+/** One emergency contact in the list. `id` is "primary" for the first one, a uuid for the others. */
+export interface ContactItem {
+  id: string
+  name: string | null
+  relation: string | null
+  phone: string | null
+  email: string | null
+}
+
+export interface ContactsState {
+  contacts: ContactItem[]
+  emailSupported: boolean
+}
+
 export interface ContactInput {
   name: string
   relation: string
@@ -59,6 +73,7 @@ const keys = {
   language: ['me', 'language'] as const,
   consents: ['me', 'consents'] as const,
   contact: ['me', 'contact'] as const,
+  contacts: ['me', 'contacts'] as const,
   email: ['notify', 'email'] as const,
 }
 
@@ -129,5 +144,36 @@ export function useSaveContact() {
   return useMutation({
     mutationFn: (c: ContactInput) => request<Contact>('/me/contact', { method: 'PUT', body: JSON.stringify(c) }),
     onSuccess: (data) => qc.setQueryData(keys.contact, data),
+  })
+}
+
+/* ------------------------------------------------------------------ all emergency contacts (Data and account) */
+export const useContacts = () => useQuery({ queryKey: keys.contacts, queryFn: () => request<ContactsState>('/me/contacts') })
+
+/** Add a contact (id omitted) or change one. Every answer is the whole new list, which replaces the cached one. */
+export function useSaveContactItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (a: { id?: string; contact: ContactInput }) =>
+      a.id
+        ? request<ContactsState>(`/me/contacts/${encodeURIComponent(a.id)}`, { method: 'PUT', body: JSON.stringify(a.contact) })
+        : request<ContactsState>('/me/contacts', { method: 'POST', body: JSON.stringify(a.contact) }),
+    onSuccess: (data) => {
+      qc.setQueryData(keys.contacts, data)
+      void qc.invalidateQueries({ queryKey: keys.contact })
+      void qc.invalidateQueries({ queryKey: ['urgent'] })
+    },
+  })
+}
+
+export function useRemoveContactItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => request<ContactsState>(`/me/contacts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    onSuccess: (data) => {
+      qc.setQueryData(keys.contacts, data)
+      void qc.invalidateQueries({ queryKey: keys.contact })
+      void qc.invalidateQueries({ queryKey: ['urgent'] })
+    },
   })
 }

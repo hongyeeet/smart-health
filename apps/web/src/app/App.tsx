@@ -10,23 +10,29 @@ import { Day } from '@/features/day/Day'
 import { request } from '@/data/repositories/http'
 import { useUi } from '@/state/store'
 import type { SavedOnboarding } from '@/features/onboarding/api'
-import { NEW_PERSON_PREFIX, needsSetup } from '@/features/onboarding/startGate'
+import { NEW_PERSON_PREFIX, needsSetup, startsInSetup } from '@/features/onboarding/startGate'
 
 /* Set when the app opened at "/": only that first visit is checked. Later visits to Home (for example "Go to Home" from setup) are not. */
 const openedAtHome = typeof window !== 'undefined' && window.location.pathname === '/'
 let startChecked = false
 
 /**
- * Home, after the start-up check. A new person who has not finished setup is sent to Welcome once, when the app opens on Home.
- * If the record cannot be read, Home opens as usual, so no one is kept from it.
+ * Home, after the start-up check. A new person who has not finished setup is sent to Welcome once, when the app opens on Home. The demo
+ * user is sent there every time the app opens on Home (set-up has a Skip link for it). If the record cannot be read, Home opens as usual,
+ * so no one is kept from it.
  */
 function StartGate({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const user = useUi((s) => s.userKey)
-  const [checking, setChecking] = useState(() => openedAtHome && !startChecked && user.startsWith(NEW_PERSON_PREFIX))
+  const [checking, setChecking] = useState(() => openedAtHome && !startChecked && (user.startsWith(NEW_PERSON_PREFIX) || startsInSetup(user)))
   useEffect(() => {
     startChecked = true
     if (!checking) return
+    if (startsInSetup(user)) {                      // the demo user does not need the record read: set-up opens first
+      navigate(href('A1'), { replace: true })
+      setChecking(false)
+      return
+    }
     let live = true
     request<SavedOnboarding>('/onboarding')
       .then((saved) => {

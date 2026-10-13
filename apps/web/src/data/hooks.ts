@@ -87,6 +87,7 @@ export const useCarePlan = () => useQuery({ queryKey: ['care'], queryFn: () => a
 export const useBrief = () => useQuery({ queryKey: ['brief'], queryFn: () => api.getBrief() })
 export const useDoctorReport = (days: ReportDays) => useQuery({ queryKey: ['doctorReport', days], queryFn: () => api.getDoctorReport(days) })
 export const useNotices = () => useQuery({ queryKey: ['notices'], queryFn: () => api.listNotices() })
+export const useNoticeHistory = () => useQuery({ queryKey: ['noticeHistory'], queryFn: () => api.listNoticeHistory() })
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => request<UserList>('/users'), staleTime: Infinity })
 
 /** Switch between the demo user and Mr Tan. Everything cached belongs to the previous person, so it is reset and reloaded. */
@@ -127,6 +128,5 @@ export const usePlanAppointment = () => useWrite((a: { label: string; when: stri
 export const useShare = () => useWrite(() => api.createShareLink())
 export const useRevoke = () => useWrite(() => api.revokeShareLink())
 export const useOpenNotice = () => useWrite((id: string) => api.openNotice(id))
-export const useDismissNotice = () => useWrite((id: string) => api.dismissNotice(id))
 export const useSync = () => useWrite(() => api.syncSources())
 export const useChat = () => useMutation({ mutationFn: (t: string) => api.sendChat(t) })

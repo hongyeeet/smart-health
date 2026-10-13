@@ -260,12 +260,18 @@ def check_question_text(text: str) -> str:
     return clean
 
 
-def add_question(conn: psycopg.Connection, user_id: str, text: str) -> dict[str, Any]:
+# The starter questions Smart Health offers under the writing box. Fixed wording that asks, never advises. The app shows them in the
+# person's language; only the key is checked here, so a made-up key is saved as the person's own question.
+SUGGESTED_QUESTIONS = ("results", "medicines", "checks", "highlow", "bp", "food_activity")
+
+
+def add_question(conn: psycopg.Connection, user_id: str, text: str, suggested_key: str | None = None) -> dict[str, Any]:
     text = check_question_text(text)
+    origin = "agent_suggested" if suggested_key in SUGGESTED_QUESTIONS else "user"
     row = conn.execute(
-        """insert into doctor_questions (user_id, text, origin, status) values (%s, %s, 'user', 'open')
+        """insert into doctor_questions (user_id, text, origin, status) values (%s, %s, %s, 'open')
            returning id, text, origin, status, created_at""",
-        (user_id, text),
+        (user_id, text, origin),
     ).fetchone()
     return question_out(row)
 

@@ -308,7 +308,7 @@ export function Summary() {
           <p className="mt-1.5">{t('onboarding.sum.local', 'Some answers, such as the diabetes history and the lab results, are kept on this device for now.')}</p>
         )}
       </Alert>
-      {emailNote && <Alert tone="warn">{t('onboarding.email.notSaved', 'We could not save your reminder email just now. It is kept on this device. You can add it later in Me, Privacy.')}</Alert>}
+      {emailNote && <Alert tone="warn">{t('onboarding.email.notSavedV2', 'We could not save your reminder email just now. It is kept on this device. You can add it later in Me, Data and account.')}</Alert>}
       {failed !== null && (
         <Alert tone="danger">
           <p>{t('onboarding.sum.failed', 'Setup is not finished yet. Your answers are still on this device. Fix the point below, or check your connection, then tap Finish again.')}</p>

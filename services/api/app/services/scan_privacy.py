@@ -10,6 +10,7 @@ are the second and third layers. If the OCR finds no text at all, the photo is r
 """
 from __future__ import annotations
 
+import hashlib
 import io
 import re
 from dataclasses import dataclass, field
@@ -256,6 +257,23 @@ def mask_photo(data: bytes, ocr: Any = None, known_names: Iterable[str] = (), pr
     img.save(out, "JPEG", quality=90)                  # no EXIF is written
     kept = " ".join(ln.text for i, ln in enumerate(lines) if i not in hits)
     return MaskResult(image=out.getvalue(), mime_type="image/jpeg", lines=lines, ocr_text=kept, masked=counts)
+
+
+def unmasked_photo(data: bytes) -> MaskResult:
+    """The photo as it is (rotated, metadata dropped, downscaled), with no text reading and nothing blacked out. Used only when the text
+    reader is switched off (SCAN_OCR_ENABLED=false): what goes to the model then still carries the label's name and address."""
+    img = normalise_image(data)
+    out = io.BytesIO()
+    img.save(out, "JPEG", quality=90)
+    return MaskResult(image=out.getvalue(), mime_type="image/jpeg", lines=[], ocr_text="", masked={"ocr_off": 1})
+
+
+def placeholder_photo(data: bytes) -> MaskResult:
+    """What is STORED when the text reader is off: a small grey square that carries the photo's checksum in its comment, so each photo
+    still gets its own scan, but nothing identifying is kept. The real photo is never saved."""
+    out = io.BytesIO()
+    Image.new("RGB", (8, 8), (200, 200, 200)).save(out, "JPEG", quality=80, comment=hashlib.sha256(data).hexdigest().encode())
+    return MaskResult(image=out.getvalue(), mime_type="image/jpeg", lines=[], ocr_text="", masked={"ocr_off": 1})
 
 
 def scrub_value(value: str | None, known_names: Iterable[str] = ()) -> tuple[str | None, bool]:

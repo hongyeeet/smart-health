@@ -406,3 +406,80 @@ def test_a_table_that_appears_later_is_read_without_a_restart():
     assert M._columns(conn, "conditions") == frozenset()
     conn.handlers["information_schema.columns"] = schema_handler({"conditions": ("name", "deleted_at")})
     assert M._columns(conn, "conditions") == frozenset({"name", "deleted_at"})
+
+
+# ───────────────────────────────────────────────────────────── several emergency contacts (Data and account)
+EXTRA_ID = "2c1f7a0e-8f0b-4e40-a0a1-5b9b0f0a1111"
+
+
+def contacts_conn(primary=None, extras=(), with_table=True):
+    cols = list(PROFILE_COLS) + ["emergency_contact_email"]
+    row = {c: (primary or {}).get(c) for c in cols}
+    handlers = {
+        "information_schema.columns": lambda p: Cur([{"column_name": c} for c in (cols if p[0] == "user_profile" else (("id", "name") if with_table else ()))]),
+        "select emergency_contact_name": lambda p: Cur([row]),
+        "from extra_emergency_contacts where user_id": lambda p: Cur(list(extras)),
+        "update user_profile": lambda p: Cur(rowcount=1),
+        "insert into extra_emergency_contacts": lambda p: Cur([{"id": EXTRA_ID}]),
+        "update extra_emergency_contacts": lambda p: Cur(rowcount=1),
+    }
+    return FakeConn(handlers)
+
+
+FIRST = {"emergency_contact_name": "Mdm Lim", "emergency_contact_relation": "spouse", "emergency_contact_phone": "+6555500142", "emergency_contact_email": None}
+SECOND = {"id": EXTRA_ID, "name": "Ben", "relation": "son", "phone": None, "email": "ben@example.com"}
+
+
+def test_the_first_contact_goes_on_the_profile():
+    conn = contacts_conn(primary=None)
+    M.add_contact(conn, USER, "Mdm Lim", "spouse", "+65 5550 0142", None)
+    assert conn.statements("update user_profile") and not conn.statements("insert into extra_emergency_contacts")
+
+
+def test_another_contact_is_a_new_row_and_the_log_has_no_details():
+    conn = contacts_conn(primary=FIRST)
+    M.add_contact(conn, USER, "Ben", "son", None, "ben@example.com")
+    assert len(conn.statements("insert into extra_emergency_contacts")) == 1
+    events = [p for s, p in conn.calls if "insert into event_log" in s]
+    assert events and "ben@example.com" not in str(events) and "Ben" not in str(events)
+
+
+def test_another_contact_before_the_table_exists_says_so():
+    conn = contacts_conn(primary=FIRST, with_table=False)
+    with pytest.raises(M.ExtraTableMissing):
+        M.add_contact(conn, USER, "Ben", "son", None, "ben@example.com")
+
+
+def test_the_list_has_the_first_contact_then_the_others():
+    conn = contacts_conn(primary=FIRST, extras=[SECOND])
+    got = M.list_contacts(conn, USER)
+    assert [c["id"] for c in got["contacts"]] == ["primary", EXTRA_ID] and got["email_supported"] is True
+
+
+def test_an_empty_first_contact_is_not_listed():
+    assert M.list_contacts(contacts_conn(primary=None), USER)["contacts"] == []
+
+
+def test_removing_the_first_contact_moves_the_next_one_up():
+    conn = contacts_conn(primary=FIRST, extras=[SECOND])
+    M.remove_contact(conn, USER, "primary")
+    saved = conn.statements("update user_profile")
+    assert saved and "ben@example.com" in saved[0][1]
+    assert conn.statements("update extra_emergency_contacts set deleted_at")
+
+
+def test_removing_another_contact_is_a_soft_delete_and_a_stranger_is_not_found():
+    conn = contacts_conn(primary=FIRST, extras=[SECOND])
+    M.remove_contact(conn, USER, EXTRA_ID)
+    assert conn.statements("set deleted_at=now()")
+    with pytest.raises(M.ContactNotFound):
+        M.remove_contact(conn, USER, "not-a-uuid")
+
+
+def test_changing_another_contact_checks_the_details_first():
+    conn = contacts_conn(primary=FIRST, extras=[SECOND])
+    with pytest.raises(ValueError):
+        M.update_contact(conn, USER, EXTRA_ID, "Ben", "son", "12", None)
+    assert not conn.statements("update extra_emergency_contacts")
+    M.update_contact(conn, USER, EXTRA_ID, "Ben Lim", "son", "91234567", None)
+    assert conn.statements("update extra_emergency_contacts")

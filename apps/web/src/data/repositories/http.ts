@@ -37,7 +37,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 /** The server gives up after about 50 s; this is only a backstop for a stalled connection, so the screen always moves on. */
 const MEAL_READ_LIMIT_MS = 75_000
 /** A label photo that gets no answer within this time is given up (the scan screen then says so and offers Retake or Type it in). */
-export const SCAN_UPLOAD_LIMIT_MS = 60_000
+export const SCAN_UPLOAD_LIMIT_MS = 100_000
 const MEAL_CODES: MealErrorCode[] = ['bad_photo', 'not_food', 'model_unavailable', 'daily_limit', 'timeout', 'bad_response', 'save_failed']
 
 /**
@@ -171,8 +171,8 @@ export const httpApi: Api = {
   createShareLink: todo('createShareLink'),
   revokeShareLink: todo('revokeShareLink'),
   listNotices: () => request('/notifications'),
+  listNoticeHistory: () => request('/notifications/history'),
   openNotice: (id: string) => request<void>(`/notifications/${id}/open`, { method: 'POST' }).then(() => undefined),
-  dismissNotice: (id: string) => request<void>(`/notifications/${id}/dismiss`, { method: 'POST' }).then(() => undefined),
   listSources: todo('listSources'),
   syncSources: todo('syncSources'),
   sendChat: todo('sendChat'),

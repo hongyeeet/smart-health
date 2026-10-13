@@ -69,6 +69,7 @@ class CarePlan(Camel):
 
 class NewQuestion(Camel):
     text: str = Field(min_length=1, max_length=300)
+    suggested_key: str | None = Field(default=None, max_length=40)   # one of care.SUGGESTED_QUESTIONS: the question came from the suggestions list
 
     @field_validator("text")
     @classmethod

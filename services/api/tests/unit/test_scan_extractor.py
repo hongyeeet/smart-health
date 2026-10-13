@@ -243,3 +243,43 @@ def test_a_strength_at_0_7_still_sends_the_scan_to_typing():
     ans = answer(strength=field("500 mg", 0.7))
     out, _ = run(FakeClient(ans))
     assert out.review_mode == "manual" and "low_confidence" in out.reasons
+
+
+# ---- the text reader switched off (SCAN_OCR_ENABLED=false): the photo goes to the model as it is, and the real photo is never stored
+class ExplodingOcr:
+    def __call__(self, _arr):
+        raise AssertionError("the text reader must not run when it is switched off")
+
+
+def test_with_the_text_reader_off_the_photo_is_not_read_locally_not_blacked_out_and_not_stored(monkeypatch):
+    client = FakeClient(answer())
+    outcome, stored = x.extract_scan(photo_bytes(), client=client, model="m", ocr=ExplodingOcr(), ocr_enabled=False)
+    assert outcome.status == "needs_review" and outcome.items                                  # the answer is scored without the text-reader check
+    sent = Image.open(io.BytesIO(client.seen[0][1][0].data)) if hasattr(client.seen[0][1][0], "data") else None
+    assert sent is None or sent.size == (400, 200)                                              # the model got the whole photo, no black boxes added
+    assert outcome.mask_summary == {"ocr_off": 1}
+    held = Image.open(io.BytesIO(stored.image))
+    assert held.size == (8, 8)                                                                  # what is kept is a grey square, not the label
+    import hashlib
+    assert hashlib.sha256(photo_bytes()).hexdigest().encode() in stored.image                   # but it carries the photo's checksum, so each photo is its own scan
+
+
+def test_two_different_photos_get_different_stored_squares_when_the_text_reader_is_off():
+    other = io.BytesIO()
+    Image.new("RGB", (400, 200), "black").save(other, "PNG")
+    _, a = x.extract_scan(photo_bytes(), client=FakeClient(answer()), model="m", ocr=None, ocr_enabled=False)
+    _, b = x.extract_scan(other.getvalue(), client=FakeClient(answer()), model="m", ocr=None, ocr_enabled=False)
+    assert a.image != b.image
+
+
+def test_with_the_text_reader_on_nothing_changes(monkeypatch):
+    outcome, stored = run(FakeClient(answer()))
+    assert outcome.mask_summary.get("ocr_off") is None and stored.masked == outcome.mask_summary
+
+
+def test_with_the_text_reader_off_a_prescriber_line_that_is_really_the_patient_is_left_out():
+    reply = answer(prescriber=field("TAN AH BARK", 0.95, "D9285 TAN AH BARK"))
+    outcome, _ = x.extract_scan(photo_bytes(), client=FakeClient(reply), model="m", ocr=None, ocr_enabled=False)
+    item = outcome.items[0]
+    assert item.fields["prescriber"].value is None
+    assert "TAN AH BARK" not in json.dumps(outcome.model_dump(), default=str)                 # it is nowhere in what is stored

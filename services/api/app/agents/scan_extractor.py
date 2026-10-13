@@ -109,13 +109,19 @@ def extract_scan(
     ocr: Any = None,
     known_names: Iterable[str] = (),
     threshold: float = conf.THRESHOLD,
+    ocr_enabled: bool = True,
 ) -> tuple[ScanOutcome, privacy.MaskResult | None]:
     """Run the whole read. Returns the outcome and the masked photo (the only copy that may be stored). Never raises for a
     bad photo or a model failure: those become a `failed` outcome that offers manual entry (rules.md fail-safe matrix)."""
     version, system = load_prompt()
     names = list(known_names)
     try:
-        masked = privacy.mask_photo(image_bytes, ocr=ocr, known_names=names)
+        if ocr_enabled:
+            masked = privacy.mask_photo(image_bytes, ocr=ocr, known_names=names)
+            stored = masked
+        else:                                   # the text reader is off: the photo goes to the model as it is, and is not stored
+            masked = privacy.unmasked_photo(image_bytes)
+            stored = privacy.placeholder_photo(image_bytes)
     except ValidationFailed as e:
         return ScanOutcome(status="failed", review_mode="manual", reasons=[e.code], prompt_version=version), None
     except Exception as e:  # noqa: BLE001 - the local text reader crashed: say so, never a server error (log the type only)
@@ -131,7 +137,7 @@ def extract_scan(
             log.warning("scan refused: daily photo-read limit reached")
             return ScanOutcome(status="failed", review_mode="manual", reasons=["daily_limit"], prompt_version=version,
                                model_id=model, input_tokens=in_tokens, output_tokens=out_tokens, latency_ms=latency,
-                               mask_summary=summary), masked
+                               mask_summary=summary), stored
         try:
             result = client.generate_json(model=model, system=system, parts=[ImagePart(masked.image, masked.mime_type),
                                           "Read this item and return the JSON."], response_schema=response_schema(),
@@ -139,7 +145,7 @@ def extract_scan(
         except ExternalServiceError as e:
             log.warning("scan model call failed: %s", e.code)
             return ScanOutcome(status="failed", review_mode="manual", reasons=["model_unavailable"], prompt_version=version,
-                               model_id=model, mask_summary=summary), masked
+                               model_id=model, mask_summary=summary), stored
         _count(result.input_tokens, result.output_tokens)
         in_tokens += result.input_tokens or 0
         out_tokens += result.output_tokens or 0
@@ -153,13 +159,20 @@ def extract_scan(
             log.warning("scan answer was not valid (attempt %d): %s %s", attempt + 1, type(e).__name__, where)
     if raw is None:
         return ScanOutcome(status="failed", review_mode="manual", reasons=["invalid_json"], prompt_version=version, model_id=model,
-                           input_tokens=in_tokens, output_tokens=out_tokens, latency_ms=latency, mask_summary=summary), masked
+                           input_tokens=in_tokens, output_tokens=out_tokens, latency_ms=latency, mask_summary=summary), stored
 
     raw, removed = scrub(raw, names)
+    if not ocr_enabled:
+        # Nothing was blacked out, so the line with the patient's ID and name can come back as "Prescribed by": it is left out of the
+        # answer, and nothing from it is stored.
+        for it in raw.items:
+            if it.prescriber.value is not None:
+                removed += 1
+            it.prescriber = RawField(value=None, confidence=0.0, source_text=None)
     if removed:
         summary["removed_from_answer"] = removed
     items = [conf.score_item(it, masked.ocr_text, threshold) for it in raw.items]
     d = conf.decide(raw, items, threshold)
     return ScanOutcome(status=d.status, review_mode=d.review_mode, reasons=d.reasons, items=items if d.status == "needs_review" else [],  # type: ignore[arg-type]
                        prompt_version=version, model_id=model, input_tokens=in_tokens, output_tokens=out_tokens, latency_ms=latency,
-                       mask_summary=summary), masked
+                       mask_summary=summary), stored

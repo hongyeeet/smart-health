@@ -5,7 +5,9 @@
   PUT     /me/consents/{kind}    K6: {granted: boolean}; a grant or a revoke, both kept in the history
   GET     /me/export             K8: the person's own data as a JSON file download
   POST    /me/delete-request     K8: records a deletion request; nothing is deleted here ({confirm: "DELETE"})
-  GET/PUT /me/contact            K9: the one emergency contact
+  GET/PUT /me/contact            the first emergency contact (kept for set-up and older screens)
+  GET/POST /me/contacts          all emergency contacts; add another
+  PUT/DELETE /me/contacts/{id}   change or remove one ("primary" is the first)
 
 Logic and validation live in app/services/me_settings.py.
 """
@@ -42,6 +44,10 @@ async def _run(fn: Callable[..., Any], *args: Any) -> Any:
         raise HTTPException(409, "Finish setting up your profile first. Then you can save this.")
     except svc.EmailNotSupported:
         raise HTTPException(409, "Email for your emergency contact is not set up yet. Save the name and phone number for now.")
+    except svc.ExtraTableMissing:
+        raise HTTPException(409, "Adding a second emergency contact is not set up yet.")
+    except svc.ContactNotFound:
+        raise HTTPException(404, "That emergency contact was not found. It may already be removed.")
     except ValueError as e:
         raise HTTPException(422, str(e))
 
@@ -93,3 +99,26 @@ async def get_contact():
 async def save_contact(body: S.ContactIn):
     not_the_demo_patient(logstore.current_user())
     return S.ContactOut.model_validate(await _run(svc.save_contact, body.name, body.relation, body.phone, body.email))
+
+
+@router.get("/contacts", response_model=S.ContactsOut, response_model_by_alias=True)
+async def list_contacts():
+    return S.ContactsOut.model_validate(await _run(svc.list_contacts))
+
+
+@router.post("/contacts", response_model=S.ContactsOut, response_model_by_alias=True)
+async def add_contact(body: S.ContactIn):
+    not_the_demo_patient(logstore.current_user())
+    return S.ContactsOut.model_validate(await _run(svc.add_contact, body.name, body.relation, body.phone, body.email))
+
+
+@router.put("/contacts/{contact_id}", response_model=S.ContactsOut, response_model_by_alias=True)
+async def update_contact(contact_id: str, body: S.ContactIn):
+    not_the_demo_patient(logstore.current_user())
+    return S.ContactsOut.model_validate(await _run(svc.update_contact, contact_id, body.name, body.relation, body.phone, body.email))
+
+
+@router.delete("/contacts/{contact_id}", response_model=S.ContactsOut, response_model_by_alias=True)
+async def remove_contact(contact_id: str):
+    not_the_demo_patient(logstore.current_user())
+    return S.ContactsOut.model_validate(await _run(svc.remove_contact, contact_id))

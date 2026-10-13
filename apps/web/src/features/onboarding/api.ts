@@ -3,7 +3,7 @@
  *   GET  /onboarding          the saved answers for the person the app acts as (the source of truth)
  *   PUT  /onboarding/profile  one page's answers (only the keys sent are written; null clears a saved answer)
  *   POST /onboarding/complete the data-use consent and the completion event
- *   GET/PUT /notify/email     the reminder email and its on/off switch (shared contract with Me, Privacy)
+ *   GET/PUT /notify/email     the reminder email and its on/off switch (shared contract with Me, Data and account)
  *
  * The answers on this device are a fallback only: a field the server has nothing for is taken from the device copy.
  * The demo patient (Mr Tan) is read but never written: the server refuses his writes, and the screens do not send them.

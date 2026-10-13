@@ -1,5 +1,5 @@
 /**
- * K11, "Review suggestions": for the care team and reviewers. One suggestion at a time, rated reasonable, not reasonable or unsafe.
+ * K11, "Meal suggestions" (opens from the bottom of the Log page; it used to be "Review suggestions" on Me): for the care team and reviewers. One suggestion at a time, rated reasonable, not reasonable or unsafe.
  * The score at the top compares the share judged reasonable with the 85% target and counts unsafe ratings (which must be none).
  * The suggestions are computed from the person's own logged dishes, or from the shared sample dishes. Nothing here changes a
  * suggestion or the person's record; a rating is only kept for the score.
@@ -105,7 +105,7 @@ export function Review() {
 
   return (
     <Screen>
-      <Header title={t('review.title', 'Review suggestions')} back backTo="K1" />
+      <Header title={t('review.titleV2', 'Meal suggestions')} back backTo="E1" />
       <p className="text-body text-ink2">
         {t(
           'review.intro',

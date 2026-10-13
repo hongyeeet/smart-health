@@ -349,12 +349,16 @@ export interface CarePlan {
 
 export interface Notice {
   id: string
-  kind: 'dose' | 'checkin' | 'nudge' | 'brief' | 'refill' | 'appointment'
+  kind: 'dose' | 'dose_reminder' | 'dose_renudge' | 'checkin' | 'nudge' | 'brief' | 'refill' | 'appointment'
   title: string
   body: string
   when: string
   to?: RouteId
   unread: boolean
+  /** Reminders page list only: the Singapore day it belongs to (YYYY-MM-DD) */
+  date?: string
+  /** Reminders page list only: still waiting and inside its time window. Past or done ones stay on the page and still open their screen. */
+  current?: boolean
 }
 
 export interface ConnectedSource {

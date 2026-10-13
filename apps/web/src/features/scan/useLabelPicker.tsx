@@ -48,7 +48,9 @@ export function useLabelPicker(): {
       setError(
         e instanceof TypeError
           ? t('scanFrame.network', 'We could not reach Smart Health. Check your connection and try again.')
-          : t('scanFrame.general', 'We could not read this. Take another photo or type it in.'),
+          : e instanceof DOMException && e.name === 'AbortError'
+            ? t('scanFrame.slow', 'Reading the label is taking longer than usual. Please try again, or type it in.')
+            : t('scanFrame.general', 'We could not read this. Take another photo or type it in.'),
       )
     } finally {
       current.current = null

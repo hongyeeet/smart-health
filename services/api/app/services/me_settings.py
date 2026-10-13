@@ -1,4 +1,4 @@
-"""The Me settings screens: language (K5), consents (K6), the data download and the deletion request (K8), the emergency contact (K9).
+"""The Me settings screens: language (K5), consents, the data download and the deletion request and the emergency contacts (all in Data and account, K8).
 
 The pure parts (what a valid phone or email is, how a contact is cleaned, what goes in the export, when a deletion is promised) are
 unit-tested with no database. The SQL functions take a connection so the router runs them in one transaction, and so a check can run
@@ -80,6 +80,9 @@ EXTRA_SECTIONS: dict[str, tuple[str, tuple[str, ...], str]] = {
     "doctor_questions": ("doctor_questions", ("text", "origin", "status", "created_at"),
                          "select text, origin, status, created_at from doctor_questions "
                          "where user_id=%s and status <> 'archived' order by created_at"),
+    "more_emergency_contacts": ("extra_emergency_contacts", ("name", "relation", "phone", "email", "created_at", "deleted_at"),
+                                "select name, relation, phone, email, created_at from extra_emergency_contacts "
+                                "where user_id=%s and deleted_at is null order by created_at"),
     "appointments": ("appointments", ("kind", "status", "scheduled_for", "location", "suggested_reason", "confirmed_by_user_at", "created_at"),
                      "select kind::text as kind, status::text as status, scheduled_for, location, suggested_reason, "
                      "confirmed_by_user_at, created_at from appointments where user_id=%s order by created_at"),
@@ -325,3 +328,106 @@ def save_contact(conn: Any, user: UUID, name: str | None, relation: str | None, 
         raise ProfileMissing()
     _event(conn, user, "contact.updated", "user_profile", user, {"has_phone": bool(data["phone"]), "has_email": bool(data["email"])})
     return get_contact(conn, user)
+
+
+# ───────────────────────────────────────────────────────────────── several emergency contacts (Data and account)
+PRIMARY = "primary"          # the id of the first contact, which lives on user_profile; later ones have a row in extra_emergency_contacts
+
+
+class ContactNotFound(Exception):
+    """No such contact for this person (or it was removed)."""
+
+
+class ExtraTableMissing(Exception):
+    """A second contact was asked for before migration 0038 made the table."""
+
+
+def has_extra_contacts_table(conn: Any) -> bool:
+    return bool(_columns(conn, "extra_emergency_contacts"))
+
+
+def _extras(conn: Any, user: UUID) -> list[dict[str, Any]]:
+    if not has_extra_contacts_table(conn):
+        return []
+    rows = conn.execute(
+        "select id, name, relation, phone, email from extra_emergency_contacts where user_id=%s and deleted_at is null order by created_at, id", (user,)
+    ).fetchall()
+    return [{"id": str(r["id"]), "name": r["name"], "relation": r["relation"], "phone": r["phone"], "email": r["email"]} for r in rows]
+
+
+def list_contacts(conn: Any, user: UUID) -> dict[str, Any]:
+    """Every live contact, the first one first. A first contact with nothing in it is not listed."""
+    first = get_contact(conn, user)
+    out = [{"id": PRIMARY, **{k: first[k] for k in ("name", "relation", "phone", "email")}}] if (first["name"] or first["phone"] or first["email"]) else []
+    return {"contacts": out + _extras(conn, user), "email_supported": first["email_supported"]}
+
+
+def add_contact(conn: Any, user: UUID, name: str | None, relation: str | None, phone: str | None, email: str | None) -> dict[str, Any]:
+    """The first contact goes on the profile (where set-up and the alert have always read it); every other one is a new row."""
+    data = clean_contact(name, relation, phone, email)
+    if not data["name"]:
+        raise ValueError("Add the name of your emergency contact.")
+    if data["email"] and not has_contact_email(conn):
+        raise EmailNotSupported()
+    first = get_contact(conn, user)
+    if not (first["name"] or first["phone"] or first["email"]):
+        save_contact(conn, user, data["name"], data["relation"], data["phone"], data["email"])
+        return list_contacts(conn, user)
+    if not has_extra_contacts_table(conn):
+        raise ExtraTableMissing()
+    row = conn.execute(
+        "insert into extra_emergency_contacts (user_id, name, relation, phone, email) values (%s,%s,%s,%s,%s) returning id",
+        (user, data["name"], data["relation"], data["phone"], data["email"]),
+    ).fetchone()
+    _event(conn, user, "contact.added", "extra_emergency_contacts", row["id"], {"has_phone": bool(data["phone"]), "has_email": bool(data["email"])})
+    return list_contacts(conn, user)
+
+
+def update_contact(conn: Any, user: UUID, contact_id: str, name: str | None, relation: str | None, phone: str | None, email: str | None) -> dict[str, Any]:
+    data = clean_contact(name, relation, phone, email)
+    if not data["name"]:
+        raise ValueError("Add the name of your emergency contact.")
+    if contact_id == PRIMARY:
+        save_contact(conn, user, data["name"], data["relation"], data["phone"], data["email"])
+        return list_contacts(conn, user)
+    if data["email"] and not has_contact_email(conn):
+        raise EmailNotSupported()
+    try:
+        cid = UUID(contact_id)
+    except ValueError:
+        raise ContactNotFound() from None
+    if not has_extra_contacts_table(conn):
+        raise ContactNotFound()
+    cur = conn.execute(
+        "update extra_emergency_contacts set name=%s, relation=%s, phone=%s, email=%s, updated_at=now() where id=%s and user_id=%s and deleted_at is null",
+        (data["name"], data["relation"], data["phone"], data["email"], cid, user),
+    )
+    if cur.rowcount == 0:
+        raise ContactNotFound()
+    _event(conn, user, "contact.updated", "extra_emergency_contacts", cid, {"has_phone": bool(data["phone"]), "has_email": bool(data["email"])})
+    return list_contacts(conn, user)
+
+
+def remove_contact(conn: Any, user: UUID, contact_id: str) -> dict[str, Any]:
+    """Soft delete. Removing the first contact moves the oldest other one into its place, so set-up and the alert keep finding a first contact."""
+    if contact_id == PRIMARY:
+        extras = _extras(conn, user)
+        if extras:
+            nxt = extras[0]
+            save_contact(conn, user, nxt["name"], nxt["relation"], nxt["phone"], nxt["email"])
+            conn.execute("update extra_emergency_contacts set deleted_at=now() where id=%s and user_id=%s", (UUID(nxt["id"]), user))
+        else:
+            save_contact(conn, user, None, None, None, None)
+        _event(conn, user, "contact.removed", "user_profile", user, {})
+        return list_contacts(conn, user)
+    try:
+        cid = UUID(contact_id)
+    except ValueError:
+        raise ContactNotFound() from None
+    if not has_extra_contacts_table(conn):
+        raise ContactNotFound()
+    cur = conn.execute("update extra_emergency_contacts set deleted_at=now() where id=%s and user_id=%s and deleted_at is null", (cid, user))
+    if cur.rowcount == 0:
+        raise ContactNotFound()
+    _event(conn, user, "contact.removed", "extra_emergency_contacts", cid, {})
+    return list_contacts(conn, user)

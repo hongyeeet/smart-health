@@ -124,7 +124,8 @@ export function useAppointments() {
 export function useAddQuestion() {
   const invalidate = useInvalidateCare()
   return useMutation({
-    mutationFn: (text: string) => request<DoctorQuestion>('/care/questions', { method: 'POST', body: JSON.stringify({ text }) }),
+    mutationFn: ({ text, suggestedKey }: { text: string; suggestedKey?: string }) =>
+      request<DoctorQuestion>('/care/questions', { method: 'POST', body: JSON.stringify({ text, suggestedKey }) }),
     onSuccess: invalidate,
   })
 }
