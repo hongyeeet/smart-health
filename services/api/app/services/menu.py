@@ -26,7 +26,7 @@ from app.services import food_images, texts
 logger = logging.getLogger(__name__)
 
 MEALS = ("breakfast", "lunch", "dinner", "snack")
-PER_SECTION = 4
+PER_SECTION = 3
 LOW_SALT_MG = 700          # placeholder: at or below this a dish is tagged "lower salt"
 LOW_CARB_G = 45            # placeholder: at or below this a dish is tagged "lower carbs"
 _DEFAULT_TIME = {"breakfast": 7 * 60 + 30, "lunch": 12 * 60 + 15, "dinner": 18 * 60 + 30, "snack": 16 * 60}
