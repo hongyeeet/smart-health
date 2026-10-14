@@ -27,7 +27,6 @@ import { TodayPlan } from './TodayPlan'
 import { KpiCards, KpiCardsSkeleton } from './KpiCards'
 import { HealthOverview, HealthOverviewSkeleton } from './HealthOverview'
 import { YourDays } from '@/features/insights/YourDays'
-import { ExampleNotice } from './ExampleNotice'
 
 function greeting(h: number, t: TFunction) {
   return h < 12
@@ -77,9 +76,6 @@ export function Home() {
           </div>
         }
       />
-
-      {/* Mr Tan's example record: how to start your own */}
-      <ExampleNotice />
 
       {/* 2. alerts */}
       <AlertStrip clashAlerts={openAlerts} />

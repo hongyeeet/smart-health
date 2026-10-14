@@ -92,7 +92,7 @@ These come from [rules.md](rules.md), [design.md](design.md) and decisions D-0xx
 | Screen wrapper | `Screen` (page padding, optional tab bar space, `tone="urgent"` for J1, `narrow` for forms: 640 px), `Header` (title, back arrow, `backTo` route id, optional sub-title and trailing item), `Footer` (sticky action area), `Split` (two columns from 1024 px), `Reveal` (fold-away), `TileGrid` (a list of tiles: one column on a phone, two on a tablet, three on a laptop, equal heights) |
 | Sheets | Bottom sheets (`Sheet`) opened with `go(id, { sheet: {...} })`; from 768 px they are centred and 560 px wide. Registered sheets: **E7** entry, **C7** why, **D2** marker, **L2** share, **H7** missed dose |
 | Outside the frame | `/brief/a4` (printable report) and `/s/:token` (doctor's shared report) have no tab bar |
-| User switch | `UserSwitch` in the header of Home, Meds and Me. Switches between Mr Tan and the people started on this device. **"Create a new user"** (also the button of the "You are looking at Mr Tan" card on Home, `home/ExampleNotice.tsx`) opens set-up for "New User N", with **Cancel. Do not create this user** in place of "Finish later". Nothing is written for that person until **Finish** on the summary (then `POST /users` makes the row and the answers are saved); leaving set-up first (Cancel, choosing another person, going to another screen, or a reload) drops them |
+| User switch | `UserSwitch` in the header of Home, Meds and Me. Switches between Mr Tan and the people started on this device. **"Create a new user"** opens set-up for "New User N", with **Cancel. Do not create this user** in place of "Finish later". Nothing is written for that person until **Finish** on the summary (then `POST /users` makes the row and the answers are saved); leaving set-up first (Cancel, choosing another person, going to another screen, or a reload) drops them |
 | Navigation helper | `useGo()` takes a route id (`go('K3')`), so screens never hard-code paths. The registry `app/routeIds.ts` is the single list of screens |
 
 ### 3.2 Persisted client state (`smart-health-ui`)
@@ -192,7 +192,7 @@ Five blocks at most, top to bottom. Each block hides when it has nothing to say.
 
 The banner's "Not now" is remembered for the day **per person** on this device, so one person's choice never hides the banner for another.
 
-Header: greeting and date, **bell** (opens B2; the count is unread reminders plus open medicine alerts), UserSwitch. On Mr Tan's Home a card says he is an example and offers "Create my own user".
+Header: greeting and date, **bell** (opens B2; the count is unread reminders plus open medicine alerts), UserSwitch. The way to start your own user is the avatar menu ("Create a new user").
 
 Not on Home: a low-stock note (the stock count shows on H1 only; see section 11).
 
@@ -443,7 +443,7 @@ Folder `features/brief/`. Everything is computed by the server (`doctor_report.p
 
 **J-A First use.** A1 consent (and the reminder email) → A2 eligibility → A3 pages 3 to 10 (each page is saved when Continue is pressed; page 9 is the work week; page 10 needs all four contact details; Back always goes to the page before) → A6 review → Home. Medicines are not part of set-up: they are added from the Meds tab. A person can instead use A4, the chat, and finish on the same record.
 
-**J-A2 Trying set-up.** On Mr Tan's Home press **Create my own user** (or the avatar, then Create a new user) → set-up opens at page 1 with **Cancel** in place of "Finish later"; Finish makes the user.
+**J-A2 Trying set-up.** On Mr Tan's Home press the avatar, then Create a new user → set-up opens at page 1 with **Cancel** in place of "Finish later"; Finish makes the user.
 
 **J-B Add a medicine by scan.** H1 Add → H2 photo (masked on device) → H3 check what was read (the name needs a tick below 0.85; a low-confidence field goes to the typed form) → H4 kind and dose times → Add. Server: save, link to the drug list, start the clash check in the background, create calendar events when calendar sync is on. The medicine is saved as a **daily** medicine. Its stock starts from the pack size (the total supplied). H1 shows the card; ClashBox appears by itself when a clash is found (the page checks every 3 seconds only while the check is running).
 
