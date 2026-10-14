@@ -225,3 +225,15 @@ html:not([lang='en']) .tab-label {
 html:not([lang='en']) [data-ts='2'] {
   --text-h1: calc(28px * 1.35);
 }
+
+/* the waiting steps in the chat appear one at a time */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

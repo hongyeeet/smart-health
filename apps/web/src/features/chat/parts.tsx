@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGo } from '@/app/navigation'
 import { ROUTES, type RouteId } from '@/app/routeIds'
@@ -57,6 +57,46 @@ export function linked(text: string, askText?: string): ReactNode[] {
   return out
 }
 
+/**
+ * A reply as paragraphs and bullet lists. The server writes the summary as "- " lines (three short bullets) and then the sentences it always
+ * adds (where to look in the app, a doctor question) and a warm closing line, each as its own paragraph. A line that is not a bullet stays
+ * a plain line. Links inside any of them still work through `linked`.
+ */
+function Prose({ text, askText }: { text: string; askText?: string }) {
+  const blocks = text.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean)
+  return (
+    <div className="flex flex-col gap-2.5">
+      {blocks.map((block, bi) => {
+        const runs: { bullets: boolean; lines: string[] }[] = []
+        for (const line of block.split('\n')) {
+          const bullet = line.startsWith('- ')
+          const last = runs[runs.length - 1]
+          if (last && last.bullets === bullet) last.lines.push(bullet ? line.slice(2) : line)
+          else runs.push({ bullets: bullet, lines: [bullet ? line.slice(2) : line] })
+        }
+        return (
+          <div key={bi} className="flex flex-col gap-1.5">
+            {runs.map((run, ri) =>
+              run.bullets ? (
+                <ul key={ri} className="flex flex-col gap-2">
+                  {run.lines.map((l, li) => (
+                    <li key={li} className="flex gap-2.5">
+                      <span className="mt-[0.6em] h-2 w-2 flex-none rounded-full bg-brand" aria-hidden />
+                      <span className="min-w-0">{linked(l, askText)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p key={ri}>{linked(run.lines.join('\n'), askText)}</p>
+              ),
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /** "Where this comes from: Your glucose, Your doses and Your medicines." with each name a link. */
 function SourcesLine({ sources }: { sources: ChatSource[] }) {
   const { t, i18n } = useTranslation()
@@ -95,23 +135,71 @@ export function Bubble({ item, sources, askText }: { item: Item; sources?: ChatS
             <Warning size={20} weight="fill" aria-hidden /> {t('chat.urgentTag', 'Urgent')}
           </span>
         )}
-        {mine ? item.text : linked(item.text, askText)}
+        {mine ? item.text : <Prose text={item.text} askText={askText} />}
         {!mine && sources && sources.length > 0 && <SourcesLine sources={sources} />}
       </div>
     </div>
   )
 }
 
-/** Shown while the answer is on its way. Still dots when the person asks for less motion. */
-export function TypingIndicator() {
+/** What the question is about, by its words: which of the person's own records the answer will read. Only used to word the waiting steps. */
+export function topicsOf(question: string, t: (k: string, d: string) => string): string[] {
+  const q = question.toLowerCase()
+  const out: string[] = []
+  const add = (re: RegExp, key: string, en: string) => re.test(q) && out.push(t(key, en))
+  add(/glucose|sugar|reading|cgm|a1c|hba1c|spike/, 'chat.think.topic.glucose', 'glucose readings')
+  add(/meal|food|eat|ate|diet|calor|carb|salt|sodium|lunch|dinner|breakfast|snack|dish/, 'chat.think.topic.meals', 'meals')
+  add(/medic|dose|tablet|pill|metformin|stock|refill/, 'chat.think.topic.meds', 'medicines and doses')
+  add(/step|walk|exercise|workout|activity|active/, 'chat.think.topic.activity', 'activity')
+  add(/sleep|tired|rest/, 'chat.think.topic.sleep', 'sleep')
+  add(/blood pressure|pressure|bp/, 'chat.think.topic.bp', 'blood pressure')
+  add(/heart|pulse|spo2|oxygen/, 'chat.think.topic.heart', 'heart rate and oxygen')
+  add(/symptom|pain|dizzy|thirst|headache|feel/, 'chat.think.topic.symptoms', 'symptoms you logged')
+  add(/doctor|appointment|visit|clinic|check-?up|screening/, 'chat.think.topic.care', 'visits and doctor questions')
+  return out.length ? out : [t('chat.think.topic.logs', 'your logs')]
+}
+
+/**
+ * Shown while the answer is on its way: the steps the assistant is really going through, one after another, like a progress list. Done steps get a
+ * tick and stay; the current one spins. It sits at the last step until the answer arrives. With reduced motion there is no spinner or fade, only the
+ * words changing. The words come from the question's topic, so "accessing your meals" is shown only when the question is about meals.
+ */
+export function ThinkingSteps({ question }: { question: string }) {
   const { t } = useTranslation()
+  const topics = topicsOf(question, (k, d) => t(k, d))
+  const list = new Intl.ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(topics)
+  const steps = [
+    t('chat.think.s1', 'Reading your question'),
+    t('chat.think.s2', 'Accessing your data: {{list}}', { list }),
+    t('chat.think.s3', 'Comparing with your own usual numbers'),
+    t('chat.think.s4', 'Writing a simple summary for you'),
+    t('chat.think.s5', 'Checking it is safe to show'),
+  ]
+  const [at, setAt] = useState(0)
+  useEffect(() => {
+    if (at >= steps.length - 1) return
+    const id = window.setTimeout(() => setAt((n) => n + 1), at === 1 ? 2200 : 1500)
+    return () => window.clearTimeout(id)
+  }, [at, steps.length])
   return (
-    <div role="status" className="flex">
-      <span className="sr-only">{t('chat.typing', 'Smart Health is typing')}</span>
-      <div className="flex items-center gap-1.5 rounded-card border border-line bg-card px-4 py-4" aria-hidden>
-        {[0, 1, 2].map((n) => (
-          <span key={n} className="h-2.5 w-2.5 rounded-full bg-ink3 motion-safe:animate-pulse" style={{ animationDelay: `${n * 180}ms` }} />
-        ))}
+    <div role="status" aria-live="polite" className="flex">
+      <div className="flex max-w-[88%] flex-col gap-2 rounded-card border border-line bg-card px-4 py-3 text-sub text-ink2">
+        <span className="sr-only">{steps[at]}</span>
+        <ul className="flex flex-col gap-1.5" aria-hidden>
+          {steps.slice(0, at + 1).map((s, i) => {
+            const done = i < at
+            return (
+              <li key={i} className={cn('flex items-center gap-2.5 motion-safe:animate-[fadeUp_0.3s_ease-out]', done ? 'text-ink3' : 'font-semibold text-ink')}>
+                {done ? (
+                  <Check size={16} weight="bold" className="flex-none text-brand" />
+                ) : (
+                  <span className="h-4 w-4 flex-none rounded-full border-2 border-brand/30 border-t-brand motion-safe:animate-spin" />
+                )}
+                <span>{s}{done ? '' : '…'}</span>
+              </li>
+            )
+          })}
+        </ul>
       </div>
     </div>
   )

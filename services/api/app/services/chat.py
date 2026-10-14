@@ -176,6 +176,21 @@ def tidy(reply: str) -> str:
     return (cut[: end + 1] if end > 40 else cut.rstrip(",;:") + ".").strip()
 
 
+def as_bullets(reply: str, max_bullets: int = 3) -> str:
+    """The summary as "- " bullets, one per line. A model that wrote lines with another bullet mark, numbers or no mark gets them
+    normalised; a single short sentence (such as "I do not have that in your data.") is left alone."""
+    lines = [re.sub(r"^\s*(?:[-\u2022*\u2013]|\d+[.)])\s*", "", l).strip() for l in (reply or "").splitlines()]
+    lines = [l for l in lines if l]
+    if len(lines) <= 1:
+        sentences = re.split(r"(?<=[.!?])\s+", lines[0]) if lines else []
+        if len(sentences) < 3:
+            return lines[0] if lines else ""
+        lines = sentences
+    if len(lines) > max_bullets:
+        lines = lines[: max_bullets - 1] + [" ".join(lines[max_bullets - 1:])]
+    return "\n".join(f"- {l}" for l in lines)
+
+
 # ----------------------------------------------------------------------------- the context
 @dataclass
 class Section:
@@ -1039,8 +1054,9 @@ def fallback_text(ctx: Context, lang: str, question: str = "") -> str | None:
     return (texts.tr(lang, "chat.fallback_intro") + "\n" + "\n".join(f"- {x}" for x in lines)) if lines else None
 
 
-def compose(lang: str, answer: str, intent: str, symptom: bool, wants_food: bool, noticed: bool, verdict_q: bool = False) -> tuple[str, list[dict[str, Any]], bool]:
-    """The answer plus what code always adds: the doctor referral, where to look in the app, and the offer to add a doctor question."""
+def compose(lang: str, answer: str, intent: str, symptom: bool, wants_food: bool, noticed: bool, verdict_q: bool = False, closing: str = "") -> tuple[str, list[dict[str, Any]], bool]:
+    """The answer plus what code always adds: the doctor referral, where to look in the app, and the offer to add a doctor question. The
+    warm closing sentence comes last, so the message ends on encouragement, after the links."""
     tail: list[str] = []
     if G.needs_doctor_referral(intent, symptom):
         tail.append(texts.tr(lang, "chat.med_refer" if intent == "medicine_info" and not symptom else "chat.symptom_refer"))
@@ -1052,7 +1068,8 @@ def compose(lang: str, answer: str, intent: str, symptom: bool, wants_food: bool
     if offer:
         tail.append(texts.tr(lang, "chat.offer_question"))
     actions = [{"kind": "open", "label": p.label, "to": p.to, "text": None} for p in posts if p.to]
-    return (answer + ("\n\n" + " ".join(tail) if tail else "")), actions, offer
+    text = answer + ("\n\n" + " ".join(tail) if tail else "") + (("\n\n" + closing) if closing else "")
+    return text, actions, offer
 
 
 def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today: date, lang: str = "en") -> Outcome:
@@ -1136,8 +1153,8 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
         keys = set(keys) | views         # a planned view is sent whatever the intent (the default sections keep their per-intent limits)
     sent = ctx.only(keys)
 
-    def finish(answer: str, kind: str = "answer", verdict: str | None = "pass", sources: list[Section] | None = None) -> Outcome:
-        full, actions, offer = compose(lang, answer, intent, symptom, wants_food, noticed, verdict_q)
+    def finish(answer: str, kind: str = "answer", verdict: str | None = "pass", sources: list[Section] | None = None, closing: str = "") -> Outcome:
+        full, actions, offer = compose(lang, answer, intent, symptom, wants_food, noticed, verdict_q, closing)
         return Outcome(kind, full, sources or [], offer_question=offer, verdict=verdict, actions=actions)
 
     if sent.empty():
@@ -1154,27 +1171,30 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
         run.step("model", chat_llm.model_name(), {}, ask)
     except LLMUnavailable:
         fb = fallback_text(sent, lang, text)
-        return finish(fb) if fb else Outcome("unavailable", texts.tr(lang, "chat.unavailable"), verdict="pass")
+        return finish(fb, closing=texts.tr(lang, "chat.closing")) if fb else Outcome("unavailable", texts.tr(lang, "chat.unavailable"), verdict="pass")
 
-    en = G.tidy_reply(G.scrub_pii(out[0].reply_en if lang != "en" else out[0].reply))
-    local = G.tidy_reply(G.scrub_pii(out[0].reply)) if lang != "en" else en
-    problems = G.reply_problems(en)
+    en = as_bullets(G.tidy_reply(G.scrub_pii(out[0].reply_en if lang != "en" else out[0].reply)))
+    local = as_bullets(G.tidy_reply(G.scrub_pii(out[0].reply))) if lang != "en" else en
+    en_close = G.tidy_reply(G.scrub_pii(out[0].closing_en if lang != "en" else out[0].closing), max_words=40)
+    local_close = G.tidy_reply(G.scrub_pii(out[0].closing), max_words=40) if lang != "en" else en_close
+    whole_en = en + ("\n" + en_close if en_close else "")           # the rules and JEV read the summary and the closing together
+    problems = G.reply_problems(whole_en)
     if lang != "en":
-        problems += [p for p in G.reply_problems(local, neutral_only=True) if p not in problems]
+        problems += [p for p in G.reply_problems(local + "\n" + local_close, neutral_only=True) if p not in problems]
     honest_no_data = not problems and G.is_no_data_reply(en)       # "I do not have that in your data": it claims nothing, so JEV has nothing to add
-    if unsupported_numbers(en, sent.text() + " " + text):
+    if unsupported_numbers(whole_en, sent.text() + " " + text):
         problems.append("uncited_numbers")
     if not problems and not honest_no_data and jev_reachable():
-        if classify_message(jev.guard(en), reply=True) in ("refuse", "urgent", "caution"):
+        if classify_message(jev.guard(whole_en), reply=True) in ("refuse", "urgent", "caution"):
             problems.append("jev")
-    _log_guard(uid, "output", "pass" if not problems else _REPLY_VERDICT.get(problems[0], "blocked_other"), en, run.id)
+    _log_guard(uid, "output", "pass" if not problems else _REPLY_VERDICT.get(problems[0], "blocked_other"), whole_en, run.id)
     if problems:
         fb = fallback_text(sent, lang, text)
-        return finish(fb, verdict=_REPLY_VERDICT.get(problems[0], "blocked_other")) if fb else Outcome(
+        return finish(fb, verdict=_REPLY_VERDICT.get(problems[0], "blocked_other"), closing=texts.tr(lang, "chat.closing")) if fb else Outcome(
             "refused", texts.tr(lang, "chat.blocked_reply"), offer_question=True, verdict=_REPLY_VERDICT.get(problems[0], "blocked_other"))
     if honest_no_data:
         return finish(local, "empty")
-    return finish(local, sources=pick_sources(sent.sections, text, en, _med_names(sent)))
+    return finish(local, sources=pick_sources(sent.sections, text, en, _med_names(sent)), closing=local_close)
 
 
 def jev_reachable() -> bool:

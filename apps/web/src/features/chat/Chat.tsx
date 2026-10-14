@@ -12,7 +12,7 @@ import { Header } from '@/ui/layout'
 import { Alert, Button, Skeleton } from '@/ui/primitives'
 import { ArrowRight, ChatCircleDots } from '@/ui/icons'
 import { useSend, useStarters, useThread, type Item } from './api'
-import { Actions, Bubble, TypingIndicator } from './parts'
+import { Actions, Bubble, ThinkingSteps } from './parts'
 
 const MAX = 500
 
@@ -88,7 +88,7 @@ export function Chat() {
             {items.map((i) => (
               <Row key={i.id} item={i} showFollowUps={i.id === lastAnswerId && !pending} onAsk={send} onRetry={() => send(i.text, true)} />
             ))}
-            {pending && <TypingIndicator />}
+            {pending && <ThinkingSteps question={[...items].reverse().find((i) => i.role === 'user')?.text ?? ''} />}
             <div ref={end} />
           </div>
         </div>

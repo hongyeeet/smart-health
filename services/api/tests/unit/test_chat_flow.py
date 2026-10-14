@@ -445,3 +445,43 @@ def test_the_newer_fixed_texts_are_written_in_all_four_languages(key):
         translated = texts.tr(lang, key)
         assert translated.strip() and translated != en, (key, lang)
         assert texts.CATALOG[key][lang] == translated        # the translation is the catalogue entry, not an English fallback
+
+
+# ----------------------------------------------------------------------------- (k) a summary of three bullets, and a warm closing that comes last
+BULLETS = "- Your average glucose was 9.4 mmol/L on 1 day.\n- You took 2 of 3 doses on that day.\n- You can look at your numbers in the app."
+CLOSING = "Thank you for keeping track every day. Your effort counts, and I am with you."
+
+
+def test_the_reply_is_three_bullets_then_the_links_then_the_closing(world):
+    world["tri"] = AI.Triage(intent="insights", about_noticed_things=True)
+    world["ans"] = AI.Reply(reply=BULLETS, reply_en=BULLETS, closing=CLOSING, closing_en=CLOSING)
+    o = turn("What has the app noticed about me?")
+    assert o.text.startswith(BULLETS)
+    assert texts.tr("en", "chat.sign_insights") in o.text                      # the link sentence (with its [[C1|...]] marker) is still there
+    assert o.text.endswith(CLOSING)                                            # and the message ends on the encouragement
+    assert {"kind": "open", "label": "Open Insights, Overview", "to": "C1", "text": None} in o.actions
+
+
+def test_a_paragraph_from_the_model_becomes_three_bullets():
+    out = C.as_bullets("Your glucose was 9.4 mmol/L. You took 2 of 3 doses. You walked 20 minutes. Keep logging.")
+    assert out.count("\n") == 2 and all(l.startswith("- ") for l in out.splitlines())
+    assert C.as_bullets("1. One\n2. Two\n3. Three\n4. Four").splitlines()[-1] == "- Three Four"
+    assert C.as_bullets("I do not have that in your data.") == "I do not have that in your data."
+
+
+def test_a_closing_that_judges_a_result_blocks_the_whole_reply(world):
+    world["ans"] = AI.Reply(reply=BULLETS, reply_en=BULLETS, closing="That is a good result, well done.", closing_en="That is a good result, well done.")
+    o = turn("How was my glucose this week?")
+    assert "good result" not in o.text and o.text.startswith(texts.tr("en", "chat.fallback_intro"))
+
+
+def test_the_closing_is_in_the_persons_language_and_the_rules_read_the_english_copy(world):
+    world["ans"] = AI.Reply(reply="- 你的平均血糖是 9.4 mmol/L。", reply_en=BULLETS, closing="你的努力很有意义。", closing_en=CLOSING)
+    o = turn("How was my glucose this week?", lang="zh")
+    assert o.text.endswith("你的努力很有意义。")
+
+
+def test_when_the_model_is_down_the_own_data_summary_still_ends_warmly(world):
+    world["ans_exc"] = LLMUnavailable("down")
+    o = turn("How was my glucose this week?")
+    assert o.text.endswith(texts.tr("en", "chat.closing"))
