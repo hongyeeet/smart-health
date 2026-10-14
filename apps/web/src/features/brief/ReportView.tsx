@@ -6,7 +6,8 @@
  * AI insight note is shown under them.
  */
 import { Fragment, type ReactNode } from 'react'
-import type { DoctorReport, GlucoseBandKey } from '@/data/types'
+import type { DoctorReport, GlucoseBandKey, InsightsTimeline } from '@/data/types'
+import { PrintCharts } from './PrintCharts'
 import { appConfig } from '@/config/app'
 import { palettes } from '@/theme/palettes'
 import './report.css'
@@ -607,6 +608,8 @@ const SECTION_VIEW: Record<ReportSection, (r: DoctorReport) => ReactNode> = {
 }
 
 export interface ReportExtra {
+  /** the Overview data for the period, drawn as the four charts */
+  timeline?: InsightsTimeline
   /** the six health numbers for the period, already worded */
   tiles?: { label: string; value: string; unit?: string; status: string }[]
   /** one reasoning line per Overview chart */
@@ -644,11 +647,12 @@ function TilesSection({ tiles }: { tiles: NonNullable<ReportExtra['tiles']> }) {
   )
 }
 
-function ChartsSection({ reasons }: { reasons: NonNullable<ReportExtra['reasons']> }) {
+function ChartsSection({ reasons, timeline }: { reasons: NonNullable<ReportExtra['reasons']>; timeline?: InsightsTimeline }) {
   return (
     <section>
       <h2>Glucose, heart rate, SpO2 and blood pressure</h2>
-      <table className="rp-stack">
+      {timeline ? <PrintCharts tl={timeline} reasons={reasons} /> : null}
+      <table className="rp-stack" hidden={!!timeline}>
         <thead>
           <tr>
             <th style={{ width: 150 }}>Chart</th>
@@ -666,7 +670,7 @@ function ChartsSection({ reasons }: { reasons: NonNullable<ReportExtra['reasons'
           ))}
         </tbody>
       </table>
-      <p className="rp-muted">The charts are in the app. Each line compares the period with your own baseline and does not prove a cause.</p>
+      <p className="rp-muted">Each line compares the period with your own baseline and does not prove a cause.</p>
     </section>
   )
 }
@@ -747,12 +751,12 @@ export function ReportView({ r, extra }: { r: DoctorReport; extra?: ReportExtra 
       </div>
 
       {extra?.tiles && extra.tiles.length > 0 && <TilesSection tiles={extra.tiles} />}
+      {extra?.reasons && extra.reasons.length > 0 && <ChartsSection reasons={extra.reasons} timeline={extra.timeline} />}
 
       {REPORT_SECTIONS.map((key) => (
         <Fragment key={key}>{SECTION_VIEW[key](r)}</Fragment>
       ))}
 
-      {extra?.reasons && extra.reasons.length > 0 && <ChartsSection reasons={extra.reasons} />}
       {extra?.learned && <LearnedSection learned={extra.learned} />}
       {extra?.appointment !== undefined && <AppointmentSection a={extra.appointment} />}
 

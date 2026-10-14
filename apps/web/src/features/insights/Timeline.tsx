@@ -116,14 +116,14 @@ function againstBaseline(t: TFunction, value: number | null, base: number | null
 
 function ChartHead({ color, name, unit, value, sub }: { color: string; name: string; unit: string; value: string; sub: string }) {
   return (
-    <div className="mb-1 mt-3 flex h-11 items-center justify-between gap-x-3">
+    <div className="mb-1 mt-3 flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
       <p className="flex min-w-0 items-center gap-2 font-bold">
         <span className="h-3 w-3 flex-none rounded-full" style={{ background: color }} aria-hidden />
         <span className="truncate">{name}</span>
         <span className="text-sub font-normal text-ink3">{unit}</span>
       </p>
-      <div className="relative z-[3] min-w-0 bg-card pl-2 text-right">
-        <p className="num truncate text-body font-bold leading-tight">{value}</p>
+      <div className="relative z-[3] min-w-0 bg-card sm:pl-2 sm:text-right">
+        <p className="num text-body font-bold leading-tight">{value}</p>
         <p className="truncate text-micro text-ink2">{sub}</p>
       </div>
     </div>
@@ -762,13 +762,13 @@ export function Plot({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className={cn('flex h-[15.25rem] flex-col gap-2 rounded-card bg-well p-3', compact && 'hidden')} aria-live="off">
-        <div className="flex h-9 items-center justify-between gap-2">
+      <div className={cn('flex flex-col gap-2 rounded-card bg-well p-3 md:h-[15.25rem]', compact && 'hidden')} aria-live="off">
+        <div className="flex min-h-9 flex-wrap items-center justify-between gap-2 md:h-9 md:flex-nowrap">
           <p className="flex min-w-0 items-center gap-2">
             <span className="truncate text-body font-bold">{label}</span>
             {chip && <span className="flex-none rounded-chip bg-info-soft px-2.5 py-0.5 text-sub font-bold text-info">{chip}</span>}
           </p>
-          <div className="flex flex-none gap-1.5">
+          <div className="flex flex-wrap gap-1.5 md:flex-none md:flex-nowrap">
             <button
               type="button"
               onClick={() => jumpDay(-1)}
@@ -821,7 +821,7 @@ export function Plot({
               ? cell(t('insights.tl.salt', 'Salt'), '–', '', notRecorded, true)
               : cell(t('insights.tl.salt', 'Salt'), fmt(row.sodiumMg), 'mg', t('insights.tl.sodium', 'as sodium'))}
         </div>
-        <p className="flex h-6 items-center truncate text-sub text-ink2">{lightLine}</p>
+        <p className="flex min-h-6 items-center text-sub text-ink2 md:h-6 md:truncate">{lightLine}</p>
       </div>
 
       <div className="relative">

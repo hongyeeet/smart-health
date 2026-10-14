@@ -468,7 +468,7 @@ export function LogWorkout() {
                         aria-checked={on}
                         onClick={() => setEffort(on ? null : n)}
                         className={cn(
-                          'press h-12 rounded-[12px] border-[1.5px] text-body font-bold',
+                          'press flex h-12 items-center justify-center rounded-[12px] border-[1.5px] text-body font-bold',
                           on ? 'border-brand bg-brand text-on-brand' : 'border-line bg-card text-ink',
                         )}
                       >

@@ -45,6 +45,7 @@ export function ReportA4() {
   const extra: ReportExtra | undefined = tl.data
     ? {
         tiles: healthTiles(t, tl.data).map((x) => ({ label: x.label, value: x.value, unit: x.unit, status: x.status })),
+        timeline: tl.data,
         reasons: plotReasons(t, tl.data).map((x) => ({ title: x.title, why: x.why, saw: x.saw })),
         learned: learned.data ? learnedRows(learned.data.groups.flatMap((g) => g.facts)) : undefined,
         appointment: context.data

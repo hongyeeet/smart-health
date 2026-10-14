@@ -13,7 +13,7 @@ export function Segmented<T extends string | number>({ options, value, onChange,
       {options.map((o) => {
         const on = o.value === value
         return (
-          <button key={String(o.value)} type="button" role="radio" aria-checked={on} onClick={() => onChange(o.value)} className="press relative min-h-11 flex-1 rounded-chip px-3 text-sub font-bold">
+          <button key={String(o.value)} type="button" role="radio" aria-checked={on} onClick={() => onChange(o.value)} className="press relative min-h-11 flex-1 whitespace-nowrap rounded-chip px-2 text-sub font-bold sm:px-3">
             {on && <motion.span layoutId={`seg-${id}`} className="absolute inset-0 rounded-chip bg-card shadow-lift" transition={{ duration: 0.2, ease: ease.inOut }} />}
             <span className={cn('relative text-center', on ? 'text-ink' : 'text-ink2')}>{o.label}</span>
           </button>
