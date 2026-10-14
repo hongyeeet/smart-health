@@ -935,7 +935,10 @@ def food_response(food: str) -> dict:
 
 
 # ----------------------------------------------------------------------------------------------- notifications
-EXEMPT_PREFIXES = ("dose-", "urgent-")  # dose reminders (inside their window) and urgent messages never count towards the cap or wait for quiet hours
+EXEMPT_PREFIXES = ("dose-", "urgent-", "start-")  # dose reminders (inside their window), urgent messages and the first "get started" notices never count towards the cap or wait for quiet hours
+# The first notifications a new person sees, in this order: how to get started. Each is made once, stays on top of the Reminders page until the
+# thing is done, and is then marked done. key -> (order, thing to log, screen)
+STARTERS = {"start-medication": (0, "medication", "H1"), "start-meal": (1, "meal", "E2"), "start-checkin": (2, "checkin", "E5")}
 
 
 def is_exempt(key: str) -> bool:
@@ -1022,6 +1025,12 @@ def _notifications(create: bool, history: bool = False) -> list[dict]:
             1 for r in c.execute("select payload->>'key' k from notifications where user_id=%s and (scheduled_for at time zone 'Asia/Singapore')::date=%s", (current_user(), now.date())).fetchall()
             if r["k"] and not is_exempt(r["k"])
         )
+        # has the person ever logged each of the first things? (a medicine saved, a meal, a mood and sleep check-in)
+        logged_ever = {
+            "medication": c.execute("select count(*) n from medications where user_id=%s and deleted_at is null", (current_user(),)).fetchone()["n"] > 0,
+            "meal": c.execute("select count(*) n from food_logs where user_id=%s and deleted_at is null", (current_user(),)).fetchone()["n"] > 0,
+            "checkin": c.execute("select count(*) n from wellbeing_logs where user_id=%s and deleted_at is null", (current_user(),)).fetchone()["n"] > 0,
+        }
     # the daily cap and quiet hours apply to new items only; what is already there stays until it is acted on or expires
     # dose reminders inside their window come from the learning loop and are exempt from the cap and quiet hours (their keys start "dose-")
     from app.agents import hooks
@@ -1032,6 +1041,10 @@ def _notifications(create: bool, history: bool = False) -> list[dict]:
         except Exception:
             logger.exception("could not close anchored reminders whose dose is done")
         want += hooks.dose_nudges(current_user(), now, have_keys)
+        # the "get started" notices: one for each first thing not logged yet, made once (a person who already has it is never given it again)
+        for skey, (_order, what, route) in STARTERS.items():
+            if not logged_ever[what] and skey not in have_keys:
+                want.append((skey, "nudge", texts.tr(lang, f"nudge.start.{what}.title"), texts.tr(lang, f"nudge.start.{what}.body"), route, now + timedelta(days=365)))
     else:
         want = []
     if lunch_slot & have_keys:
@@ -1069,7 +1082,8 @@ def _notifications(create: bool, history: bool = False) -> list[dict]:
         # a reminder is done once the thing it asked for is logged
         for row in c.execute("select id, payload from notifications where user_id=%s and acted_at is null and payload ? 'key'", (current_user(),)).fetchall():
             key = row["payload"]["key"]
-            done = (key.startswith("meal-") and key.endswith(today) and m["count"] >= int(key.split("-")[1])) or \
+            done = (key in STARTERS and logged_ever[STARTERS[key][1]]) or \
+                   (key.startswith("meal-") and key.endswith(today) and m["count"] >= int(key.split("-")[1])) or \
                    (key.startswith("checkin-") and key.endswith(today) and items["checkin"]["done"]) or \
                    (key.startswith("workout-") and key.endswith(today) and items["workout"]["done"]) or                    (key.startswith("activity-") and key.endswith(today) and items["workout"]["done"]) or                    (key.startswith("lunch-") and key.endswith(today) and lunch_today >= 1)
             if done and create:
@@ -1114,6 +1128,7 @@ def _notifications(create: bool, history: bool = False) -> list[dict]:
             local = _aware(r["scheduled_for"]).astimezone(TZ)
             item["when"] = local.strftime("%I:%M %p").lstrip("0").lower()      # the day is the heading above it, so the row shows only the time
             item["date"] = local.date().isoformat()
+            item["pinned"] = STARTERS[r["payload"]["key"]][0] if r["payload"].get("key") in STARTERS else None
             item["current"] = r["acted_at"] is None and live(r)
         out.append(item)
     return out

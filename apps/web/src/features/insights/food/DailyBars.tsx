@@ -2,6 +2,7 @@
  * One bar per day over an Insights period, hand-built in SVG like the other charts in src/charts. A day with no value is a gap:
  * a short dashed mark on the baseline, never a bar of zero, so an unknown day is not read as "nothing eaten".
  */
+import { textFactor } from '@/lib/textScale'
 import { useTranslation } from 'react-i18next'
 import { linear, useMeasure } from '@/charts/useMeasure'
 import { shortDate } from '@/lib/format'
@@ -26,11 +27,11 @@ export function DailyBars({ days, unit, label, format }: { days: DayValue[]; uni
   const n = days.length
   const colW = n ? width / n : width
   const bw = Math.max(2, Math.min(28, colW * 0.7))
-  // about five date labels, always the first and the last day; at 200% text the dates are twice as wide, so about three
+  // about five date labels, always the first and the last day; at larger text the dates are wider, so about three
   const labels = textScale === 2 ? 3 : 5
   const step = n > 1 ? Math.ceil((n - 1) / (labels - 1)) : 1
   // a middle label that would touch the first or the last one is left out
-  const labelW = 7 * 0.58 * 12 * textScale
+  const labelW = 7 * 0.58 * 12 * textFactor(textScale)
   const roomFor = (i: number) => i * colW >= labelW * 1.15 && (n - 1 - i) * colW >= labelW * 1.15
   const summary = t('insights.food.chartSummary', '{{label}}: {{known}} of {{n}} days have a value. Highest {{max}} {{unit}}.', {
     label,

@@ -33,7 +33,7 @@
   --font-sans: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', 'Noto Sans SC', 'Noto Sans Tamil', sans-serif;
   --font-serif: 'Newsreader', 'Iowan Old Style', Georgia, 'Noto Serif SC', serif;
 
-  /* type scale follows the text-size setting (--ts is 1 or 2) */
+  /* type scale follows the text-size setting (--ts is 1, or 1.5 for larger text) */
   --text-display: calc(44px * var(--ts, 1));
   --text-display--line-height: 1.02;
   --text-xl: calc(32px * var(--ts, 1));
@@ -219,11 +219,6 @@ p {
 }
 html:not([lang='en']) .tab-label {
   font-size: min(var(--text-tab), 3.2vw);
-}
-
-/* Tamil and Malay words are long: at 200% the page title grows less, so it is not broken in the middle of a word next to the buttons. */
-html:not([lang='en']) [data-ts='2'] {
-  --text-h1: calc(28px * 1.35);
 }
 
 /* the waiting steps in the chat appear one at a time */

@@ -430,5 +430,41 @@
   "zh": "下午{h}:{mm}",
   "ms": "{h}:{mm} petang",
   "ta": "மாலை {h}:{mm}"
+ },
+ "nudge.start.medication.title": {
+  "en": "Log your medication",
+  "zh": "记录您的用药",
+  "ms": "Catat ubat anda",
+  "ta": "உங்கள் மருந்துகளைப் பதிவுசெய்யுங்கள்"
+ },
+ "nudge.start.medication.body": {
+  "en": "Scan the label of each medicine you take, or type it in. Your dose reminders start from there.",
+  "zh": "扫描您服用的每种药物标签，或直接输入。您的服药提醒将从这里开始。",
+  "ms": "Imbas label setiap ubat yang anda ambil, atau taipkannya. Peringatan dos anda bermula dari situ.",
+  "ta": "நீங்கள் உட்கொள்ளும் ஒவ்வொரு மருந்தின் லேபிளையும் ஸ்கேன் செய்யுங்கள் அல்லது தட்டச்சு செய்யுங்கள். உங்கள் மருந்தளவு நினைவூட்டல்கள் அங்கிருந்து தொடங்கும்."
+ },
+ "nudge.start.meal.title": {
+  "en": "Log your first meal",
+  "zh": "记录您的第一餐",
+  "ms": "Catat hidangan pertama anda",
+  "ta": "உங்கள் முதல் உணவைப் பதிவுசெய்யுங்கள்"
+ },
+ "nudge.start.meal.body": {
+  "en": "Take a photo of what you eat. It lands on your timeline and starts your food insights.",
+  "zh": "拍下您吃的食物。它会显示在您的时间轴上，并开始生成饮食分析。",
+  "ms": "Ambil gambar apa yang anda makan. Ia akan dimasukkan ke dalam garis masa anda dan memulakan maklumat makanan anda.",
+  "ta": "நீங்கள் சாப்பிடுவதைப் படம் எடுங்கள். அது உங்கள் காலவரிசையில் பதிவாகி, உங்கள் உணவு பற்றிய தகவல்களைத் தொடங்கும்."
+ },
+ "nudge.start.checkin.title": {
+  "en": "Log how you slept and felt",
+  "zh": "记录您的睡眠和感受",
+  "ms": "Catat tidur dan perasaan anda",
+  "ta": "நீங்கள் எப்படித் தூங்கினீர்கள், எப்படி உணர்ந்தீர்கள் என்பதைப் பதிவுசெய்யுங்கள்"
+ },
+ "nudge.start.checkin.body": {
+  "en": "A thirty-second mood and sleep check-in.",
+  "zh": "只需30秒的心情与睡眠记录。",
+  "ms": "Semakan perasaan dan tidur selama tiga puluh saat.",
+  "ta": "முப்பது விநாடி மனநிலை மற்றும் தூக்கச் சரிபார்ப்பு."
  }
 }

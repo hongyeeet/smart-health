@@ -110,13 +110,13 @@ export function BloodPressureChart({ readings, from, to, label, height = 176 }: 
           <svg width={12} height={12} aria-hidden>
             <circle cx={6} cy={6} r={5} fill="var(--c-s3)" />
           </svg>
-          {t('insights.bp.legendTop', 'Top number')}
+          {t('insights.bp.legendTopV3', 'Systolic BP')}
         </span>
         <span className="flex items-center gap-1.5">
           <svg width={12} height={12} aria-hidden>
             <circle cx={6} cy={6} r={4.2} fill="var(--c-card)" stroke="var(--c-s3)" strokeWidth={2} />
           </svg>
-          {t('insights.bp.legendBottom', 'Bottom number')}
+          {t('insights.bp.legendBottomV3', 'Diastolic BP')}
         </span>
       </p>
     </div>

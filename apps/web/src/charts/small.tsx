@@ -1,3 +1,4 @@
+import { textFactor } from '@/lib/textScale'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
@@ -124,7 +125,7 @@ export function EffortBars({ bars }: { bars: EffortBar[] }) {
   const [sel, setSel] = useState<number | null>(null)
   const n = bars.length
   const colW = width / n
-  const px = 12 * ts * 0.58
+  const px = 12 * textFactor(ts) * 0.58
   // a label such as "Week of 14 Sep" or "Tue 6" is written in full when it fits under its bar, on two lines when it does not, and as its last part alone when even that is too wide
   const parts = (l: string) => {
     const w = l.split(' ')
@@ -142,7 +143,7 @@ export function EffortBars({ bars }: { bars: EffortBar[] }) {
     return b.partial ? [...base, soFar] : base
   }
   const maxLines = Math.max(...bars.map((b) => lineOf(b).length))
-  const extra = (maxLines - 1) * 16 * ts
+  const extra = (maxLines - 1) * 16 * textFactor(ts)
   const h = 170 + extra
   const base = h - 28 - extra
   const totals = bars.map((b) => b.light + b.moderate + b.vigorous)
@@ -216,9 +217,9 @@ export function EffortBars({ bars }: { bars: EffortBar[] }) {
                   {tot}
                 </text>
               )}
-              <text x={cx} y={h - 6 - (lineOf(b).length - 1) * 16 * ts} textAnchor="middle" fill={on ? 'var(--c-ink)' : 'var(--c-ink3)'} style={{ fontSize: 'calc(12px * var(--ts))' }}>
+              <text x={cx} y={h - 6 - (lineOf(b).length - 1) * 16 * textFactor(ts)} textAnchor="middle" fill={on ? 'var(--c-ink)' : 'var(--c-ink3)'} style={{ fontSize: 'calc(12px * var(--ts))' }}>
                 {lineOf(b).map((ln, k) => (
-                  <tspan key={k} x={cx} dy={k === 0 ? 0 : 16 * ts}>
+                  <tspan key={k} x={cx} dy={k === 0 ? 0 : 16 * textFactor(ts)}>
                     {ln}
                   </tspan>
                 ))}

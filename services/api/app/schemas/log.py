@@ -303,3 +303,4 @@ class Notification(Camel):
     unread: bool
     date: str | None = None            # only on the Reminders page list: the Singapore day the reminder belongs to, YYYY-MM-DD
     current: bool | None = None        # only on that list: still waiting and inside its time window (not yet done or past)
+    pinned: int | None = None          # only on that list: the place (0, 1, 2) of a first "get started" notice, which is shown on top until done

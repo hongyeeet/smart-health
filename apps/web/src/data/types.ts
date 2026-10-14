@@ -359,6 +359,8 @@ export interface Notice {
   date?: string
   /** Reminders page list only: still waiting and inside its time window. Past or done ones stay on the page and still open their screen. */
   current?: boolean
+  /** Reminders page list only: the place (0, 1, 2) of a first "get started" notice, shown on top until it is done */
+  pinned?: number | null
 }
 
 export interface ConnectedSource {

@@ -66,7 +66,7 @@ export function Language() {
           onChange={setTextScale}
           options={[
             { value: 1, label: t('me.language.standard', 'Standard') },
-            { value: 2, label: t('me.language.larger', 'Larger, 200%') },
+            { value: 2, label: t('me.language.largerV2', 'Larger text') },
           ]}
         />
         <Card tone="soft" className="flex flex-col gap-2" as="section">

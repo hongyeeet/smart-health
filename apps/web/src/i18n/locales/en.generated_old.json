@@ -1,4 +1,81 @@
 {
+  "home": {
+    "action": {
+      "checkin": "Do the check-in",
+      "workout": "Log a workout"
+    },
+    "bar": {
+      "activeMin": "Active minutes",
+      "ofGoal": "{{value}} of {{goal}}",
+      "strength": "Strength sessions"
+    },
+    "done": "Done",
+    "dose": {
+      "addSub": "Then we can show you what to take and when.",
+      "addTitle": "Add your medicines",
+      "after": "After this: {{title}}, {{when}}.",
+      "allDone": "All done for now",
+      "dueNow": "Due now",
+      "loadError": "We could not load your medicines. Tap to try again.",
+      "next": "Next: <0>{{title}}</0>, {{when}}.",
+      "notConfirmed": "{{when}} is not confirmed.",
+      "saveError": "We could not save that just now. Please try again.",
+      "tellUs": "Tell us why",
+      "withFood": ", with food",
+      "yourMeds": "Your medicines"
+    },
+    "food": {
+      "label": "Food",
+      "notNow": "Not now"
+    },
+    "hero": {
+      "caughtUp": "All caught up. Well done.",
+      "goodTime": "A good time to log",
+      "next": "Next: {{label}}",
+      "nothingDue": "Nothing more is due for now.",
+      "today": "Today's logging"
+    },
+    "loadError": "We could not load today's logs. Tap to try again.",
+    "log": "Log",
+    "lunch": {
+      "title": "Lunch ideas for you"
+    },
+    "more": {
+      "less": "See less",
+      "more": "See more"
+    },
+    "notYet": "Not yet",
+    "ring": {
+      "label": "{{done}} of {{total}} logs done today",
+      "of": "of {{total}}"
+    },
+    "row": {
+      "due": "{{label}}. A good time to log this."
+    },
+    "sensor": "Glucose comes from your sensor, so there is nothing to type.",
+    "streak": {
+      "many": "{{n}} days in a row",
+      "one": "{{n}} day in a row"
+    },
+    "week": "This week",
+    "whatToLog": "What to log today",
+    "worth": {
+      "body": "You have had {{label}} <0>{{n}} times</0> in the last 2 weeks, about <1>{{kcal}}</1> kcal and <2>{{sodium}}</2> mg salt each. Those are your own logged numbers.",
+      "heaviest": "Your {{dish}} ({{n}} times) is the heaviest. Next time you could try",
+      "notAdvice": "An idea for next time, not advice. Your logged meals are never changed.",
+      "notForMe": "Not for me",
+      "servingNote": "{{serving}} {{source}}. Typical values, so your portion may differ.",
+      "title": "Worth a look"
+    }
+  },
+  "insights": {
+    "bp": {
+      "legendBottom": "Bottom number",
+      "legendBottomV2": "Bottom number: diastolic BP",
+      "legendTop": "Top number",
+      "legendTopV2": "Top number: systolic BP"
+    }
+  },
   "me": {
     "account": {
       "f": {
@@ -7,6 +84,9 @@
     },
     "email": {
       "address": "Gmail address"
+    },
+    "language": {
+      "larger": "Larger, 200%"
     }
   },
   "onboarding": {

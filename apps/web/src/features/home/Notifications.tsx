@@ -32,12 +32,40 @@ const dayBefore = (iso: string) => {
   return d.toISOString().slice(0, 10)
 }
 
+function NoticeRow({ n }: { n: Notice }) {
+  const { t } = useTranslation()
+  const go = useGo()
+  const open = useOpenNotice()
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => {
+          if (n.unread) open.mutate(n.id)
+          if (n.to) go(n.to)
+        }}
+        className="press flex w-full items-start gap-3 py-3.5 text-left"
+      >
+        <span className={cn('mt-0.5 flex h-11 w-11 flex-none items-center justify-center rounded-full', n.unread ? 'bg-brass-soft text-brass' : 'bg-well text-ink2')}>
+          <Bell size={22} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className={cn('block text-body leading-snug', n.unread ? 'font-bold' : '')}>{n.title}</span>
+          <span className="block text-sub text-ink2">{n.body}</span>
+          <span className="block pt-0.5 text-sub text-ink3">{n.when}</span>
+        </span>
+        {n.unread && <span className="mt-2 h-2.5 w-2.5 flex-none rounded-full bg-brass" aria-label={t('alerts.new', 'New')} />}
+        {n.to && <CaretRight size={18} className="mt-2 flex-none text-ink3" aria-hidden />}
+      </button>
+    </li>
+  )
+}
+
 export function Notifications() {
   const { t } = useTranslation()
   const { data, isError } = useNoticeHistory()
   const clash = useClash()
   const open = useOpenNotice()
-  const go = useGo()
   const dismissedIds = useDismissed((s) => s.ids)
   const restore = useDismissed((s) => s.restore)
   const [filter, setFilter] = useState<Filter>('all')
@@ -62,8 +90,10 @@ export function Notifications() {
     if (iso === dayBefore(today)) return t('alerts.day.yesterday', 'Yesterday, {{date}}', { date })
     return date
   }
+  /* the first "get started" notices (log your medication, your first meal, how you slept) sit on top, in order, until each is done */
+  const started = notices.filter((n) => n.pinned != null && n.current !== false).sort((a, b) => (a.pinned ?? 0) - (b.pinned ?? 0))
   const days: { date: string; items: Notice[] }[] = []
-  for (const n of notices) {
+  for (const n of notices.filter((x) => !started.includes(x))) {
     const date = n.date ?? today
     const last = days[days.length - 1]
     if (last && last.date === date) last.items.push(n)
@@ -122,33 +152,24 @@ export function Notifications() {
 
       {showAlerts && alerts.map((a) => <InteractionCard key={a.id} alert={a} />)}
 
+      {showNotices && started.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="px-1 text-sub font-bold text-ink2">{t('alerts.getStarted', 'Get started')}</h2>
+          <ul className="divide-y divide-line rounded-card border border-brand/40 bg-card px-4">
+            {started.map((n) => (
+              <NoticeRow key={n.id} n={n} />
+            ))}
+          </ul>
+        </section>
+      )}
+
       {showNotices &&
         days.map((day) => (
           <section key={day.date} className="flex flex-col gap-2">
             <h2 className="px-1 text-sub font-bold text-ink2">{dayLabel(day.date)}</h2>
             <ul className="divide-y divide-line rounded-card border border-line bg-card px-4">
               {day.items.map((n) => (
-                <li key={n.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (n.unread) open.mutate(n.id)
-                      if (n.to) go(n.to)
-                    }}
-                    className="press flex w-full items-start gap-3 py-3.5 text-left"
-                  >
-                    <span className={cn('mt-0.5 flex h-11 w-11 flex-none items-center justify-center rounded-full', n.unread ? 'bg-brass-soft text-brass' : 'bg-well text-ink2')}>
-                      <Bell size={22} aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className={cn('block text-body leading-snug', n.unread ? 'font-bold' : '')}>{n.title}</span>
-                      <span className="block text-sub text-ink2">{n.body}</span>
-                      <span className="block pt-0.5 text-sub text-ink3">{n.when}</span>
-                    </span>
-                    {n.unread && <span className="mt-2 h-2.5 w-2.5 flex-none rounded-full bg-brass" aria-label={t('alerts.new', 'New')} />}
-                    {n.to && <CaretRight size={18} className="mt-2 flex-none text-ink3" aria-hidden />}
-                  </button>
-                </li>
+                <NoticeRow key={n.id} n={n} />
               ))}
             </ul>
           </section>

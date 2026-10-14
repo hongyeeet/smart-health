@@ -74,7 +74,7 @@ These come from [rules.md](rules.md), [design.md](design.md) and decisions D-0xx
 10. **Plain language, units always shown** (mmol/L, mg, min, mmHg), sentences short, one main action per screen.
 11. **Safety copy is fixed.** The low-glucose alert and the clash sentence use fixed wording (sections J1 and H1/H5). Do not rephrase them with AI.
 12. **Placeholders are labelled.** Any threshold not reviewed by a clinician says so on screen ("These limits are placeholders and have not had clinical review").
-13. **Accessibility.** Text scale 100% or 200%, light and dark, touch targets 48 px or more, status never by colour alone (icon plus word), `ink3` text only at 16 px or larger.
+13. **Accessibility.** Text size Standard or Larger text (1.5 times; it was 200% until 2026-10-14), light and dark, touch targets 48 px or more, status never by colour alone (icon plus word), `ink3` text only at 16 px or larger.
 14. **Blood pressure and stock never get judgement words.** A reading is never called high, low or normal. A stock count says how many are left and the days at the current dose, never "good" or "bad".
 
 ---
@@ -198,6 +198,7 @@ Not on Home: a low-stock note (the stock count shows on H1 only; see section 11)
 
 **B2 Notifications and alerts** · `/notifications`
 - **Clash alert cards** first (open alerts): tag "Medication review", time raised, the two medicines with a "Possible interaction" marker, the fixed sentence, the note that this does not mean the medicines are unsafe, and the buttons **Review interaction** (H5), **Contact clinic** (says there is no clinic number yet), **Ask a question** (typed question saved to the doctor questions, K12) and **Dismiss for now and add to my doctor questions** (hides on this device, with Restore).
+- **Get started** (top of the list, 2026-10-14): for a person who has not logged these yet, three notices in order: **Log your medication** (opens Meds), **Log your first meal**, **Log how you slept and felt**. Each is made once, stays on top until that thing is logged, then moves into the day list. They do not count towards the daily cap or wait for quiet hours (keys `start-...`).
 - **Reminders list**: each opens its screen (a meal reminder opens E2, a check-in E5, a lunch reminder E8, a refill H1). Filter chips **All / Medicines / Reminders** (refill and dose reminders sit with Medicines). The list is the **last 45 days, grouped by day** (Today, Yesterday, then the date), newest first, from `GET /notifications/history`. **Nothing is cleared**: opening a reminder (`POST /notifications/{id}/open`) only marks it seen (the dot goes); a past or done one no longer opens a log screen. **"Not for me" is gone** (2026-10-13): the learning loop now learns only from opened or never opened. `/dismiss` stays in the API for older clients.
 - Empty state when there is nothing.
 
@@ -383,7 +384,7 @@ Moved out on 2026-10-13: Diet tracking (the starting point and the calendar are 
 - Read only list of where data comes from (glucose sensor, watch, logs) with last data time and a "not connected" state. Sensor sprint link. No connect or disconnect flows.
 
 **K5 Language and display** · `/me/language`
-- Language (saved to the profile), **text size** (100% / 200%, with a live preview), **colour theme** (light, dark, system). The language list offers English, Chinese, Malay and Tamil; see section 3.2 for which screens are translated.
+- Language (saved to the profile), **text size** (Standard / Larger text, which is 1.5 times the standard sizes; with a live preview), **colour theme** (light, dark, system). The language list offers English, Chinese, Malay and Tamil; see section 3.2 for which screens are translated.
 
 **K6 Privacy and consent** and **K9 Emergency contact** · `/me/privacy`, `/me/contact`: these addresses now open Data and account at the Consents and Emergency contacts sections.
 
@@ -510,7 +511,7 @@ Phone first (390 px). The breakpoints are Tailwind's: 768 px (`md`), 1024 px (`l
 | 768 px to 1023 px (tablet) | Side rail, 96 px wide, icons only | 720 px cap (`Screen`) | Ask button in the rail. Sheets centred, 560 px. `Split` stays one column. Home cards one column. Log tiles two columns (fifth tile full width) |
 | 1024 px and up (laptop) | Side rail, 240 px wide with labels | 1040 px cap | `Split` in two columns. Home cards in two columns, "See more" full width below. Log tiles in one row of five. Medicine cards in three columns, `TileGrid` up to three columns |
 | Any width, forms (`Screen narrow`) | As above | 640 px cap from 768 px | Setup pages and single-task pages |
-| Any width, 200% text (`data-ts="2"`) | As above | As above | Two-column grids drop to one column (`[[data-ts='2']_&]`); the Log hub fifth tile takes a normal tile size; text sizes scale (section 6.4) |
+| Any width, larger text (`data-ts="2"`, 1.5 times) | As above | As above | Two-column grids drop to one column (`[[data-ts='2']_&]`); the Log hub fifth tile takes a normal tile size; text sizes scale (section 6.4) |
 
 Other rules: the bottom bar and the Ask pill are hidden from 768 px (`md:hidden`). Setup (`/welcome`) and the urgent screen (`/urgent`) have no side rail. The phone frame (390 x 844) is only used on a window at least 1000 px wide and 700 px high (a demo setting). Print stylesheet `brief/report.css` for the A4 report.
 

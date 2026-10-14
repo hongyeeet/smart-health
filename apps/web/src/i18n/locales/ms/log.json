@@ -8,13 +8,42 @@
     "alerts": {
       "label": "Amaran"
     },
+    "banner": {
+      "altList": "Idea lain",
+      "altMany": "{{n}} alternatif",
+      "altOne": "1 alternatif",
+      "check": "Semak",
+      "closeReminder": "Tutup peringatan ini",
+      "closeSuggestion": "Tutup cadangan ini",
+      "doseDue": "Masa untuk {{medicine}} sekarang",
+      "doseFood": "{{time}}, bersama makanan",
+      "lighterLunch": "Idea makan tengah hari lebih ringan",
+      "logDinner": "Catat makan malam",
+      "seeIdeas": "Lihat idea",
+      "suggestedDinner": "Cadangan makan malam"
+    },
     "bar": {
       "activeMin": "Minit aktif",
       "ofGoal": "{{value}} daripada {{goal}}",
       "strength": "Sesi kekuatan"
     },
     "bell": "Pemberitahuan dan amaran, {{n}} baharu",
+    "chart": {
+      "calories": "Kalori",
+      "glucose": "Glukosa",
+      "glucoseTip": "Purata harian {{v}} mmol/L",
+      "heartRate": "Kadar denyutan jantung",
+      "heartTip": "Purata {{v}} bpm",
+      "noDay": "{{day}}, tiada data",
+      "none": "Belum ada apa-apa untuk ditunjukkan bagi 7 hari ini.",
+      "range": "7 hari",
+      "steps": "Langkah",
+      "stepsTip": "{{v}} langkah",
+      "tabs": "Apa hendak dipaparkan",
+      "title": "Gambaran keseluruhan kesihatan"
+    },
     "clash": {
+      "close": "Ketepikan amaran ini",
       "more": "{{n}} lagi untuk disemak.",
       "title": "Ubat mungkin bertindak balas. Semak dengan doktor anda."
     },
@@ -60,7 +89,8 @@
     "greeting": {
       "afternoon": "Selamat tengah hari",
       "evening": "Selamat petang",
-      "morning": "Selamat pagi"
+      "morning": "Selamat pagi",
+      "named": "{{greeting}}, {{name}}"
     },
     "hero": {
       "caughtUp": "Semua sudah selesai. Syabas.",
@@ -68,6 +98,24 @@
       "next": "Seterusnya: {{label}}",
       "nothingDue": "Tiada apa-apa lagi yang perlu dibuat buat masa ini.",
       "today": "Rekod hari ini"
+    },
+    "kpi": {
+      "aDay": "sehari",
+      "calories": "Kalori",
+      "caloriesAvg": "Sehari, 7 hari lepas",
+      "glucose": "Glukosa",
+      "glucoseDay": "Purata harian, {{day}}",
+      "glucoseNone": "Purata harian",
+      "glucoseSpark": "Purata glukosa harian, 7 hari",
+      "heart": "Jantung, oksigen",
+      "meterHigh": "{{n}} daripada {{m}} hidangan tinggi",
+      "noData": "Tiada data",
+      "salt": "Garam",
+      "sevenDayAvg": "Purata 7 hari",
+      "steps": "Langkah",
+      "stepsAvg": "Purata, 7 hari lepas",
+      "stepsSpark": "Langkah, 7 hari",
+      "sugar": "Gula"
     },
     "loadError": "Kami tidak dapat memuatkan rekod hari ini. Ketik untuk cuba lagi.",
     "log": "Rekod",
@@ -84,6 +132,29 @@
       "many": "Smart Health ada menyedari {{n}} perkara",
       "one": "Smart Health ada menyedari sesuatu"
     },
+    "numbers": {
+      "loadError": "Kami tidak dapat memuatkan nombor anda. Ketik untuk cuba lagi.",
+      "sub": "Berbanding biasa anda",
+      "title": "Ringkasan hari ini"
+    },
+    "plan": {
+      "back": "Awal hari ini",
+      "breakfast": "sarapan",
+      "dinner": "makan malam",
+      "done": "{{done}} daripada {{total}} selesai",
+      "forward": "Lewat hari ini",
+      "later": "Nanti",
+      "loadError": "Kami tidak dapat memuatkan pelan hari ini. Ketik untuk cuba lagi.",
+      "logMeal": "Catat {{meal}}",
+      "logged": "Dicatat",
+      "lunch": "makan tengah hari",
+      "meal": "makanan",
+      "missed": "Terlepas",
+      "nowAt": "{{time}}, sekarang",
+      "taken": "Diambil",
+      "takenBtn": "Diambil",
+      "title": "Pelan hari ini"
+    },
     "ring": {
       "label": "{{done}} daripada {{total}} rekod selesai hari ini",
       "of": "daripada {{total}}"
@@ -97,7 +168,24 @@
       "medicine": "Tambah ubat",
       "title": "Mula di sini"
     },
+    "status": {
+      "above": "Lebih tinggi daripada julat biasa anda",
+      "below": "Lebih rendah daripada julat biasa anda",
+      "hrDown": "Purata kadar denyutan jantung turun {{n}} bpm daripada biasa anda",
+      "hrUp": "Purata kadar denyutan jantung naik {{n}} bpm daripada biasa anda",
+      "noData": "Tiada data lagi",
+      "o2Down": "Purata oksigen turun {{n}} mata daripada biasa anda",
+      "o2Up": "Purata oksigen naik {{n}} mata daripada biasa anda",
+      "saltHigh": "Garam tinggi. Makan lebih ringan.",
+      "saltSugarHigh": "Garam dan gula tinggi. Makan lebih ringan.",
+      "stepsAbove": "Lebih tinggi daripada {{n}} biasa anda",
+      "stepsBelow": "Lebih rendah daripada {{n}} biasa anda",
+      "sugarHigh": "Gula tinggi. Makan lebih ringan.",
+      "unknown": "Belum cukup sejarah lagi untuk dibandingkan",
+      "within": "Dalam julat biasa anda"
+    },
     "stock": {
+      "close": "Sembunyikan ini untuk hari ini",
       "low": "{{name}} semakin berkurangan: tinggal kira-kira {{n}} hari",
       "lowOne": "{{name}} semakin berkurangan: tinggal kira-kira 1 hari",
       "more": "Lagi {{n}} semakin berkurangan.",

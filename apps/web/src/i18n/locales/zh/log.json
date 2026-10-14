@@ -8,13 +8,42 @@
     "alerts": {
       "label": "提醒"
     },
+    "banner": {
+      "altList": "其他建议",
+      "altMany": "{{n}} 个替代选择",
+      "altOne": "1 个替代选择",
+      "check": "查看",
+      "closeReminder": "关闭此提醒",
+      "closeSuggestion": "关闭此建议",
+      "doseDue": "该服用 {{medicine}} 了",
+      "doseFood": "{{time}}，随餐服用",
+      "lighterLunch": "清淡午餐建议",
+      "logDinner": "记录晚餐",
+      "seeIdeas": "查看建议",
+      "suggestedDinner": "晚餐建议"
+    },
     "bar": {
       "activeMin": "活动分钟数",
       "ofGoal": "{{value}}，目标 {{goal}}",
       "strength": "力量训练次数"
     },
     "bell": "通知和提醒，{{n}} 条新消息",
+    "chart": {
+      "calories": "卡路里",
+      "glucose": "血糖",
+      "glucoseTip": "每日平均值 {{v}} mmol/L",
+      "heartRate": "心率",
+      "heartTip": "平均 {{v}} bpm",
+      "noDay": "{{day}}，无数据",
+      "none": "这 7 天暂无显示内容。",
+      "range": "7 天",
+      "steps": "步数",
+      "stepsTip": "{{v}} 步",
+      "tabs": "显示内容",
+      "title": "健康概览"
+    },
     "clash": {
+      "close": "搁置此提醒",
       "more": "还有 {{n}} 项待查看。",
       "title": "药物可能会相互影响。请向您的医生咨询。"
     },
@@ -60,7 +89,8 @@
     "greeting": {
       "afternoon": "下午好",
       "evening": "晚上好",
-      "morning": "早上好"
+      "morning": "早上好",
+      "named": "{{greeting}}，{{name}}"
     },
     "hero": {
       "caughtUp": "全部完成了，做得好。",
@@ -68,6 +98,24 @@
       "next": "下一项：{{label}}",
       "nothingDue": "目前没有其他需要做的事。",
       "today": "今日记录"
+    },
+    "kpi": {
+      "aDay": "每天",
+      "calories": "卡路里",
+      "caloriesAvg": "过去 7 天，每天",
+      "glucose": "血糖",
+      "glucoseDay": "每日平均值，{{day}}",
+      "glucoseNone": "每日平均值",
+      "glucoseSpark": "7 天每日平均血糖",
+      "heart": "心率、血氧",
+      "meterHigh": "{{m}} 餐中有 {{n}} 餐偏高",
+      "noData": "无数据",
+      "salt": "盐",
+      "sevenDayAvg": "7 天平均值",
+      "steps": "步数",
+      "stepsAvg": "过去 7 天平均值",
+      "stepsSpark": "步数，7 天",
+      "sugar": "血糖"
     },
     "loadError": "无法加载今天的记录。轻触重试。",
     "log": "记录",
@@ -84,6 +132,29 @@
       "many": "Smart Health 发现了 {{n}} 件事",
       "one": "Smart Health 发现了一件事"
     },
+    "numbers": {
+      "loadError": "无法加载您的数值。点击重试。",
+      "sub": "与平时相比",
+      "title": "今日总结"
+    },
+    "plan": {
+      "back": "今天早些时候",
+      "breakfast": "早餐",
+      "dinner": "晚餐",
+      "done": "已完成 {{done}} / {{total}}",
+      "forward": "今天晚些时候",
+      "later": "稍后",
+      "loadError": "无法加载今天的计划。点击重试。",
+      "logMeal": "记录{{meal}}",
+      "logged": "已记录",
+      "lunch": "午餐",
+      "meal": "正餐",
+      "missed": "已错过",
+      "nowAt": "{{time}}，现在",
+      "taken": "已服用",
+      "takenBtn": "已服用",
+      "title": "今天的计划"
+    },
     "ring": {
       "label": "今天已完成 {{done}} 项记录，共 {{total}} 项",
       "of": "共 {{total}}"
@@ -97,7 +168,24 @@
       "medicine": "添加药物",
       "title": "从这里开始"
     },
+    "status": {
+      "above": "高于平时的范围",
+      "below": "低于平时的范围",
+      "hrDown": "平均心率比平时低 {{n}} bpm",
+      "hrUp": "平均心率比平时高 {{n}} bpm",
+      "noData": "暂无数据",
+      "o2Down": "平均血氧比平时低 {{n}} 点",
+      "o2Up": "平均血氧比平时高 {{n}} 点",
+      "saltHigh": "盐分偏高。吃得清淡一些。",
+      "saltSugarHigh": "盐分和糖分偏高。吃得清淡一些。",
+      "stepsAbove": "高于平时的 {{n}}",
+      "stepsBelow": "低于平时的 {{n}}",
+      "sugarHigh": "糖分偏高。吃得清淡一些。",
+      "unknown": "历史记录不足，尚无法对比",
+      "within": "在平时的范围内"
+    },
     "stock": {
+      "close": "今天先隐藏",
       "low": "{{name}}快用完了：大约还剩 {{n}} 天",
       "lowOne": "{{name}}快用完了：大约还剩 1 天",
       "more": "还有 {{n}} 种药物快用完了。",

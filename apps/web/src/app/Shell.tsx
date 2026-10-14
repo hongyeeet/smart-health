@@ -5,6 +5,7 @@ import { appConfig } from '@/config/app'
 import { useTranslation } from 'react-i18next'
 import { useUi } from '@/state/store'
 import { cn } from '@/lib/cn'
+import { textFactor } from '@/lib/textScale'
 import { ChartLineUp, ChatCircleDots, House, Pill, Plus, UserCircle, type IconType } from '@/ui/icons'
 import { duration, ease } from '@/motion/tokens'
 import { SheetHost } from './SheetHost'
@@ -99,7 +100,7 @@ function AppFrame({ fullBleed }: { fullBleed?: boolean }) {
   }, [pathname])
 
   return (
-    <div data-ts={textScale} style={{ ['--ts' as string]: textScale }} className={cn('relative h-full w-full overflow-hidden bg-canvas text-ink', askOn && 'has-ask', fullBleed && 'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]')}>
+    <div data-ts={textScale} style={{ ['--ts' as string]: textFactor(textScale) }} className={cn('relative h-full w-full overflow-hidden bg-canvas text-ink', askOn && 'has-ask', fullBleed && 'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]')}>
       <div className="absolute inset-x-0 top-0 z-30 h-3" aria-hidden />
       <main className={cn('absolute inset-x-0 bottom-0', pathname.startsWith('/urgent') ? 'top-0' : 'top-3 md:top-4', rail && 'md:left-24 lg:left-60')}>
         <motion.div key={pathname} className="absolute inset-0" initial={animate ? { opacity: 0, y: 8 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: duration.page, ease: ease.out }}>
