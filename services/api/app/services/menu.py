@@ -1,9 +1,9 @@
 """The Meal suggestions menu (docs/specs/menu.md): dishes for one meal, in three sections, each with a picture slot.
 
-Sections, in this order:
-  own      the person's OWN meals of this kind with a lower measured glucose rise than their typical meal (needs 2 times eaten)
-  swap     a lighter dish for a food habit the memory loop noticed (from the Singapore food database, compared with the person's own numbers)
-  general  database dishes that suit a steady day, shown only to fill the menu: clearly general, not personal
+Only dishes that are NEW to the person and LIGHTER than what they usually have. A dish the person has already logged (last 90 days) is never shown,
+and neither is one that is not lighter than their usual meal of this kind. Two sections, in this order:
+  swap     a lighter version of a food habit the memory loop noticed (from the Singapore food database, compared with the person's own numbers)
+  general  other database dishes that are lighter than the person's usual meal of this kind (or suit a steady day when there is no history)
 
 Numbers are computed here, in code. A glucose rise is MEASURED only for the person's own meals. For the other dishes it is an ESTIMATE worked out
 from the dish's carbohydrate and the person's own typical rise per gram of carbohydrate; with no such history there is no number at all (never a guess).
@@ -26,7 +26,7 @@ from app.services import food_images, texts
 logger = logging.getLogger(__name__)
 
 MEALS = ("breakfast", "lunch", "dinner", "snack")
-PER_SECTION = 3
+PER_SECTION = {"swap": 3, "general": 6}
 LOW_SALT_MG = 700          # placeholder: at or below this a dish is tagged "lower salt"
 LOW_CARB_G = 45            # placeholder: at or below this a dish is tagged "lower carbs"
 _DEFAULT_TIME = {"breakfast": 7 * 60 + 30, "lunch": 12 * 60 + 15, "dinner": 18 * 60 + 30, "snack": 16 * 60}
@@ -91,23 +91,56 @@ def _slope(c: Any, user_id: Any) -> float | None:
     return float(r["s"]) if r and r["s"] is not None else None
 
 
-def _own(c: Any, user_id: Any, meal: str, med: float | None) -> list[dict[str, Any]]:
-    rows = c.execute(
-        """select lower(f.food) key, min(f.food) food, count(*) n, avg(m.rise_mmol) rise, avg(f.carbs_g) carbs, avg(f.protein_g) protein, avg(f.fat_g) fat, avg(f.sodium_mg) sodium
-           from food_logs f join meal_response m on m.food_log_id = f.id
-           where f.user_id=%s and f.deleted_at is null and f.meal_type=%s::meal_type and f.start_at > now() - interval '60 days' and m.rise_mmol is not null
-           group by 1 having count(*) >= 2 order by avg(m.rise_mmol)""",
-        (user_id, meal),
-    ).fetchall()
-    out = []
-    for r in rows:
-        if med is None or float(r["rise"]) >= med:
+def _norm(name: str) -> str:
+    return foodagent.normalise(name or "")
+
+
+def is_new(name: str, eaten: set[str]) -> bool:
+    """True when the person has not logged this dish: not the same name, not the same words in another order, and not a near match."""
+    from rapidfuzz import fuzz
+
+    n = _norm(name)
+    if not n:
+        return False
+    words = set(n.split())
+    for e in eaten:
+        if n == e or words == set(e.split()) or fuzz.ratio(n, e) >= 90:
+            return False
+    return True
+
+
+def lighter(kcal: float | None, carbs: float | None, sodium: float | None, base: dict[str, float | None] | None) -> bool:
+    """Healthier than the person's usual meal of this kind: lower in at least two of calories, carbohydrate and salt, and not more than 15% higher
+    in the third. With no usual meal to compare with, the shelf rules of the query decide (so it returns True). The cut-offs are placeholders."""
+    if not base:
+        return True
+    lower, worse = 0, 0
+    for v, b in ((kcal, base.get("kcal")), (carbs, base.get("carbs")), (sodium, base.get("sodium"))):
+        if v is None or b is None or b <= 0:
             continue
-        carbs, protein, fat = (float(r[k]) if r[k] is not None else None for k in ("carbs", "protein", "fat"))
-        out.append({"key": f"own:{r['key']}", "name": r["food"], "section": "own", "why": f"After this {meal} your glucose rose {float(r['rise']):.1f} mmol/L on average (you had it {int(r['n'])} times), less than after your typical meal ({med:.1f}).", "serving": None, "kcal": foodagent.kcal_from({"carbs_g": carbs, "protein_g": protein, "fat_g": fat}),
-                    "carbs": carbs, "sodium": float(r["sodium"]) if r["sodium"] is not None else None, "rise": round(float(r["rise"]), 1), "seen": int(r["n"]), "tags": tags_for(carbs, float(r["sodium"]) if r["sodium"] is not None else None, None),
-                    "extra": {"typical": round(med, 1)}})
-    return out[:PER_SECTION]
+        if v < b:
+            lower += 1
+        elif v > b * 1.15:
+            worse += 1
+    return lower >= 2 and worse == 0
+
+
+def _eaten(c: Any, user_id: Any) -> set[str]:
+    rows = c.execute("select distinct food from food_logs where user_id=%s and deleted_at is null and start_at > now() - interval '90 days'", (user_id,)).fetchall()
+    return {_norm(r["food"]) for r in rows if r["food"]}
+
+
+def _base(c: Any, user_id: Any, meal: str) -> dict[str, float | None] | None:
+    """The person's usual meal of this kind: average calories, carbohydrate and salt over the last 60 days (None with fewer than 3 meals)."""
+    r = c.execute(
+        """select count(*) n, avg(carbs_g) carbs, avg(protein_g) protein, avg(fat_g) fat, avg(sodium_mg) sodium
+           from food_logs where user_id=%s and deleted_at is null and meal_type=%s::meal_type and start_at > now() - interval '60 days'""",
+        (user_id, meal),
+    ).fetchone()
+    if not r or int(r["n"]) < 3:
+        return None
+    carbs, protein, fat = (float(r[k]) if r[k] is not None else None for k in ("carbs", "protein", "fat"))
+    return {"kcal": foodagent.kcal_from({"carbs_g": carbs, "protein_g": protein, "fat_g": fat}), "carbs": carbs, "sodium": float(r["sodium"]) if r["sodium"] is not None else None}
 
 
 def _swap(user_id: Any, slope: float | None, lang: str) -> list[dict[str, Any]]:
@@ -130,17 +163,26 @@ def _swap(user_id: Any, slope: float | None, lang: str) -> list[dict[str, Any]]:
     return out[:PER_SECTION]
 
 
-def _general(c: Any, meal: str, slope: float | None, lang: str) -> list[dict[str, Any]]:
+def _why_general(meal: str, carbs: float, sodium: float, base: dict[str, float | None] | None) -> str | None:
+    """Why a database dish is suggested, against the person's usual meal of this kind (English; None when there is no usual to compare with)."""
+    if not base or base.get("carbs") is None or base.get("sodium") is None:
+        return None
+    return f"New to you and lighter than your usual {meal}: about {round(carbs)} g carbs and {round(sodium):,} mg salt, against {round(base['carbs'])} g and {round(base['sodium']):,} mg."
+
+
+def _general(c: Any, meal: str, slope: float | None, lang: str, eaten: set[str], base: dict[str, float | None] | None) -> list[dict[str, Any]]:
     rows = c.execute(
         f"select {foodagent._COLS}, 'hawker' = any(flags) hawker from foods where source=%s and {_COMMON} and {_SHELF[meal]} "
-        "order by (sodium_mg / 900.0 + carbs_g / 60.0 - coalesce(fibre_g, 0) / 10.0) limit 24",
+        "order by (sodium_mg / 900.0 + carbs_g / 60.0 - coalesce(fibre_g, 0) / 10.0) limit 80",
         (foodagent.SOURCE,),
     ).fetchall()
     out = []
     for r in rows:
         f = foodagent._row(r)
         carbs, sodium = f.n["carbs_g"], f.n["sodium_mg"]
-        out.append({"key": f"db:{f.id}", "name": f.name, "section": "general", "why": texts.tr(lang, "lunch.why_general", carbs=round(carbs), salt=round(sodium)),
+        if not is_new(f.name, eaten) or not lighter(f.n["kcal"], carbs, sodium, base):
+            continue
+        out.append({"key": f"db:{f.id}", "name": f.name, "section": "general", "why": _why_general(meal, carbs, sodium, base) or texts.tr(lang, "lunch.why_general", carbs=round(carbs), salt=round(sodium)),
                     "serving": f.serving_desc, "kcal": round(f.n["kcal"]) if f.n["kcal"] is not None else None, "carbs": carbs, "sodium": sodium, "rise": None, "est": estimate_rise(carbs, slope),
                     "seen": None, "tags": tags_for(carbs, sodium, bool(r["hawker"])), "extra": {}})
     return out
@@ -166,20 +208,19 @@ def build(user_id: Any, meal: str, *, store: bool = True) -> dict[str, Any]:
         raise ValueError("meal must be breakfast, lunch, dinner or snack")
     lang = texts.person_language(user_id)
     with tx() as c:
-        med = c.execute("select percentile_cont(0.5) within group (order by rise_mmol) m from meal_response where user_id=%s and rise_mmol is not null", (user_id,)).fetchone()["m"]
-        med = float(med) if med is not None else None
         slope = _slope(c, user_id)
-        own = _own(c, user_id, meal, med)
-        general = _general(c, meal, slope, lang)
+        eaten = _eaten(c, user_id)
+        base = _base(c, user_id, meal)
+        general = _general(c, meal, slope, lang, eaten, base)
         usual = _usual(c, user_id, meal)
-    swap = _swap(user_id, slope, lang) if meal in ("lunch", "dinner") else []
+    swap = [x for x in (_swap(user_id, slope, lang) if meal in ("lunch", "dinner") else []) if is_new(x["name"], eaten)]
     gone = ns.excluded_keys(user_id)
     seen_names: set[str] = set()
-    sections: dict[str, list[dict[str, Any]]] = {"own": [], "swap": [], "general": []}
-    for it in own + swap + general:
+    sections: dict[str, list[dict[str, Any]]] = {"swap": [], "general": []}
+    for it in swap + general:
         if it["key"] in gone or it["name"].lower() in seen_names:
             continue
-        if len(sections[it["section"]]) >= PER_SECTION:
+        if len(sections[it["section"]]) >= PER_SECTION[it["section"]]:
             continue
         seen_names.add(it["name"].lower())
         it["dishKey"] = food_images.dish_key(it["name"])
@@ -201,7 +242,7 @@ def build(user_id: Any, meal: str, *, store: bool = True) -> dict[str, Any]:
 
 def build_all(user_id: Any, *, store: bool = True) -> dict[str, Any]:
     """Every dish for every meal, in the same three sections (each dish says which meal it is for). The time shown is the current meal's."""
-    merged: dict[str, list[dict[str, Any]]] = {"own": [], "swap": [], "general": []}
+    merged: dict[str, list[dict[str, Any]]] = {"swap": [], "general": []}
     waiting, usual = 0, None
     seen: set[str] = set()
     for m in MEALS:

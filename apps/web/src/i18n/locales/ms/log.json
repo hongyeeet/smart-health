@@ -68,7 +68,7 @@
       "yourMeds": "Ubat anda"
     },
     "example": {
-      "body": "Encik Tan ialah contoh pengguna dengan rekod sekitar 90 hari, supaya anda boleh melihat fungsi Smart Health. Rekod beliau tidak boleh diubah. Untuk menggunakan Smart Health bagi diri anda, cipta profil pengguna anda sendiri.",
+      "body": "Encik Tan ialah contoh pengguna dengan rekod sekitar 90 hari, supaya anda boleh melihat fungsi Equinox. Rekod beliau tidak boleh diubah. Untuk menggunakan Equinox bagi diri anda, cipta profil pengguna anda sendiri.",
       "create": "Cipta profil pengguna saya",
       "title": "Anda sedang melihat Encik Tan"
     },
@@ -722,7 +722,7 @@
       "kindLabel": "Jenis senaman",
       "kindQ": "Apakah yang anda lakukan?",
       "last5": "5 yang terakhir",
-      "learnt": "Lihat perkara yang telah dipelajari oleh Smart Health",
+      "learnt": "Lihat perkara yang telah dipelajari oleh Equinox",
       "lightNote": "Usaha ringan: ia disimpan, dan tidak dikira sebagai minit aktif.",
       "liveSession": "Sesi kekuatan langsung",
       "liveSub": "Pemasa, set, berat dan pemasa rehat.",

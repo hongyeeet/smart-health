@@ -68,7 +68,7 @@
       "yourMeds": "您的药物"
     },
     "example": {
-      "body": "陈先生是一个示例人物，包含约 90 天的历史记录，方便您了解 Smart Health 的功能。他的记录无法更改。若要为您自己使用 Smart Health，请创建您自己的用户。",
+      "body": "陈先生是一个示例人物，包含约 90 天的历史记录，方便您了解 Equinox 的功能。他的记录无法更改。若要为您自己使用 Equinox，请创建您自己的用户。",
       "create": "创建我自己的用户",
       "title": "您正在查看陈先生"
     },
@@ -723,7 +723,7 @@
       "kindLabel": "运动类型",
       "kindQ": "您做了什么运动？",
       "last5": "最近 5 次",
-      "learnt": "查看 Smart Health 了解到的情况",
+      "learnt": "查看 Equinox 了解到的情况",
       "lightNote": "轻度运动：已保存，但不计入活动分钟数。",
       "liveSession": "现场力量训练",
       "liveSub": "计时、组数、重量和休息计时器。",

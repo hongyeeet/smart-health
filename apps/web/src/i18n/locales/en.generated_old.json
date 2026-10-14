@@ -6,7 +6,7 @@
     "sources": "From: {{sources}}. Sensor worn: {{wear}}."
   },
   "chat": {
-    "typing": "Smart Health is typing"
+    "typing": "Equinox is typing"
   },
   "day": {
     "bandNote": "The shaded band is your target range, set in your profile.",
@@ -234,7 +234,7 @@
   "log": {
     "hub": {
       "mealSub": "Photo of your food",
-      "suggestionsSub": "The meal ideas Smart Health made. Rate each one: reasonable, not reasonable or unsafe."
+      "suggestionsSub": "The meal ideas Equinox made. Rate each one: reasonable, not reasonable or unsafe."
     },
     "meal": {
       "chooseFile": "Pick a photo from your files",

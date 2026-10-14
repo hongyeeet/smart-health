@@ -51,7 +51,7 @@ $config = ConvertTo-Json -InputObject @(
   [ordered]@{ keyword = "application"; name = "gmail"; provider = "gmail"; skip_validation = $false; account_id = $GmailConnectionId }
 ) -Depth 5 -Compress
 
-$body = ConvertTo-Json -Depth 6 -InputObject @{ recipe = @{ name = "Reminder emails"; description = "Sends one reminder email per message from the Smart Health backend (docs/specs/email-notifications.md)."; code = $code; config = $config; folder_id = [string]$FolderId } }
+$body = ConvertTo-Json -Depth 6 -InputObject @{ recipe = @{ name = "Reminder emails"; description = "Sends one reminder email per message from the Equinox backend (docs/specs/email-notifications.md)."; code = $code; config = $config; folder_id = [string]$FolderId } }
 if ($RecipeId -gt 0) {
   $r = Invoke-RestMethod -Method Put -Uri "$base/recipes/$RecipeId" -Headers $h -ContentType "application/json" -Body $body
 } else {

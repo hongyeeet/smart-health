@@ -82,7 +82,7 @@ $config = ConvertTo-Json -InputObject @(
   [ordered]@{ keyword = "application"; name = "google_calendar"; provider = "google_calendar"; skip_validation = $false; account_id = $CalendarConnectionId }
 ) -Depth 5 -Compress
 
-$body = ConvertTo-Json -Depth 6 -InputObject @{ recipe = @{ name = "Medicine calendar remove"; description = "Removes one dose's event from the shared Google Calendar (title and time window from the Smart Health backend)."; code = $code; config = $config; folder_id = [string]$FolderId } }
+$body = ConvertTo-Json -Depth 6 -InputObject @{ recipe = @{ name = "Medicine calendar remove"; description = "Removes one dose's event from the shared Google Calendar (title and time window from the Equinox backend)."; code = $code; config = $config; folder_id = [string]$FolderId } }
 if ($RecipeId -gt 0) {
   $r = Invoke-RestMethod -Method Put -Uri "$base/recipes/$RecipeId" -Headers $h -ContentType "application/json" -Body $body
 } else {
