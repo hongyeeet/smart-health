@@ -182,7 +182,7 @@ export interface Api {
   getFoodFlags(): Promise<FoodHabit[]>
   getLunchIdeas(): Promise<LunchIdeas>
   acceptSuggestion(key: string): Promise<void>
-  getMenu(meal: MenuMeal): Promise<Menu>
+  getMenu(meal: MenuMeal | 'all'): Promise<Menu>
   pickMenuItem(meal: MenuMeal, key: string): Promise<void>
   dismissSuggestion(key: string): Promise<void>
   getAiUsage(): Promise<AiUsage>

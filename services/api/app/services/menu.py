@@ -183,6 +183,7 @@ def build(user_id: Any, meal: str, *, store: bool = True) -> dict[str, Any]:
             continue
         seen_names.add(it["name"].lower())
         it["dishKey"] = food_images.dish_key(it["name"])
+        it["meal"] = meal
         sections[it["section"]].append(it)
     flat = [it for s in sections.values() for it in s]
     pics = food_images.ensure_rows([(it["dishKey"], it["name"]) for it in flat])
@@ -196,6 +197,23 @@ def build(user_id: Any, meal: str, *, store: bool = True) -> dict[str, Any]:
         _store(user_id, meal, flat)
     pending = sum(1 for it in flat if it["image"]["status"] != "ready")
     return {"meal": meal, "time": _clock(typical_time(user_id, meal)), "sections": [{"key": k, "items": v} for k, v in sections.items()], "usual": usual, "picturesWaiting": pending}
+
+
+def build_all(user_id: Any, *, store: bool = True) -> dict[str, Any]:
+    """Every dish for every meal, in the same three sections (each dish says which meal it is for). The time shown is the current meal's."""
+    merged: dict[str, list[dict[str, Any]]] = {"own": [], "swap": [], "general": []}
+    waiting, usual = 0, None
+    seen: set[str] = set()
+    for m in MEALS:
+        one = build(user_id, m, store=store)
+        waiting += one["picturesWaiting"]
+        for sec in one["sections"]:
+            for it in sec["items"]:
+                if it["name"].lower() in seen:         # the same dish can suit two meals: show it once
+                    continue
+                seen.add(it["name"].lower())
+                merged[sec["key"]].append(it)
+    return {"meal": "all", "time": None, "sections": [{"key": k, "items": v} for k, v in merged.items()], "usual": usual, "picturesWaiting": waiting}
 
 
 def _store(user_id: Any, meal: str, items: list[dict[str, Any]]) -> None:

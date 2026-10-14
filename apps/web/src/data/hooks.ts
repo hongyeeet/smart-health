@@ -39,7 +39,7 @@ export const useLunchIdeas = () => useQuery({ queryKey: ['lunchIdeas'], queryFn:
 export const useMealIdeas = (meal: 'lunch' | 'dinner' | null) =>
   useQuery({ queryKey: ['mealIdeas', meal], queryFn: () => request<LunchIdeas>(`/nutrition/meal-ideas?meal=${meal}`), enabled: meal != null, staleTime: 5 * 60_000 })
 /** The Meal suggestions menu. While dish pictures are still being made it asks again every 8 seconds (at most 10 times); it never makes a picture itself. */
-export const useMenu = (meal: MenuMeal) =>
+export const useMenu = (meal: MenuMeal | 'all') =>
   useQuery({
     queryKey: ['menu', meal],
     queryFn: () => api.getMenu(meal),

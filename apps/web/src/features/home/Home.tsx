@@ -25,10 +25,15 @@ import { HomeBanners } from './HomeBanners'
 import { TodayPlan } from './TodayPlan'
 import { KpiCards, KpiCardsSkeleton } from './KpiCards'
 import { HealthOverview, HealthOverviewSkeleton } from './HealthOverview'
+import { YourDays } from '@/features/insights/YourDays'
 import { useSimulate } from '@/features/urgent/api'
 
 function greeting(h: number, t: TFunction) {
-  return h < 12 ? t('home.greeting.morning', 'Good morning') : h < 18 ? t('home.greeting.afternoon', 'Good afternoon') : t('home.greeting.evening', 'Good evening')
+  return h < 12
+    ? t('home.greeting.morning', 'Good morning')
+    : h < 18
+      ? t('home.greeting.afternoon', 'Good afternoon')
+      : t('home.greeting.evening', 'Good evening')
 }
 
 export function Home() {
@@ -57,7 +62,12 @@ export function Home() {
         sub={dateLabel}
         trailing={
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => go('B2')} aria-label={t('home.bell', 'Notifications and alerts, {{n}} new', { n: unread })} className="press relative flex h-12 w-12 items-center justify-center rounded-full border border-line bg-card">
+            <button
+              type="button"
+              onClick={() => go('B2')}
+              aria-label={t('home.bell', 'Notifications and alerts, {{n}} new', { n: unread })}
+              className="press relative flex h-12 w-12 items-center justify-center rounded-full border border-line bg-card"
+            >
               <Bell size={24} aria-hidden />
               {unread > 0 && <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-brass ring-2 ring-card" />}
             </button>
@@ -91,7 +101,10 @@ export function Home() {
       )}
 
       {/* 6. health overview */}
-      {data ? <HealthOverview chart={data.chart} /> : isError ? null : <HealthOverviewSkeleton />}
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+        {data ? <HealthOverview chart={data.chart} /> : isError ? null : <HealthOverviewSkeleton />}
+        <YourDays />
+      </div>
 
       {userKey === 'demo' && <DemoLowLink />}
     </Screen>
@@ -106,7 +119,12 @@ function DemoLowLink() {
   return (
     <p className="px-1 text-center text-micro text-ink3">
       {t('home.demo.label', 'Demo:')}{' '}
-      <button type="button" disabled={sim.isPending} onClick={() => sim.mutate(3.4, { onSuccess: () => go('J1') })} className="press min-h-12 px-2 font-bold underline">
+      <button
+        type="button"
+        disabled={sim.isPending}
+        onClick={() => sim.mutate(3.4, { onSuccess: () => go('J1') })}
+        className="press min-h-12 px-2 font-bold underline"
+      >
         {t('home.demo.simulate', 'Simulate a low reading')}
       </button>
     </p>

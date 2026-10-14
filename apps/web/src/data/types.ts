@@ -700,6 +700,8 @@ export interface FoodHabit {
 export type MenuMeal = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 export interface MenuItem {
   key: string
+  /** the meal this dish is for (set on every dish; the "all" menu mixes the four meals) */
+  meal: MenuMeal
   name: string
   section: 'own' | 'swap' | 'general'
   why: string
@@ -718,8 +720,8 @@ export interface MenuItem {
   image: { status: 'pending' | 'generating' | 'ready' | 'failed'; url: string | null }
 }
 export interface Menu {
-  meal: MenuMeal
-  time: string
+  meal: MenuMeal | 'all'
+  time: string | null
   sections: { key: MenuItem['section']; items: MenuItem[] }[]
   usual: { name: string; kcal: number | null; rise: number | null } | null
   picturesWaiting: number

@@ -77,14 +77,14 @@ async def accept(body: Accept) -> None:
 
 
 @router.get("/menu")
-async def menu_for(meal: Literal["breakfast", "lunch", "dinner", "snack"], background: BackgroundTasks) -> dict:
+async def menu_for(meal: Literal["breakfast", "lunch", "dinner", "snack", "all"], background: BackgroundTasks) -> dict:
     """The Meal suggestions menu for one meal (docs/specs/menu.md). Builds the dishes, stores what is shown, and asks the background
     worker to make any missing picture. It never waits for a picture and never makes one for a dish that already has one."""
     uid = logstore.current_user()
 
     def run():
         with logstore.one_connection():
-            return menu.build(uid, meal)
+            return menu.build_all(uid) if meal == "all" else menu.build(uid, meal)
 
     out = await run_in_threadpool(run)
     if out["picturesWaiting"]:
