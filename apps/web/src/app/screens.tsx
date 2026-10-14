@@ -19,6 +19,7 @@ import { Home } from '@/features/home/Home'
 import { Me } from '@/features/me/Me'
 import { Learned } from '@/features/me/Learned'
 import { LunchIdeas } from '@/features/log/LunchIdeas'
+import { MealMenu } from '@/features/log/MealMenu'
 import { Notifications } from '@/features/home/Notifications'
 import { InteractionDetail } from '@/features/alerts/InteractionDetail'
 import { BriefHome } from '@/features/brief/BriefHome'
@@ -105,6 +106,7 @@ export const built: Partial<Record<RouteId, ComponentType>> = {
   E5: LogCheckin,
   E6: LogDone,
   E8: LunchIdeas,
+  E9: MealMenu,
 }
 
 export function screenFor(id: RouteId): ComponentType {

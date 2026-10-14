@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     # Each kind is counted and blocked on its own, so one kind used up never blocks another.
     ai_cap_vertex_vision: int = 300      # photo and label reads
     ai_cap_vertex_generate: int = 500    # text the person sees: brief findings, medicine explainer, clash checker, chat, onboarding answers
+    ai_cap_vertex_image: int = 60        # dish pictures for the menu page (one per new dish, ever)
     ai_cap_vertex_embed: int = 2000      # background embeddings for food search (fall back to text search when blocked)
     ai_cap_jev: int = 500                # JEV typed decisions (guards and checks)
     # Any AI provider without a cap of its own above uses this call cap.
@@ -107,6 +108,8 @@ class Settings(BaseSettings):
 
     # Storage
     storage_bucket: str = "smart-health-originals"
+    food_image_bucket: str = "food-images"      # private bucket of dish pictures, served through the API
+    food_image_model: str = "gemini-2.5-flash-image"   # the only image model this project can reach (checked 2026-10-14: Imagen and the Gemini 3 image models answer 404)
 
     # The repo .env also holds keys for other services (Supabase, ElevenLabs, ...) that this app does not read.
     model_config = SettingsConfigDict(env_file=str(ROOT / ".env"), env_file_encoding="utf-8-sig", extra="ignore")

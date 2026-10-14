@@ -45,12 +45,14 @@ def _why(refs: Any) -> str:
     return "Based on " + "; ".join(parts) + "." if parts else "Based on your records."
 
 
-def list_facts() -> dict[str, Any]:
+def list_facts(user: Any = None) -> dict[str, Any]:
+    """The facts the agent proposed or the person confirmed. For the signed-in person unless `user` is given (the shared doctor link reads the owner's)."""
+    uid = user if user is not None else current_user()
     with tx() as c:
         rows = c.execute(
             """select id, key, category::text cat, statement, confidence, status::text st, version, evidence_refs, user_confirmed_at, source, updated_at
                from memory_facts where user_id=%s and status in ('proposed','active') and key <> all(%s) order by category, confidence desc""",
-            (current_user(), hidden_keys(current_user())),
+            (uid, hidden_keys(uid)),
         ).fetchall()
     groups: dict[str, list] = {}
     for r in rows:

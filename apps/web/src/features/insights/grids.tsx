@@ -44,7 +44,13 @@ export const CAL = {
 } as const
 
 /** Weekday names over a calendar: "Mon" normally, the first letter at large text, where seven full names would run into each other. */
-export function WeekdayHead({ names, hideAtLarge }: { names: string[]; /** left out at large text, where the month is shown as a list instead */ hideAtLarge?: boolean }) {
+export function WeekdayHead({
+  names,
+  hideAtLarge,
+}: {
+  names: string[]
+  /** left out at large text, where the month is shown as a list instead */ hideAtLarge?: boolean
+}) {
   return (
     <div className={cn(CAL.head, hideAtLarge && "[[data-ts='2']_&]:hidden")} aria-hidden>
       {names.map((w) => (
@@ -61,7 +67,19 @@ export function WeekdayHead({ names, hideAtLarge }: { names: string[]; /** left 
  * One month, one square per day, for one measure (the overview calendar). A tap opens that day in the Day view (D1).
  * Days after `today` are dashed empty squares with just the number, and cannot be opened.
  */
-export function DayCalendar({ month, cells, today, measure }: { month: string; cells: InsightsGridCell[]; today: string; measure: string }) {
+export function DayCalendar({
+  month,
+  cells,
+  today,
+  measure,
+  full = false,
+}: {
+  month: string
+  cells: InsightsGridCell[]
+  today: string
+  measure: string
+  full?: boolean
+}) {
   const go = useGo()
   const { t } = useTranslation()
   const byDate = new Map(cells.map((c) => [c.date, c]))
@@ -70,9 +88,13 @@ export function DayCalendar({ month, cells, today, measure }: { month: string; c
   const lead = (new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1)).getUTCDay() + 6) % 7
   const names = weekdayNames()
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-2">
+    <div className={cn('mx-auto flex w-full flex-col gap-2', !full && 'max-w-md')}>
       <WeekdayHead names={names} hideAtLarge />
-      <div className={cn(CAL.grid, "[[data-ts='2']_&]:hidden")} role="group" aria-label={t('insights.overview.calendarLabel', '{{measure}}, {{month}}', { measure, month: monthTitle(month) })}>
+      <div
+        className={cn(CAL.grid, "[[data-ts='2']_&]:hidden")}
+        role="group"
+        aria-label={t('insights.overview.calendarLabel', '{{measure}}, {{month}}', { measure, month: monthTitle(month) })}
+      >
         {Array.from({ length: lead }, (_, i) => (
           <span key={`lead-${i}`} aria-hidden />
         ))}
@@ -96,7 +118,11 @@ export function DayCalendar({ month, cells, today, measure }: { month: string; c
               aria-label={t('insights.grid.cellAria', '{{row}}, {{date}}: {{value}}. Open this day', { row: measure, date: shortDate(date), value: label })}
               aria-current={date === today ? 'date' : undefined}
               style={c.level > 0 ? { background: shade(c.level) } : undefined}
-              className={cn(CAL.cell, date === today ? 'border-brand' : 'border-transparent', c.level === 0 ? 'bg-well text-ink3' : c.level >= 3 ? 'text-on-brand' : 'text-ink')}
+              className={cn(
+                CAL.cell,
+                date === today ? 'border-brand' : 'border-transparent',
+                c.level === 0 ? 'bg-well text-ink3' : c.level >= 3 ? 'text-on-brand' : 'text-ink',
+              )}
             >
               <span className="num text-micro leading-none">{dayNo}</span>
               <span className="num text-micro font-bold leading-none lg:text-sub">{c.label}</span>
@@ -105,7 +131,10 @@ export function DayCalendar({ month, cells, today, measure }: { month: string; c
         })}
       </div>
       {/* at large text seven columns cannot hold a number and a value, so the month is a list of its days so far, newest first */}
-      <ul className="hidden flex-col gap-1.5 [[data-ts='2']_&]:flex" aria-label={t('insights.overview.calendarLabel', '{{measure}}, {{month}}', { measure, month: monthTitle(month) })}>
+      <ul
+        className="hidden flex-col gap-1.5 [[data-ts='2']_&]:flex"
+        aria-label={t('insights.overview.calendarLabel', '{{measure}}, {{month}}', { measure, month: monthTitle(month) })}
+      >
         {Array.from({ length: lastDay }, (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`)
           .filter((date) => date <= today)
           .reverse()
@@ -133,7 +162,6 @@ export function DayCalendar({ month, cells, today, measure }: { month: string; c
             )
           })}
       </ul>
-      <p className="text-sub text-ink3">{t('insights.grid.weekKey', 'A darker square means more. A dash means there is no data for that day.')}</p>
     </div>
   )
 }
@@ -143,7 +171,8 @@ export const DOSE_CLS: Record<InsightsDoseCell, string> = {
   taken: 'bg-ok border-ok text-on-brand',
   late: 'bg-card border-ok border-2 text-ink',
   unconfirmed: 'border-ink3/60 text-ink2 [background:repeating-linear-gradient(45deg,var(--c-well),var(--c-well)_3px,var(--c-line)_3px,var(--c-line)_5px)]',
-  missed: 'bg-danger-soft border-danger/60 text-ink [background-image:repeating-linear-gradient(-45deg,transparent,transparent_3px,var(--c-danger)_3px,var(--c-danger)_4px)]',
+  missed:
+    'bg-danger-soft border-danger/60 text-ink [background-image:repeating-linear-gradient(-45deg,transparent,transparent_3px,var(--c-danger)_3px,var(--c-danger)_4px)]',
   none: 'border-line bg-well text-ink3',
 }
 

@@ -2,37 +2,78 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
 import { Button, Field } from '@/ui/primitives'
-import { fmtAmount, parseAmount } from './mealMath'
+import { fmtAmount, fmtShown, parseAmount } from './mealMath'
 
-interface Props {
+export type AmountSource = 'estimate' | 'you'
+
+/** The short word under a number: the person's own, the photo's estimate, or not judged. */
+export function sourceWord(value: number | null, source: AmountSource, t: (k: string, d: string) => string) {
+  return value == null ? t('log.meal.notJudged', 'Not judged') : source === 'you' ? t('log.meal.yourNumber', 'Your number') : t('log.meal.estimate', 'Estimate')
+}
+
+interface TileProps {
   label: string
   /** unit shown after the number, for example g, mg or kcal */
   unit: string
   /** the number as shown (already scaled by the portion); null when the reading could not judge it */
   value: number | null
-  /** where the number came from: the photo reading, the person, or nowhere (not judged) */
-  source: 'estimate' | 'you'
-  /** saves a new number in the same units as `value`; null means "not known" */
-  onSave: (v: number | null) => void
-  /** the calories line is shown large */
-  big?: boolean
+  /** where the number came from: the photo reading or the person */
+  source: AmountSource
+  /** a photo flag (high salt or high sugar) colours the tile; colour only, no extra wording */
+  flagged?: boolean
+  onChange: () => void
 }
 
 /**
- * One nutrient on the macro card. A number from the photo is marked "estimate". A value the reading could not judge
- * says "Not judged" and offers a box to type one in. Any number can be changed; a blank box puts it back to not judged.
+ * One nutrient in the totals row. A number from the photo is an estimate, the person's own number says so, and a value the
+ * reading could not judge says "Not judged" with a box to type one in. The numbers never wrap.
  */
-export function MacroRow({ label, unit, value, source, onSave, big = false }: Props) {
+export function MacroTile({ label, unit, value, source, flagged = false, onChange }: TileProps) {
   const { t } = useTranslation()
-  const [editing, setEditing] = useState(false)
-  const [text, setText] = useState('')
+  const word = sourceWord(value, source, t)
+  return (
+    <div className={cn('flex min-w-0 flex-col gap-1 rounded-card border p-3', flagged ? 'border-warn/40 bg-warn-soft' : 'border-line bg-card')}>
+      <p className="break-words text-micro font-bold text-ink2">{label}</p>
+      <p className="num whitespace-nowrap text-h2 font-bold text-ink">
+        {value == null ? (
+          <span className="text-sub font-bold text-ink2">{t('log.meal.notJudged', 'Not judged')}</span>
+        ) : (
+          <>
+            {fmtShown(value)} <span className="text-micro font-normal text-ink2">{unit}</span>
+          </>
+        )}
+      </p>
+      <p className={cn('flex items-center gap-1.5 text-micro font-bold', flagged ? 'text-warn' : 'text-ink2')}>
+        <span className="h-2 w-2 flex-none rounded-full bg-current" aria-hidden />
+        {word}
+      </p>
+      <button
+        type="button"
+        onClick={onChange}
+        className="press -ml-1 self-start rounded-chip px-1 text-sub font-bold text-brand underline decoration-1 underline-offset-4"
+      >
+        {value == null ? t('log.meal.typeIn', 'Type it in') : t('log.meal.change', 'Change')}
+        <span className="sr-only"> {label}</span>
+      </button>
+    </div>
+  )
+}
+
+interface EditorProps {
+  label: string
+  unit: string
+  value: number | null
+  /** saves a new number in the same units as `value`; a blank box means "not known" */
+  onSave: (v: number | null) => void
+  onCancel: () => void
+}
+
+/** The box that opens under the totals when a number is changed. Only a number from 0 to 100000 is saved. */
+export function MacroEditor({ label, unit, value, onSave, onCancel }: EditorProps) {
+  const { t } = useTranslation()
+  const [text, setText] = useState(() => fmtAmount(value))
   const [bad, setBad] = useState(false)
 
-  const open = () => {
-    setText(fmtAmount(value))
-    setBad(false)
-    setEditing(true)
-  }
   const save = () => {
     const r = parseAmount(text)
     if (!r.ok) {
@@ -40,56 +81,28 @@ export function MacroRow({ label, unit, value, source, onSave, big = false }: Pr
       return
     }
     onSave(r.value)
-    setEditing(false)
   }
-
-  if (editing) {
-    return (
-      <div className="flex flex-col gap-3 py-3">
-        <Field
-          label={label}
-          suffix={unit}
-          inputMode="decimal"
-          value={text}
-          onChange={(v) => {
-            setText(v)
-            setBad(false)
-          }}
-          error={bad ? t('log.meal.numberError', 'Please type a number, 0 or more. Leave it blank if you do not know.') : undefined}
-        />
-        <div className="grid grid-cols-2 gap-2">
-          <Button size="md" onClick={save}>
-            {t('log.meal.saveNumber', 'Save')}
-          </Button>
-          <Button size="md" variant="secondary" onClick={() => setEditing(false)}>
-            {t('log.meal.cancelNumber', 'Cancel')}
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  const sourceText = value == null ? t('log.meal.notJudgedNote', 'The photo was not clear enough to judge this.') : source === 'you' ? t('log.meal.yourNumber', 'Your number') : t('log.meal.estimate', 'Estimate')
 
   return (
-    <div className={cn('flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3', !big && 'border-b border-line last:border-b-0')}>
-      <div className="min-w-0 flex-1">
-        <p className="text-body font-bold text-ink">{label}</p>
-        <p className="text-micro text-ink3">{sourceText}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <p className={cn('num text-ink', big ? 'text-display' : 'text-h2')}>
-          {value == null ? (
-            <span className="text-body font-bold text-ink2">{t('log.meal.notJudged', 'Not judged')}</span>
-          ) : (
-            <>
-              {fmtAmount(value)} <span className="text-sub text-ink2">{unit}</span>
-            </>
-          )}
-        </p>
-        <button type="button" onClick={open} className="press min-h-12 rounded-chip px-3 text-sub font-bold text-brand underline decoration-1 underline-offset-4">
-          {value == null ? t('log.meal.typeIn', 'Type it in') : t('log.meal.change', 'Change')}
-        </button>
+    <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-4">
+      <Field
+        label={label}
+        suffix={unit}
+        inputMode="decimal"
+        value={text}
+        onChange={(v) => {
+          setText(v)
+          setBad(false)
+        }}
+        error={bad ? t('log.meal.numberError', 'Please type a number, 0 or more. Leave it blank if you do not know.') : undefined}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <Button size="md" onClick={save}>
+          {t('log.meal.saveNumber', 'Save')}
+        </Button>
+        <Button size="md" variant="secondary" onClick={onCancel}>
+          {t('log.meal.cancelNumber', 'Cancel')}
+        </Button>
       </div>
     </div>
   )

@@ -261,6 +261,28 @@ function Bp({ tl, reason, lanes }: { tl: InsightsTimeline; reason?: Reason; lane
   )
 }
 
+/** The "Show on the charts" row: one button per chart or log row. On screen only; the printed page follows the choice. */
+export function FilterBar({
+  show,
+  setShow,
+}: {
+  show: Record<ChartFilter, boolean>
+  setShow: (f: (x: Record<ChartFilter, boolean>) => Record<ChartFilter, boolean>) => void
+}) {
+  return (
+    <div className="rp-bar rp-filters" role="group" aria-label="Show on the charts">
+      <div>
+        <span>Show on the charts</span>
+        {FILTER_LIST.map(([k, label]) => (
+          <button key={k} type="button" aria-pressed={show[k]} className={show[k] ? 'rp-on' : 'rp-off'} onClick={() => setShow((x) => ({ ...x, [k]: !x[k] }))}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function PrintCharts({ tl, reasons, show = FILTERS_ON }: { tl: InsightsTimeline; reasons?: Reason[]; show?: Record<ChartFilter, boolean> }) {
   const why = (t: string) => reasons?.find((r) => r.title.toLowerCase().startsWith(t))
   const s = tl.series

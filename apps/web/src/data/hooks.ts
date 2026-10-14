@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './repositories'
 import type { BloodPressureLogInput, LogInput, NewMedication, WorkoutLogInput } from './repositories/types'
-import type { ClashStatus, HomeOverview, InsightsDays, LunchIdeas, MedicineStock, MissAnswer, Period, ReportDays, StockList, TimelineDays, UserList } from './types'
+import type { ClashStatus, HomeOverview, InsightsDays, LunchIdeas, MedicineStock, MenuMeal, MissAnswer, Period, ReportDays, StockList, TimelineDays, UserList } from './types'
 import { request } from './repositories/http'
 import { useUi } from '@/state/store'
 import { dropPendingPerson } from '@/features/onboarding/newPerson'
@@ -39,6 +39,14 @@ export const useLunchIdeas = () => useQuery({ queryKey: ['lunchIdeas'], queryFn:
 /** Ideas for the open mealtime built from the person's own past meals of that kind (GET /nutrition/meal-ideas); off until a meal is named. */
 export const useMealIdeas = (meal: 'lunch' | 'dinner' | null) =>
   useQuery({ queryKey: ['mealIdeas', meal], queryFn: () => request<LunchIdeas>(`/nutrition/meal-ideas?meal=${meal}`), enabled: meal != null, staleTime: 5 * 60_000 })
+/** The Meal suggestions menu. While dish pictures are still being made it asks again every 8 seconds (at most 10 times); it never makes a picture itself. */
+export const useMenu = (meal: MenuMeal | 'all') =>
+  useQuery({
+    queryKey: ['menu', meal],
+    queryFn: () => api.getMenu(meal),
+    refetchInterval: (q) => ((q.state.data?.picturesWaiting ?? 0) > 0 && q.state.dataUpdateCount < 10 ? 8000 : false),
+  })
+export const usePickMenuItem = () => useWrite((a: { meal: MenuMeal; key: string }) => api.pickMenuItem(a.meal, a.key))
 export const useAcceptSuggestion = () => useWrite((key: string) => api.acceptSuggestion(key))
 export const useLearned = () => useQuery({ queryKey: ['learned'], queryFn: () => api.getLearned() })
 export const useDigest = () => useQuery({ queryKey: ['digest'], queryFn: () => api.getDigest() })

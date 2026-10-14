@@ -1,19 +1,14 @@
-/** C1 — Overview. A calendar of your days (one square per day for the measure you pick), what moved against the days before, and what the person's own history shows. */
+/** C1 — Overview. The week as one chart with the logs under it, how the person's health compares with their own baseline, what moved against the days before, and what the person's own history shows. (The "Your days" calendar is on Home.) */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useInsightsOverview, useInsightsOverviewDays, useInsightsTimeline } from '@/data/hooks'
-import type { InsightsGridKey } from '@/data/types'
+import { useInsightsOverview, useInsightsTimeline } from '@/data/hooks'
 import { useGo } from '@/app/navigation'
-import { cn } from '@/lib/cn'
-import { Alert, Card, SectionTitle, Skeleton } from '@/ui/primitives'
-import { ArrowDown, ArrowUp, CaretLeft, CaretRight } from '@/ui/icons'
-import { Gate, InsightsFrame, Plain, num, useInsightsDays } from './shared'
+import { Card, Skeleton } from '@/ui/primitives'
+import { ArrowDown, ArrowUp } from '@/ui/icons'
+import { Gate, InsightsFrame, num, useInsightsDays } from './shared'
 import { HealthOverview } from './HealthOverview'
 import { LearntCard } from './LearntCard'
 import { BaselineCompare, OverviewTimeline } from './Timeline'
-import { DayCalendar, monthRange, monthTitle, shiftMonth } from './grids'
-
-const MEASURES: InsightsGridKey[] = ['meals', 'activity', 'sleep', 'stress', 'doses']
 
 export function Overview() {
   const { days, setDays } = useInsightsDays()
@@ -30,35 +25,9 @@ export function Overview() {
     setEndIso(iso)
     setDays(7)
   }
-  const [browsed, setBrowsed] = useState<string | null>(null)
-  const [measure, setMeasure] = useState<InsightsGridKey>('meals')
   const go = useGo()
   const { t } = useTranslation()
 
-  // The calendar opens on the month of the latest day with data, and moves by arrows. It never goes past the current month.
-  const month = browsed ?? data?.period.end.slice(0, 7) ?? null
-  const range = month ? monthRange(month) : null
-  const cal = useInsightsOverviewDays(range?.start ?? '', range?.end ?? '', !!range)
-  const todayMonth = cal.data?.today.slice(0, 7)
-  const calReady = !!cal.data && !!range && cal.data.start === range.start
-  const calRow = calReady ? cal.data?.rows.find((r) => r.key === measure) : undefined
-
-  const measureName: Record<InsightsGridKey, string> = {
-    glucose: t('insights.overview.measure.glucose', 'Glucose in range'),
-    meals: t('insights.overview.measure.meals', 'Meals logged'),
-    activity: t('insights.overview.measure.activity', 'Active minutes'),
-    sleep: t('insights.overview.measure.sleep', 'Sleep'),
-    stress: t('insights.overview.measure.stress', 'Stress'),
-    doses: t('insights.overview.measure.doses', 'Doses taken'),
-  }
-  const measureHint: Record<InsightsGridKey, string> = {
-    glucose: t('insights.overview.hint.glucose', 'Share of the day’s readings in range, as a percentage.'),
-    meals: t('insights.overview.hint.meals', 'Meals logged that day.'),
-    activity: t('insights.overview.hint.activity', 'Minutes of activity that day.'),
-    sleep: t('insights.overview.hint.sleep', 'Hours slept, from your watch.'),
-    stress: t('insights.overview.hint.stress', 'Your stress rating that day, from 1 (low) to 5 (high).'),
-    doses: t('insights.overview.hint.doses', 'Share of that day’s scheduled doses you took.'),
-  }
   const tlData = tl.data
   // what changed: this period against the period of the same length just before it (from the timeline answer, so it follows the week picked)
   const prev = tlData?.previous
@@ -132,63 +101,6 @@ export function Overview() {
                   openDay={(date) => go('D1', { params: { date } })}
                 />
               </Card>
-              <section className="flex flex-col gap-3">
-                <SectionTitle>{t('insights.overview.yourDays', 'Your days')}</SectionTitle>
-                <Plain>{t('insights.overview.calendarPlain', 'One square for each day. Pick a measure, then tap a day to open it.')}</Plain>
-                <div role="radiogroup" aria-label={t('insights.overview.measureLabel', 'Measure')} className="flex flex-wrap gap-2">
-                  {MEASURES.map((k) => {
-                    const on = k === measure
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        role="radio"
-                        aria-checked={on}
-                        onClick={() => setMeasure(k)}
-                        className={cn(
-                          'press min-h-11 rounded-chip border-[1.5px] px-3.5 py-1.5 text-sub',
-                          on ? 'border-brand bg-brand-soft font-bold text-brand' : 'border-line bg-card text-ink',
-                        )}
-                      >
-                        {measureName[k]}
-                      </button>
-                    )
-                  })}
-                </div>
-                <Card tone="hero" className="flex flex-col gap-3 !px-3 sm:!px-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => month && setBrowsed(shiftMonth(month, -1))}
-                      disabled={!month}
-                      aria-label={t('insights.overview.prevMonth', 'Previous month')}
-                      className="press flex min-h-12 min-w-12 items-center justify-center rounded-chip text-ink2 disabled:opacity-40"
-                    >
-                      <CaretLeft size={24} aria-hidden />
-                    </button>
-                    <p className="text-center font-serif text-h2 font-medium" aria-live="polite">
-                      {month ? monthTitle(month) : ''}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => month && setBrowsed(shiftMonth(month, 1))}
-                      disabled={!month || !todayMonth || month >= todayMonth}
-                      aria-label={t('insights.overview.nextMonth', 'Next month')}
-                      className="press flex min-h-12 min-w-12 items-center justify-center rounded-chip text-ink2 disabled:opacity-40"
-                    >
-                      <CaretRight size={24} aria-hidden />
-                    </button>
-                  </div>
-                  {cal.isError ? (
-                    <Alert tone="warn">{t('insights.shared.loadError', 'We could not load this just now. Please try again in a moment.')}</Alert>
-                  ) : calRow && month && cal.data ? (
-                    <DayCalendar month={month} cells={calRow.cells} today={cal.data.today} measure={measureName[measure]} />
-                  ) : (
-                    <Skeleton className="h-64" />
-                  )}
-                </Card>
-                <p className="text-sub text-ink3">{measureHint[measure]}</p>
-              </section>
             </div>
             <aside className="flex flex-col gap-4">
               <HealthOverview data={tlData} />
