@@ -9,7 +9,8 @@ PRIVACY. Vision needs the ORIGINAL photo, with the patient's name and ID on it (
 machine). So this script only runs on the made-up labels (tests/fixtures/make_label_images.py) unless you pass --allow-real-photos for photos you
 own and accept uploading. Never use a real patient's label.
 
-Credentials (an API key is refused by Vision; it needs a principal):
+Credentials: none are stored anywhere. Nothing in the repo or .env needs filling in. Whoever runs it (for example Joely, on her Google Cloud account)
+signs in on her own machine, and the script picks that up. An API key is refused by Vision; it needs a principal:
     gcloud auth application-default login            # your own Google account, or
     python scripts/vision_ocr_experiment.py --credentials path/to/service-account.json ...
 The project that is billed is --project, GOOGLE_CLOUD_PROJECT, or the credentials' own project. The Vision API must be enabled on it
@@ -96,6 +97,8 @@ def _session(credentials: str | None, project: str | None):
     from google.auth.transport.requests import AuthorizedSession
     from google.oauth2 import service_account
 
+    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)     # a blank value in .env must mean "not set", not an empty file name
     if credentials:
         cred = service_account.Credentials.from_service_account_file(credentials, scopes=SCOPES)
         proj = project or cred.project_id
