@@ -135,26 +135,31 @@ def text_json(system: str, prompt: str, schema: type[T], model: str | None = Non
 
 def generate_image(prompt: str, model: str | None = None) -> bytes:
     """One picture from a text prompt (the dish pictures), from FOOD_IMAGE_MODEL (a Gemini image model). Returns the image bytes.
+    Called straight through the Vertex express key (the SDK client may be pointed at another project or region that has no image model).
     Only the prompt text leaves the machine. Every failure raises LLMUnavailable with a code."""
+    import base64
+
+    from app.core.errors import ExternalServiceError
+    from app.llm.vertex import VertexClient
+
     model = model or settings.food_image_model
     if not usage.allowed("vertex_image"):
         raise LLMUnavailable("The daily AI limit has been reached.", code="daily_limit")
+    if not settings.google_api_key:
+        raise LLMUnavailable("No Vertex AI key: set GOOGLE_API_KEY in .env", code="model_unavailable")
+    body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": {"responseModalities": ["IMAGE"]}}
     try:
-        from google.genai import types
-
-        resp = _client().models.generate_content(
-            model=model, contents=[prompt],
-            config=types.GenerateContentConfig(response_modalities=["IMAGE"], http_options=types.HttpOptions(timeout=settings.llm_timeout_s * 1000 * 2)),
-        )
-    except Exception as e:
-        logger.error("image call failed model=%s type=%s", model, type(e).__name__)
-        raise LLMUnavailable(str(e)[:200], code=_error_code(e)) from e
+        client = VertexClient(settings.google_api_key, settings.google_cloud_project, "global", max_retries=1)
+        j = client._post(model, body, timeout_s=settings.llm_timeout_s * 2)
+    except ExternalServiceError as e:
+        logger.error("image call failed model=%s code=%s", model, e.code)
+        raise LLMUnavailable(str(e)[:200], code="timeout" if "timeout" in str(e).lower() else "model_unavailable") from e
     usage.record("vertex_image")
-    for cand in getattr(resp, "candidates", None) or []:
-        for part in getattr(getattr(cand, "content", None), "parts", None) or []:
-            data = getattr(getattr(part, "inline_data", None), "data", None)
+    for cand in j.get("candidates") or []:
+        for part in (cand.get("content") or {}).get("parts") or []:
+            data = (part.get("inlineData") or {}).get("data")
             if data:
-                return bytes(data)
+                return base64.b64decode(data)
     raise LLMUnavailable("The model did not return a picture.", code="bad_response")
 
 
