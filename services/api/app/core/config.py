@@ -109,7 +109,7 @@ class Settings(BaseSettings):
     # Storage
     storage_bucket: str = "smart-health-originals"
     food_image_bucket: str = "food-images"      # private bucket of dish pictures, served through the API
-    food_image_model: str = "gemini-2.5-flash-image"
+    food_image_model: str = "gemini-2.5-flash-image"   # the only image model this project can reach (checked 2026-10-14: Imagen and the Gemini 3 image models answer 404)
 
     # The repo .env also holds keys for other services (Supabase, ElevenLabs, ...) that this app does not read.
     model_config = SettingsConfigDict(env_file=str(ROOT / ".env"), env_file_encoding="utf-8-sig", extra="ignore")

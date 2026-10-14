@@ -33,6 +33,9 @@ It replaces the old "Lunch ideas" cards as the place to browse ideas (E8 stays f
 ## Endpoints
 `GET /api/v1/nutrition/menu?meal=` (builds, stores, queues missing pictures), `GET /api/v1/nutrition/food-image/{key}` (public picture, immutable), `POST /api/v1/nutrition/menu/pick` (stamps `picked_at` and counts the suggestion as acted on).
 
+## Model choice
+On 2026-10-14 the project's key could reach only `gemini-2.5-flash-image` for pictures: `imagen-3.0-generate-002`, `imagen-3.0-fast-generate-001`, `imagen-4.0-generate-001` and the Gemini 3 and 3.1 image models all answered 404 (not found or no access), and `gemini-3.8-flash` cannot output images. Hong Yi chose the best reachable Gemini model. If another image model becomes available, change `FOOD_IMAGE_MODEL`.
+
 ## Settings
 `FOOD_IMAGE_MODEL` (default `gemini-2.5-flash-image`), `FOOD_IMAGE_BUCKET` (default `food-images`), `AI_CAP_VERTEX_IMAGE` (default 60).
 

@@ -134,8 +134,8 @@ def text_json(system: str, prompt: str, schema: type[T], model: str | None = Non
 
 
 def generate_image(prompt: str, model: str | None = None) -> bytes:
-    """One picture from a text prompt (the dish pictures). Returns the image bytes (PNG). Only the prompt text leaves the machine.
-    Every failure raises LLMUnavailable with a code."""
+    """One picture from a text prompt (the dish pictures), from FOOD_IMAGE_MODEL (a Gemini image model). Returns the image bytes.
+    Only the prompt text leaves the machine. Every failure raises LLMUnavailable with a code."""
     model = model or settings.food_image_model
     if not usage.allowed("vertex_image"):
         raise LLMUnavailable("The daily AI limit has been reached.", code="daily_limit")
@@ -143,12 +143,9 @@ def generate_image(prompt: str, model: str | None = None) -> bytes:
         from google.genai import types
 
         resp = _client().models.generate_content(
-            model=model,
-            contents=[prompt],
+            model=model, contents=[prompt],
             config=types.GenerateContentConfig(response_modalities=["IMAGE"], http_options=types.HttpOptions(timeout=settings.llm_timeout_s * 1000 * 2)),
         )
-    except LLMUnavailable:
-        raise
     except Exception as e:
         logger.error("image call failed model=%s type=%s", model, type(e).__name__)
         raise LLMUnavailable(str(e)[:200], code=_error_code(e)) from e
