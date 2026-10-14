@@ -19,7 +19,7 @@ const MAX = 500
 export function Chat() {
   const { t } = useTranslation()
   const { thread } = useThread()
-  const { send, pending } = useSend()
+  const { send, pending, route } = useSend()
   const starters = useStarters()
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
@@ -88,7 +88,7 @@ export function Chat() {
             {items.map((i) => (
               <Row key={i.id} item={i} showFollowUps={i.id === lastAnswerId && !pending} onAsk={send} onRetry={() => send(i.text, true)} />
             ))}
-            {pending && <ThinkingSteps question={[...items].reverse().find((i) => i.role === 'user')?.text ?? ''} />}
+            {pending && <ThinkingSteps route={route} question={[...items].reverse().find((i) => i.role === 'user')?.text ?? ''} />}
             <div ref={end} />
           </div>
         </div>

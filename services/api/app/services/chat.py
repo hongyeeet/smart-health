@@ -13,8 +13,10 @@ as context. Thresholds here are placeholders pending clinical review.
 from __future__ import annotations
 
 import logging
+import hashlib
 import re
 import threading
+import time
 import uuid
 from collections import OrderedDict
 from contextlib import contextmanager, nullcontext
@@ -176,11 +178,15 @@ def tidy(reply: str) -> str:
     return (cut[: end + 1] if end > 40 else cut.rstrip(",;:") + ".").strip()
 
 
-def as_bullets(reply: str, max_bullets: int = 3) -> str:
+def as_bullets(reply: str, max_bullets: int = 3, force: bool = False) -> str:
     """The summary as "- " bullets, one per line. A model that wrote lines with another bullet mark, numbers or no mark gets them
     normalised; a single short sentence (such as "I do not have that in your data.") is left alone."""
     lines = [re.sub(r"^\s*(?:[-\u2022*\u2013]|\d+[.)])\s*", "", l).strip() for l in (reply or "").splitlines()]
     lines = [l for l in lines if l]
+    if force:                       # a summary leads, so what follows it is always the points
+        if len(lines) > max_bullets:
+            lines = lines[: max_bullets - 1] + [" ".join(lines[max_bullets - 1:])]
+        return "\n".join(f"- {l}" for l in lines)
     if len(lines) <= 1:
         sentences = re.split(r"(?<=[.!?])\s+", lines[0]) if lines else []
         if len(sentences) < 3:
@@ -234,6 +240,7 @@ INTENT_SECTIONS: dict[str, set[str] | None] = {
     "diet": {"food", "glucose", "facts", "food_ideas", "activity"}, "food_ideas": {"food", "glucose", "facts", "food_ideas"},
     "symptoms": {"symptoms", "glucose", "doses", "meds", "blood_pressure", "questions", "sleep"},
     "medicine_info": {"meds", "doses", "questions", "medicine_alerts"}, "appointments": {"questions", "appointments", "meds"},
+    "health_info": set(),         # a general question: only the quoted guidance passages are sent, never the person's own numbers
 }
 KEYWORDS: dict[str, tuple[str, ...]] = {
     "glucose": ("glucose", "sugar", "cgm", "range", "spike", "high", "low", "mmol", "reading"),
@@ -1138,7 +1145,7 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
     act = "down"
     try:
         if jev._key():
-            res = run.step("guard_input", "jev.guard", {"version": jev.GUARD_VERSION}, lambda: jev.guard(safe))
+            res = run.step("guard_input", "jev.guard", {"version": jev.GUARD_VERSION}, lambda: _jev_guard(uid, safe))
             act = classify_message(res)
     except Exception:
         logger.exception("JEV guard failed; continuing on the chat's own rules")
@@ -1148,7 +1155,7 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
         return Outcome("refused", texts.tr(lang, "chat.refused" if act == "refuse" else "chat.caution"), offer_question=True, verdict=verdict_for(res))
 
     try:
-        tri = run.step("triage", chat_llm.model_name(), {}, lambda: AI.triage(safe))
+        tri = run.step("triage", chat_llm.model_name(), {}, lambda: _triage(uid, safe))
     except LLMUnavailable:
         tri = AI.Triage(intent=G.rules_intent(text))        # the model could not label it: the words do, and only to a safe intent
     intent = tri.intent
@@ -1178,7 +1185,7 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
             holder.append(build_context(c, uid, today, text, views))
             if advice:
                 holder[0].sections.append(learned_section(c, uid))
-        if intent in ("food_ideas", "diet") or wants_food or advice:
+        if intent in ("food_ideas", "diet", "data_summary", "insights") or wants_food or advice:
             holder[0].sections.append(food_ideas_section(uid))
         return {"sections": {s.key: len(s.lines) for s in holder[0].sections}, "passages": len(holder[0].passages), "views": sorted(views)}
 
@@ -1200,7 +1207,7 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
         return Outcome(kind, full, sources or [], offer_question=offer, verdict=verdict, actions=actions)
 
     if sent.empty():
-        return finish(texts.tr(lang, "chat.empty"), "empty")
+        return finish(texts.tr(lang, "chat.no_guidance" if intent == "health_info" else "chat.empty"), "empty")
 
     out: list[Any] = []
 
@@ -1215,8 +1222,13 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
         fb = fallback_text(sent, lang, text)
         return finish(fb, closing=texts.tr(lang, "chat.closing")) if fb else Outcome("unavailable", texts.tr(lang, "chat.unavailable"), verdict="pass")
 
-    en = as_bullets(G.tidy_reply(G.scrub_pii(out[0].reply_en if lang != "en" else out[0].reply)))
-    local = as_bullets(G.tidy_reply(G.scrub_pii(out[0].reply))) if lang != "en" else en
+    o0 = out[0]
+    en_sum = G.tidy_reply(G.scrub_pii(o0.summary_en if lang != "en" else o0.summary), max_words=45).replace("\n", " ")
+    local_sum = G.tidy_reply(G.scrub_pii(o0.summary), max_words=45).replace("\n", " ") if lang != "en" else en_sum
+    en_pts = as_bullets(G.tidy_reply(G.scrub_pii(o0.reply_en if lang != "en" else o0.reply)), force=bool(en_sum))
+    local_pts = as_bullets(G.tidy_reply(G.scrub_pii(o0.reply)), force=bool(en_sum)) if lang != "en" else en_pts
+    en = (en_sum + ("\n\n" + en_pts if en_pts else "")) if en_sum else en_pts          # one line, then the points
+    local = (local_sum + ("\n\n" + local_pts if local_pts else "")) if en_sum else local_pts
     en_close = G.tidy_reply(G.scrub_pii(out[0].closing_en if lang != "en" else out[0].closing), max_words=40)
     local_close = G.tidy_reply(G.scrub_pii(out[0].closing), max_words=40) if lang != "en" else en_close
     whole_en = en + ("\n" + en_close if en_close else "")           # the rules and JEV read the summary and the closing together
@@ -1237,6 +1249,97 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
     if honest_no_data:
         return finish(local, "empty")
     return finish(local, sources=pick_sources(sent.sections, text, en, _med_names(sent)), closing=local_close)
+
+
+# ----------------------------------------------------------------------------- the route preview (what kind of request is this?)
+_PRE: dict[tuple[str, str], dict[str, Any]] = {}
+_PRE_TTL = 180          # seconds a preview's JEV and triage results are kept for the answer that follows it
+_PRE_MAX = 200
+_PRE_LOCK = threading.Lock()
+
+
+def _pre_key(uid: str, safe: str) -> tuple[str, str]:
+    return uid, hashlib.sha256(safe.encode("utf-8")).hexdigest()
+
+
+def _pre_get(uid: str, safe: str, what: str) -> Any:
+    with _PRE_LOCK:
+        e = _PRE.get(_pre_key(uid, safe))
+        if e and time.time() - e["at"] < _PRE_TTL:
+            return e.get(what)
+    return None
+
+
+def _pre_put(uid: str, safe: str, what: str, value: Any) -> None:
+    with _PRE_LOCK:
+        if len(_PRE) >= _PRE_MAX:
+            for k in sorted(_PRE, key=lambda k: _PRE[k]["at"])[: _PRE_MAX // 2]:
+                _PRE.pop(k, None)
+        e = _PRE.setdefault(_pre_key(uid, safe), {"at": time.time()})
+        e[what] = value
+
+
+def _jev_guard(uid: str, safe: str) -> Any:
+    """The JEV guard result for this exact (scrubbed) message: the one the route preview just got, else a fresh call."""
+    hit = _pre_get(uid, safe, "jev")
+    return hit if hit is not None else jev.guard(safe)
+
+
+def _triage(uid: str, safe: str) -> Any:
+    hit = _pre_get(uid, safe, "triage")
+    return hit if hit is not None else AI.triage(safe)
+
+
+def route_of(intent: str, text: str, tri: Any = None) -> str:
+    """The kind of request, for the waiting message only (it never changes the answer):
+    urgent | safety | quick | ideas | food | knowledge | personal"""
+    if intent in G.FIXED_INTENTS and intent != "greeting":
+        return "safety"
+    if intent in ("greeting", "unclear", "app_help"):
+        return "quick"
+    if G.wants_advice(text) and intent not in ("food_ideas", "symptoms", "medicine_info", "appointments"):
+        return "ideas"
+    if intent == "food_ideas" or (tri is not None and getattr(tri, "wants_food_ideas", False)):
+        return "food"
+    if intent == "health_info":
+        return "knowledge"
+    return "personal"
+
+
+def route_preview(uid: str, raw_text: str) -> dict[str, str]:
+    """What kind of request is this? The same first steps as a turn (urgent words, input rules, the JEV guard when it can be reached, the triage call),
+    run before the answer so the screen can show a waiting message that fits. The JEV and triage results are kept for a short time and the answer that
+    follows reuses them, so nothing is paid for twice. Never raises: any problem gives the plain "personal" route."""
+    try:
+        text = clean_text(raw_text)
+        if not text:
+            return {"route": "quick"}
+        if G.is_self_harm(text) or is_urgent_text(text):
+            return {"route": "urgent"}
+        if is_help_request(text):
+            return {"route": "quick"}
+        safe = scrub(G.scrub_pii(text), load_names(uid))
+        rule = G.inspect_input(text)
+        if rule is not None:
+            return {"route": route_of(rule.intent, text)}
+        if jev_reachable():
+            res = jev.guard(safe)
+            _pre_put(uid, safe, "jev", res)
+            act = classify_message(res)
+            if act == "urgent":
+                return {"route": "urgent"}
+            if act in ("refuse", "caution"):
+                return {"route": "safety"}
+        try:
+            tri = AI.triage(safe)
+        except LLMUnavailable:
+            tri = AI.Triage(intent=G.rules_intent(text))
+        else:
+            _pre_put(uid, safe, "triage", tri)
+        return {"route": route_of(tri.intent, text, tri)}
+    except Exception:
+        logger.exception("route preview failed")
+        return {"route": "personal"}
 
 
 def jev_reachable() -> bool:

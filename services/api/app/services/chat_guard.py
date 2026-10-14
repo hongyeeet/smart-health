@@ -23,7 +23,7 @@ from dataclasses import dataclass
 # ----------------------------------------------------------------------------- intents
 # What a message is about. The triage call returns one of these; `rules_intent` can return the ones the words make obvious.
 INTENTS = (
-    "data_summary", "insights", "diet", "food_ideas", "symptoms", "medicine_info", "appointments", "app_help", "greeting",
+    "data_summary", "insights", "diet", "food_ideas", "symptoms", "medicine_info", "appointments", "health_info", "app_help", "greeting",
     "diagnosis_request", "medicine_change", "off_topic", "injection", "harmful_action", "other_person_or_secret", "unclear",
 )
 # these never reach the model for an answer: a fixed reply is shown

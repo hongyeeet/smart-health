@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import i18n from '@/i18n'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { create } from 'zustand'
@@ -93,11 +94,23 @@ export function useStarters() {
 }
 
 /** Sends one message. `retry` re-sends the words of a message that failed without showing them twice. */
+/** What kind of request a message is, from POST /chat/route: it only picks the waiting message. */
+export type ChatRoute = 'urgent' | 'safety' | 'quick' | 'ideas' | 'food' | 'knowledge' | 'personal'
+
 export function useSend() {
   const { thread, update } = useThread()
+  const [route, setRoute] = useState<ChatRoute | null>(null)
   // The updates run inside the mutation function, not in mutate() callbacks, so an answer that arrives after the person has left the screen is still kept.
   const m = useMutation({
     mutationFn: async (text: string) => {
+      setRoute(null)
+      // first ask what kind of request this is (rules, JEV and a quick label), so the waiting message fits; the answer reuses what it found
+      try {
+        const kind = await request<{ route: ChatRoute }>('/chat/route', { method: 'POST', body: JSON.stringify({ text }) })
+        setRoute(kind.route)
+      } catch {
+        /* the waiting message stays generic */
+      }
       try {
         const r = await request<SendOut>('/chat/messages', {
           method: 'POST',
@@ -143,7 +156,7 @@ export function useSend() {
     }))
     m.mutate(t)
   }
-  return { send, pending: m.isPending }
+  return { send, pending: m.isPending, route }
 }
 
 /** Adds the person's own words to their doctor questions (screen K3). */

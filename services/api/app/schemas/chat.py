@@ -17,6 +17,15 @@ class SendIn(Camel):
     conversation_id: str | None = None
 
 
+class RouteIn(Camel):
+    text: str = Field(min_length=1, max_length=2000)
+
+
+class RouteOut(Camel):
+    """What kind of request a message is, for the waiting message only: urgent, safety, quick, ideas, food, knowledge or personal."""
+    route: Literal["urgent", "safety", "quick", "ideas", "food", "knowledge", "personal"]
+
+
 class Source(Camel):
     label: str
     to: str          # a route id of the app, such as C2

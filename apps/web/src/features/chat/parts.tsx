@@ -5,7 +5,7 @@ import { ROUTES, type RouteId } from '@/app/routeIds'
 import { cn } from '@/lib/cn'
 import { ProseLink } from '@/ui/primitives'
 import { Check, Warning } from '@/ui/icons'
-import { useAddDoctorQuestion, type ChatSource, type Item } from './api'
+import { useAddDoctorQuestion, type ChatRoute, type ChatSource, type Item } from './api'
 
 /** A word or phrase in a reply that opens a screen. */
 function InlineLink({ to, children }: { to: RouteId; children: ReactNode }) {
@@ -75,7 +75,7 @@ function Prose({ text, askText }: { text: string; askText?: string }) {
           else runs.push({ bullets: bullet, lines: [bullet ? line.slice(2) : line] })
         }
         return (
-          <div key={bi} className="flex flex-col gap-1.5">
+          <div key={bi} className={cn('flex flex-col gap-1.5', bi === 0 && blocks.length > 1 && !block.startsWith('- ') && 'font-semibold')}>
             {runs.map((run, ri) =>
               run.bullets ? (
                 <ul key={ri} className="flex flex-col gap-2">
@@ -164,32 +164,61 @@ export function topicsOf(question: string, t: (k: string, d: string) => string):
  * with a soft shimmer, like a chat that is thinking out loud. It stays on "Almost done" until the answer arrives. With reduced motion there is no shimmer,
  * spinner or fade, only the words changing. The words follow the question's topic, so "accessing your meals" is shown only for a question about meals.
  */
-export function ThinkingSteps({ question }: { question: string }) {
+export function ThinkingSteps({ question, route }: { question: string; route: ChatRoute | null }) {
   const { t } = useTranslation()
   const topics = topicsOf(question, (k, d) => t(k, d))
   const list = new Intl.ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(topics)
-  const asksIdeas = /improv|tips?|advice|recommend|what (can|should) i|how (can|should|do) i|lower|reduce|cut down|anomal|unusual/i.test(question)
-  const steps = [
-    t('chat.think.s1', 'Reading your question'),
-    t('chat.think.s2', 'Accessing your data: {{list}}', { list }),
-    t('chat.think.s3', 'Comparing with your own usual numbers'),
-    ...(asksIdeas ? [t('chat.think.s3b', 'Looking at what Smart Health has learned about you')] : []),
-    t('chat.think.s4', 'Writing a simple summary for you'),
-    t('chat.think.s5', 'Checking it is safe to show'),
-    t('chat.think.s6', 'Almost done'),
-  ]
+  // the first words, before the server has said what kind of request this is
+  const start = [t('chat.think.s1', 'Reading your question'), t('chat.think.sroute', 'Working out what you are asking')]
+  const done = t('chat.think.s6', 'Almost done')
+  const byRoute: Record<ChatRoute, string[]> = {
+    // the person's own records
+    personal: [
+      t('chat.think.p1', 'Searching your personal data: {{list}}', { list }),
+      t('chat.think.s3', 'Comparing with your own usual numbers'),
+      t('chat.think.s4', 'Writing a simple summary for you'),
+      t('chat.think.s5', 'Checking it is safe to show'),
+    ],
+    // meals and lighter alternatives
+    food: [
+      t('chat.think.f1', 'Searching your meals and the Singapore food list'),
+      t('chat.think.f2', 'Finding lighter alternatives you could swap in'),
+      t('chat.think.s4', 'Writing a simple summary for you'),
+      t('chat.think.s5', 'Checking it is safe to show'),
+    ],
+    // ideas from what Smart Health has learned
+    ideas: [
+      t('chat.think.i1', 'Looking at what Smart Health has learned about you'),
+      t('chat.think.i2', 'Matching it with your recent days'),
+      t('chat.think.i3', 'Picking small changes you could try'),
+      t('chat.think.s5', 'Checking it is safe to show'),
+    ],
+    // general health reading, not the person's own numbers
+    knowledge: [
+      t('chat.think.k1', 'Looking through trusted health guidance'),
+      t('chat.think.k2', 'Picking out what is relevant to you'),
+      t('chat.think.s4', 'Writing a simple summary for you'),
+      t('chat.think.s5', 'Checking it is safe to show'),
+    ],
+    safety: [t('chat.think.sf1', 'Checking this question carefully'), t('chat.think.sf2', 'Preparing a careful reply')],
+    quick: [t('chat.think.q1', 'Thinking')],
+    urgent: [t('chat.think.u1', 'Checking what you need right now')],
+  }
+  const steps = route ? [...(route === 'quick' || route === 'urgent' ? [] : start.slice(0, 1)), ...byRoute[route], ...(route === 'quick' || route === 'urgent' ? [] : [done])] : start
   const [at, setAt] = useState(0)
+  // a step never moves backwards: when the route arrives and the list is replaced, keep going from where the words had got to
   useEffect(() => {
     if (at >= steps.length - 1) return
-    const id = window.setTimeout(() => setAt((n) => n + 1), at === 1 ? 2000 : 1500)
+    const id = window.setTimeout(() => setAt((n) => Math.min(n + 1, steps.length - 1)), at === 0 ? 1100 : 1500)
     return () => window.clearTimeout(id)
-  }, [at, steps.length])
+  }, [at, steps.length, route])
+  const shown = steps[Math.min(at, steps.length - 1)]
   return (
     <div role="status" aria-live="polite" className="flex">
       <div className="flex max-w-[88%] items-center gap-3 rounded-card border border-line bg-card px-4 py-3 text-body">
         <span className="h-4 w-4 flex-none rounded-full border-2 border-brand/30 border-t-brand motion-safe:animate-spin" aria-hidden />
-        <span key={at} className="motion-safe:animate-[fadeUp_0.35s_ease-out]">
-          <span className="think-shimmer">{steps[at]}…</span>
+        <span key={shown} className="motion-safe:animate-[fadeUp_0.35s_ease-out]">
+          <span className="think-shimmer">{shown}…</span>
         </span>
       </div>
     </div>

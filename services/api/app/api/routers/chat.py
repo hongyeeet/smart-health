@@ -1,5 +1,6 @@
 """Ask Smart Health (screen I1):
 
+  POST /chat/route               {text} -> what kind of request it is (for the waiting message); its JEV and triage results are reused by the answer
   POST /chat/messages            {text, conversationId?} -> the reply, sources, actions and follow-up questions
   GET  /chat/conversations/{id}  the messages of one of this person's conversations
   GET  /chat/starters            starter chips computed from this person's own data
@@ -30,6 +31,12 @@ async def send(body: S.SendIn) -> S.SendOut:
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
     return S.SendOut.model_validate(out)
+
+
+@router.post("/route", response_model=S.RouteOut, response_model_by_alias=True)
+async def route(body: S.RouteIn) -> S.RouteOut:
+    """What kind of request is this? Runs the first steps of a turn so the screen can show a fitting waiting message; the answer reuses the results."""
+    return S.RouteOut.model_validate(await run_in_threadpool(svc.route_preview, str(logstore.current_user()), body.text))
 
 
 @router.get("/conversations/{conversation_id}", response_model=S.Conversation, response_model_by_alias=True)

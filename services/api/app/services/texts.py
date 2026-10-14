@@ -391,6 +391,12 @@ CATALOG: dict[str, dict[str, str]] = {
         "ms": "Terima kasih kerana terus merekod kesihatan anda. Setiap catatan anda bermakna, dan saya sentiasa ada bila-bila anda mahu melihatnya bersama.",
         "ta": "உங்கள் ஆரோக்கியத்தைத் தொடர்ந்து பதிவு செய்வதற்கு நன்றி. நீங்கள் பதிவு செய்யும் ஒவ்வொன்றும் பயனுள்ளது; சேர்ந்து பார்க்க விரும்பும்போது நான் இங்கே இருக்கிறேன்.",
     },
+    "chat.no_guidance": {
+        "en": "I do not have reading on that yet. Please ask your doctor, nurse or pharmacist.",
+        "zh": "我这里暂时没有这方面的资料。请咨询你的医生、护士或药剂师。",
+        "ms": "Saya belum ada bahan bacaan tentang itu. Sila tanya doktor, jururawat atau ahli farmasi anda.",
+        "ta": "அதைப் பற்றிய தகவல் என்னிடம் இன்னும் இல்லை. உங்கள் மருத்துவர், செவிலியர் அல்லது மருந்தாளுநரிடம் கேளுங்கள்.",
+    },
     "chat.empty": {
         "en": "I do not have that in your data yet. Once you log meals, doses or glucose, I can answer questions about them.",
         "zh": "你的数据里还没有这些信息。你记录餐食、剂量或血糖后，我就能回答相关问题。",
