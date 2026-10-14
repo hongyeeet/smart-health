@@ -623,6 +623,15 @@ export interface LogProgress {
   bloodPressure: BloodPressureToday
 }
 /** One saved blood pressure reading. `id` is what edit and delete use. */
+export interface WorkoutEntry {
+  id: string
+  type: WorkoutType | string
+  activity: string
+  intensity: number | null
+  startAt: string
+  minutes: number
+  feeling: number | null
+}
 export interface BloodPressureEntry {
   id: string
   measuredAt: string
@@ -929,6 +938,8 @@ export interface DoctorReport {
 /* ------------------------------- Insights tab (C1 to C6, C8) ------------------------------- */
 /** Mirrors services/api/app/schemas/insights.py. Every value is computed by the server from stored data. */
 export type InsightsDays = 7 | 30 | 90
+/** the periods the timeline answers for: the Insights ones, and 14 days for the doctor brief */
+export type TimelineDays = InsightsDays | 14
 export type InsightsTab = 'C2' | 'C3' | 'C4' | 'C5' | 'C6'
 export interface InsightsPeriod {
   start: string

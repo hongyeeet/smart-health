@@ -20,7 +20,7 @@ import psycopg
 from app.services import day as D
 from app.services import insights as base
 
-STEP_MIN = {7: 30, 30: 1440, 90: 1440}   # 7 days: every half hour; 30 and 90 days: one point a day, so a drift is easy to see
+STEP_MIN = {7: 30, 14: 1440, 30: 1440, 90: 1440}   # 7 days: every half hour; 30 and 90 days: one point a day, so a drift is easy to see
 FIRST_DAYS = 14                  # with too few days before the period, the baseline is the first 14 days of the period
 BASELINE_DAYS = 14
 MIN_BASELINE_DAYS = 7

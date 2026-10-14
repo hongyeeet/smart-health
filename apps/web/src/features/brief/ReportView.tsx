@@ -43,7 +43,8 @@ const dash = (v: number | string | null | undefined, suffix = '') => (v === null
 export function AiInsightNote() {
   return (
     <p className="rp-ai">
-      <b>AI insight.</b> These sentences were written by an AI from the numbers in this report. The numbers come from your data. Not medical advice. Your doctor decides what they mean.
+      <b>AI insight.</b> These sentences were written by an AI from the numbers in this report. The numbers come from your data. Not medical advice. Your doctor
+      decides what they mean.
     </p>
   )
 }
@@ -59,11 +60,17 @@ function DailyProfile({ g }: { g: DoctorReport['glucose'] }) {
     if (last && last[last.length - 1]!.hour === pt.hour - 1) last.push(pt)
     else runs.push([pt])
   }
-  const band = (run: typeof g.profile, lo: 'p5' | 'p25', hi: 'p95' | 'p75') => [...run.map((q) => `${x(q.hour)},${y(q[hi])}`), ...[...run].reverse().map((q) => `${x(q.hour)},${y(q[lo])}`)].join(' ')
+  const band = (run: typeof g.profile, lo: 'p5' | 'p25', hi: 'p95' | 'p75') =>
+    [...run.map((q) => `${x(q.hour)},${y(q[hi])}`), ...[...run].reverse().map((q) => `${x(q.hour)},${y(q[lo])}`)].join(' ')
   const text = { fontSize: 12, fill: '#475467', fontFamily: 'Atkinson Hyperlegible, sans-serif' }
   return (
     <figure style={{ margin: '4px 0 0' }}>
-      <svg viewBox="0 0 700 232" role="img" aria-label="Glucose by time of day over the period: median and percentile bands" style={{ display: 'block', margin: '0 auto', width: '100%', maxWidth: 580, height: 'auto' }}>
+      <svg
+        viewBox="0 0 700 232"
+        role="img"
+        aria-label="Glucose by time of day over the period: median and percentile bands"
+        style={{ display: 'block', margin: '0 auto', width: '100%', maxWidth: 580, height: 'auto' }}
+      >
         <rect x="40" y={y(g.high)} width="640" height={y(g.low) - y(g.high)} fill="#E6F4EE" />
         <line x1="40" y1={y(g.low)} x2="680" y2={y(g.low)} stroke={p.gIn} strokeWidth="1" strokeDasharray="4 3" />
         <line x1="40" y1={y(g.high)} x2="680" y2={y(g.high)} stroke={p.gIn} strokeWidth="1" strokeDasharray="4 3" />
@@ -99,7 +106,8 @@ function DailyProfile({ g }: { g: DoctorReport['glucose'] }) {
         ))}
       </svg>
       <figcaption className="rp-muted">
-        Glucose by time of day, all days in the period overlaid. Line: median · dark band: 25th to 75th percentile · light band: 5th to 95th · shaded: {g.low.toFixed(1)} to {g.high.toFixed(1)} mmol/L. Hours with too few readings are left blank.
+        Glucose by time of day, all days in the period overlaid. Line: median · dark band: 25th to 75th percentile · light band: 5th to 95th · shaded:{' '}
+        {g.low.toFixed(1)} to {g.high.toFixed(1)} mmol/L. Hours with too few readings are left blank.
       </figcaption>
     </figure>
   )
@@ -122,9 +130,7 @@ function SummarySection({ r }: { r: DoctorReport }) {
         <tbody>
           {r.summary.map((row) => (
             <tr key={row.label}>
-              <td className="rp-strong rp-label">
-                {row.label}
-              </td>
+              <td className="rp-strong rp-label">{row.label}</td>
               <td>{row.value}</td>
             </tr>
           ))}
@@ -317,17 +323,31 @@ function SymptomsGlucoseSection({ r }: { r: DoctorReport }) {
               {r.symptoms.map((s) => (
                 <tr key={s.symptom}>
                   <td className="rp-strong">{s.symptom}</td>
-                  <td className="rp-num" data-label="Logged">{s.logged}</td>
-                  <td className={`rp-num ${s.low > 0 ? 'rp-out' : ''}`} data-label="Low">{s.low}</td>
-                  <td className="rp-num" data-label="High">{s.high}</td>
-                  <td className="rp-num" data-label="In range">{s.inRange}</td>
-                  <td className="rp-num" data-label="No reading">{s.noReading}</td>
-                  <td style={{ paddingLeft: 16 }} data-label="Note">{s.note}</td>
+                  <td className="rp-num" data-label="Logged">
+                    {s.logged}
+                  </td>
+                  <td className={`rp-num ${s.low > 0 ? 'rp-out' : ''}`} data-label="Low">
+                    {s.low}
+                  </td>
+                  <td className="rp-num" data-label="High">
+                    {s.high}
+                  </td>
+                  <td className="rp-num" data-label="In range">
+                    {s.inRange}
+                  </td>
+                  <td className="rp-num" data-label="No reading">
+                    {s.noReading}
+                  </td>
+                  <td style={{ paddingLeft: 16 }} data-label="Note">
+                    {s.note}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="rp-muted">Glucose is the nearest sensor reading within 15 minutes of the logged time. Counts show what was recorded together, not what caused a symptom.</p>
+          <p className="rp-muted">
+            Glucose is the nearest sensor reading within 15 minutes of the logged time. Counts show what was recorded together, not what caused a symptom.
+          </p>
         </>
       )}
     </section>
@@ -389,19 +409,33 @@ function EpisodesSection({ r }: { r: DoctorReport }) {
               <td>{e.when}</td>
               <td className="rp-strong">
                 {e.symptom}
-                {e.note && <div className="rp-muted" style={{ fontWeight: 400 }}>{e.note}</div>}
+                {e.note && (
+                  <div className="rp-muted" style={{ fontWeight: 400 }}>
+                    {e.note}
+                  </div>
+                )}
               </td>
-              <td className={`rp-num ${e.zone === 'low' || e.zone === 'very_low' ? 'rp-out' : 'rp-strong'}`} data-label="Glucose">{e.glucose === null ? '—' : e.glucose.toFixed(1)}</td>
-              <td className="rp-num" data-label="Δ 30 min">{e.change30 === null ? '—' : `${e.change30 > 0 ? '↑ +' : e.change30 < 0 ? '↓ −' : '→ '}${Math.abs(e.change30).toFixed(1)}`}</td>
+              <td className={`rp-num ${e.zone === 'low' || e.zone === 'very_low' ? 'rp-out' : 'rp-strong'}`} data-label="Glucose">
+                {e.glucose === null ? '—' : e.glucose.toFixed(1)}
+              </td>
+              <td className="rp-num" data-label="Δ 30 min">
+                {e.change30 === null ? '—' : `${e.change30 > 0 ? '↑ +' : e.change30 < 0 ? '↓ −' : '→ '}${Math.abs(e.change30).toFixed(1)}`}
+              </td>
               <td className="rp-num" data-label="HR / SpO2">
                 {dash(e.heartRate)} / {dash(e.spo2, '%')}
               </td>
-              <td style={{ paddingLeft: 16 }} data-label="Last dose taken before">{e.lastDose ?? '—'}</td>
+              <td style={{ paddingLeft: 16 }} data-label="Last dose taken before">
+                {e.lastDose ?? '—'}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {r.episodesTotal > r.episodes.length && <p className="rp-muted">Showing the latest {r.episodes.length} of {r.episodesTotal} entries.</p>}
+      {r.episodesTotal > r.episodes.length && (
+        <p className="rp-muted">
+          Showing the latest {r.episodes.length} of {r.episodesTotal} entries.
+        </p>
+      )}
       <p className="rp-muted">"Last dose taken before" is the most recent dose marked taken in the 6 hours before the entry, whichever medicine it was.</p>
     </section>
   )
@@ -439,16 +473,30 @@ function MedicinesSection({ r }: { r: DoctorReport }) {
                     )}
                   </td>
                   <td data-label="Regimen">{m.regimen}</td>
-                  <td className="rp-num" data-label="Scheduled">{dash(m.scheduled)}</td>
-                  <td className="rp-num" data-label="Taken">{dash(m.taken)}</td>
-                  <td className={`rp-num ${m.missed ? 'rp-out' : ''}`} data-label="Missed">{dash(m.missed)}</td>
-                  <td className="rp-num" data-label="Not logged">{dash(m.notLogged)}</td>
-                  <td className="rp-num rp-strong" data-label="Adherence">{dash(m.adherencePct, '%')}</td>
+                  <td className="rp-num" data-label="Scheduled">
+                    {dash(m.scheduled)}
+                  </td>
+                  <td className="rp-num" data-label="Taken">
+                    {dash(m.taken)}
+                  </td>
+                  <td className={`rp-num ${m.missed ? 'rp-out' : ''}`} data-label="Missed">
+                    {dash(m.missed)}
+                  </td>
+                  <td className="rp-num" data-label="Not logged">
+                    {dash(m.notLogged)}
+                  </td>
+                  <td className="rp-num rp-strong" data-label="Adherence">
+                    {dash(m.adherencePct, '%')}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {r.medicinesNote && <p className="rp-muted" style={{ color: '#344054' }}>{r.medicinesNote}</p>}
+          {r.medicinesNote && (
+            <p className="rp-muted" style={{ color: '#344054' }}>
+              {r.medicinesNote}
+            </p>
+          )}
         </>
       )}
     </section>
@@ -506,7 +554,11 @@ function BloodPressureSection({ r }: { r: DoctorReport }) {
               ))}
             </tbody>
           </table>
-          {bp.readingsTotal > bp.readings.length && <p className="rp-muted">Showing the latest {bp.readings.length} of {bp.readingsTotal} readings.</p>}
+          {bp.readingsTotal > bp.readings.length && (
+            <p className="rp-muted">
+              Showing the latest {bp.readings.length} of {bp.readingsTotal} readings.
+            </p>
+          )}
         </>
       )}
     </section>
@@ -554,8 +606,118 @@ const SECTION_VIEW: Record<ReportSection, (r: DoctorReport) => ReactNode> = {
   questions: (r) => <QuestionsSection r={r} />,
 }
 
-/** The report sheet itself, as a doctor reads it. ReportA4 (print page) and SharedReport (share link) both use it. */
-export function ReportView({ r }: { r: DoctorReport }) {
+export interface ReportExtra {
+  /** the six health numbers for the period, already worded */
+  tiles?: { label: string; value: string; unit?: string; status: string }[]
+  /** one reasoning line per Overview chart */
+  reasons?: { title: string; why: string; saw: string }[]
+  /** what the app has learnt: confirmed ones as they are, the others marked Not confirmed */
+  learned?: { statement: string; why: string; confirmed: boolean }[]
+  /** the next visit; null when none is planned. Left out (undefined) when the page does not show it */
+  appointment?: { kind: string; when: string; location: string | null } | null
+}
+
+function TilesSection({ tiles }: { tiles: NonNullable<ReportExtra['tiles']> }) {
+  return (
+    <section>
+      <h2>Health overview</h2>
+      <table className="rp-stack">
+        <thead>
+          <tr>
+            <th>Measure</th>
+            <th className="rp-num">This period</th>
+            <th style={{ paddingLeft: 16 }}>Compared with your baseline</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tiles.map((x) => (
+            <tr key={x.label}>
+              <td className="rp-strong">{x.label}</td>
+              <td className="rp-num">{x.unit ? `${x.value} ${x.unit}` : x.value}</td>
+              <td style={{ paddingLeft: 16 }}>{x.status}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="rp-muted">Each number is graded against your own 14 days before the period. The words say where it sits.</p>
+    </section>
+  )
+}
+
+function ChartsSection({ reasons }: { reasons: NonNullable<ReportExtra['reasons']> }) {
+  return (
+    <section>
+      <h2>Glucose, heart rate, SpO2 and blood pressure</h2>
+      <table className="rp-stack">
+        <thead>
+          <tr>
+            <th style={{ width: 150 }}>Chart</th>
+            <th>Why this matters</th>
+            <th>What we saw</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reasons.map((x) => (
+            <tr key={x.title}>
+              <td className="rp-strong">{x.title}</td>
+              <td>{x.why}</td>
+              <td>{x.saw}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="rp-muted">The charts are in the app. Each line compares the period with your own baseline and does not prove a cause.</p>
+    </section>
+  )
+}
+
+function LearnedSection({ learned }: { learned: NonNullable<ReportExtra['learned']> }) {
+  if (learned.length === 0) return null
+  return (
+    <section>
+      <h2>Patterns the app learnt</h2>
+      <table className="rp-stack">
+        <thead>
+          <tr>
+            <th>Pattern</th>
+            <th style={{ width: 150 }}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {learned.map((f) => (
+            <tr key={f.statement}>
+              <td>
+                <span className="rp-strong">{f.statement}</span>
+                <div className="rp-muted">{f.why}</div>
+              </td>
+              <td>{f.confirmed ? 'Confirmed' : 'Not confirmed'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="rp-muted">Patterns compare two things in your logs. They do not prove a cause.</p>
+    </section>
+  )
+}
+
+function AppointmentSection({ a }: { a: NonNullable<ReportExtra['appointment']> | null }) {
+  return (
+    <section>
+      <h2>Next appointment</h2>
+      {a ? (
+        <p>
+          <span className="rp-strong">{a.kind}</span> · {a.when}
+          {a.location ? ` · ${a.location}` : ''}
+        </p>
+      ) : (
+        <p className="rp-muted">No appointment is planned yet.</p>
+      )}
+    </section>
+  )
+}
+
+/** The report sheet itself, as a doctor reads it. ReportA4 (print page) and SharedReport (share link) both use it. `extra` is only given by the signed-in print page. */
+export function ReportView({ r, extra }: { r: DoctorReport; extra?: ReportExtra }) {
   return (
     <div className="rp-sheet">
       <div className="rp-head">
@@ -584,15 +746,23 @@ export function ReportView({ r }: { r: DoctorReport }) {
         ))}
       </div>
 
+      {extra?.tiles && extra.tiles.length > 0 && <TilesSection tiles={extra.tiles} />}
+
       {REPORT_SECTIONS.map((key) => (
         <Fragment key={key}>{SECTION_VIEW[key](r)}</Fragment>
       ))}
 
+      {extra?.reasons && extra.reasons.length > 0 && <ChartsSection reasons={extra.reasons} />}
+      {extra?.learned && <LearnedSection learned={extra.learned} />}
+      {extra?.appointment !== undefined && <AppointmentSection a={extra.appointment} />}
+
       <div className="rp-foot">
-        <b style={{ color: '#344054' }}>Data notes.</b> CGM measures interstitial glucose, which lags blood glucose by about 5 to 15 minutes. Wrist SpO2 is less accurate than a fingertip oximeter, particularly with movement{r.simulated ? ', and is simulated in the demo data' : ''}.
-        Symptoms, medicines, blood pressure and stress are self-reported or logged by hand. Interaction flags come from drug-label rules and an AI web search and are not a clinical judgement. The reference values are
-        general consensus figures that have not been set by a clinician for this person. This report summarises patient-recorded and device data. Every number is computed by fixed rules, not by AI. Where the key findings say "AI insight", an AI wrote the
-        sentences from those numbers. It is not a diagnosis.
+        <b style={{ color: '#344054' }}>Data notes.</b> CGM measures interstitial glucose, which lags blood glucose by about 5 to 15 minutes. Wrist SpO2 is less
+        accurate than a fingertip oximeter, particularly with movement{r.simulated ? ', and is simulated in the demo data' : ''}. Symptoms, medicines, blood
+        pressure and stress are self-reported or logged by hand. Interaction flags come from drug-label rules and an AI web search and are not a clinical
+        judgement. The reference values are general consensus figures that have not been set by a clinician for this person. This report summarises
+        patient-recorded and device data. Every number is computed by fixed rules, not by AI. Where the key findings say "AI insight", an AI wrote the sentences
+        from those numbers. It is not a diagnosis.
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6 }}>
           <span>
             Generated by {appConfig.name} on {r.generatedOn}

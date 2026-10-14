@@ -58,7 +58,9 @@ async def overview(days: int = Query(7)):
 @router.get("/timeline", response_model=S.Timeline, response_model_by_alias=True)
 async def timeline(days: int = Query(7), end: date | None = Query(None)):
     """`end` (YYYY-MM-DD) moves the period back; it is never later than the latest day with data."""
-    return S.Timeline.model_validate(await _run(tl_svc.timeline, _days(days), _today(), end))
+    if days not in tl_svc.STEP_MIN:       # the doctor brief also asks for 14 days
+        raise HTTPException(422, f"days must be one of {sorted(tl_svc.STEP_MIN)}")
+    return S.Timeline.model_validate(await _run(tl_svc.timeline, days, _today(), end))
 
 
 @router.get("/day", response_model=S.InsightsDay, response_model_by_alias=True)

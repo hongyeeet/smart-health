@@ -486,7 +486,7 @@ function DailyHint({ data, openWeek, minEnd }: { data: InsightsTimeline; openWee
 // the day the marker is on in a one-point-a-day view, shared with the row above (a tiny store: the marker lives in Plot, the button in the header)
 const usePicked = create<{ day: string | null; set: (d: string | null) => void }>((set) => ({ day: null, set: (day) => set({ day }) }))
 
-function Plot({ data, show, openDay }: { data: InsightsTimeline; show: Record<PillKey, boolean>; openDay: (iso: string) => void }) {
+export function Plot({ data, show, openDay }: { data: InsightsTimeline; show: Record<PillKey, boolean>; openDay: (iso: string) => void }) {
   const { t } = useTranslation()
   const { period, series, baseline, events, work, bp, dayRows } = data
   const days = period.days

@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './repositories'
-import type { BloodPressureLogInput, LogInput, NewMedication } from './repositories/types'
-import type { ClashStatus, HomeOverview, InsightsDays, LunchIdeas, MedicineStock, MissAnswer, Period, ReportDays, StockList, UserList } from './types'
+import type { BloodPressureLogInput, LogInput, NewMedication, WorkoutLogInput } from './repositories/types'
+import type { ClashStatus, HomeOverview, InsightsDays, LunchIdeas, MedicineStock, MissAnswer, Period, ReportDays, StockList, TimelineDays, UserList } from './types'
 import { request } from './repositories/http'
 import { useUi } from '@/state/store'
 
@@ -9,7 +9,7 @@ export const useHome = () => useQuery({ queryKey: ['home'], queryFn: () => api.g
 export const useInsights = (period: Period) => useQuery({ queryKey: ['insights', period], queryFn: () => api.getInsights(period) })
 export const useInsightsOverview = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'overview', days], queryFn: () => api.getInsightsOverview(days) })
 /** `end` (YYYY-MM-DD) moves the period back; leave it out for the latest days */
-export const useInsightsTimeline = (days: InsightsDays, end?: string) =>
+export const useInsightsTimeline = (days: TimelineDays, end?: string) =>
   useQuery({ queryKey: ['insights', 'timeline', days, end ?? 'latest'], queryFn: () => api.getInsightsTimeline(days, end), placeholderData: keepPreviousData })
 /** One day for the Insights drill-down (the day page) */
 export const useInsightsDay = (date: string, enabled = true) => useQuery({ queryKey: ['insights', 'day', date], queryFn: () => api.getInsightsDay(date), enabled })
@@ -129,6 +129,8 @@ export const useLog = () => useWrite((i: LogInput) => api.logEntry(i))
 export const useDeleteEntry = () => useWrite((id: string) => api.deleteEntry(id))
 /** One blood pressure reading for the edit sheet; only fetched when an id is given. */
 export const useBloodPressure = (id?: string) => useQuery({ queryKey: ['bp', id], queryFn: () => api.getBloodPressure(id!), enabled: !!id })
+export const useWorkoutEntry = (id?: string) => useQuery({ queryKey: ['workout', id], queryFn: () => api.getWorkout(id!), enabled: !!id })
+export const useUpdateWorkout = () => useWrite((a: { id: string; input: WorkoutLogInput }) => api.updateWorkout(a.id, a.input))
 export const useUpdateBloodPressure = () => useWrite((a: { id: string; input: BloodPressureLogInput }) => api.updateBloodPressure(a.id, a.input))
 export const useAddMed = () => useWrite((m: NewMedication) => api.addMedication(m))
 export const useRemoveMed = () => useWrite((id: string) => api.removeMedication(id))

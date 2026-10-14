@@ -14,7 +14,7 @@ from fastapi.concurrency import run_in_threadpool
 from app.agents.meal import flags_for
 from app.db import logstore
 from app.schemas.log import (
-    BloodPressureEntry, BloodPressureInput, CheckinInput, LogContext, LogFlag, LogInput, LogProgress, LogResult, LogSwap, MealInput,
+    BloodPressureEntry, BloodPressureInput, WorkoutEntry, CheckinInput, LogContext, LogFlag, LogInput, LogProgress, LogResult, LogSwap, MealInput,
     RecentEntry, SymptomInput, WorkoutInput,
 )
 from app.services import diet_days
@@ -161,6 +161,36 @@ def _update_bp(entry_id: str, i: BloodPressureInput) -> LogResult:
     if saved is None:
         raise HTTPException(status_code=404, detail="Entry not found")
     return _bp_result(i, saved)
+
+
+@router.get("/workout/{entry_id}", response_model=WorkoutEntry, response_model_by_alias=True)
+async def get_workout(entry_id: str) -> dict:
+    found = await run_in_threadpool(logstore.get_workout, entry_id)
+    if found is None:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    return found
+
+
+@router.put("/workout/{entry_id}", response_model=LogResult, response_model_by_alias=True)
+async def update_workout(entry_id: str, input: WorkoutInput) -> LogResult:
+    return await run_in_threadpool(_update_workout, entry_id, input)
+
+
+def _update_workout(entry_id: str, i: WorkoutInput) -> LogResult:
+    if i.intensity is None and not logstore.rating_optional():
+        raise HTTPException(status_code=422, detail=logstore.RATING_REQUIRED)
+    try:
+        saved = logstore.update_workout(entry_id, i)
+    except ValueError:
+        saved = None
+    if saved is None:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    rated = f", {logstore.INTENSITY_WORD[i.intensity].lower()}" if i.intensity is not None else ""
+    return LogResult(
+        id=saved["id"], kind="workout", title="Workout updated", landed_in="Your day and Activity insights", day=saved["day"], related="C4",
+        detail=f"{i.activity or logstore.EXERCISE_WORD[i.type]}, {i.minutes} minutes{rated}.",
+        lines=[],
+    )
 
 
 @router.delete("/{entry_id}", status_code=204)

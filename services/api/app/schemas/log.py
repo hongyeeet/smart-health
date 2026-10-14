@@ -189,6 +189,17 @@ class RecentEntry(Camel):
     meal: RecentMeal | None = None   # set for a meal only; the other fields are unchanged for every caller
 
 
+class WorkoutEntry(Camel):
+    """A saved workout, as the edit form needs it."""
+    id: str
+    type: ExerciseKind
+    activity: str = ""
+    intensity: int | None = None
+    start_at: str
+    minutes: int
+    feeling: int | None = None
+
+
 class BloodPressureEntry(Camel):
     """A saved reading. `id` is the entry's id for edit and delete."""
     id: str

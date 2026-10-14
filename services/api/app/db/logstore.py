@@ -369,6 +369,42 @@ def create_workout(i: Any, sets: list[dict] | None = None, note: str | None = No
         return {"id": str(eid), "day": _local_date(start).isoformat(), "end": end}
 
 
+def get_workout(entry_id: str) -> dict | None:
+    try:
+        eid = uuid.UUID(entry_id)
+    except ValueError:
+        return None
+    with tx() as c:
+        r = c.execute(
+            """select id, type::text t, note, intensity, feeling, start_at, greatest(1, round(extract(epoch from end_at-start_at)/60)::int) m
+               from exercise_logs where id=%s and user_id=%s and deleted_at is null""", (eid, current_user())).fetchone()
+    if not r:
+        return None
+    return {"id": str(r["id"]), "type": r["t"], "activity": r["note"] or "", "intensity": r["intensity"], "start_at": r["start_at"].isoformat(), "minutes": int(r["m"]), "feeling": r["feeling"]}
+
+
+def update_workout(entry_id: str, i: Any) -> dict | None:
+    """Edit a logged workout in place (start, length, kind, effort, feeling, note). Its timeline marks move with it.
+    None when there is no such live workout. Raises ValueError for a malformed id."""
+    eid = uuid.UUID(entry_id)
+    start = _aware(i.start_at)
+    end = start + timedelta(minutes=i.minutes)
+    with tx() as c:
+        old = c.execute("select start_at from exercise_logs where id=%s and user_id=%s and deleted_at is null", (eid, current_user())).fetchone()
+        if old is None:
+            return None
+        c.execute(
+            "update exercise_logs set start_at=%s, end_at=%s, type=%s::exercise_kind, intensity=%s, feeling=%s, note=%s where id=%s and user_id=%s",
+            (start, end, i.type, i.intensity, i.feeling, (i.activity or None), eid, current_user()),
+        )
+        c.execute("update timeline_5min set exercise_id=null, exercise_type=null, exercise_intensity=null where user_id=%s and exercise_id=%s", (current_user(), eid))
+        _upsert_timeline(c, _span(start, end), {"exercise_id": eid, "exercise_type": i.type, "exercise_intensity": i.intensity}, {"exercise_type": "exercise_kind"})
+        _log_event(c, "log.workout.edited", eid)
+        for d in {_local_date(old["start_at"]), _local_date(start)}:
+            refresh_day(c, d)
+    return {"id": str(eid), "day": _local_date(start).isoformat()}
+
+
 def create_symptom(i: Any) -> dict:
     stype = SYMPTOM_TYPE.get(i.label, "other")
     parts = [i.label, i.side, i.feel, i.relation, (i.note or "").strip() or None]

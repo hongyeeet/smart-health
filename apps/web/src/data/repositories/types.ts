@@ -9,6 +9,7 @@ import type {
   HomeData,
   Insights,
   InsightsDays,
+  TimelineDays,
   InsightsOverview, InsightsTimeline, InsightsDay,
   InsightsOverviewDays,
   InsightsGlucose,
@@ -31,6 +32,7 @@ import type {
   FoodNote,
   LunchIdeas,
   BloodPressureEntry,
+  WorkoutEntry,
   LogContext,
   LogProgress,
   MealAnalysis,
@@ -115,6 +117,7 @@ export type LogInput =
     }
 
 /** A blood pressure reading as sent for save or edit (screen E3). */
+export type WorkoutLogInput = Extract<LogInput, { kind: 'workout' }>
 export type BloodPressureLogInput = Extract<LogInput, { kind: 'blood_pressure' }>
 
 /** A medicine added by hand (screen H8). Times are 24-hour clock text ("08:00"), the person's own local time. */
@@ -155,7 +158,7 @@ export interface Api {
 
   getInsights(period: Period): Promise<Insights>
   getInsightsOverview(days: InsightsDays): Promise<InsightsOverview>
-  getInsightsTimeline(days: InsightsDays, end?: string): Promise<InsightsTimeline>
+  getInsightsTimeline(days: TimelineDays, end?: string): Promise<InsightsTimeline>
   getInsightsDay(date: string): Promise<InsightsDay>
   getInsightsOverviewDays(from: string, to: string): Promise<InsightsOverviewDays>
   getInsightsGlucose(days: InsightsDays): Promise<InsightsGlucose>
@@ -194,6 +197,8 @@ export interface Api {
   /** One saved blood pressure reading, for the edit sheet (E7). */
   getBloodPressure(id: string): Promise<BloodPressureEntry>
   /** Edit a blood pressure reading: the old one is removed and the new one saved (the entry gets a new id). */
+  getWorkout(id: string): Promise<WorkoutEntry>
+  updateWorkout(id: string, input: WorkoutLogInput): Promise<LogResult>
   updateBloodPressure(id: string, input: BloodPressureLogInput): Promise<LogResult>
 
   listMedications(): Promise<Medication[]>

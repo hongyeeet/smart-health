@@ -125,6 +125,8 @@ export const httpApi: Api = {
   getWeekWorkouts: () => request('/workouts/week'),
   deleteEntry: (id: string) => request<void>(`/logs/${id}`, { method: 'DELETE' }).then(() => undefined),
   getBloodPressure: (id) => request(`/logs/blood-pressure/${encodeURIComponent(id)}`),
+  getWorkout: (id) => request(`/logs/workout/${encodeURIComponent(id)}`),
+  updateWorkout: (id, input) => request(`/logs/workout/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(input) }),
   updateBloodPressure: (id, input) => request(`/logs/blood-pressure/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(input) }),
   listMedications: () => request('/medications'),
   getMedication: (id) => request(`/medications/${encodeURIComponent(id)}`),
