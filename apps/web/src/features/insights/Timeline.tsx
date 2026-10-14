@@ -486,7 +486,17 @@ function DailyHint({ data, openWeek, minEnd }: { data: InsightsTimeline; openWee
 // the day the marker is on in a one-point-a-day view, shared with the row above (a tiny store: the marker lives in Plot, the button in the header)
 const usePicked = create<{ day: string | null; set: (d: string | null) => void }>((set) => ({ day: null, set: (day) => set({ day }) }))
 
-export function Plot({ data, show, openDay }: { data: InsightsTimeline; show: Record<PillKey, boolean>; openDay: (iso: string) => void }) {
+export function Plot({
+  data,
+  show,
+  openDay,
+  compact = false,
+}: {
+  data: InsightsTimeline
+  show: Record<PillKey, boolean>
+  openDay: (iso: string) => void
+  compact?: boolean
+}) {
   const { t } = useTranslation()
   const { period, series, baseline, events, work, bp, dayRows } = data
   const days = period.days
@@ -752,7 +762,7 @@ export function Plot({ data, show, openDay }: { data: InsightsTimeline; show: Re
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex h-[15.25rem] flex-col gap-2 rounded-card bg-well p-3" aria-live="off">
+      <div className={cn('flex h-[15.25rem] flex-col gap-2 rounded-card bg-well p-3', compact && 'hidden')} aria-live="off">
         <div className="flex h-9 items-center justify-between gap-2">
           <p className="flex min-w-0 items-center gap-2">
             <span className="truncate text-body font-bold">{label}</span>

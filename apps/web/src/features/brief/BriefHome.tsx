@@ -244,7 +244,7 @@ export function BriefHome() {
                         <span className="font-bold text-ink">{t('brief.whyMatters', 'Why this matters.')}</span> {r.why}{' '}
                         <span className="font-bold text-ink">{t('brief.sawLabel', 'What we saw.')}</span> {r.saw}
                       </p>
-                      <Plot data={tlData} show={onlyChart(r.key)} openDay={(date) => go('D1', { params: { date } })} />
+                      <Plot data={tlData} compact={r.key !== 'glucose'} show={onlyChart(r.key)} openDay={(date) => go('D1', { params: { date } })} />
                     </Card>
                   ))}
               </Gate>
