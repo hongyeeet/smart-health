@@ -252,20 +252,20 @@ def stored(env, monkeypatch):
 
 
 def test_send_stores_the_exchange_and_never_raises(env, stored, monkeypatch):
-    out = C.send("demo", "u1", "How was my glucose this week?", None)
+    out = C.send("person-0123456789ab", "u1", "How was my glucose this week?", None)
     assert out["conversation_id"] == "conv-1" and out["reply"]["kind"] == "answer"
     assert [r for r, _, _ in stored] == ["user", "assistant"]
     assert out["follow_ups"] == ["What is Metformin for?"]
     # a medicine change is stored as a fixed template and offers the action with the person's own words
-    out = C.send("demo", "u1", "Can I double my dose?", "conv-1")
+    out = C.send("person-0123456789ab", "u1", "Can I double my dose?", "conv-1")
     assert out["reply"]["text"].startswith(texts.tr("en", "chat.med_change")) and stored[-1][0] == "system_template"
     assert out["actions"] == [{"kind": "doctor_question", "label": "Add to my doctor questions", "to": None, "text": "Can I double my dose?"}]
     # urgent opens J1 and gives no follow-ups
-    out = C.send("demo", "u1", "I have chest pain", "conv-1")
+    out = C.send("person-0123456789ab", "u1", "I have chest pain", "conv-1")
     assert out["actions"][0]["to"] == "J1" and out["follow_ups"] == []
     # an unexpected error inside a turn becomes a calm reply
     monkeypatch.setattr(C, "decide", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
-    out = C.send("demo", "u1", "hello there", "conv-1")
+    out = C.send("person-0123456789ab", "u1", "hello there", "conv-1")
     assert out["reply"]["text"] == C.UNAVAILABLE_TEXT
 
 
@@ -274,7 +274,7 @@ def test_model_failure_gives_the_persons_own_summary_through_send(env, stored, m
         raise LLMUnavailable("down")
 
     monkeypatch.setattr(AI, "answer", down)
-    out = C.send("demo", "u1", "How was my glucose this week?", None)
+    out = C.send("person-0123456789ab", "u1", "How was my glucose this week?", None)
     assert out["reply"]["kind"] == "answer" and out["reply"]["text"].startswith(texts.tr("en", "chat.fallback_intro"))
     assert "Your glucose:" in out["reply"]["text"]
     assert C.GUARD_DOWN_TEXT not in out["reply"]["text"] and [r for r, _, _ in stored] == ["user", "assistant"]
@@ -283,14 +283,14 @@ def test_model_failure_gives_the_persons_own_summary_through_send(env, stored, m
 def test_daily_cap_gives_a_calm_reply_through_the_real_answer_path(env, stored, monkeypatch):
     monkeypatch.setattr(AI, "answer", REAL_ANSWER)            # the real function, which checks the daily cap before any call
     monkeypatch.setattr(chat_llm.usage, "allowed", lambda p: False)
-    out = C.send("demo", "u1", "How was my glucose this week?", None)
+    out = C.send("person-0123456789ab", "u1", "How was my glucose this week?", None)
     assert out["reply"]["text"].startswith(texts.tr("en", "chat.fallback_intro"))
     assert env["model"] == [] and "Your glucose:" in out["reply"]["text"]
 
 
 def test_empty_message_is_rejected():
     with pytest.raises(ValueError):
-        C.send("demo", "u1", "   ", None)
+        C.send("person-0123456789ab", "u1", "   ", None)
 
 
 def test_model_is_never_asked_for_a_non_text_helper():

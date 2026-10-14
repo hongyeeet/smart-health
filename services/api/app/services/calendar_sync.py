@@ -311,15 +311,15 @@ def top_up_all(client: EventMaker, *, now_fn: Callable[[], datetime] = lambda: d
     if not client.configured:
         return out
     try:
-        from app.core.config import settings as app_settings
+        from app.services import scheduler
 
-        keys = [k.strip() for k in app_settings.scheduler_users.split(",") if k.strip()]
+        keys = scheduler._users()
     except Exception:   # noqa: BLE001
         logger.exception("calendar top-up could not read the people it serves")
         return out
     for key in keys:
         try:
-            user = logstore.USERS[key]["id"]
+            user = logstore.user_id_for_key(key)
         except KeyError:
             continue
         try:

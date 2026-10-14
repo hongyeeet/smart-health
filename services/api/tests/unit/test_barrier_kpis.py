@@ -2,7 +2,9 @@
 from datetime import date
 
 from app.services import barrier_kpis as K
-from app.db.logstore import APP_USER, MR_TAN_USER
+from app.db.logstore import MR_TAN_USER, person_id
+
+APP_USER = person_id("person-0123456789ab")        # a stand-in person for tests (there is no demo user)
 from app.db.memorystore import HIDDEN_FACT_KEYS, hidden_keys
 
 TODAY = date(2026, 10, 11)  # a Sunday

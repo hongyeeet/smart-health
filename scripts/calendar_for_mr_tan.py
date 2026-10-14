@@ -6,9 +6,8 @@ Usage (from the repository root):
   python scripts/calendar_for_mr_tan.py --yes      do it
 
 What it does, in order:
-  1. turns the calendar consent OFF for the demo user (so only Mr Tan's reminders are made from now on);
-  2. turns the calendar consent ON for Mr Tan (the app cannot do this for him: his record is read only from the screens);
-  3. makes the events for the next 14 days that are not there yet, for every person who has the consent (that is Mr Tan only), through the
+  1. turns the calendar consent ON for Mr Tan (the app cannot do this for him: his record is read only from the screens);
+  2. makes the events for the next 14 days that are not there yet, for every person who has the consent, through the
      Workato recipe (needs WORKATO_WEBHOOK_URL and WORKATO_WEBHOOK_TOKEN in .env).
 Events already on the calendar are never made twice, and none is deleted (delete the old ones by hand in Google Calendar).
 """
@@ -29,9 +28,8 @@ def main() -> int:
     args = ap.parse_args()
     client = WorkatoClient.from_settings()
     print(f"Workato set up: {client.configured}")
-    print("1. calendar consent OFF for the demo user")
-    print("2. calendar consent ON for Mr Tan")
-    print("3. make the next 14 days of events for Mr Tan's medicines")
+    print("1. calendar consent ON for Mr Tan")
+    print("2. make the next 14 days of events for the medicines of everyone who agreed")
     if not args.yes:
         print("Dry run: nothing was changed. Run again with --yes.")
         return 0
@@ -39,7 +37,6 @@ def main() -> int:
         print("Workato is not set up in .env: stopping.")
         return 1
     with logstore.tx() as c:
-        me_settings.set_consent(c, logstore.USERS["demo"]["id"], "calendar_access", False)
         me_settings.set_consent(c, logstore.MR_TAN_USER, "calendar_access", True)
     out = calendar_sync.top_up_all(client)
     print("top-up:", out)

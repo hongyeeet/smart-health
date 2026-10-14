@@ -7,8 +7,9 @@ Run locally:
 The Vite dev server proxies /api → http://localhost:8000 (apps/web/vite.config.ts).
 """
 import logging
+import re
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers.brief import router as brief_router
@@ -42,9 +43,17 @@ from app.core.config import settings
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-async def _act_as(x_user: str | None = Header(default=None), x_lang: str | None = Header(default=None)) -> None:
-    """Who this request acts as: the `X-User` header ("demo" or "mr-tan"; none means demo). Async on purpose, so the choice
-    is set in the same context the endpoint (and its threadpool work) runs in."""
+# What a visitor may still send while looking at Mr Tan's example record. None of these changes what is kept for him in a way another visitor
+# would notice: asking the assistant, reading a meal photo or a typed answer, and noting that a reminder was opened.
+EXAMPLE_MAY_SEND = ("/api/v1/chat/", "/api/v1/meals/analyze", "/api/v1/onboarding/chat", "/api/v1/users")
+EXAMPLE_MAY_SEND_RE = re.compile(r"/api/v1/notifications/[^/]+/open")
+EXAMPLE_REFUSED = "Mr Tan is an example record, so it cannot be changed. Create your own user to log your own information."
+
+
+async def _act_as(request: Request, x_user: str | None = Header(default=None), x_lang: str | None = Header(default=None)) -> None:
+    """Who this request acts as: the `X-User` header ("mr-tan", or the key of a person started in the app; none means Mr Tan). Async on purpose,
+    so the choice is set in the same context the endpoint (and its threadpool work) runs in. Mr Tan's record is shown to everyone and is
+    never changed by a request: anything that would write is refused in plain words."""
     from app.db import logstore
     from app.services import texts
 
@@ -52,7 +61,11 @@ async def _act_as(x_user: str | None = Header(default=None), x_lang: str | None 
     try:
         logstore.set_user(x_user)
     except KeyError:
-        raise HTTPException(400, f"unknown user {x_user!r}; choose one of: {', '.join(logstore.USERS)}")
+        raise HTTPException(400, f"unknown user {x_user!r}; use mr-tan or a key from Start as new person")
+    if logstore.is_read_only(logstore.current_user()) and request.method not in ("GET", "HEAD", "OPTIONS"):
+        path = request.url.path
+        if not (path.startswith(EXAMPLE_MAY_SEND) or EXAMPLE_MAY_SEND_RE.fullmatch(path)):
+            raise HTTPException(403, EXAMPLE_REFUSED)
 
 
 app = FastAPI(
@@ -120,15 +133,13 @@ app.include_router(review_router, prefix="/api/v1")
 
 
 @app.on_event("startup")
-def _ensure_demo_user() -> None:
-    """The app has no sign-in yet: a request is the demo user unless it names Mr Tan (X-User header); only the demo user is created here."""
-    from app.db import logstore
+def _start_scheduler() -> None:
+    """The app has no sign-in yet: a request is Mr Tan's example record unless it names a person started in the app (X-User header)."""
     from app.services import scheduler
 
     try:
-        logstore.ensure_user()
         scheduler.start()
     except Exception:  # database unreachable: the log endpoints will report it when called
-        logger.exception("could not create the demo user")
+        logger.exception("could not start the scheduler")
 
 logger.info("FastAPI app started. Demo mode: %s", settings.demo_mode)

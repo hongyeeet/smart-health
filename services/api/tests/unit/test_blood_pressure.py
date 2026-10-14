@@ -181,7 +181,7 @@ def test_the_routes_refuse_bad_input_and_unknown_ids_in_plain_terms(monkeypatch)
     from app.db import logstore
     from app.main import app
 
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-User": "person-0123456789ab"})        # Mr Tan's example record refuses every write
     # a diastolic at or above the systolic is refused by the schema (422) before the store is called
     bad = client.post("/api/v1/logs", json={"kind": "blood_pressure", "systolic": 120, "diastolic": 130})
     assert bad.status_code == 422

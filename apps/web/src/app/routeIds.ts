@@ -23,7 +23,7 @@ export interface RouteDef {
 const l = (label: string, to: string): RouteLink => ({ label, to })
 
 export const ROUTES = {
-  A1: { path: '/welcome', title: 'Welcome', kind: 'screen', group: 'Onboarding', from: 'App start, and first for the demo user (Skip instead of Finish later)', links: [l('Next', 'A2')], note: 'Name, the email address for reminders (needed; with a reminder on/off), and the consents. The data-use consent is required. No language choice.' },
+  A1: { path: '/welcome', title: 'Welcome', kind: 'screen', group: 'Onboarding', from: 'Create a new user (the menu at the top of Home), nothing is saved until Finish; Cancel drops the new user', links: [l('Next', 'A2')], note: 'Name, the email address for reminders (needed; with a reminder on/off), and the consents. The data-use consent is required. No language choice.' },
   A2: { path: '/welcome/eligibility', title: 'Is this app right for you?', kind: 'screen', group: 'Onboarding', from: 'A1', links: [l('Continue', 'A3'), l('Back', 'A1')], note: 'Out-of-scope answers (type 1, pregnancy, under 18) stop here with a clear message.' },
   A3: { path: '/welcome/about', title: 'About you', kind: 'screen', group: 'Onboarding', from: 'A2, A4, A6', links: [l('Chat instead', 'A4'), l('Check my answers', 'A6')], note: 'Pages 3 to 10 on one route (?step=3 to 10; the step is the page number): about you, diabetes history, low glucose, other conditions and checks, lab results, devices (choose and connect), your work week, emergency contact. Records answers and saves each page to the record; shows no score, stage or target.' },
   A4: { path: '/welcome/chat', title: 'Set up by chat', kind: 'screen', group: 'Onboarding', from: 'A3', links: [l('Use the form instead', 'A3'), l('Next', 'A5')] },

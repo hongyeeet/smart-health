@@ -30,6 +30,10 @@
       "ofGoal": "{{value}} of {{goal}}",
       "strength": "Strength sessions"
     },
+    "demo": {
+      "label": "Demo:",
+      "simulate": "Simulate a low reading"
+    },
     "done": "Done",
     "dose": {
       "addSub": "Then we can show you what to take and when.",
@@ -96,6 +100,34 @@
       "legendTop": "Top number",
       "legendTopV2": "Top number: systolic BP"
     },
+    "food": {
+      "avgPerDay": "Average {{value}} {{unit}} a day",
+      "carbsDay": "Carbohydrate",
+      "fatDay": "Fat",
+      "gapNote": "A gap means that day has no value for it, which is not the same as zero.",
+      "kcalDay": "Calories",
+      "mealsLogged": "{{meals}} meals logged. {{salt}} were high in salt and {{sugar}} high in sugar.",
+      "movedPlain": "The rise in glucose in the 2 hours after each food, from your sensor. Gentlest first.",
+      "proteinDay": "Protein",
+      "saltChart": "Salt (sodium)",
+      "seenRise": "Seen {{n}} times, rise {{low}} to {{high}} mmol/L"
+    },
+    "glucose": {
+      "avgChart": "Average glucose by day, mmol/L",
+      "avgEachDay": "Average each day",
+      "events": "{{spikes}} sharp rises, {{sustained}} long stretches above range, {{lows}} low readings.",
+      "fastingChart": "Morning fasting glucose by day, mmol/L",
+      "fastingPlain": "The average of your readings between 5 and 7 am each day.",
+      "fastingPlainBand": "The average of your readings between 5 and 7 am each day. The shaded band is your usual range from the 60 days before.",
+      "fastingTitle": "Morning (fasting) glucose",
+      "gmiSub": "Worked out from your average",
+      "inRange": "{{pct}}% of your readings were between {{low}} and {{high}} mmol/L.",
+      "inThisPeriod": "In this period",
+      "wornSub": "of this period"
+    },
+    "grid": {
+      "weekKey": "A darker square means more. A dash means there is no data for that day."
+    },
     "overview": {
       "alsoSame": "About the same as the {{n}} days before: {{list}}.",
       "amountHours": "{{n}} hours",
@@ -111,6 +143,14 @@
       },
       "changeLine": "{{label}}: {{current}} {{curWhen}}, {{previous}} {{prevWhen}}. {{move}}.",
       "down": "Down {{amount}}",
+      "hint": {
+        "activity": "Minutes of activity that day.",
+        "doses": "Share of that day’s scheduled doses you took.",
+        "glucose": "Share of the day’s readings in range, as a percentage.",
+        "meals": "Meals logged that day.",
+        "sleep": "Hours slept, from your watch.",
+        "stress": "Your stress rating that day, from 1 (low) to 5 (high)."
+      },
       "lastDays": "in the last {{n}} days",
       "noCompare": "There is not enough data in both periods to compare yet.",
       "notEnough": "Not enough data in one of the two periods to compare: {{list}}.",
@@ -191,8 +231,66 @@
       }
     }
   },
+  "log": {
+    "hub": {
+      "mealSub": "Photo of your food",
+      "suggestionsSub": "The meal ideas Smart Health made. Rate each one: reasonable, not reasonable or unsafe."
+    },
+    "meal": {
+      "chooseFile": "Pick a photo from your files",
+      "choosePhoto": "Choose a photo of your meal",
+      "dish": "Dish",
+      "opensCamera": "Opens your camera",
+      "subResult": "These numbers are estimates. Change anything that is not right, then save.",
+      "tip4": "The numbers are estimates. You can correct any of them before you save.",
+      "upload": "Choose from your photos"
+    },
+    "sym": {
+      "afterExercise": "After exercise",
+      "afterMeal": "After a meal",
+      "asleep": "While asleep",
+      "atRest": "At rest",
+      "beforeMeal": "Before a meal",
+      "blurry": "Blurry vision",
+      "bothFeet": "Both feet",
+      "breathless": "Breathlessness at rest",
+      "chestPain": "Chest pain",
+      "confusion": "Confusion",
+      "dizzy": "Dizzy",
+      "elsewhere": "Somewhere else",
+      "fainting": "Fainting",
+      "footPain": "Foot pain",
+      "hands": "Hands",
+      "headache": "Headache",
+      "howLongLabel": "How long you felt it",
+      "label": "Symptom",
+      "leftFoot": "Left foot",
+      "nightSweats": "Night sweats",
+      "numbness": "Numbness",
+      "other": "Something else",
+      "pickTime": "Pick a time",
+      "rightFoot": "Right foot",
+      "severe": "Severe",
+      "shaky": "Shaky or sweaty",
+      "spinning": "Spinning",
+      "standUp": "When I stand up",
+      "stomach": "Upset stomach",
+      "thirsty": "More thirsty than usual",
+      "tingling": "Tingling",
+      "tired": "Tired more than usual",
+      "today": "Today",
+      "unknown": "Still going or not sure",
+      "urine": "Passing more urine",
+      "visionLoss": "Sudden vision loss or a curtain across my vision",
+      "vomiting": "Vomiting",
+      "weak": "Barely noticeable",
+      "wound": "Slow-healing wound",
+      "yesterday": "Yesterday"
+    }
+  },
   "me": {
     "account": {
+      "demoNotice": "Mr Tan is demo data. His record is not changed from here. To try editing, switch to the demo user.",
       "f": {
         "racePlaceholder": "For example, Chinese, Malay or Indian"
       }
@@ -293,6 +391,7 @@
       "italic": "\u001b[3mStart as demo patient\u001b[23m",
       "magenta": "\u001b[35mStart as demo patient\u001b[39m",
       "magentaBG": "\u001b[45mStart as demo patient\u001b[49m",
+      "notice": "Mr Tan is demo data. His record is not changed from here. To try setup, switch to the demo user or start as a new person.",
       "rainbow": "\u001b[31mS\u001b[39m\u001b[33mt\u001b[39m\u001b[32ma\u001b[39m\u001b[34mr\u001b[39m\u001b[35mt\u001b[39m \u001b[33ma\u001b[39m\u001b[32ms\u001b[39m \u001b[35md\u001b[39m\u001b[31me\u001b[39m\u001b[33mm\u001b[39m\u001b[32mo\u001b[39m \u001b[35mp\u001b[39m\u001b[31ma\u001b[39m\u001b[33mt\u001b[39m\u001b[32mi\u001b[39m\u001b[34me\u001b[39m\u001b[35mn\u001b[39m\u001b[31mt\u001b[39m",
       "random": "\u001b[33mS\u001b[39m\u001b[35mt\u001b[39m\u001b[90ma\u001b[39m\u001b[37mr\u001b[39m\u001b[7mt\u001b[27m \u001b[31ma\u001b[39m\u001b[97ms\u001b[39m \u001b[34md\u001b[39m\u001b[93me\u001b[39m\u001b[92mm\u001b[39m\u001b[96mo\u001b[39m \u001b[92mp\u001b[39m\u001b[31ma\u001b[39m\u001b[90mt\u001b[39m\u001b[35mi\u001b[39m\u001b[31me\u001b[39m\u001b[94mn\u001b[39m\u001b[33mt\u001b[39m",
       "red": "\u001b[31mStart as demo patient\u001b[39m",
@@ -338,6 +437,7 @@
       "sub": "Scan the label of each medicine you take. You can check or change them later.",
       "title": "Your medicines"
     },
+    "skipV2": "Skip",
     "sum": {
       "gold": "Knows when a hypo is starting (1 always, 7 never)",
       "loading": "Loading…",
@@ -353,7 +453,14 @@
     "newPerson": "New person",
     "startFailed": "We could not start a new person just now. Check your connection, then try again.",
     "starting": "Starting…",
-    "startNewSub": "A clean start at step 1. No one else is changed."
+    "startNew": "Start as new person",
+    "startNewSub": "A clean start at step 1. No one else is changed.",
+    "startNewSubV2": "Set-up from step 1, like the demo user. Saved only when you finish.",
+    "user": {
+      "demo": "Demo user",
+      "demoSub": "A blank account for trying things",
+      "tanSub": "About 90 days of history"
+    }
   },
   "workout": {
     "log": {

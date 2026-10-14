@@ -305,7 +305,7 @@ def test_a_pack_size_without_a_count_stays_unknown():
 # ---------------------------------------------------------------- 7. hidden idea
 def test_the_running_out_idea_is_hidden_for_mr_tan_only():
     assert memorystore.hidden_keys(logstore.MR_TAN_USER) == ["barrier.ran_out"]
-    assert memorystore.hidden_keys(logstore.APP_USER) == []
+    assert memorystore.hidden_keys(logstore.person_id("person-0123456789ab")) == []
 
 
 # ---------------------------------------------------------------- 8. junk doctor questions

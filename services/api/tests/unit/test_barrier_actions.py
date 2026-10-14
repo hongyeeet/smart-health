@@ -349,12 +349,13 @@ def test_a_person_with_no_data_gets_the_empty_state(rolled_back):
     assert ba.nudges(uid, datetime.now(TZ), set(), 3) == []
 
 
-def test_the_demo_user_gets_proposals_once_and_the_refill_reminder_after_confirming(rolled_back):
+def test_a_person_gets_proposals_once_and_the_refill_reminder_after_confirming(rolled_back):
     from app.schemas.medicine_scan import ConfirmedMedication, DoseTime
     from app.services.scan_store import confirm_medication
 
     conn = rolled_back
-    demo = str(logstore.USERS["demo"]["id"])
+    demo = str(logstore.person_id("person-0123456789ab"))
+    conn.execute("insert into users (id, is_demo) values (%s, false) on conflict (id) do nothing", (demo,))     # rolled back with the rest
     conn.row_factory = tuple_row                                                    # the shared save code reads rows by position
     med = confirm_medication(conn, demo, ConfirmedMedication(name="Rollback Test Metformin", kind="prescription", strength="500 mg",
                                                              doses=[DoseTime(dose_time=time(8, 0), quantity=1)], total_quantity=6))

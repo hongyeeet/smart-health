@@ -154,7 +154,7 @@ def client(monkeypatch):
     monkeypatch.setattr(ns, "meal_window", lambda uid, meal: calls.append(("window", meal)) or ((18 * 60, 20 * 60) if meal == "dinner" else (11 * 60 + 30, 13 * 60 + 30)))
     monkeypatch.setattr(ns, "meal_options", lambda uid, meal, *a, **k: calls.append(("options", meal)) or [{"key": "own:x", "name": "X", "source": "own", "why": "w"}])
     yield TestClient(app), calls
-    logstore.set_user("demo")
+    logstore.set_user("person-0123456789ab")
 
 
 def test_the_route_returns_the_lunch_shape_plus_the_meal(client):

@@ -157,7 +157,7 @@ def test_a_verdict_question_is_answered_with_the_numbers_not_refused(world):
 # ----------------------------------------------------------------------------- (c) symptoms through send(): the offer carries the person's words
 def test_a_symptom_question_ends_with_the_doctor_referral_and_the_offer(world, storage):
     world["tri"] = AI.Triage(intent="symptoms", mentions_symptom=True)
-    out = C.send("demo", "u1", "  My knee hurts when I walk?  ", None)
+    out = C.send("person-0123456789ab", "u1", "  My knee hurts when I walk?  ", None)
     refer = texts.tr("en", "chat.symptom_refer")
     assert out["reply"]["text"].endswith(f"{refer} {DOCTOR_OFFER}")
     offer = [a for a in out["actions"] if a["kind"] == "doctor_question"]
@@ -418,7 +418,7 @@ def test_help_and_thanks_need_no_service(world):
 
 # ----------------------------------------------------------------------------- the stored exchange (send)
 def test_send_stores_a_refusal_as_a_fixed_template_and_offers_the_doctor_question(world, storage):
-    out = C.send("demo", "u1", "Should I double my tablets tonight?", None)
+    out = C.send("person-0123456789ab", "u1", "Should I double my tablets tonight?", None)
     assert out["reply"]["text"].endswith(DOCTOR_OFFER)
     assert storage[-1][0] == "system_template" and storage[-1][2] == "blocked_med_advice"
     assert {"kind": "doctor_question", "label": "Add to my doctor questions", "to": None, "text": "Should I double my tablets tonight?"} in out["actions"]

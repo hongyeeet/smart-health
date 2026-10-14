@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { appConfig } from '@/config/app'
 import { href } from '@/app/routeIds'
 import { cn } from '@/lib/cn'
-import { useUi } from '@/state/store'
-import { startsInSetup } from './startGate'
 import { useCancelNewPerson, useIsNewPerson } from './newPerson'
 import { Alert, Button, Card, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
 import { Check, Leaf, Lock } from '@/ui/icons'
@@ -134,10 +132,10 @@ export function LoadNotice() {
   return <Alert tone="warn">{t('onboarding.loadFailed', 'We could not load your saved answers just now. The answers on this device are shown.')}</Alert>
 }
 
-/** Mr Tan is demo data: his answers can be read here, but nothing is saved to his record from onboarding. */
+/** Mr Tan is an example record: his answers can be read here, but nothing is saved to his record from onboarding. */
 export function DemoNotice() {
   const { t } = useTranslation()
-  return <Alert tone="info">{t('onboarding.demo.notice', 'Mr Tan is demo data. His record is not changed from here. To try setup, switch to the demo user or start as a new person.')}</Alert>
+  return <Alert tone="info">{t('onboarding.exampleNoticeV2', 'Mr Tan is an example record. It is not changed from here. To set up for yourself, create your own user from the menu at the top of Home.')}</Alert>
 }
 
 /**
@@ -170,14 +168,13 @@ export function Dock({ onBack, onNext, nextLabel, nextDisabled }: { onBack?: () 
 export function Later({ children, label }: { children?: ReactNode; label?: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const demo = startsInSetup(useUi((s) => s.userKey))      // the demo user skips set-up instead of finishing it later
   const newPerson = useIsNewPerson()                       // a new person who leaves is not created at all
   const cancel = useCancelNewPerson()
   return (
     <div className="flex flex-col items-center gap-1 pt-2">
       {children}
       <TextLink onClick={newPerson ? cancel : () => navigate(href('B1'))} className="self-center">
-        {newPerson ? t('onboarding.cancelNew', 'Cancel. Do not create this user') : demo ? t('onboarding.skipV2', 'Skip') : (label ?? t('onboarding.later', 'Finish later'))}
+        {newPerson ? t('onboarding.cancelNew', 'Cancel. Do not create this user') : (label ?? t('onboarding.later', 'Finish later'))}
       </TextLink>
     </div>
   )

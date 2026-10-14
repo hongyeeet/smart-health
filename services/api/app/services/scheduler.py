@@ -4,7 +4,8 @@
   every minute   the email dispatcher: the reminders that are also emails, sent through the Workato recipe
   nightly 02:00  the reflection: barriers, anchors and food habits, proposed as facts (never activated)
 Both go through the orchestrator, so they are routed, guarded and logged like any other event. They run for the people named in
-`scheduler_users` (default: Mr Tan, who has the six months of history the agent learns from, and the demo user for live logging).
+`scheduler_users` (default: Mr Tan, who has the six months of history the agent learns from) and for every person who started with
+"Start as new person" and finished set-up (`scheduler_persons`), who the jobs address by user id (`logstore.internal_key`).
 """
 from __future__ import annotations
 
@@ -25,7 +26,17 @@ _scheduler: AsyncIOScheduler | None = None
 
 
 def _users() -> list[str]:
-    return [u.strip() for u in settings.scheduler_users.split(",") if u.strip()]
+    """The people the jobs serve: the configured ones, then everyone who finished set-up (a profile exists), by user id. Never raises."""
+    keys = [u.strip() for u in settings.scheduler_users.split(",") if u.strip()]
+    if settings.scheduler_persons:
+        try:
+            with tx() as c:
+                rows = c.execute("select u.id from users u where coalesce(u.is_demo, false) = false and u.id <> %s "
+                                 "and exists (select 1 from user_profile p where p.user_id = u.id) order by u.created_at", (logstore.MR_TAN_USER,)).fetchall()
+            keys += [logstore.internal_key(r["id"]) for r in rows]
+        except Exception:   # noqa: BLE001 - the people already named still get their jobs
+            logger.exception("the scheduler could not list the people who finished set-up")
+    return keys
 
 
 def tick() -> None:
@@ -76,7 +87,7 @@ def warm_review() -> None:
 
     for key in _users():
         try:
-            logstore.set_user(key)
+            logstore.set_user(key, internal=True)
             uid = str(logstore.current_user())
             with tx() as c:
                 dishes = review.logged_dishes(c, uid)
@@ -92,7 +103,7 @@ def warm_review() -> None:
 
 
 def nightly_done_today(key: str) -> bool:
-    logstore.set_user(key)
+    logstore.set_user(key, internal=True)
     with tx() as c:
         return bool(c.execute(
             "select 1 from agent_runs where user_id=%s and trigger='nightly' and status='ok' and (started_at at time zone 'Asia/Singapore')::date=%s limit 1",

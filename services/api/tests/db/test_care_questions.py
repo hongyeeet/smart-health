@@ -100,7 +100,7 @@ def test_a_done_question_can_be_removed(conn, user):
 def test_a_new_visit_is_saved_without_a_place(conn, user):
     when = (datetime.now(svc.TZ) + timedelta(days=10)).replace(microsecond=0)
     out = svc.add_appointment(conn, user, "hba1c_test", when, None, datetime.now(timezone.utc))
-    assert out["kind"] == "hba1c_test" and out["kind_label"] == "Blood test" and out["location"] is None
+    assert out["kind"] == "hba1c_test" and out["kind_label"] == "HbA1c blood test" and out["location"] is None
     S.AppointmentOut.model_validate(out)
 
 

@@ -55,7 +55,7 @@ export const useUi = create<UiState>()(
       theme: 'light',
       textScale: 1,
       locale: 'en',
-      userKey: 'demo',
+      userKey: 'mr-tan',
       setUserKey: (userKey) => set({ userKey }),
       people: [],
       addPerson: (p) => set((s) => ({ people: [...s.people.filter((x) => x.key !== p.key), p] })),
@@ -85,11 +85,11 @@ export const useUi = create<UiState>()(
     {
       name: 'smart-health-ui',
       partialize: (s) => ({ theme: s.theme, textScale: s.textScale, locale: s.locale, userKey: s.userKey, people: s.people }),
-      /* a device that holds the key of a person whose set-up was never finished (a reload part-way) goes back to the demo user */
+      /* the app opens on Mr Tan's example record; a device that holds another key (the removed demo user, or a person whose set-up was never finished) goes back to him */
       merge: (saved, current) => {
         const kept = (saved ?? {}) as Partial<UiState>
         const people = kept.people ?? []
-        const known = kept.userKey === 'demo' || kept.userKey === 'mr-tan' || people.some((p) => p.key === kept.userKey)
+        const known = kept.userKey === 'mr-tan' || people.some((p) => p.key === kept.userKey)
         if (kept.userKey && !known) {
           try {
             localStorage.removeItem(`smart-health-onboarding:${kept.userKey}`)
@@ -97,7 +97,7 @@ export const useUi = create<UiState>()(
             /* storage not available */
           }
         }
-        return { ...current, ...kept, people, userKey: known ? (kept.userKey as string) : 'demo' }
+        return { ...current, ...kept, people, userKey: known ? (kept.userKey as string) : 'mr-tan' }
       },
     },
   ),

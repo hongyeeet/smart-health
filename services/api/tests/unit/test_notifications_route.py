@@ -19,7 +19,7 @@ def client(monkeypatch):
     monkeypatch.setattr(logstore, "open_notification", lambda nid: calls.append(("open", nid)))
     monkeypatch.setattr(logstore, "dismiss_notification", lambda nid: calls.append(("dismiss", nid)))
     yield TestClient(app), calls
-    logstore.set_user("demo")
+    logstore.set_user("person-0123456789ab")
     route.invalidate()
 
 
@@ -41,7 +41,7 @@ def test_a_get_writes_nothing_for_mr_tan_and_may_for_the_demo_user(client):
     c, calls = client
     logstore.set_user("mr-tan")
     c.get("/notifications")
-    logstore.set_user("demo")
+    logstore.set_user("person-0123456789ab")
     c.get("/notifications")
     assert calls == [False, True]
 
@@ -60,7 +60,7 @@ def test_the_reminders_page_list_is_its_own_read_and_writes_nothing_for_mr_tan(c
     c, calls = client
     logstore.set_user("mr-tan")
     c.get("/notifications/history")
-    logstore.set_user("demo")
+    logstore.set_user("person-0123456789ab")
     c.get("/notifications/history")
     c.get("/notifications")
     assert calls == [("history", False), ("history", True), True]          # the Home list and the page list are cached apart

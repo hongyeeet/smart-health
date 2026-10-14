@@ -181,7 +181,7 @@ def test_with_jev_off_or_capped_an_urgent_phrase_still_gets_995(world, jev_state
 
 # ----------------------------------------------------------------------------- the stored message is scrubbed
 def test_the_stored_message_has_no_nric_phone_or_email(world, storage):
-    out = C.send("demo", "u1", "My NRIC is S1234567D, call 91234567 or mail tan@example.com. How was my glucose this week?", None)
+    out = C.send("person-0123456789ab", "u1", "My NRIC is S1234567D, call 91234567 or mail tan@example.com. How was my glucose this week?", None)
     stored = storage[0]
     assert stored[0] == "user"
     for secret in ("S1234567D", "91234567", "tan@example.com"):
@@ -190,6 +190,6 @@ def test_the_stored_message_has_no_nric_phone_or_email(world, storage):
 
 
 def test_a_doctor_question_offer_carries_the_scrubbed_words(world, storage):
-    out = C.send("demo", "u1", "Should I stop my pills? My email is tan@example.com", None)
+    out = C.send("person-0123456789ab", "u1", "Should I stop my pills? My email is tan@example.com", None)
     offer = [a for a in out["actions"] if a["kind"] == "doctor_question"]
     assert offer and "tan@example.com" not in offer[0]["text"]

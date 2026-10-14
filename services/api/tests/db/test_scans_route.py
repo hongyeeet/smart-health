@@ -44,9 +44,12 @@ def db(monkeypatch):
     monkeypatch.setattr(logstore, "tx", fake_tx)
     monkeypatch.setattr("app.integrations.storage.upload_object", lambda key, data, ctype, settings=None: stored.append(key))
     monkeypatch.setattr(scans, "_unsaved", scans._unsaved.__class__())
+    logstore.set_user("person-0123456789ab")                                            # a stand-in person (there is no demo user); made in this rolled-back transaction
+    conn.execute("insert into users (id, is_demo) values (%s, false) on conflict (id) do nothing", (logstore.person_id("person-0123456789ab"),))
     try:
         yield conn, stored
     finally:
+        logstore.set_user(None)
         conn.rollback()
         conn.close()
 
@@ -154,7 +157,7 @@ def test_one_persons_scan_is_not_visible_to_another(db, monkeypatch):
             scans._get(r.scan_id)
         assert e.value.status_code == 404
     finally:
-        logstore.set_user("demo")
+        logstore.set_user("person-0123456789ab")
 
 
 def test_unknown_or_malformed_scan_ids_are_404_not_500(db):

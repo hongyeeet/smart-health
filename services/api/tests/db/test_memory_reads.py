@@ -42,19 +42,19 @@ def test_day_calendar_covers_every_day_and_keeps_empty_days_empty(client):
 
 
 def test_a_blank_user_has_no_meals_on_any_day(client):
-    r = client.get("/api/v1/memory/progress/days", params={"from": "2026-10-01", "to": "2026-10-07"}, headers={"X-User": "demo"})
+    r = client.get("/api/v1/memory/progress/days", params={"from": "2026-10-01", "to": "2026-10-07"}, headers={"X-User": "person-0123456789ab"})
     assert r.status_code == 200
     assert all(d["meals"] == 0 for d in r.json()["days"])
 
 
 def test_a_range_over_the_limit_is_refused_in_plain_words(client):
     far = date(2026, 10, 11)
-    r = client.get("/api/v1/memory/progress/days", params={"from": (far - timedelta(days=100)).isoformat(), "to": far.isoformat()}, headers={"X-User": "demo"})
+    r = client.get("/api/v1/memory/progress/days", params={"from": (far - timedelta(days=100)).isoformat(), "to": far.isoformat()}, headers={"X-User": "person-0123456789ab"})
     assert r.status_code == 422
     assert "92 days" in r.json()["detail"]
 
 
-@pytest.mark.parametrize("user", ["demo", "mr-tan"])
+@pytest.mark.parametrize("user", ["person-0123456789ab", "mr-tan"])
 def test_barrier_summary_has_every_field_and_no_running_out_idea(client, user):
     r = client.get("/api/v1/memory/barriers/summary", headers={"X-User": user})
     assert r.status_code == 200

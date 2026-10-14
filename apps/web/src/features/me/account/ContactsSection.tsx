@@ -145,7 +145,7 @@ function ContactSheet({ existing, emailSupported, readOnly, onClose, onSaved }: 
   return (
     <Sheet title={existing ? t('me.account.editContact', 'Edit emergency contact') : t('me.account.newContact', 'New emergency contact')} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        {readOnly && <Alert tone="info">{t('me.account.demoNotice', 'Mr Tan is demo data. His record is not changed from here. To try editing, switch to the demo user.')}</Alert>}
+        {readOnly && <Alert tone="info">{t('me.account.exampleNoticeV2', 'Mr Tan is an example record. It is not changed from here. Create your own user to keep your own information.')}</Alert>}
         <div className="grid gap-4 sm:grid-cols-2 [[data-ts='2']_&]:sm:grid-cols-1 [&>*]:min-w-0">
           <Field label={t('me.contact.name', 'Name')} value={form.name} onChange={set('name')} placeholder={t('me.contact.namePlaceholder', 'For example, Mdm Lim')} />
           <Field label={t('me.contact.relation', 'Relationship to you')} value={form.relation} onChange={set('relation')} placeholder={t('me.contact.relationPlaceholder', 'For example, spouse')} />

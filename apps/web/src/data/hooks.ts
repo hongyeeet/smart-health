@@ -113,7 +113,7 @@ export const useNotices = () => useQuery({ queryKey: ['notices'], queryFn: () =>
 export const useNoticeHistory = () => useQuery({ queryKey: ['noticeHistory'], queryFn: () => api.listNoticeHistory() })
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => request<UserList>('/users'), staleTime: Infinity })
 
-/** Switch between the demo user and Mr Tan. Everything cached belongs to the previous person, so it is reset and reloaded. */
+/** Switch between Mr Tan and the people started on this device. Everything cached belongs to the previous person, so it is reset and reloaded. */
 export function useSwitchUser() {
   const qc = useQueryClient()
   const setUserKey = useUi((s) => s.setUserKey)

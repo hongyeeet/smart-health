@@ -143,7 +143,7 @@ def run_event(user_key: str, kind: str, quiet: bool = False, **payload: Any) -> 
     global _GRAPH
     if _GRAPH is None:
         _GRAPH = build_graph()
-    logstore.set_user(user_key)
+    logstore.set_user(user_key, internal=True)
     uid = logstore.current_user()
     run = Run(uid, "orchestrator", TRIGGER.get(kind, "memory"), lazy=quiet)
     token = _RUN.set(run)

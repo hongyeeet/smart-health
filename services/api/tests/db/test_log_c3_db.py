@@ -51,32 +51,32 @@ def test_the_meal_details_query_runs_for_real_meal_ids(conn):
 
 
 def test_a_check_in_with_unanswered_questions_is_stored_as_null_and_an_empty_one_is_refused(conn):
-    user = conn.execute("select id from users where id = %s", (logstore.APP_USER,)).fetchone()
+    user = conn.execute("select id from users where id = %s", (logstore.person_id("person-0123456789ab"),)).fetchone()
     if user is None:
         pytest.skip("the demo user is not in this database")
     bronze = conn.execute(
         "insert into bronze_wellbeing (user_id, source, payload, checksum) values (%s, 'manual', '{}'::jsonb, %s) returning id",
-        (logstore.APP_USER, "c3-test-" + "x" * 8),
+        (logstore.person_id("person-0123456789ab"), "c3-test-" + "x" * 8),
     ).fetchone()
     row = conn.execute(
         """insert into wellbeing_logs (user_id, recorded_at, mood, stress_self, sleep_quality, energy, source, bronze_id)
            values (%s, now(), null, 4, null, null, 'manual', %s) returning mood, stress_self""",
-        (logstore.APP_USER, bronze["id"]),
+        (logstore.person_id("person-0123456789ab"), bronze["id"]),
     ).fetchone()
     assert row["mood"] is None and row["stress_self"] == 4
     with pytest.raises(psycopg.errors.CheckViolation), conn.transaction():
         conn.execute(
             """insert into wellbeing_logs (user_id, recorded_at, mood, stress_self, sleep_quality, energy, source, bronze_id)
                values (%s, now(), null, null, null, null, 'manual', %s)""",
-            (logstore.APP_USER, bronze["id"]),
+            (logstore.person_id("person-0123456789ab"), bronze["id"]),
         )
 
 
 def test_the_notification_lock_and_lookup_run(conn):
     # the advisory lock taken before every reminder write, and the lunch-slot lookup, both run on this schema
-    conn.execute("select pg_advisory_xact_lock(hashtext(%s))", (f"notifications:{logstore.APP_USER}",))
+    conn.execute("select pg_advisory_xact_lock(hashtext(%s))", (f"notifications:{logstore.person_id("person-0123456789ab")}",))
     n = conn.execute(
         "select count(*) n from notifications where user_id=%s and payload->>'key' = any(%s)",
-        (logstore.APP_USER, sorted(logstore.lunch_slot_keys(datetime.now(logstore.TZ).date().isoformat()))),
+        (logstore.person_id("person-0123456789ab"), sorted(logstore.lunch_slot_keys(datetime.now(logstore.TZ).date().isoformat()))),
     ).fetchone()["n"]
     assert n >= 0

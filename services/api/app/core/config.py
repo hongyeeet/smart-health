@@ -97,7 +97,8 @@ class Settings(BaseSettings):
     email_daily_cap: int = 3                          # reminder emails per person per day (an urgent alert to the contact is exempt)
     email_max_attempts: int = 3
     scheduler_enabled: bool = True
-    scheduler_users: str = "mr-tan,demo"
+    scheduler_users: str = "mr-tan"              # people the jobs always serve; every person who finished set-up is added (scheduler_persons)
+    scheduler_persons: bool = True
 
     # Demo mode
     demo_mode: bool = True

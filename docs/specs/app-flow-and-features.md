@@ -31,7 +31,7 @@
 | Idea | Meaning |
 |---|---|
 | Who it is for | A person aged about 40 to 75 who is not technical. Large text, plain words, one thing per screen. Also a doctor, who gets a printable or shared report |
-| Two demo people | `demo` (a blank new user who goes through onboarding) and `mr-tan` (Mr Tan, a loaded patient: CGMacros participant 046, about 90 days of history, six medicines, 563 dose rows). The switcher in the header (`UserSwitch`) sends the `X-User` header. A new person can be started on the device ("Start as new person": set-up for "New User N", saved only when set-up is finished). There is no sign-in yet |
+| People | **Mr Tan** (`mr-tan`: a loaded patient, CGMacros participant 046, about 90 days of history, six medicines, 563 dose rows) is the example record **every visitor sees first**; his record is never changed by a request. Anyone can **create their own user** ("Create a new user": set-up for "New User N", saved only when set-up is finished) and then uses the app normally, with everything they type saved to the database under their own user. The switcher in the header (`UserSwitch`) sends the `X-User` header. **There is no demo user** (removed 2026-10-14, with its data). There is no sign-in yet |
 | What the AI does | Reads things (a medicine label, a meal photo), writes plain-language explanations and key findings for the doctor report, suggests possible medicine clashes, and answers questions in the chat. It never decides a number |
 | What code does | Every number, flag, threshold, streak, chart and report figure is computed in code from the stored data |
 | What it will not do | Give medical advice, tell anyone to stop, skip or change a medicine, call anything "safe" or "normal" |
@@ -92,12 +92,12 @@ These come from [rules.md](rules.md), [design.md](design.md) and decisions D-0xx
 | Screen wrapper | `Screen` (page padding, optional tab bar space, `tone="urgent"` for J1, `narrow` for forms: 640 px), `Header` (title, back arrow, `backTo` route id, optional sub-title and trailing item), `Footer` (sticky action area), `Split` (two columns from 1024 px), `Reveal` (fold-away), `TileGrid` (a list of tiles: one column on a phone, two on a tablet, three on a laptop, equal heights) |
 | Sheets | Bottom sheets (`Sheet`) opened with `go(id, { sheet: {...} })`; from 768 px they are centred and 560 px wide. Registered sheets: **E7** entry, **C7** why, **D2** marker, **L2** share, **H7** missed dose |
 | Outside the frame | `/brief/a4` (printable report) and `/s/:token` (doctor's shared report) have no tab bar |
-| User switch | `UserSwitch` in the header of Home, Meds and Me. Switches between `demo`, `mr-tan` and the people started on this device. "Start as new person" (restored 2026-10-14) opens set-up for "New User N" with the same pages as the demo user, with **Cancel. Do not create this user** in place of Skip. Nothing is written for that person until **Finish** on the summary (then `POST /users` makes the row and the answers are saved); leaving set-up first (Cancel, choosing another person, going to another screen, or a reload) drops them. Switching to the demo user opens set-up |
+| User switch | `UserSwitch` in the header of Home, Meds and Me. Switches between Mr Tan and the people started on this device. **"Create a new user"** (also the button of the "You are looking at Mr Tan" card on Home, `home/ExampleNotice.tsx`) opens set-up for "New User N", with **Cancel. Do not create this user** in place of "Finish later". Nothing is written for that person until **Finish** on the summary (then `POST /users` makes the row and the answers are saved); leaving set-up first (Cancel, choosing another person, going to another screen, or a reload) drops them |
 | Navigation helper | `useGo()` takes a route id (`go('K3')`), so screens never hard-code paths. The registry `app/routeIds.ts` is the single list of screens |
 
 ### 3.2 Persisted client state (`smart-health-ui`)
 
-`theme` (light, dark, system), `textScale` (1 or 2), `locale` (en, zh, ms, ta; the locale files exist per language and area, and the screens are English text), `userKey` (`demo` or `mr-tan`). A live workout session is also held on the device. Translations exist for the Insights, Log and Me areas in Chinese, Malay and Tamil (`i18n/locales/<lang>/<area>.json`); the other screens show English text.
+`theme` (light, dark, system), `textScale` (1 or 2), `locale` (en, zh, ms, ta; the locale files exist per language and area, and the screens are English text), `userKey` (`mr-tan`, the default, or the key of a person started on this device; `people` lists those). A live workout session is also held on the device. Translations exist for the Insights, Log and Me areas in Chinese, Malay and Tamil (`i18n/locales/<lang>/<area>.json`); the other screens show English text.
 
 Onboarding answers are kept on the device under **`smart-health-onboarding:<user>`**: one copy per person, so one person's answers never show for another. The copy is kept only while the data-use consent is on. The database is the source of truth: the form reads `GET /onboarding` first and uses the device copy only for a field the server has nothing for. The old unkeyed copy is removed when the app loads. Mr Tan's onboarding is read only.
 
@@ -139,7 +139,7 @@ Folder `features/onboarding/`. The answers are saved to the record **one page at
 
 **Reminder email before a profile exists.** The profile row is created by the first save, and the server refuses the email before then (`PUT /notify/email` returns 409). So an email typed earlier is kept by the screen and saved with **page 3** (the first About you page), with **Finish**, or in the chat with its first save, whichever comes first.
 
-**Who sees setup.** The demo user is sent to set-up every time the app opens on Home and every time someone switches to it, with a **Skip** link in place of "Finish later" (`features/onboarding/startGate.ts`). Mr Tan is never sent there. A person made with "Start as new person" goes through the same set-up, but only exists once they press Finish (`features/onboarding/newPerson.ts`).
+**Who sees setup.** Nobody is sent to set-up when the app opens: it opens on Mr Tan's Home. A person who chooses "Create a new user" goes through set-up, and only exists once they press Finish (`features/onboarding/newPerson.ts`). Mr Tan's set-up pages show his answers read only.
 
 **A1 Welcome** · `/welcome` · from app start, Me ("Set up again")
 - Preferred name, the **email address** for reminders (**needed to continue**, example `name@example.com`; the reminder on/off switch stays), and **three consents**: use my health data (**required**), share a doctor brief (optional), use my data for research (optional).
@@ -192,7 +192,7 @@ Five blocks at most, top to bottom. Each block hides when it has nothing to say.
 
 The banner's "Not now" is remembered for the day **per person** on this device, so one person's choice never hides the banner for another.
 
-Header: greeting and date, **bell** (opens B2; the count is unread reminders plus open medicine alerts), UserSwitch. A demo-only "Simulate a low reading" link appears for the `demo` person only.
+Header: greeting and date, **bell** (opens B2; the count is unread reminders plus open medicine alerts), UserSwitch. On Mr Tan's Home a card says he is an example and offers "Create my own user".
 
 Not on Home: a low-stock note (the stock count shows on H1 only; see section 11).
 
@@ -398,7 +398,7 @@ Moved out on 2026-10-13: Diet tracking (the starting point and the calendar are 
 
 **K11 Meal suggestions** · `/log/suggestions` (was Review suggestions on Me), a card at the bottom of the Log page (E1). For the care team and reviewers: rate each suggestion the app made (reasonable, not reasonable, unsafe). `GET /review/queue`, `POST /review/ratings`, `GET /review/score`.
 
-**Demo user and set-up (A1)**: the demo user opens in set-up every time the person switches to it (and when the app opens on Home as demo); the link out reads **Skip** instead of "Finish later" and goes to Home. Mr Tan and new people are unchanged. Joely will scope which set-up questions stay; the answers are edited in Data and account.
+**New users and set-up (A1)**: a new user's set-up opens from "Create a new user"; the link out reads **Cancel. Do not create this user** and drops them. Joely will scope which set-up questions stay; the answers are edited in Data and account.
 
 ### 4J. Doctor brief (L1 to L3)
 
@@ -443,7 +443,7 @@ Folder `features/brief/`. Everything is computed by the server (`doctor_report.p
 
 **J-A First use.** A1 consent (and the reminder email) → A2 eligibility → A3 pages 3 to 10 (each page is saved when Continue is pressed; page 9 is the work week; page 10 needs all four contact details; Back always goes to the page before) → A6 review → Home. Medicines are not part of set-up: they are added from the Meds tab. A person can instead use A4, the chat, and finish on the same record.
 
-**J-A2 Trying set-up.** Switch to the demo user (top right) → set-up opens at page 1 with **Skip** instead of "Finish later".
+**J-A2 Trying set-up.** On Mr Tan's Home press **Create my own user** (or the avatar, then Create a new user) → set-up opens at page 1 with **Cancel** in place of "Finish later"; Finish makes the user.
 
 **J-B Add a medicine by scan.** H1 Add → H2 photo (masked on device) → H3 check what was read (the name needs a tick below 0.85; a low-confidence field goes to the typed form) → H4 kind and dose times → Add. Server: save, link to the drug list, start the clash check in the background, create calendar events when calendar sync is on. The medicine is saved as a **daily** medicine. Its stock starts from the pack size (the total supplied). H1 shows the card; ClashBox appears by itself when a clash is found (the page checks every 3 seconds only while the check is running).
 
@@ -519,7 +519,7 @@ Other rules: the bottom bar and the Ask pill are hidden from 768 px (`md:hidden`
 
 ## 7. Backend: endpoints
 
-FastAPI, `services/api/app/api/routers`, camelCase JSON, the `X-User` header selects the person (`demo` or `mr-tan`). All routes are under `/api/v1` except `/health`. The list below comes from the routers and `app/main.py`.
+FastAPI, `services/api/app/api/routers`, camelCase JSON, the `X-User` header selects the person (`mr-tan`, or a `person-` key; none means Mr Tan). **Any write while acting as Mr Tan is refused with 403** ("Mr Tan is an example record, so it cannot be changed. Create your own user…"), except asking the assistant (`/chat/*`), reading a meal photo (`/meals/analyze`), the set-up chat parser (`/onboarding/chat`), opening a reminder, and `POST /users`. All routes are under `/api/v1` except `/health`. The list below comes from the routers and `app/main.py`.
 
 | Router (prefix) | Endpoints |
 |---|---|
@@ -599,7 +599,7 @@ Prompts live in `agent/prompts` and `app/agents/prompts`: `scan_label` (version 
 **Limits.** Each kind of call has its own daily cap, so one kind being used up never blocks another (section 10). When a kind is capped, its caller takes the conservative path: the photo is not read and the person is told; the rules half of a clash check still runs; the explanation and the key findings fall back.
 
 ### 8.3 Scheduler
-Every minute: reminders due, lunch ideas, high-salt prompt, and the **email dispatcher**. Nightly 02:00: the reflection that proposes facts. Runs for people named in `scheduler_users` (default Mr Tan and the demo user).
+Every minute: reminders due, lunch ideas, high-salt prompt, and the **email dispatcher**. Nightly 02:00: the reflection that proposes facts. Runs for Mr Tan (`scheduler_users`) and for every person who finished set-up (`scheduler_persons`; the jobs address them by user id, `logstore.internal_key`).
 
 ### 8.4 Integrations (`app/integrations`)
 `workato.py` (calendar events webhook), `workato_email.py` (reminder emails), `storage.py` (photo storage). Workato sandbox (`app.trial.workato.com`); secrets stay in `.env`, never in chat or the repo.

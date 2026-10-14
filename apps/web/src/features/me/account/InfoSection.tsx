@@ -43,7 +43,7 @@ export function InfoSection() {
     <section id="information" className="flex scroll-mt-4 flex-col gap-3">
       <SectionTitle>{t('me.account.infoTitle', 'Your information')}</SectionTitle>
       <p className="text-sub text-ink2">{t('me.account.infoSub', 'What you told Smart Health when you set up. Change any answer here and it is saved to your account.')}</p>
-      {user === READ_ONLY_USER && <Alert tone="info">{t('me.account.demoNotice', 'Mr Tan is demo data. His record is not changed from here. To try editing, switch to the demo user.')}</Alert>}
+      {user === READ_ONLY_USER && <Alert tone="info">{t('me.account.exampleNoticeV2', 'Mr Tan is an example record. It is not changed from here. Create your own user to keep your own information.')}</Alert>}
       {saved.isPending && <Skeleton className="h-64" />}
       {saved.isError && <Alert tone="warn">{t('me.account.infoError', 'We could not load your information just now. Please try again in a moment.')}</Alert>}
       {noProfile && (
@@ -116,7 +116,7 @@ function EditSheet({ def, saved, answers, onClose }: { def: FieldDef; saved: Sav
   return (
     <Sheet title={d.label} onClose={onClose} label={t('me.account.editAria', 'Edit {{what}}', { what: d.label })}>
       <div className="flex flex-col gap-4">
-        {readOnly && <Alert tone="info">{t('me.account.demoNotice', 'Mr Tan is demo data. His record is not changed from here. To try editing, switch to the demo user.')}</Alert>}
+        {readOnly && <Alert tone="info">{t('me.account.exampleNoticeV2', 'Mr Tan is an example record. It is not changed from here. Create your own user to keep your own information.')}</Alert>}
         {d.editor(draft, setDraft)}
         {problem && <Alert tone="warn">{problem}</Alert>}
         {save.isError && <Alert tone="warn">{failure}</Alert>}

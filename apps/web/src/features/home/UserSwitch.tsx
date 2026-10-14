@@ -1,24 +1,20 @@
 /**
- * Who the app is showing: the demo user, Mr Tan, or a new person started on this device. A round initials button that opens a small
- * menu. The choice is kept on the device and sent with every request, and switching reloads everything for the new person.
+ * Who the app is showing: Mr Tan (the example record everyone sees first) or a person started on this device. A round initials button that
+ * opens a small menu. The choice is kept on the device and sent with every request, and switching reloads everything for the new person.
  *
- * "Start as new person" opens set-up for "New User N" with the same pages as the demo user. The person is created only when set-up is
- * finished; leaving set-up first (Cancel, or choosing another person here) drops them (newPerson.ts).
+ * "Create a new user" opens set-up for "New User N". The person is created only when set-up is finished; leaving set-up first (Cancel, or
+ * choosing another person here) drops them (newPerson.ts).
  */
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { href } from '@/app/routeIds'
 import { useSwitchUser, useUsers } from '@/data/hooks'
 import { useUi } from '@/state/store'
-import { startsInSetup } from '@/features/onboarding/startGate'
 import { useStartNewPerson } from '@/features/onboarding/newPerson'
 import { cn } from '@/lib/cn'
 import { Check } from '@/ui/icons'
 
 /** Shown only until the people list has loaded (the server's labels). */
 const FALLBACK = [
-  { key: 'demo', label: 'Demo user', sub: 'A blank account for trying things' },
   { key: 'mr-tan', label: 'Mr Tan', sub: 'About 90 days of history' },
 ]
 
@@ -32,7 +28,6 @@ const initials = (label: string) =>
 
 export function UserSwitch() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const current = useUi((s) => s.userKey)
   const people = useUi((s) => s.people)
   const pending = useUi((s) => s.pending)
@@ -49,7 +44,7 @@ export function UserSwitch() {
     ...(pending ? [{ key: pending.key, label: pending.label, sub: t('switch.settingUp', 'Setting up. Not saved yet') }] : []),
   ]
   const users = [...base, ...started].map((u) =>
-    u.key === 'demo' ? { ...u, label: t('switch.user.demo', 'Demo user'), sub: t('switch.user.demoSub', 'A blank account for trying things') } : u.key === 'mr-tan' ? { ...u, sub: t('switch.user.tanSub', 'About 90 days of history') } : u,
+    u.key === 'mr-tan' ? { ...u, sub: t('switch.user.tanSubV2', 'An example person, about 90 days of history') } : u,
   )
   const me = users.find((u) => u.key === current) ?? { key: current, label: t('switch.person', 'Person'), sub: '' }
 
@@ -94,10 +89,7 @@ export function UserSwitch() {
                 aria-checked={on}
                 onClick={() => {
                   setOpen(false)
-                  if (!on) {
-                    switchTo(u.key)
-                    if (startsInSetup(u.key)) navigate(href('A1'), { replace: true })      // the demo user starts in set-up, with a Skip link
-                  }
+                  if (!on) switchTo(u.key)
                 }}
                 className={cn('press flex min-h-14 w-full items-center gap-3 rounded-[12px] px-3 py-2', on ? 'bg-brand-soft' : 'hover:bg-well')}
               >
@@ -120,8 +112,8 @@ export function UserSwitch() {
               }}
               className="press flex min-h-14 w-full flex-col items-start gap-0.5 rounded-[12px] px-3 py-2 text-left hover:bg-well"
             >
-              <span className="text-body font-bold leading-snug">{t('switch.startNew', 'Start as new person')}</span>
-              <span className="text-sub leading-snug text-ink2">{t('switch.startNewSubV2', 'Set-up from step 1, like the demo user. Saved only when you finish.')}</span>
+              <span className="text-body font-bold leading-snug">{t('switch.createUser', 'Create a new user')}</span>
+              <span className="text-sub leading-snug text-ink2">{t('switch.createUserSub', 'Set up your own record. It is saved when you finish.')}</span>
             </button>
           </div>
         </div>

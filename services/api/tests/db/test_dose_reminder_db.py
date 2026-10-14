@@ -36,7 +36,7 @@ def conn():
     finally:
         logstore.USERS.pop(KEY, None)
         logstore._shared.reset(token)
-        logstore.set_user("demo")
+        logstore.set_user("person-0123456789ab")
         c.rollback()
         c.close()
 

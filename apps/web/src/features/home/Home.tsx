@@ -16,6 +16,7 @@ import { useClash, useHomeOverview, useNotices, useUsers } from '@/data/hooks'
 import { useDismissed } from '@/features/alerts/pieces'
 import { useGo } from '@/app/navigation'
 import { useUi } from '@/state/store'
+import { useSavedOnboarding } from '@/features/onboarding/api'
 import { Header, Screen } from '@/ui/layout'
 import { Alert } from '@/ui/primitives'
 import { Bell } from '@/ui/icons'
@@ -26,7 +27,7 @@ import { TodayPlan } from './TodayPlan'
 import { KpiCards, KpiCardsSkeleton } from './KpiCards'
 import { HealthOverview, HealthOverviewSkeleton } from './HealthOverview'
 import { YourDays } from '@/features/insights/YourDays'
-import { useSimulate } from '@/features/urgent/api'
+import { ExampleNotice } from './ExampleNotice'
 
 function greeting(h: number, t: TFunction) {
   return h < 12
@@ -45,8 +46,9 @@ export function Home() {
   const setAside = useDismissed((s) => s.ids)
   const userKey = useUi((s) => s.userKey)
   const { data: users } = useUsers()
-  /** the signed-in person's name, from the same list the avatar uses; nothing is said when it is not known yet */
-  const name = users?.users.find((u) => u.key === userKey)?.label?.trim() || null
+  const saved = useSavedOnboarding()
+  /** the person's name: from the list the avatar uses (Mr Tan), else the name they gave in set-up; nothing is said when it is not known yet */
+  const name = users?.users.find((u) => u.key === userKey)?.label?.trim() || saved.data?.profile?.displayName?.trim() || null
 
   /** medicine alerts the person has not set aside */
   const openAlerts = (clash?.alerts ?? []).filter((a) => !setAside.includes(a.id))
@@ -75,6 +77,9 @@ export function Home() {
           </div>
         }
       />
+
+      {/* Mr Tan's example record: how to start your own */}
+      <ExampleNotice />
 
       {/* 2. alerts */}
       <AlertStrip clashAlerts={openAlerts} />
@@ -106,27 +111,6 @@ export function Home() {
         <YourDays />
       </div>
 
-      {userKey === 'demo' && <DemoLowLink />}
     </Screen>
-  )
-}
-
-/** Demo only: the sample data stops on 2 Oct, so a real low reading cannot happen on stage. */
-function DemoLowLink() {
-  const { t } = useTranslation()
-  const sim = useSimulate()
-  const go = useGo()
-  return (
-    <p className="px-1 text-center text-micro text-ink3">
-      {t('home.demo.label', 'Demo:')}{' '}
-      <button
-        type="button"
-        disabled={sim.isPending}
-        onClick={() => sim.mutate(3.4, { onSuccess: () => go('J1') })}
-        className="press min-h-12 px-2 font-bold underline"
-      >
-        {t('home.demo.simulate', 'Simulate a low reading')}
-      </button>
-    </p>
   )
 }

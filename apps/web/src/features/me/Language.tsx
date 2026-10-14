@@ -19,17 +19,22 @@ export function Language() {
   const setTextScale = useUi((s) => s.setTextScale)
   const showToast = useUi((s) => s.showToast)
 
+  const example = useUi((s) => s.userKey) === 'mr-tan'
   const saved = useLanguage()
   const save = useSaveLanguage()
 
   // The profile is the source of truth for the language: when it loads, this device follows it.
   useEffect(() => {
-    if (saved.data && saved.data.language !== locale) setLocale(saved.data.language)
-  }, [saved.data, locale, setLocale])
+    if (!example && saved.data && saved.data.language !== locale) setLocale(saved.data.language)
+  }, [example, saved.data, locale, setLocale])
 
   const choose = (code: Locale) => {
     if (code === locale) return
     setLocale(code)
+    if (example) {                                                  // Mr Tan's example record is not changed: the choice stays on this device
+      showToast(t('me.language.saved', 'Language saved'))
+      return
+    }
     save.mutate(code, { onSuccess: () => showToast(t('me.language.saved', 'Language saved')) })
   }
 

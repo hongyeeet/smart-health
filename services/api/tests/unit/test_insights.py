@@ -203,8 +203,8 @@ def test_overview_days_route_refuses_ranges_over_92_days_or_backwards_before_rea
     from app.main import app
 
     client = TestClient(app)
-    too_long = client.get("/api/v1/insights/overview/days", params={"from": "2026-07-11", "to": "2026-10-11"}, headers={"X-User": "demo"})
-    backwards = client.get("/api/v1/insights/overview/days", params={"from": "2026-10-11", "to": "2026-10-01"}, headers={"X-User": "demo"})
+    too_long = client.get("/api/v1/insights/overview/days", params={"from": "2026-07-11", "to": "2026-10-11"}, headers={"X-User": "person-0123456789ab"})
+    backwards = client.get("/api/v1/insights/overview/days", params={"from": "2026-10-11", "to": "2026-10-01"}, headers={"X-User": "person-0123456789ab"})
     assert too_long.status_code == 422 and "92" in too_long.text
     assert backwards.status_code == 422
 
@@ -381,4 +381,4 @@ def test_the_month_parameter_must_look_like_a_month():
     from app.main import app
     client = TestClient(app)
     for bad in ("2026-13", "2026-1", "26-10", "october", "2026-10-01"):
-        assert client.get("/api/v1/insights/medication", params={"month": bad}, headers={"X-User": "demo"}).status_code == 422, bad
+        assert client.get("/api/v1/insights/medication", params={"month": bad}, headers={"X-User": "person-0123456789ab"}).status_code == 422, bad

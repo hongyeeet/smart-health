@@ -33,15 +33,15 @@ from app.services import blood_pressure, texts
 logger = logging.getLogger(__name__)
 TZ = ZoneInfo("Asia/Singapore")
 NAMESPACE = uuid.UUID("6f1c2d3e-4a5b-5c6d-8e7f-9a0b1c2d3e4f")
-APP_USER = uuid.uuid5(NAMESPACE, "user:app-demo")
-# Mr Tan is the loaded 90-day patient (scripts/load_mr_tan_v2.py). The app has no sign-in, so a request names who it acts as
-# with the `X-User` header; no header means the demo user, exactly as before.
+# Mr Tan is the loaded 90-day patient (scripts/load_mr_tan_v2.py), the example record every new visitor sees first. The app has no sign-in, so a
+# request names who it acts as with the `X-User` header: "mr-tan", or the key of a person made with "Start as new person" (below). No header
+# means Mr Tan, and Mr Tan's record is never changed by a request (main.py refuses his writes). There is no demo user (removed 2026-10-14).
 MR_TAN_USER = uuid.UUID("dc48e209-5731-5b3d-89d9-986242c54368")
+DEFAULT_USER = "mr-tan"
 USERS: dict[str, dict] = {
-    "demo": {"id": APP_USER, "label": "Demo user", "sub": "A blank account for trying things"},
     "mr-tan": {"id": MR_TAN_USER, "label": "Mr Tan", "sub": "About 90 days of history"},
 }
-_current: ContextVar[str] = ContextVar("app_user", default="demo")
+_current: ContextVar[str] = ContextVar("app_user", default=DEFAULT_USER)
 
 
 def is_read_only(user: object) -> bool:
@@ -59,10 +59,30 @@ def person_id(key: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, f"user:{key}")
 
 
-def set_user(key: str | None) -> str:
+# The background jobs (scheduler.py) act as a person by their user id, because the key a person made on their device is not kept. Such a key,
+# "uid:<uuid>", is accepted only with internal=True: a request header can never name it.
+INTERNAL_KEY = re.compile(r"uid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+def internal_key(user_id: object) -> str:
+    return f"uid:{user_id}"
+
+
+def user_id_for_key(key: str) -> uuid.UUID:
+    """The user id a key stands for (Mr Tan, a person's device key, or a job's internal key). KeyError for anything else."""
+    if key in USERS:
+        return USERS[key]["id"]
+    if PERSON_KEY.fullmatch(key):
+        return person_id(key)
+    if INTERNAL_KEY.fullmatch(key):
+        return uuid.UUID(key[4:])
+    raise KeyError(key)
+
+
+def set_user(key: str | None, *, internal: bool = False) -> str:
     """Choose who the rest of this request acts as. Unknown keys raise KeyError so a typo never silently falls back."""
-    key = (key or "demo").strip().lower()
-    if key not in USERS and not PERSON_KEY.fullmatch(key):
+    key = (key or DEFAULT_USER).strip().lower()
+    if key not in USERS and not PERSON_KEY.fullmatch(key) and not (internal and INTERNAL_KEY.fullmatch(key)):
         raise KeyError(key)
     _current.set(key)
     return key
@@ -73,8 +93,7 @@ def current_user_key() -> str:
 
 
 def current_user() -> uuid.UUID:
-    key = _current.get()
-    return USERS[key]["id"] if key in USERS else person_id(key)
+    return user_id_for_key(_current.get())
 BUCKET = timedelta(minutes=5)
 
 # Daily goals. Placeholders from the owner (appConfig.goals); clinical review pending, never shown as advice.
@@ -150,11 +169,6 @@ def one_connection() -> Iterator[psycopg.Connection]:
             yield conn
         finally:
             _shared.reset(token)
-
-
-def ensure_user() -> None:
-    with tx() as c:
-        c.execute("insert into users (id, is_demo) values (%s, true) on conflict (id) do nothing", (APP_USER,))
 
 
 # ----------------------------------------------------------------------------------------------- helpers

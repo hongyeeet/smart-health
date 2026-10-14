@@ -100,7 +100,7 @@ def proposed_fact():
     from app.agents.adherence import _propose_fact
     from app.db import logstore
 
-    logstore.set_user("demo")
+    logstore.set_user("person-0123456789ab")
     uid = logstore.current_user()
     key = f"test.integration.{uuid.uuid4().hex[:8]}"
     with logstore.tx() as c:
@@ -134,7 +134,7 @@ def test_not_for_me_hides_a_suggestion(client):
 
     key = f"swap:test-{uuid.uuid4().hex[:6]}"
     assert client.post("/api/v1/nutrition/suggestions/dismiss", json={"key": key}).status_code == 204
-    logstore.set_user("demo")
+    logstore.set_user("person-0123456789ab")
     uid = logstore.current_user()
     try:
         assert key in nutritionstore.excluded_keys(uid)
@@ -146,7 +146,7 @@ def test_not_for_me_hides_a_suggestion(client):
 def test_reminder_cap_and_quiet_hours(client, monkeypatch):
     from app.db import logstore
 
-    logstore.set_user("demo")
+    logstore.set_user("person-0123456789ab")
     uid = logstore.current_user()
 
     def count():

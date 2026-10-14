@@ -133,10 +133,11 @@ def test_next_up_skips_things_whose_time_has_passed(monkeypatch):
 
 
 def test_unknown_user_is_rejected_and_known_ones_switch():
-    assert logstore.set_user(None) == "demo"
-    assert logstore.current_user() == logstore.APP_USER
-    assert logstore.set_user("Mr-Tan") == "mr-tan"
+    assert logstore.set_user(None) == "mr-tan"                                         # no header means Mr Tan's example record
     assert logstore.current_user() == logstore.MR_TAN_USER
+    assert logstore.set_user("Mr-Tan") == "mr-tan"
+    assert logstore.set_user("person-0123456789ab") == "person-0123456789ab"
+    assert logstore.current_user() == logstore.person_id("person-0123456789ab")
     with pytest.raises(KeyError):
         logstore.set_user("someone-else")
-    logstore.set_user("demo")
+    logstore.set_user("person-0123456789ab")

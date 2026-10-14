@@ -241,7 +241,10 @@
       "medicines": "药物"
     },
     "legendBase": "基线：前 14 天每小时的平均值",
-    "logged": "已记录项目",
+    "logged": {
+      "pressureMany": "{{n}} 次血压读数",
+      "pressureOne": "{{n}} 次血压读数"
+    },
     "markerLabel": "时间标记",
     "midnight": "凌晨 12 点",
     "missed": "已标为漏服",
@@ -330,6 +333,8 @@
     "viaGoogle": "{{name}}，通过 Google 打开"
   },
   "switch": {
+    "createUser": "创建新用户",
+    "createUserSub": "建立您自己的记录。完成后会自动保存。",
     "menu": "切换使用者",
     "newPerson": "新使用者",
     "newUserN": "新用户 {{n}}",
@@ -344,7 +349,8 @@
     "user": {
       "demo": "演示用户",
       "demoSub": "用来试用的空白账户",
-      "tanSub": "约 90 天的记录"
+      "tanSub": "约 90 天的记录",
+      "tanSubV2": "示例人物，约 90 天的历史记录"
     },
     "viewing": "正在以 {{name}} 的身份查看。切换使用者",
     "viewingAs": "正在查看"
