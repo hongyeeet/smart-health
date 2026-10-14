@@ -90,6 +90,7 @@ export const httpApi: Api = {
   snoozePrompt: todo('snoozePrompt'),
   getInsights: todo('getInsights'),
   getInsightsOverview: (days) => request(`/insights/overview?days=${days}`),
+  getInsightsDay: (date) => request(`/insights/day?date=${date}`),
   getInsightsTimeline: (days, end) => request(`/insights/timeline?days=${days}${end ? `&end=${end}` : ''}`),
   getInsightsOverviewDays: (from, to) => request(`/insights/overview/days?from=${from}&to=${to}`),
   getInsightsGlucose: (days) => request(`/insights/glucose?days=${days}`),

@@ -464,3 +464,132 @@ class Timeline(Camel):
     previous: TLPrevious
     day_rows: list[TLDay]
     compare: TLCompare
+
+
+# ── One day (GET /insights/day) ────────────────────────────────────────────
+class DaySeries(Camel):
+    """One value every 5 minutes (288 a day), null where there is no reading."""
+    glucose: list[float | None]
+    heart: list[float | None]
+    spo2: list[float | None]
+    steps: list[int]
+
+
+class DayBaseline(Camel):
+    available: bool
+    glucose: list[float | None]      # 24 numbers, hour 0 to 23: the person's own average over the 14 days before
+    heart: list[float | None]
+    spo2: list[float | None]
+    bp_systolic: float | None
+    steps_per_day: int | None
+
+
+class DayStat(Camel):
+    avg: float | None
+    min: float | None
+    max: float | None
+
+
+class DayTotals(Camel):
+    glucose: DayStat
+    heart: DayStat
+    spo2: DayStat
+    steps: int | None
+    kcal: int | None
+    carbs_g: float | None
+    sugar_g: float | None
+    sodium_mg: float | None
+    meals: int
+    doses_scheduled: int
+    doses_taken: int
+    doses_missed: int
+    sleep_hours: float | None
+
+
+class DayMeal(Camel):
+    m: int
+    type: str | None
+    food: str
+    carbs_g: float | None
+    sugar_g: float | None
+    sodium_mg: float | None
+    kcal: int | None
+    rise_mmol: float | None
+    peak_mmol: float | None
+    peak_m: int | None
+
+
+class DayDose(Camel):
+    m: int
+    status: str
+    name: str
+
+
+class DaySymptom(Camel):
+    m: int
+    m1: int
+    type: str
+    severity: int | None
+
+
+class DayBp(Camel):
+    m: int
+    systolic: int
+    diastolic: int
+
+
+class DayMood(Camel):
+    m: int
+    mood: int
+    stress: int | None
+
+
+class DaySpan(Camel):
+    m0: int
+    m1: int
+    type: str
+
+
+class DaySwap(Camel):
+    from_food: str
+    from_carbs_g: float | None
+    to_food: str
+    to_carbs_g: float | None
+    meal_type: str | None
+
+
+class DayWalkLearned(Camel):
+    lower_by: float | None
+    days: int
+    confirmed: bool
+
+
+class DayWalk(Camel):
+    learned: DayWalkLearned | None
+
+
+class DayIdeas(Camel):
+    swap: DaySwap | None
+    walk: DayWalk | None
+
+
+class InsightsDay(Camel):
+    date: str
+    has_data: bool
+    prev_date: str | None
+    next_date: str | None
+    latest_date: str | None
+    earliest_date: str | None
+    weekday: int
+    work_set: bool
+    work_days: list[int]
+    series: DaySeries
+    baseline: DayBaseline
+    totals: DayTotals
+    meals: list[DayMeal]
+    doses: list[DayDose]
+    symptoms: list[DaySymptom]
+    bp: list[DayBp]
+    mood: list[DayMood]
+    exercise: list[DaySpan]
+    ideas: DayIdeas

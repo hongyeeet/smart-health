@@ -1238,3 +1238,47 @@ export interface HomeOverview {
   heart: { bpm: number | null; restingBpm: number | null; spo2: number | null; status: KpiStatus; spo2Status: KpiStatus } | null
   chart: { days: string[]; glucose: (number | null)[]; steps: (number | null)[]; calories: (number | null)[]; heartRate: (number | null)[] }
 }
+
+/** One day for the Insights drill-down (GET /insights/day): the 5-minute series, the hourly baseline, what was logged, and two ideas for tomorrow. Times (`m`) are minutes after local midnight. */
+export interface InsightsDay {
+  date: string
+  hasData: boolean
+  prevDate: string | null
+  nextDate: string | null
+  latestDate: string | null
+  earliestDate: string | null
+  /** 1 = Monday ... 7 = Sunday */
+  weekday: number
+  workSet: boolean
+  workDays: number[]
+  /** 288 values, one every 5 minutes; null where there is no reading */
+  series: { glucose: (number | null)[]; heart: (number | null)[]; spo2: (number | null)[]; steps: number[] }
+  /** the person's own average for each hour of the day over the 14 days before (24 numbers), when there are enough days */
+  baseline: { available: boolean; glucose: (number | null)[]; heart: (number | null)[]; spo2: (number | null)[]; bpSystolic: number | null; stepsPerDay: number | null }
+  totals: {
+    glucose: { avg: number | null; min: number | null; max: number | null }
+    heart: { avg: number | null; min: number | null; max: number | null }
+    spo2: { avg: number | null; min: number | null; max: number | null }
+    steps: number | null
+    kcal: number | null
+    carbsG: number | null
+    sugarG: number | null
+    sodiumMg: number | null
+    meals: number
+    dosesScheduled: number
+    dosesTaken: number
+    dosesMissed: number
+    sleepHours: number | null
+  }
+  meals: { m: number; type: string | null; food: string; carbsG: number | null; sugarG: number | null; sodiumMg: number | null; kcal: number | null; riseMmol: number | null; peakMmol: number | null; peakM: number | null }[]
+  doses: { m: number; status: string; name: string }[]
+  symptoms: { m: number; m1: number; type: string; severity: number | null }[]
+  bp: { m: number; systolic: number; diastolic: number }[]
+  mood: { m: number; mood: number; stress: number | null }[]
+  exercise: { m0: number; m1: number; type: string }[]
+  ideas: {
+    swap: { fromFood: string; fromCarbsG: number | null; toFood: string; toCarbsG: number | null; mealType: string | null } | null
+    /** shown only when no exercise was logged; `learned` is what Smart Health has learnt about walks, confirmed or not */
+    walk: { learned: { lowerBy: number | null; days: number; confirmed: boolean } | null } | null
+  }
+}

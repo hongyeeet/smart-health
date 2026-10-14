@@ -11,6 +11,8 @@ export const useInsightsOverview = (days: InsightsDays) => useQuery({ queryKey: 
 /** `end` (YYYY-MM-DD) moves the period back; leave it out for the latest days */
 export const useInsightsTimeline = (days: InsightsDays, end?: string) =>
   useQuery({ queryKey: ['insights', 'timeline', days, end ?? 'latest'], queryFn: () => api.getInsightsTimeline(days, end), placeholderData: keepPreviousData })
+/** One day for the Insights drill-down (the day page) */
+export const useInsightsDay = (date: string, enabled = true) => useQuery({ queryKey: ['insights', 'day', date], queryFn: () => api.getInsightsDay(date), enabled })
 export const useInsightsOverviewDays = (from: string, to: string, enabled = true) =>
   useQuery({ queryKey: ['insights', 'overviewDays', from, to], queryFn: () => api.getInsightsOverviewDays(from, to), enabled, placeholderData: keepPreviousData })
 export const useInsightsGlucose = (days: InsightsDays) => useQuery({ queryKey: ['insights', 'glucose', days], queryFn: () => api.getInsightsGlucose(days) })

@@ -7,8 +7,9 @@ import { useGo } from '@/app/navigation'
 import { cn } from '@/lib/cn'
 import { Alert, Card, SectionTitle, Skeleton } from '@/ui/primitives'
 import { ArrowDown, ArrowUp, CaretLeft, CaretRight } from '@/ui/icons'
-import { Findings, Gate, InsightsFrame, Plain, num, useInsightsDays } from './shared'
+import { Gate, InsightsFrame, Plain, num, useInsightsDays } from './shared'
 import { HealthOverview } from './HealthOverview'
+import { LearntCard } from './LearntCard'
 import { BaselineCompare, OverviewTimeline } from './Timeline'
 import { DayCalendar, monthRange, monthTitle, shiftMonth } from './grids'
 
@@ -81,27 +82,27 @@ export function Overview() {
   }
   const changeCard = (
     <section
-      className="flex flex-col gap-1 rounded-card border border-line bg-card px-4 pb-2 pt-4 shadow-lift"
+      className="flex flex-col gap-1 rounded-card border border-line bg-card px-3.5 pb-1.5 pt-3.5 shadow-lift"
       aria-label={t('insights.overview.whatChanged', 'What changed')}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-        <h2 className="text-h2 font-bold">{t('insights.overview.whatChanged', 'What changed')}</h2>
-        <span className="text-sub text-ink3">{t('insights.chg.vs', 'vs the {{n}} days before', { n: days })}</span>
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="text-body font-bold">{t('insights.overview.whatChanged', 'What changed')}</h2>
+        <span className="text-[11px] text-ink3">{t('insights.chg.vs', 'vs the {{n}} days before', { n: days })}</span>
       </div>
       {moves.length === 0 ? (
         <p className="pb-2 text-sub text-ink2">{t('insights.chg.none', 'There is no earlier period with data to compare with.')}</p>
       ) : (
         <ul className="flex flex-col">
           {moves.map((m) => (
-            <li key={m.key} className="flex min-h-[3.5rem] items-center gap-3 border-t border-line py-2 first:border-t-0">
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-well text-ink2" aria-hidden>
-                {m.dir === 'same' ? <span className="h-0.5 w-3.5 rounded bg-current" /> : m.dir === 'up' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+            <li key={m.key} className="flex min-h-[3.1rem] items-center gap-2.5 border-t border-line py-1.5 first:border-t-0">
+              <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-well text-ink2" aria-hidden>
+                {m.dir === 'same' ? <span className="h-0.5 w-3 rounded bg-current" /> : m.dir === 'up' ? <ArrowUp size={15} /> : <ArrowDown size={15} />}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-bold leading-tight">{m.name}</p>
-                <p className="break-words text-micro leading-tight text-ink2">{m.note}</p>
+                <p className="text-sub font-bold leading-tight">{m.name}</p>
+                <p className="truncate text-[11px] leading-tight text-ink2">{m.note}</p>
               </div>
-              <span className="num flex-none text-right font-bold">{m.delta}</span>
+              <span className="num flex-none text-right text-sub font-bold">{m.delta}</span>
             </li>
           ))}
         </ul>
@@ -193,25 +194,7 @@ export function Overview() {
               <HealthOverview data={tlData} />
               <BaselineCompare data={tlData} />
               {changeCard}
-              {data ? (
-                data.patterns.length > 0 ? (
-                  <Findings title={t('insights.overview.learnt', 'What Smart Health has learnt')} items={data.patterns} onOpen={(to) => go(to)} />
-                ) : (
-                  <section className="flex flex-col gap-2">
-                    <SectionTitle>{t('insights.overview.learnt', 'What Smart Health has learnt')}</SectionTitle>
-                    <Card tone="soft">
-                      <p className="text-body text-ink2">
-                        {t(
-                          'insights.overview.learntNone',
-                          'Smart Health needs a few more matched meals and readings before it can show what it has learnt from your own history.',
-                        )}
-                      </p>
-                    </Card>
-                  </section>
-                )
-              ) : (
-                <Skeleton className="h-40" />
-              )}
+              {data ? <LearntCard items={data.patterns} onOpen={(to) => go(to)} onAll={() => go('K2')} /> : <Skeleton className="h-40" />}
             </aside>
           </div>
         )}

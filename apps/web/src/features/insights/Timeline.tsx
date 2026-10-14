@@ -18,7 +18,7 @@ import type { InsightsDays, InsightsTimeline } from '@/data/types'
 import { cn } from '@/lib/cn'
 import { dateLocale } from '@/lib/locale'
 import { Segmented } from '@/ui/controls'
-import { ArrowDown, ArrowUp, CaretLeft, CaretRight } from '@/ui/icons'
+import { CaretLeft, CaretRight } from '@/ui/icons'
 import { DAY_MIN, atWork, baselinePath, clockMin, domain, gapText, hourlyAt, isoWeekday, linePath, niceTicks, nearestBp } from './timelineMath'
 
 const W = 1000
@@ -1143,27 +1143,50 @@ function Plot({ data, show, openDay }: { data: InsightsTimeline; show: Record<Pi
   )
 }
 
+/** A tiny line of the period's daily values with the baseline as a dashed line: the shape shows whether the readings sit above, below or drift away from it. */
+function Spark({ values, base, label }: { values: (number | null)[]; base: number | null; label: string }) {
+  const pts = values.map((v, i) => (v == null ? null : ([i, v] as const))).filter((p): p is readonly [number, number] => p != null)
+  if (pts.length < 2) return <span className="block h-7 w-16 flex-none" aria-hidden />
+  const all = [...pts.map((p) => p[1]), ...(base == null ? [] : [base])]
+  const lo = Math.min(...all)
+  const hi = Math.max(...all)
+  const span = hi - lo || 1
+  const w = 64
+  const h = 28
+  const x = (i: number) => 3 + (i / Math.max(1, values.length - 1)) * (w - 6)
+  const y = (v: number) => 3 + (1 - (v - lo) / span) * (h - 6)
+  const d = pts.map(([i, v], k) => `${k ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join('')
+  const last = pts[pts.length - 1]!
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="flex-none" role="img" aria-label={label}>
+      {base != null && <line x1="2" x2={w - 2} y1={y(base)} y2={y(base)} stroke="var(--c-ink)" strokeWidth="1" strokeDasharray="3 3" opacity="0.55" />}
+      <path d={d} fill="none" stroke="var(--c-brand)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={x(last[0])} cy={y(last[1])} r="2.6" fill="var(--c-brand)" />
+    </svg>
+  )
+}
+
 /**
- * "Against your baseline": for each of glucose, heart rate, SpO2 and blood pressure, the period's average next to the baseline and how far apart they are.
- * Numbers and a direction arrow only: no reading is called better or worse here.
+ * "Against your baseline": for each of glucose, heart rate, SpO2 and blood pressure, a small graph of the period's daily values against the baseline (dashed),
+ * the period's average, and how far it is from the baseline. Numbers and shapes only: no reading is called better or worse here.
  */
 export function BaselineCompare({ data }: { data: InsightsTimeline }) {
   const { t } = useTranslation()
-  const { compare, baseline, period } = data
-  const rows: { key: 'glucose' | 'heart' | 'spo2' | 'bp'; name: string; unit: string; digits: number }[] = [
-    { key: 'glucose', name: t('insights.tl.glucose', 'Glucose'), unit: 'mmol/L', digits: 1 },
-    { key: 'heart', name: t('insights.tl.heart', 'Heart rate'), unit: 'bpm', digits: 0 },
-    { key: 'spo2', name: t('insights.tl.spo2', 'SpO2'), unit: '%', digits: 1 },
-    { key: 'bp', name: t('insights.tl.bp', 'Blood pressure'), unit: 'mmHg', digits: 0 },
+  const { compare, baseline, period, dayRows } = data
+  const rows: { key: 'glucose' | 'heart' | 'spo2' | 'bp'; name: string; unit: string; digits: number; series: (number | null)[] }[] = [
+    { key: 'glucose', name: t('insights.tl.glucose', 'Glucose'), unit: 'mmol/L', digits: 1, series: dayRows.map((r) => r.glucose.avg) },
+    { key: 'heart', name: t('insights.tl.heart', 'Heart rate'), unit: 'bpm', digits: 0, series: dayRows.map((r) => r.heart.avg) },
+    { key: 'spo2', name: t('insights.tl.spo2', 'SpO2'), unit: '%', digits: 1, series: dayRows.map((r) => r.spo2.avg) },
+    { key: 'bp', name: t('insights.tl.bp', 'Blood pressure'), unit: 'mmHg', digits: 0, series: dayRows.map((r) => r.systolic) },
   ]
   return (
     <section
-      className="flex flex-col gap-1 rounded-card border border-line bg-card px-4 pb-2 pt-4 shadow-lift"
+      className="flex flex-col gap-1 rounded-card border border-line bg-card px-3.5 pb-1.5 pt-3.5 shadow-lift"
       aria-label={t('insights.tl.cmp.title', 'Against your baseline')}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-        <h2 className="text-h2 font-bold">{t('insights.tl.cmp.title', 'Against your baseline')}</h2>
-        <span className="text-sub text-ink3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="text-body font-bold">{t('insights.tl.cmp.title', 'Against your baseline')}</h2>
+        <span className="text-[11px] text-ink3">
           {period.days === 7 ? t('insights.tl.cmp.thisWeek', 'These 7 days') : t('insights.tl.cmp.thisPeriod', 'This period')}
         </span>
       </div>
@@ -1179,26 +1202,24 @@ export function BaselineCompare({ data }: { data: InsightsTimeline }) {
             const diff = v != null && c.baseline != null ? v - c.baseline : null
             const ad = diff == null ? null : Math.abs(diff).toFixed(r.digits)
             const same = ad != null && Number(ad) === 0
+            const note =
+              diff == null || ad == null
+                ? t('insights.tl.cmp.none', 'Not enough readings')
+                : same
+                  ? t('insights.tl.cmp.same', 'At baseline {{b}}', { b: fmt(c.baseline, r.digits) })
+                  : diff > 0
+                    ? t('insights.tl.cmp.above', '{{d}} above baseline {{b}}', { d: ad, b: fmt(c.baseline, r.digits) })
+                    : t('insights.tl.cmp.below', '{{d}} below baseline {{b}}', { d: ad, b: fmt(c.baseline, r.digits) })
             return (
-              <li key={r.key} className="flex min-h-[3.5rem] items-center gap-3 border-t border-line py-2 first:border-t-0">
-                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-well text-ink2" aria-hidden>
-                  {diff == null || same ? <span className="h-0.5 w-3.5 rounded bg-current" /> : diff > 0 ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
-                </span>
+              <li key={r.key} className="flex min-h-[3.1rem] items-center gap-2.5 border-t border-line py-1.5 first:border-t-0">
                 <div className="min-w-0 flex-1">
-                  <p className="font-bold leading-tight">{r.name}</p>
-                  <p className="break-words text-micro leading-tight text-ink2">
-                    {diff == null || ad == null
-                      ? t('insights.tl.cmp.none', 'Not enough readings to compare.')
-                      : same
-                        ? t('insights.tl.cmp.same', 'At your baseline {{b}}', { b: fmt(c.baseline, r.digits) })
-                        : diff > 0
-                          ? t('insights.tl.cmp.above', '{{d}} above your baseline {{b}}', { d: ad, b: fmt(c.baseline, r.digits) })
-                          : t('insights.tl.cmp.below', '{{d}} below your baseline {{b}}', { d: ad, b: fmt(c.baseline, r.digits) })}
-                  </p>
+                  <p className="text-sub font-bold leading-tight">{r.name}</p>
+                  <p className="truncate text-[11px] leading-tight text-ink2">{note}</p>
                 </div>
-                <div className="flex-none text-right">
-                  <p className="num font-bold leading-tight">{fmt(v, r.digits)}</p>
-                  <p className="text-micro leading-tight text-ink3">{r.unit}</p>
+                <Spark values={r.series} base={c.baseline} label={`${r.name}: ${note}`} />
+                <div className="w-14 flex-none text-right">
+                  <p className="num text-sub font-bold leading-tight">{fmt(v, r.digits)}</p>
+                  <p className="text-[10px] leading-tight text-ink3">{r.unit}</p>
                 </div>
               </li>
             )
