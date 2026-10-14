@@ -4,14 +4,16 @@ Decided by Hong Yi on 2026-10-14. A menu-style page, like a food-delivery app, o
 It replaces the old "Lunch ideas" cards as the place to browse ideas (E8 stays for the reminder link). The care-team rating page K11 is now "Rate the meal ideas" on the Log tab.
 
 ## What the person sees
-- Tabs Breakfast, Lunch, Dinner, Snack (first tab by the time of day in Singapore). Filters: Lower salt, Lower carbs, Hawker stall, Home cooked.
-- Three sections, up to 4 dishes each: **From your own meals** (their own meals of this kind with a lower measured rise than their typical meal, eaten at least twice),
-  **Lighter than your usual** (a swap for a food habit the memory loop noticed; lunch and dinner only), **Worth a try** (database dishes; general, not personal).
-- A dish card: picture, badge (Measured on you, seen N times, or Estimate), name, serving, kcal, carbs, salt, why, and the glucose rise.
+- Tabs All, Breakfast, Lunch, Dinner, Snack (first tab by the time of day in Singapore). Filters: Lower salt, Lower carbs, Hawker stall, Home cooked.
+- **Only new dishes.** A dish the person has logged in the last 90 days is never shown (same name, same words in another order, or a near match). The page never suggests what they already eat.
+- **Only lighter dishes.** A dish must be lighter than the person's usual meal of that kind (average of the last 60 days, needs 3 meals): lower in at least two of calories, carbohydrate and salt, and not more than 15% higher in the third. The cut-offs are placeholders pending the clinical owner. With no usual meal to compare with, the shelf rules decide.
+- Two sections: **Lighter versions of what you eat** (up to 3; a lighter swap for a food habit the memory loop noticed; lunch and dinner only) and **New to try** (up to 6; other database dishes). Raw or single-ingredient entries (raw, uncooked, powder, dried, flour, bran, syrup) are left out.
+- A dish card: picture, badge (Lighter swap, or New to you), name, serving, kcal, carbs, salt, why, and an estimated glucose rise.
 - "Your picks": up to three dishes; "Log when I eat" stamps them as picked and opens the meal log. (A "Remind me" button was in the mock and is not built.)
+- "How we choose" lists the three rules and a summary line with the real counts.
 
 ## Numbers (all in code, `app/services/menu.py`)
-- A rise is **measured** only for the person's own meals. For other dishes it is an **estimate**: the dish's carbohydrate times the person's own median rise per gram of
+- Every glucose rise on this page is an **estimate**, because every dish is new to the person: the dish's carbohydrate times the person's own median rise per gram of
   carbohydrate (from their own meals with 10 g of carbs or more), shown as a range of plus or minus 0.5 mmol/L. With no such history there is **no number** ("Glucose rise not known yet").
 - kcal for their own meals is worked out from the logged macros (4, 4 and 9 kcal per gram); for database dishes it is the published value.
 - Tag cut-offs are **placeholders pending the clinical owner**: lower salt at or below 700 mg, lower carbs at or below 45 g. A person's own meals have no hawker or home tag (not known).

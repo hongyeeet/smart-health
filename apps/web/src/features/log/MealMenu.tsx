@@ -1,7 +1,7 @@
 /**
  * E9 — Meal suggestions: a menu of dishes for one meal, like a food-delivery app. Each dish has a picture (made once by an AI model and kept,
- * so opening this page never makes a new one), the numbers, why it is suggested and its glucose rise: measured on the person for their own meals,
- * an estimate for the rest. Up to three dishes can be added to "Your picks"; "Log when I eat" opens the meal log.
+ * so opening this page never makes a new one), the numbers, why it is suggested and an estimated glucose rise. Only dishes the person has NOT
+ * logged and that are lighter than their usual meal. Up to three dishes can be added to "Your picks"; "Log when I eat" opens the meal log.
  */
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -73,7 +73,7 @@ function RiseChip({ item }: { item: MenuItem }) {
 function DishCard({ item, picked, full, showMeal, onToggle }: { item: MenuItem; picked: boolean; full: boolean; showMeal: boolean; onToggle: () => void }) {
   const { t } = useTranslation()
   const measured = item.riseKind === 'measured'
-  const badge = measured ? t('log.menu.measured', 'Measured on you') : t('log.menu.estimate', 'Estimate')
+  const badge = item.section === 'swap' ? t('log.menu.swapBadge', 'Lighter swap') : t('log.menu.newBadge', 'New to you')
   const disabled = !picked && full
   return (
     <Card className={cn('flex flex-col overflow-hidden !p-0', picked && 'border-brand')}>
@@ -257,24 +257,33 @@ function RightNow({ nowMeal }: { nowMeal: MenuMeal }) {
 function HowWeChoose({ menu }: { menu: Menu | undefined }) {
   const { t } = useTranslation()
   const n = (k: MenuItem['section']) => menu?.sections.find((s) => s.key === k)?.items.length ?? 0
-  const rows: [string, string, number][] = [
-    [t('log.menu.how1b', 'Your own meals first.'), t('log.menu.how1', 'The ones with the smallest rise on your sensor.'), n('own')],
-    [t('log.menu.how2b', 'Lighter versions of what you eat,'), t('log.menu.how2', 'from the Singapore food database.'), n('swap')],
-    [t('log.menu.how3b', 'General ideas'), t('log.menu.how3', 'only when there is not enough history yet.'), n('general')],
+  const rows: [string, string][] = [
+    [t('log.menu.how1b', 'New to you.'), t('log.menu.how1', 'Nothing you have already logged.')],
+    [t('log.menu.how2b', 'Lighter than your usual.'), t('log.menu.how2', 'Less carbohydrate, salt or calories than your usual meal.')],
+    [t('log.menu.how3b', 'Closer to your habits first:'), t('log.menu.how3', 'lighter versions of what you eat, then other dishes.')],
   ]
   return (
     <Card className="flex flex-col gap-2.5">
       <h2 className="text-body font-bold">{t('log.menu.how', 'How we choose')}</h2>
-      {rows.map(([b, rest, count], i) => (
-        <p key={i} className="flex items-start gap-2.5 text-sub">
-          <span className="num flex h-[1.4rem] min-w-[1.4rem] flex-none items-center justify-center rounded-full bg-brand-soft px-1 text-micro font-bold text-brand">
-            {count}
-          </span>
-          <span>
-            <b>{b}</b> {rest}
-          </span>
+      <ul className="flex flex-col gap-2 text-sub">
+        {rows.map(([b, rest]) => (
+          <li key={b} className="flex items-start gap-2.5">
+            <span className="mt-[0.45rem] h-1.5 w-1.5 flex-none rounded-full bg-brand" aria-hidden />
+            <p className="min-w-0">
+              <b>{b}</b> {rest}
+            </p>
+          </li>
+        ))}
+      </ul>
+      {menu && (
+        <p className="num border-t border-line pt-2.5 text-micro text-ink2">
+          {t('log.menu.shownSummary', '{{n}} dishes shown: {{s}} lighter versions of what you eat and {{g}} other new dishes.', {
+            n: n('swap') + n('general'),
+            s: n('swap'),
+            g: n('general'),
+          })}
         </p>
-      ))}
+      )}
     </Card>
   )
 }
@@ -291,9 +300,11 @@ export function MealMenu() {
     .map((s) => ({ ...s, items: s.items.filter((i) => filters.every((f) => i.tags.includes(f))) }))
     .filter((s) => s.items.length > 0)
   const SEC: Record<MenuItem['section'], { title: string; sub: string }> = {
-    own: { title: t('log.menu.sec.own', 'From your own meals'), sub: t('log.menu.sec.ownSub', 'Measured on you: the smallest rise after eating') },
-    swap: { title: t('log.menu.sec.swap', 'Lighter than your usual'), sub: t('log.menu.sec.swapSub', 'The same kind of dish with less carbohydrate or salt') },
-    general: { title: t('log.menu.sec.general', 'Worth a try'), sub: t('log.menu.sec.generalSub', 'General ideas for a steady day') },
+    swap: {
+      title: t('log.menu.sec.swap', 'Lighter versions of what you eat'),
+      sub: t('log.menu.sec.swapSub', 'Not on your log yet, with less carbohydrate or salt'),
+    },
+    general: { title: t('log.menu.sec.general', 'New to try'), sub: t('log.menu.sec.generalSub', 'Dishes you have not logged, lighter than your usual') },
   }
   return (
     <Screen wide>
@@ -301,7 +312,7 @@ export function MealMenu() {
         title={t('log.menu.title', 'Meal suggestions')}
         back
         backTo="E1"
-        sub={t('log.menu.sub', 'Ideas that fit you, picked from your own meals first. It is always your choice.')}
+        sub={t('log.menu.sub', 'New ideas that are lighter than what you usually have. It is always your choice.')}
       />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_332px] [&>*]:min-w-0">
         <div className="flex flex-col gap-4">
@@ -351,12 +362,6 @@ export function MealMenu() {
                 </button>
               )
             })}
-            <span className="ml-auto hidden items-center gap-1.5 text-micro text-ink2 sm:flex">
-              <span className="h-2 w-2 rounded-full bg-ok" aria-hidden />
-              {t('log.menu.legendMeasured', 'Measured on you')}
-              <span className="ml-2 h-2 w-2 rounded-full bg-brass" aria-hidden />
-              {t('log.menu.legendEstimate', 'Estimate')}
-            </span>
           </div>
           {isError && <Alert tone="warn">{t('log.menu.loadError', 'We could not load the suggestions just now.')}</Alert>}
           {isLoading && <Skeleton className="h-72" />}
@@ -374,7 +379,7 @@ export function MealMenu() {
             <p className="text-center text-micro text-ink3">
               {t(
                 'log.menu.aiNote',
-                'Pictures are made by AI to show the dish and are only a guide. Rises marked Measured come from your sensor. These are ideas, not instructions.',
+                'Pictures are made by AI to show the dish and are only a guide. Glucose rises are estimates from the carbohydrate in the dish and your own history. These are ideas, not instructions.',
               )}
             </p>
           )}

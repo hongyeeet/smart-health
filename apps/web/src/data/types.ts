@@ -703,7 +703,7 @@ export interface MenuItem {
   /** the meal this dish is for (set on every dish; the "all" menu mixes the four meals) */
   meal: MenuMeal
   name: string
-  section: 'own' | 'swap' | 'general'
+  section: 'swap' | 'general'
   why: string
   serving: string | null
   kcal: number | null

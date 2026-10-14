@@ -35,10 +35,10 @@ _SHELF = {
     "lunch": "subgroup in ('Rice-based dishes', 'Noodle/Pasta-based dishes', 'Soup-based dishes') and kcal between 350 and 600 and carbs_g <= 60 and sodium_mg <= 900 and protein_g >= 15",
     "dinner": ("subgroup in ('Rice-based dishes', 'Noodle/Pasta-based dishes', 'Soup-based dishes') and kcal between 300 and 550 and carbs_g <= 60 and sodium_mg <= 900 and protein_g >= 15"
                " and name not ilike '%%breakfast%%' and name not ilike '%%porridge%%' and name not ilike '%%congee%%' and name not ilike '%%cereal%%' and name not ilike '%%oat%%'"),
-    "breakfast": "name ilike any (array['%%toast%%','%%egg%%','%%porridge%%','%%oat%%','%%congee%%','%%yoghurt%%','%%cereal%%']) and kcal between 120 and 450 and carbs_g <= 55 and sodium_mg <= 900",
+    "breakfast": "name ~* '\\m(toast|eggs?|porridge|oats?|oatmeal|congee|yoghurt|yogurt|cereal|muesli|granola)\\M' and kcal between 120 and 450 and carbs_g <= 55 and sodium_mg <= 900",
     "snack": "subgroup in ('Fresh fruit', 'Nuts and seeds', 'Local ethnic snacks') and kcal <= 250 and sodium_mg <= 300",
 }
-_COMMON = "name not ilike '%%raw%%' and sodium_mg is not null and carbs_g is not null and kcal is not null"
+_COMMON = "name !~* '(raw|uncooked|powder|dried|flour|bran|condensed|syrup)' and sodium_mg is not null and carbs_g is not null and kcal is not null"
 
 
 def tags_for(carbs: float | None, sodium: float | None, hawker: bool | None) -> list[str]:
@@ -160,7 +160,7 @@ def _swap(user_id: Any, slope: float | None, lang: str) -> list[dict[str, Any]]:
             out.append({"key": f"swap:{alt['foodId']}", "name": alt["name"], "section": "swap", "why": texts.tr(lang, "lunch.why_swap", dish=h["topDish"], saving=ns.saving_phrase(alt, lang)),
                         "serving": alt.get("serving"), "kcal": round(float(f["kcal"])) if f and f["kcal"] is not None else None, "carbs": carbs, "sodium": sodium,
                         "rise": None, "est": est, "seen": None, "tags": tags_for(carbs, sodium, bool(f["hawker"]) if f else None), "extra": {"instead": h["topDish"]}})
-    return out[:PER_SECTION]
+    return out[:PER_SECTION["swap"]]
 
 
 def _why_general(meal: str, carbs: float, sodium: float, base: dict[str, float | None] | None) -> str | None:
@@ -218,7 +218,7 @@ def build(user_id: Any, meal: str, *, store: bool = True) -> dict[str, Any]:
     seen_names: set[str] = set()
     sections: dict[str, list[dict[str, Any]]] = {"swap": [], "general": []}
     for it in swap + general:
-        if it["key"] in gone or it["name"].lower() in seen_names:
+        if it["key"] in gone or it["name"].lower() in seen_names or not is_new(it["name"], {_norm(n) for n in seen_names}):
             continue
         if len(sections[it["section"]]) >= PER_SECTION[it["section"]]:
             continue

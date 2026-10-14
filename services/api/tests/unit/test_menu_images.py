@@ -134,3 +134,23 @@ def test_clock_text():
     assert menu._clock(12 * 60 + 15) == "12:15 pm"
     assert menu._clock(7 * 60 + 30) == "7:30 am"
     assert menu._clock(0) == "12:00 am"
+
+
+def test_a_dish_the_person_has_eaten_is_not_new():
+    eaten = {"chicken rice regular", "kaya toast set 2 slices soft boiled eggs sweet kopi", "papaya slices"}
+    assert menu.is_new("Lasagna", eaten) is True
+    assert menu.is_new("Chicken rice (regular)", eaten) is False          # the same dish
+    assert menu.is_new("Regular chicken rice", eaten) is False            # the same words in another order
+    assert menu.is_new("Papaya slice", eaten) is False                    # a near match
+    assert menu.is_new("", eaten) is False
+    assert menu.is_new("Brown rice with steamed fish", set()) is True
+
+
+def test_lighter_means_lower_in_two_and_not_much_higher_in_the_third():
+    base = {"kcal": 600.0, "carbs": 70.0, "sodium": 1200.0}
+    assert menu.lighter(450, 50, 1000, base) is True
+    assert menu.lighter(450, 50, 1300, base) is True                     # 1300 is within 15% of 1200
+    assert menu.lighter(450, 50, 1500, base) is False                    # salt is more than 15% higher
+    assert menu.lighter(700, 50, 1000, base) is False                    # calories more than 15% higher
+    assert menu.lighter(450, 75, 1250, base) is False                    # only calories lower
+    assert menu.lighter(450, 50, 1000, None) is True                     # no usual meal to compare with

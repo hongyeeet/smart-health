@@ -17,7 +17,7 @@ const isoDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/S
 
 /** One suggested dish for the meal: the first of the person's own meals, otherwise the first general idea. */
 function suggestion(items: MenuItem[] | undefined): MenuItem | undefined {
-  return items?.find((i) => i.section === 'own') ?? items?.find((i) => i.section === 'swap') ?? items?.[0]
+  return items?.find((i) => i.section === 'swap') ?? items?.[0]
 }
 
 function Panel({ icon: Icon, picture, tint }: { icon: IconType; picture?: string | null; tint: string }) {
