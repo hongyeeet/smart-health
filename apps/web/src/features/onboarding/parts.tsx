@@ -6,6 +6,7 @@ import { href } from '@/app/routeIds'
 import { cn } from '@/lib/cn'
 import { useUi } from '@/state/store'
 import { startsInSetup } from './startGate'
+import { useCancelNewPerson, useIsNewPerson } from './newPerson'
 import { Alert, Button, Card, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
 import { Check, Leaf, Lock } from '@/ui/icons'
 
@@ -170,11 +171,13 @@ export function Later({ children, label }: { children?: ReactNode; label?: strin
   const { t } = useTranslation()
   const navigate = useNavigate()
   const demo = startsInSetup(useUi((s) => s.userKey))      // the demo user skips set-up instead of finishing it later
+  const newPerson = useIsNewPerson()                       // a new person who leaves is not created at all
+  const cancel = useCancelNewPerson()
   return (
     <div className="flex flex-col items-center gap-1 pt-2">
       {children}
-      <TextLink onClick={() => navigate(href('B1'))} className="self-center">
-        {demo ? t('onboarding.skipV2', 'Skip') : (label ?? t('onboarding.later', 'Finish later'))}
+      <TextLink onClick={newPerson ? cancel : () => navigate(href('B1'))} className="self-center">
+        {newPerson ? t('onboarding.cancelNew', 'Cancel. Do not create this user') : demo ? t('onboarding.skipV2', 'Skip') : (label ?? t('onboarding.later', 'Finish later'))}
       </TextLink>
     </div>
   )

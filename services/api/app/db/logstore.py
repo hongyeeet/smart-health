@@ -49,10 +49,20 @@ def is_read_only(user: object) -> bool:
     return str(user) == str(MR_TAN_USER)
 
 
+# A person started in the app ("Start as new person") has a key of this shape. The key is made on the device when set-up opens, and the
+# user row is created only when set-up is finished (POST /users, routers/users.py). The user id is derived from the key, so the same key
+# always means the same person, and no lookup table is needed. Before the row exists the key can read (it finds nothing) but not write.
+PERSON_KEY = re.compile(r"person-[0-9a-f]{12}")
+
+
+def person_id(key: str) -> uuid.UUID:
+    return uuid.uuid5(NAMESPACE, f"user:{key}")
+
+
 def set_user(key: str | None) -> str:
     """Choose who the rest of this request acts as. Unknown keys raise KeyError so a typo never silently falls back."""
     key = (key or "demo").strip().lower()
-    if key not in USERS:                      # only the demo user and Mr Tan exist ("Start as new person" was removed on 2026-10-13)
+    if key not in USERS and not PERSON_KEY.fullmatch(key):
         raise KeyError(key)
     _current.set(key)
     return key
@@ -64,7 +74,7 @@ def current_user_key() -> str:
 
 def current_user() -> uuid.UUID:
     key = _current.get()
-    return USERS[key]["id"]
+    return USERS[key]["id"] if key in USERS else person_id(key)
 BUCKET = timedelta(minutes=5)
 
 # Daily goals. Placeholders from the owner (appConfig.goals); clinical review pending, never shown as advice.
@@ -1049,6 +1059,16 @@ def _notifications(create: bool, history: bool = False) -> list[dict]:
         want = []
     if lunch_slot & have_keys:
         want = [w for w in want if w[0] not in lunch_slot]   # today's lunch reminder is already there
+    if create and any(w[0] in lunch_slot for w in want):
+        # the plain "Log your lunch" reminder is due now: when there are lunch ideas that suit the person, the ideas (which also lead to
+        # logging the lunch) take its place, so the lunch reminder, and its email, is the personalised one. One item for one item.
+        try:
+            idea = nutritionstore.lunch_ideas_nudge(current_user(), have_keys, lunch_today, now)
+        except Exception:
+            logger.exception("lunch ideas failed; the plain lunch reminder stays")
+            idea = None
+        if idea:
+            want = [w for w in want if w[0] not in lunch_slot] + [idea]
     quiet, left, keep = in_quiet_hours(now), slots_left(created_today), []
     for w in want:
         if w[0] in have_keys or is_exempt(w[0]):

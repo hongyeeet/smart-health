@@ -18,6 +18,7 @@ from app.api.routers.care import router as care_router
 from app.api.routers.me_settings import router as me_settings_router
 from app.api.routers.share import router as share_router
 from app.api.routers.onboarding import router as onboarding_router
+from app.api.routers.users import router as users_router
 from app.api.routers.urgent import router as urgent_router
 from app.api.routers.notify import router as notify_router
 from app.api.routers.chat import router as chat_router
@@ -111,6 +112,7 @@ app.include_router(care_router, prefix="/api/v1")
 app.include_router(me_settings_router, prefix="/api/v1")
 app.include_router(share_router, prefix="/api/v1")
 app.include_router(onboarding_router, prefix="/api/v1")
+app.include_router(users_router, prefix="/api/v1")
 app.include_router(urgent_router, prefix="/api/v1")
 app.include_router(notify_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")

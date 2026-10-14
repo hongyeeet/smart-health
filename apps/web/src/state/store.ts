@@ -17,6 +17,15 @@ interface UiState {
   /** who the app acts as: sent to the API as the X-User header */
   userKey: string
   setUserKey: (k: string) => void
+  /** people started on this device with "Start as new person" and finished, so the switcher can list them again */
+  people: { key: string; label: string }[]
+  addPerson: (p: { key: string; label: string }) => void
+  /**
+   * A person whose set-up is open and not finished (kept in memory only). They do not exist in the database until Finish; leaving
+   * set-up drops them and goes back to `returnTo`.
+   */
+  pending: { key: string; label: string; returnTo: string } | null
+  setPending: (p: { key: string; label: string; returnTo: string } | null) => void
   setTheme: (t: ThemeName) => void
   setTextScale: (s: 1 | 2) => void
   setLocale: (l: Locale) => void
@@ -48,6 +57,10 @@ export const useUi = create<UiState>()(
       locale: 'en',
       userKey: 'demo',
       setUserKey: (userKey) => set({ userKey }),
+      people: [],
+      addPerson: (p) => set((s) => ({ people: [...s.people.filter((x) => x.key !== p.key), p] })),
+      pending: null,
+      setPending: (pending) => set({ pending }),
       setTheme: (theme) => set({ theme }),
       setTextScale: (textScale) => set({ textScale }),
       setLocale: (locale) => set({ locale }),
@@ -71,11 +84,20 @@ export const useUi = create<UiState>()(
     }),
     {
       name: 'smart-health-ui',
-      partialize: (s) => ({ theme: s.theme, textScale: s.textScale, locale: s.locale, userKey: s.userKey }),
-      /* a device that still holds the key of a person started with the removed "Start as new person" goes back to the demo user */
+      partialize: (s) => ({ theme: s.theme, textScale: s.textScale, locale: s.locale, userKey: s.userKey, people: s.people }),
+      /* a device that holds the key of a person whose set-up was never finished (a reload part-way) goes back to the demo user */
       merge: (saved, current) => {
         const kept = (saved ?? {}) as Partial<UiState>
-        return { ...current, ...kept, userKey: kept.userKey === 'demo' || kept.userKey === 'mr-tan' ? kept.userKey : 'demo' }
+        const people = kept.people ?? []
+        const known = kept.userKey === 'demo' || kept.userKey === 'mr-tan' || people.some((p) => p.key === kept.userKey)
+        if (kept.userKey && !known) {
+          try {
+            localStorage.removeItem(`smart-health-onboarding:${kept.userKey}`)
+          } catch {
+            /* storage not available */
+          }
+        }
+        return { ...current, ...kept, people, userKey: known ? (kept.userKey as string) : 'demo' }
       },
     },
   ),

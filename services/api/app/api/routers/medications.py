@@ -18,7 +18,7 @@ from fastapi.concurrency import run_in_threadpool
 from psycopg.rows import tuple_row
 
 from app.agents import clash_pipeline
-from app.api.routers.calendar import schedule_sync
+from app.api.routers.calendar import schedule_cleanup, schedule_sync
 from app.core.errors import InvalidTransition, NotFound
 from app.db import logstore
 from app.schemas.medicine_scan import ConfirmedMedication, DoseTime
@@ -161,9 +161,12 @@ def _add(body: NewMedicationIn) -> MedicationOut:
 
 
 @router.delete("/{med_id}")
-async def delete_medication(med_id: str) -> dict[str, bool]:
-    """Remove one of the person's own medicines: its deleted_at is filled in and the app stops showing it. Its dose history is kept."""
-    return await run_in_threadpool(_remove, med_id)
+async def delete_medication(med_id: str, background: BackgroundTasks) -> dict[str, bool]:
+    """Remove one of the person's own medicines: its deleted_at is filled in and the app stops showing it. Its dose history is kept. Its
+    calendar events that are still to come are taken off Google Calendar afterwards."""
+    out = await run_in_threadpool(_remove, med_id)
+    await run_in_threadpool(schedule_cleanup, background, str(logstore.current_user()), med_id)
+    return out
 
 
 def _remove(med_id: str) -> dict[str, bool]:

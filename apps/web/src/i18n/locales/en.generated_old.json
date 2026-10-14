@@ -1,4 +1,25 @@
 {
+  "brief": {
+    "aiInsight": "AI insight.",
+    "alerts": "Alerts in the report",
+    "noAlerts": "No alerts were raised from your data in this period. That does not mean nothing needs attention.",
+    "sources": "From: {{sources}}. Sensor worn: {{wear}}."
+  },
+  "chat": {
+    "typing": "Smart Health is typing"
+  },
+  "day": {
+    "bandNote": "The shaded band is your target range, set in your profile.",
+    "everything": "Everything logged",
+    "goTo": "Go to {{day}}",
+    "loggedLine": "Logged: {{summary}}.",
+    "moveAria": "Move between days with data",
+    "noGlucose": "No glucose readings for this day.",
+    "noNext": "No later day with data",
+    "noPrev": "No earlier day with data",
+    "noSleep": "No sleep total for this day.",
+    "slept": "Slept about {{h}} hours."
+  },
   "home": {
     "action": {
       "checkin": "Do the check-in",
@@ -74,6 +95,100 @@
       "legendBottomV2": "Bottom number: diastolic BP",
       "legendTop": "Top number",
       "legendTopV2": "Top number: systolic BP"
+    },
+    "overview": {
+      "alsoSame": "About the same as the {{n}} days before: {{list}}.",
+      "amountHours": "{{n}} hours",
+      "amountMinutes": "{{n}} minutes",
+      "amountMmol": "{{n}} mmol/L",
+      "amountPoints": "{{n}} points",
+      "amountSteps": "{{n}} steps a day",
+      "before7": "in the 7 days before",
+      "beforeDays": "in the {{n}} days before",
+      "change": {
+        "fasting": "Morning (fasting) glucose",
+        "steps": "Steps a day"
+      },
+      "changeLine": "{{label}}: {{current}} {{curWhen}}, {{previous}} {{prevWhen}}. {{move}}.",
+      "down": "Down {{amount}}",
+      "lastDays": "in the last {{n}} days",
+      "noCompare": "There is not enough data in both periods to compare yet.",
+      "notEnough": "Not enough data in one of the two periods to compare: {{list}}.",
+      "nothingMoved": "Nothing changed much from the {{n}} days before.",
+      "up": "Up {{amount}}",
+      "v": {
+        "avg": "Average glucose",
+        "cv": "Glucose ups and downs (CV)",
+        "doses": "Doses taken",
+        "gmi": "Estimated A1c (GMI)",
+        "sensor": "Sensor worn",
+        "steps": "Steps a day"
+      },
+      "valueHours": "{{n}} hours a night",
+      "valueMinutes": "{{n}} minutes",
+      "valueMmol": "{{n}} mmol/L",
+      "valuePct": "{{n}}%",
+      "valueScore": "{{n}} out of 5",
+      "valuesNote": "Your doctor reviews what these mean.",
+      "valueSteps": "{{n}} steps a day",
+      "valuesTitle": "What the values show"
+    },
+    "tl": {
+      "aboveUsual": "above usual range",
+      "back30": "Back 30 minutes",
+      "base": {
+        "before": "Baseline: your average for each hour of the day over the 60 days before this period ({{from}} to {{to}}). Blood pressure: one fixed value.",
+        "period": "Baseline: your average over this period. Blood pressure: one fixed value.",
+        "start": "Baseline: your average over the first 30 days of this period ({{from}} to {{to}}), as there is not enough before it. Blood pressure: one fixed value."
+      },
+      "belowUsual": "below usual range",
+      "bpTop": "Blood pressure (top number)",
+      "cmp": {
+        "falling": "Daily average falling about {{n}} a week.",
+        "flat": "Daily average is steady across the period.",
+        "lastDays": "Last {{n}} days",
+        "noteBefore": "Baseline: your average over the 60 days before this period. These are numbers from your own readings, not a verdict.",
+        "noteStart": "Baseline: your average over the first 30 days of this period. These are numbers from your own readings, not a verdict.",
+        "rising": "Daily average rising about {{n}} a week."
+      },
+      "dayBack": "−1 day",
+      "dayFwd": "+1 day",
+      "fwd30": "Forward 30 minutes",
+      "help": "Drag the marker, or click or tap anywhere on the charts. Arrow keys move it. The gauge on each chart shows your usual range as a bar, your baseline as a thin line, and the reading at the marker as a block.",
+      "lastMeal": "Last meal: {{line}}",
+      "legend": {
+        "baseShort": "Baseline",
+        "lowHigh": "Day’s low to high",
+        "night": "Night",
+        "outside": "Outside usual",
+        "trend": "Trend",
+        "usual": "Usual range",
+        "work": "Work hours",
+        "workDays": "Work days"
+      },
+      "meal": {
+        "breakfast": "Breakfast",
+        "dinner": "Dinner",
+        "lunch": "Lunch",
+        "snack": "Snack"
+      },
+      "mealLine": "{{meal}} at {{time}} ({{ago}} before){{food}}",
+      "mealWord": "Meal",
+      "min30back": "−30 min",
+      "min30fwd": "+30 min",
+      "missedMany": "{{n}} doses marked missed",
+      "missedOne": "a dose marked missed",
+      "nextMeal": "Go to the next meal",
+      "noMeal": "No meal logged before this moment.",
+      "nothingNear": "No symptoms, missed doses or exercise within 2 hours.",
+      "prevMeal": "Go to the previous meal",
+      "symptomNoted": "{{s}} noted",
+      "tapDay": "Drag the marker or tap a day to read it. Open a day for its 5-minute detail.",
+      "within2h": "Within 2 hours: {{list}}.",
+      "withinUsual": "within usual range",
+      "work": {
+        "outside": "Outside work hours"
+      }
     }
   },
   "me": {
@@ -87,6 +202,30 @@
     },
     "language": {
       "larger": "Larger, 200%"
+    },
+    "learned": {
+      "aiLine": "{{kind}}: <b>{{calls}}</b> of <b>{{cap}}</b> today",
+      "barrierIdeas": "Ideas about what gets in the way",
+      "barrierTitle": "What gets in the way",
+      "factMeta": "{{source}} · version {{version}}",
+      "guardCounts": "Safety checks on its own wording: <b>{{passed}}</b> passed, <b>{{blocked}}</b> blocked",
+      "kpiConfirmed": "Confirmed ideas",
+      "kpiConfirmedSub": "{{n}} waiting for you",
+      "kpiError": "We could not load these numbers just now.",
+      "kpiMissed": "Doses missed this week",
+      "kpiMissedSub": "Out of {{n}} doses this week",
+      "kpiOnTime": "Doses taken on time",
+      "kpiOnTimeSub": "Last {{days}} days, of {{n}} confirmed doses",
+      "kpiReason": "Most common reason",
+      "kpiReasonSub_one": "{{count}} of {{missed}} missed doses, last {{days}} days",
+      "kpiReasonSub_other": "{{count}} of {{missed}} missed doses, last {{days}} days",
+      "learningFrom": "Suggestions it is learning from",
+      "noticedMany": "<b>{{n}}</b> things noticed or changed",
+      "noticedOne": "<b>{{n}}</b> thing noticed or changed",
+      "reminderCounts": "<b>{{sent}}</b> reminders sent, <b>{{opened}}</b> opened, <b>{{acted}}</b> acted on",
+      "suggestionCounts": "<b>{{chosen}}</b> of <b>{{shown}}</b> suggestions chosen by you",
+      "suggestionLine": "{{name}}: shown {{shown}}, chosen {{chosen}}",
+      "thisWeek": "This week"
     }
   },
   "onboarding": {
@@ -212,10 +351,42 @@
   },
   "switch": {
     "newPerson": "New person",
-    "startedHere": "Started on this device",
     "startFailed": "We could not start a new person just now. Check your connection, then try again.",
     "starting": "Starting…",
-    "startNew": "Start as new person",
     "startNewSub": "A clean start at step 1. No one else is changed."
+  },
+  "workout": {
+    "log": {
+      "allOut": "All-out",
+      "awful": "Awful",
+      "effort1": "Barely moving. You could chat or sing.",
+      "effort2": "Light. You can sing.",
+      "effort3": "Moderate. You can talk but not sing.",
+      "effort4": "Hard. You can only say a few words.",
+      "effort5": "All-out. You cannot talk.",
+      "great": "Great",
+      "kind": {
+        "cycling": "Cycling",
+        "dance": "Dance",
+        "hiit": "HIIT",
+        "household": "Housework or gardening",
+        "other": "Something else",
+        "running": "Running",
+        "sports": "Sports",
+        "strength": "Strength",
+        "stretching": "Stretching",
+        "swimming": "Swimming",
+        "walking": "Walking",
+        "yogaPilates": "Yoga or pilates"
+      },
+      "name": "Name it",
+      "namePh": "For example, evening walk with Ah Ma",
+      "ofGoal": "{{value}} of {{goal}}",
+      "orName": "Or name it (optional)",
+      "quick": "Quick log",
+      "strengthTip": "Want every set and weight? Tap here to track a live strength session instead.",
+      "veryLight": "Very light",
+      "which": "Which one"
+    }
   }
 }

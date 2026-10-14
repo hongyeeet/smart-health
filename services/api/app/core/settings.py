@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     workato_webhook_url: str = ""
     workato_webhook_token: SecretStr = SecretStr("")
     workato_token_header: str = "API-TOKEN"
+    workato_calendar_remove_url: str = ""      # the recipe that removes one dose's event again (blank: events are never removed or moved)
     # Fields the scanner is less sure of than this must be typed in by the user (backlog E3-1 used 0.85).
     scan_confidence_threshold: float = 0.85
     # True (the default): the local text reader blacks out name, ID, phone and address on a label photo before it leaves the machine, and

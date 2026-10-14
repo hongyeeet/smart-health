@@ -15,6 +15,7 @@ import { cn } from '@/lib/cn'
 import { Screen } from '@/ui/layout'
 import { Alert, Button, Card, TextLink } from '@/ui/primitives'
 import { ListChecks, PencilSimple } from '@/ui/icons'
+import { useIsNewPerson } from './newPerson'
 import { DemoNotice, Dock, Later, LoadNotice, LoadingAnswers, TopBar } from './parts'
 import { useOptions } from './options'
 import { allPagesBody, emailBody, useOnboardingSource, useSaveStep } from './api'
@@ -30,6 +31,7 @@ export function ChatSetup() {
   const set = useOnboarding((s) => s.set)
   const o = useOptions()
   const src = useOnboardingSource()
+  const newPerson = useIsNewPerson()
   const save = useSaveStep()
   const chat = useChatAnswer()
   /* optional questions skipped on this visit; not kept after leaving the screen */
@@ -118,7 +120,7 @@ export function ChatSetup() {
 
   /* Same as the form's Finish: every page and the reminder email are saved, then the summary. A failure keeps the person here. */
   const finish = async () => {
-    if (src.readOnly) return navigate(href('A6'))
+    if (src.readOnly || newPerson) return navigate(href('A6'))       // a new person is saved at Finish on the summary, not before
     if (src.loadFailed) {
       setFailed(t('setup.noRead', 'Your saved answers could not be read, so nothing is saved right now. Check your connection, then try again.'))
       return

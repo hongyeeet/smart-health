@@ -144,6 +144,15 @@ def preferred_offset(median_min: float) -> int:
     return min(MENU, key=lambda o: (abs(o - target), o))
 
 
+def learned_offset(delays: list[float]) -> int:
+    """The offset that is known for a medicine without any trying: the one nearest the person's own usual delay (the same preferred
+    offset the reminders start from). 0 until there are PRIOR_MIN_DOSES usable delays. Used where the time must be fixed ahead of
+    the day, such as the calendar, which cannot explore."""
+    if len(delays) < PRIOR_MIN_DOSES:
+        return 0
+    return preferred_offset(statistics.median(delays))
+
+
 def choose_offset(medication_id: str, delays: list[float], excluded: set[str], tries: dict[str, int],
                   rank: Callable[[list[str]], list[str]]) -> int | None:
     """The offset to use for this medicine's next reminder, or None when every offset was dismissed.

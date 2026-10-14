@@ -3,8 +3,8 @@
 The medicine is removed by filling in its `deleted_at` time (Joely, 2026-10-09), the same soft delete the rest of the app already uses. The row
 and its history stay in the database; the app simply stops showing it: the Meds list, today's doses, the clash check, the medicine page and
 the calendar plan all skip a medicine that has a `deleted_at`. Its dose times are marked removed too. Its dose log (what was taken or missed
-before) is kept, so adherence history is never lost, and so are the Bronze entry and the event log. Calendar events already made on Google
-Calendar are not removed by this (there is no Workato recipe for that yet). The event log entry holds the kind, the source and counts only,
+before) is kept, so adherence history is never lost, and so are the Bronze entry and the event log. Calendar events still to come are taken off
+Google Calendar afterwards by the Workato recipe "Medicine calendar remove" (calendar_sync.queue_cleanup), when it is set up. The event log entry holds the kind, the source and counts only,
 never the medicine's name.
 """
 from __future__ import annotations

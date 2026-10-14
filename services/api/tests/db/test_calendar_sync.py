@@ -8,7 +8,7 @@ import os
 import sys
 import uuid
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import psycopg
@@ -33,8 +33,18 @@ NOW = datetime(2026, 10, 8, 14, 0, tzinfo=TZ)
 
 
 class FakeClient:
-    def __init__(self, *outcomes, configured=True):
+    def __init__(self, *outcomes, configured=True, can_remove=True):
         self.outcomes, self.calls, self._configured = list(outcomes), [], configured
+        self.removed, self._can_remove, self.remove_error = [], can_remove, None
+
+    @property
+    def remove_configured(self):
+        return self._can_remove
+
+    def remove_event(self, payload):
+        if self.remove_error:
+            raise self.remove_error
+        self.removed.append(payload)
 
     @property
     def configured(self):
@@ -94,6 +104,36 @@ def test_one_event_per_dose_time_per_day_named_by_what_to_take(conn, user):
     assert morning[0]["request_id"].startswith(f"{mid}:") and morning[0]["request_id"].endswith(":2026-10-09") and "strength" not in str(morning[0]).lower()
     assert "500 mg" not in morning[0]["summary"] and "with food" not in morning[0]["description"]
     assert [(e["date"], e["time"]) for e in p] == sorted((e["date"], e["time"]) for e in p)
+
+
+def _taken(conn, user, mid, delay_min, days=10):
+    """Doses taken `delay_min` minutes after their set time, one a day for the last `days` days before NOW (08:00 from 2026-09-27)."""
+    sid = conn.execute("select id from medication_schedule where medication_id = %s", (mid,)).fetchone()[0]
+    for d in range(days):
+        at = datetime(2026, 9, 27, 8, 0, tzinfo=TZ) + timedelta(days=d)
+        conn.execute("insert into medication_log (user_id, medication_id, schedule_id, scheduled_at, taken_at, status, source) "
+                     "values (%s, %s, %s, %s, %s, 'taken', 'manual')", (user, mid, sid, at, at + timedelta(minutes=delay_min)))
+
+
+def test_events_sit_at_the_persons_usual_time_once_there_is_enough_history(conn, user):
+    mid = add(conn, user)
+    assert sync.plan(conn, user, mid, NOW)[0]["offset_min"] == 0                       # no history: the label's own time
+    _taken(conn, user, mid, 38)                                                        # usually 38 minutes late: the 30 minute offset is nearest (38 - 10 = 28)
+    e = sync.plan(conn, user, mid, NOW)[0]
+    assert e["offset_min"] == 30 and e["time"] == "08:00"
+    assert e["start"]["dateTime"] == "2026-10-09T08:30:00+08:00" and e["end"]["dateTime"] == "2026-10-09T08:45:00+08:00"
+
+
+def test_a_few_doses_are_not_enough_to_move_the_time(conn, user):
+    mid = add(conn, user)
+    _taken(conn, user, mid, 40, days=6)                                                # 6 usable delays, 7 are needed
+    assert sync.plan(conn, user, mid, NOW)[0]["offset_min"] == 0
+
+
+def test_a_dose_taken_on_time_or_early_is_not_a_delay(conn, user):
+    mid = add(conn, user)
+    _taken(conn, user, mid, 0)
+    assert sync.plan(conn, user, mid, NOW)[0]["offset_min"] == 0
 
 
 def test_a_medicine_taken_with_food_says_so_in_the_event_note(conn, user):
@@ -258,6 +298,112 @@ def test_the_event_log_holds_counts_and_codes_never_the_medicine_name(conn, user
     sync.run(sid, FakeClient(), now_fn=lambda: NOW)
     ev = [str(r[0]) for r in conn.execute("select payload from event_log where user_id = %s and event = 'calendar.sync.finished'", (user,)).fetchall()]
     assert len(ev) == 1 and "Secretdrug" not in ev[0] and "'events': 13" in ev[0]
+
+
+# ------------------------------------------------------------------ moving and removing events
+def _make(conn, user, mid):
+    sid, _ = sync.queue(conn, user, mid, configured=True, now=NOW)
+    client = FakeClient()
+    sync.run(sid, client, now_fn=lambda: NOW)
+    return sid, client
+
+
+def test_when_the_learned_time_moves_the_old_events_come_off_and_are_made_again_at_the_new_time(conn, user):
+    mid = add(conn, user)                                                              # 08:00, 13 events (today's has passed)
+    _make(conn, user, mid)
+    _taken(conn, user, mid, 38)                                                        # the person now usually takes it late: the offset is 30
+    sid, go = sync.queue(conn, user, mid, configured=True, now=NOW)
+    assert go is True and sync.status(conn, user, mid)["status"] == "queued"
+    client = FakeClient()
+    sync.run(sid, client, now_fn=lambda: NOW)
+    assert len(client.removed) == 13 and len(client.calls) == 13                       # every old event off, every one made again
+    first = client.removed[0]
+    assert first["summary"] == "Take CRESTOR, 1 Tab" and first["start"] == {"dateTime": "2026-10-09T08:00:00+08:00", "timeZone": "Asia/Singapore"}
+    assert first["end"]["dateTime"] == "2026-10-09T08:15:00+08:00" and "strength" not in str(first).lower()
+    assert client.calls[0]["start"]["dateTime"] == "2026-10-09T08:30:00+08:00"
+    events = conn.execute("select events from calendar_syncs where medication_id = %s", (mid,)).fetchone()[0]
+    assert len(events) == 13 and all(e["start"].endswith("T08:30:00+08:00") for e in events)
+    assert sync.status(conn, user, mid)["status"] == "done"
+
+
+def test_an_event_that_is_still_right_is_left_alone(conn, user):
+    mid = add(conn, user)
+    sid, _ = _make(conn, user, mid)
+    sid, go = sync.queue(conn, user, mid, configured=True, now=NOW)
+    assert go is False and sync.status(conn, user, mid)["status"] == "done"
+
+
+def test_events_made_before_titles_and_times_were_kept_are_still_found_and_removed(conn, user):
+    mid = add(conn, user)
+    sid, _ = _make(conn, user, mid)
+    legacy = [{k: v for k, v in e.items() if k not in ("start", "summary")} for e in conn.execute("select events from calendar_syncs where medication_id = %s", (mid,)).fetchone()[0]]
+    conn.execute("update calendar_syncs set events = %s::jsonb where medication_id = %s", (sync.Jsonb(legacy), mid))
+    _taken(conn, user, mid, 38)
+    sid, _ = sync.queue(conn, user, mid, configured=True, now=NOW)
+    client = FakeClient()
+    sync.run(sid, client, now_fn=lambda: NOW)
+    assert client.removed[0]["summary"] == "Take CRESTOR, 1 Tab" and client.removed[0]["start"]["dateTime"] == "2026-10-09T08:00:00+08:00"
+
+
+def test_a_removed_medicines_coming_events_are_taken_off_and_none_is_made(conn, user):
+    from app.services.medication_remove import remove_medication
+
+    mid = add(conn, user, times=("08:00", "20:00"))
+    _make(conn, user, mid)                                                             # 13 + 14 events
+    remove_medication(conn, user, mid)
+    queued = sync.queue_cleanup(conn, user, mid)
+    assert queued is not None and sync.status(conn, user, mid)["status"] == "queued"
+    client = FakeClient()
+    sync.run(queued[0], client, now_fn=lambda: NOW)
+    assert len(client.removed) == 27 and client.calls == []
+    assert conn.execute("select events from calendar_syncs where medication_id = %s", (mid,)).fetchone()[0] == []
+    assert sync.status(conn, user, mid)["status"] == "done"
+    assert sync.queue_cleanup(conn, user, str(uuid.uuid4())) is None                    # a medicine that never had events has nothing to clean
+
+
+def test_a_shortened_course_loses_the_events_after_its_end_date(conn, user):
+    mid = add(conn, user, times=("08:00",))
+    _make(conn, user, mid)
+    conn.execute("update medications set end_date = '2026-10-12' where id = %s", (mid,))
+    sid, _ = sync.queue(conn, user, mid, configured=True, now=NOW)
+    client = FakeClient()
+    sync.run(sid, client, now_fn=lambda: NOW)
+    assert [r["start"]["dateTime"][:10] for r in client.removed] == [f"2026-10-{d}" for d in range(13, 22)] and client.calls == []
+
+
+def test_without_the_remove_recipe_old_events_stay_and_no_second_one_is_made(conn, user):
+    mid = add(conn, user)
+    _make(conn, user, mid)
+    _taken(conn, user, mid, 38)
+    sid, _ = sync.queue(conn, user, mid, configured=True, now=NOW)
+    client = FakeClient(can_remove=False)
+    sync.run(sid, client, now_fn=lambda: NOW)
+    assert client.removed == [] and client.calls == []
+    assert len(conn.execute("select events from calendar_syncs where medication_id = %s", (mid,)).fetchone()[0]) == 13
+
+
+def test_a_failed_removal_keeps_the_event_so_it_is_tried_again(conn, user):
+    mid = add(conn, user)
+    _make(conn, user, mid)
+    _taken(conn, user, mid, 38)
+    sid, _ = sync.queue(conn, user, mid, configured=True, now=NOW)
+    client = FakeClient()
+    client.remove_error = ExternalServiceError("down", code="workato_unavailable")
+    sync.run(sid, client, now_fn=lambda: NOW)
+    assert client.calls == [] and sync.status(conn, user, mid)["status"] == "failed" and sync.status(conn, user, mid)["error_code"] == "workato_unavailable"
+    assert len(conn.execute("select events from calendar_syncs where medication_id = %s", (mid,)).fetchone()[0]) == 13
+
+
+def test_an_event_whose_time_has_passed_is_never_removed(conn, user):
+    mid = add(conn, user, times=("20:00",))
+    _make(conn, user, mid)                                                             # today's 20:00 is still to come at 14:00
+    later = datetime(2026, 10, 8, 21, 0, tzinfo=TZ)                                    # at 21:00 today's event has happened
+    conn.execute("update medications set deleted_at = now() where id = %s", (mid,))
+    client = FakeClient()
+    sync.queue_cleanup(conn, user, mid)
+    sid = conn.execute("select id from calendar_syncs where medication_id = %s", (mid,)).fetchone()[0]
+    sync.run(str(sid), client, now_fn=lambda: later)
+    assert all(not r["start"]["dateTime"].startswith("2026-10-08") for r in client.removed) and len(client.removed) == 13
 
 
 # ------------------------------------------------------------------ the routes

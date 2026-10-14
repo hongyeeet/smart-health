@@ -9,6 +9,9 @@ next 14 days are topped up (`top_up_all`). The calendar's default reminder (set 
   - nothing is made twice: a retry only makes the dose times that have no event yet
   - if Workato is not set up the sync is skipped and the app carries on; a failure never stops the medicine from being saved
   - only the medicine's name and amount go out, never a patient name, ID or note; event ids and counts only go in the event log
+  - an event that is no longer right is taken off the calendar again, then made again if it still belongs: a removed medicine, a shortened
+    course, a dose time that is gone, or a time that moved (the learned time changed). The remove recipe finds the event by its exact title and
+    time window, so nothing else on the calendar is touched. Without the remove recipe, old events stay as they are (and no second one is made)
 
 The Workato call itself is in `app/integrations/workato.py`.
 """
@@ -24,6 +27,7 @@ import psycopg
 from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
+from app.agents import dose_timing
 from app.core.errors import ExternalServiceError, NotFound
 from app.db import logstore
 from app.integrations.workato import CalendarEvent
@@ -42,6 +46,9 @@ class EventMaker(Protocol):
     @property
     def configured(self) -> bool: ...
     def create_event(self, payload: dict[str, Any]) -> CalendarEvent: ...
+    @property
+    def remove_configured(self) -> bool: ...
+    def remove_event(self, payload: dict[str, Any]) -> None: ...
 
 
 def _lock_for(med_id: str) -> threading.Lock:
@@ -54,10 +61,24 @@ def _until(end: date) -> str:
     return datetime.combine(end, time(23, 59, 59), tzinfo=TZ).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
+def learned_offset(conn: psycopg.Connection, user_id: str, med_id: str, now: datetime) -> int:
+    """Minutes after the dose time at which this person usually takes the medicine (0, 15, 30 or 45), from their own taken doses.
+
+    It is the dose-timing agent's preferred offset (agents/dose_timing.py): the one nearest the usual delay of the last 30 doses that were
+    taken after their set time, once there are 7 of them, else 0 (the label's own time). Nothing is tried or learned here, and the
+    dose window the reminders obey (the dose time to 60 minutes after it) always holds. Only reads."""
+    rows = conn.execute(
+        "select scheduled_at, taken_at from medication_log where user_id = %s and medication_id = %s and schedule_id is not null "
+        "and status = 'taken' and taken_at is not null and taken_at > scheduled_at and scheduled_at > %s order by scheduled_at desc limit 200",
+        (user_id, med_id, now - timedelta(days=dose_timing.HISTORY_DAYS))).fetchall()
+    return dose_timing.learned_offset(dose_timing.usable_delays((r[0], r[1]) for r in rows))
+
+
 def plan(conn: psycopg.Connection, user_id: str, med_id: str, now: datetime) -> list[dict[str, Any]]:
     """The events to make for a medicine: one per dose time per day for the next DAYS days, in time order.
 
-    The payload has the shape of the Workato recipe's fields (summary, description, start and end with dateTime and timeZone), so the recipe's
+    Each event sits at the dose time plus the person's learned offset (`learned_offset`), so a person who usually takes it a little after the
+    label's time is reminded then. The payload has the shape of the Workato recipe's fields (summary, description, start and end with dateTime and timeZone), so the recipe's
     "Create event" step can use them as they are. A day that is past, before the medicine starts or after its end date gets no event."""
     try:
         med = conn.execute("select name, strength, kind::text, description, start_date, end_date from medications "
@@ -72,6 +93,7 @@ def plan(conn: psycopg.Connection, user_id: str, med_id: str, now: datetime) -> 
     first_day = max(start_date or today, today)
     if end_date and end_date < first_day:
         return []                                            # a finished course: nothing is left to remind about
+    learned = learned_offset(conn, user_id, med_id, now)
     events = []
     for sid, t, qty, meal in conn.execute(
             "select id, dose_time, quantity, meal_relation::text from medication_schedule where medication_id = %s and user_id = %s "
@@ -81,12 +103,12 @@ def plan(conn: psycopg.Connection, user_id: str, med_id: str, now: datetime) -> 
             day = today + timedelta(days=offset)
             if day < first_day or (end_date and day > end_date):
                 continue
-            at = datetime.combine(day, t, tzinfo=TZ)
+            at = datetime.combine(day, t, tzinfo=TZ) + timedelta(minutes=learned)      # the person's own usual time, not only the label's
             if at <= now:
                 continue                                    # that time has passed today
             events.append({
                 "request_id": f"{med_id}:{sid}:{day.isoformat()}", "source": "smart-health", "schedule_id": str(sid), "date": day.isoformat(),
-                "time": t.strftime("%H:%M"), "summary": f"Take {title}",
+                "time": t.strftime("%H:%M"), "offset_min": learned, "summary": f"Take {title}",
                 "description": f"{title}{', with food' if meal != 'na' else ''}. From your Smart Health medicine list.",
                 "start": {"dateTime": at.isoformat(), "timeZone": "Asia/Singapore"},
                 "end": {"dateTime": (at + timedelta(minutes=EVENT_MINUTES)).isoformat(), "timeZone": "Asia/Singapore"},
@@ -100,6 +122,33 @@ def _key(e: dict[str, Any]) -> tuple[str, str]:
     return str(e.get("schedule_id")), str(e.get("date"))
 
 
+def _start_of(e: dict[str, Any]) -> str:
+    """When a stored event starts. Events made before the learned time existed carry only the dose time, at which they were made."""
+    return str(e.get("start") or f"{e['date']}T{e['time']}:00+08:00")
+
+
+def stale_events(stored: list[dict[str, Any]], planned: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
+    """The stored events that are still to come but are no longer right: the plan has no event for that dose time and day any more (the
+    medicine was removed, the course ended, the dose time is gone), or it now starts at another time. Events whose time has passed are left."""
+    want = {_key(p): datetime.fromisoformat(p["start"]["dateTime"]) for p in planned}
+    out = []
+    for e in stored:
+        start = datetime.fromisoformat(_start_of(e))
+        if start <= now:
+            continue
+        if want.get(_key(e)) != start:
+            out.append(e)
+    return out
+
+
+def _summary_for(conn: psycopg.Connection, med_id: str, schedule_id: str) -> str | None:
+    """The title an event of this dose time was made with ("Take CRESTOR, 1 Tab"), worked out again for events made before titles were kept.
+    Reads a removed medicine too (its rows stay)."""
+    r = conn.execute("select m.name, m.strength, m.kind::text, m.description, s.quantity from medication_schedule s join medications m on m.id = s.medication_id "
+                     "where s.id = %s and m.id = %s", (schedule_id, med_id)).fetchone()
+    return None if r is None else f"Take {dose_title(r[0], r[1], r[2], r[3], r[4])}"
+
+
 def allowed(conn: psycopg.Connection, user_id: str) -> bool:
     """Whether the person has agreed to calendar reminders (the consent "calendar_access" is on). Without it nothing goes to any calendar."""
     return conn.execute("select 1 from consents where user_id = %s and kind::text = 'calendar_access' and revoked_at is null limit 1", (user_id,)).fetchone() is not None
@@ -110,10 +159,14 @@ def queue(conn: psycopg.Connection, user_id: str, med_id: str, *, configured: bo
     now = now or datetime.now(TZ)
     events = plan(conn, user_id, med_id, now)
     old = conn.execute("select id, status, events, updated_at from calendar_syncs where medication_id = %s and user_id = %s", (med_id, user_id)).fetchone()
-    made = {_key(e) for e in (old[2] if old else [])}
+    stale = stale_events(list(old[2] or []) if old else [], events, now)
+    gone = {_key(e) for e in stale}
+    made = {_key(e) for e in (old[2] if old else [])} - gone
     done = sum(1 for e in events if _key(e) in made)
-    if not events:
+    if not events and not stale:
         status, reason = "skipped", "as_needed"
+    elif not events or stale:
+        status, reason = ("queued", None) if consent and configured else (("skipped", "no_consent") if not consent else ("skipped", "not_configured"))
     elif not consent:
         status, reason = "skipped", "no_consent"
     elif not configured:
@@ -134,6 +187,16 @@ def queue(conn: psycopg.Connection, user_id: str, med_id: str, *, configured: bo
     if row is None:
         raise RuntimeError("the database returned no row for an insert")
     return str(row[0]), status == "queued"
+
+
+def queue_cleanup(conn: psycopg.Connection, user_id: str, med_id: str) -> tuple[str, bool] | None:
+    """After a medicine was removed: queue a run that takes its events that are still to come off the calendar. None when none were ever made.
+    The calendar consent is not asked: the events were made with it, and the person has just removed the medicine."""
+    row = conn.execute("select id, events from calendar_syncs where medication_id = %s and user_id = %s", (med_id, user_id)).fetchone()
+    if row is None or not row[1]:
+        return None
+    conn.execute("update calendar_syncs set status = 'queued', reason = null, error_code = null, finished_at = null, updated_at = now() where id = %s", (row[0],))
+    return str(row[0]), True
 
 
 def owns(conn: psycopg.Connection, user_id: str, med_id: str) -> None:
@@ -180,13 +243,40 @@ def _run(sync_id: str, client: EventMaker, now_fn: Callable[[], datetime]) -> No
         user_id, med_id, events = str(row[0]), str(row[1]), list(row[2] or [])
         today = now_fn().astimezone(TZ).date().isoformat()
         events = [e for e in events if str(e.get("date", today)) >= today]       # days that are over are not kept
-        todo = plan(conn, user_id, med_id, now_fn())
+        try:
+            todo = plan(conn, user_id, med_id, now_fn())
+        except NotFound:
+            todo = []                                        # the medicine was removed: nothing is made, what is still to come is taken off
+        stale = stale_events(events, todo, now_fn())
+        for e in stale:                                      # the title an event was made with, for events made before titles were kept
+            if not e.get("summary"):
+                e["summary"] = _summary_for(conn, med_id, str(e.get("schedule_id"))) or ""
         conn.execute("update calendar_syncs set status = 'running', attempts = attempts + 1, events_total = %s, error_code = null, updated_at = now() "
                      "where id = %s", (len(todo), sync_id))
     with _lock_for(med_id):
-        made = {_key(e) for e in events}
         failed = 0
+        removed = 0
         last_error: str | None = None
+        for e in stale:                                      # first take off what is no longer right, so a moved event is not there twice
+            if not client.remove_configured or not e.get("summary"):
+                logger.warning("calendar event not removed: %s", "remove recipe not set up" if not client.remove_configured else "title unknown")
+                continue
+            start = _start_of(e)
+            end = (datetime.fromisoformat(start) + timedelta(minutes=EVENT_MINUTES)).isoformat()
+            try:
+                client.remove_event({"request_id": f"{med_id}:{e.get('schedule_id')}:{e.get('date')}", "source": "smart-health", "summary": e["summary"],
+                                     "start": {"dateTime": start, "timeZone": "Asia/Singapore"}, "end": {"dateTime": end, "timeZone": "Asia/Singapore"}})
+            except ExternalServiceError as err:
+                failed += 1
+                last_error = err.code
+                logger.warning("calendar event not removed: %s", err.code)
+                continue
+            events.remove(e)
+            removed += 1
+            with _tx() as conn:
+                conn.row_factory = tuple_row
+                conn.execute("update calendar_syncs set events = %s, updated_at = now() where id = %s", (Jsonb(events), sync_id))
+        made = {_key(e) for e in events}
         for ev in todo:
             if _key(ev) in made:
                 continue
@@ -197,7 +287,8 @@ def _run(sync_id: str, client: EventMaker, now_fn: Callable[[], datetime]) -> No
                 last_error = e.code
                 logger.warning("calendar event not made: %s", e.code)
                 continue
-            events.append({"schedule_id": ev["schedule_id"], "date": ev["date"], "time": ev["time"], "event_id": result.event_id or ev["request_id"]})
+            events.append({"schedule_id": ev["schedule_id"], "date": ev["date"], "time": ev["time"], "event_id": result.event_id or ev["request_id"],
+                           "start": ev["start"]["dateTime"], "summary": ev["summary"]})
             made.add(_key(ev))
             with _tx() as conn:                                  # progress is saved after every event so the loading page can show it
                 conn.row_factory = tuple_row
@@ -208,7 +299,7 @@ def _run(sync_id: str, client: EventMaker, now_fn: Callable[[], datetime]) -> No
             conn.execute("update calendar_syncs set status = %s, error_code = %s, finished_at = now(), updated_at = now() where id = %s",
                          ("done" if ok else "failed", None if ok else last_error, sync_id))
             conn.execute("insert into event_log (user_id, actor, event, entity_table, entity_id, payload) values (%s, 'agent', 'calendar.sync.finished', "
-                         "'calendar_syncs', %s, %s)", (user_id, sync_id, Jsonb({"status": "done" if ok else "failed", "events": len(made), "failed": failed,
+                         "'calendar_syncs', %s, %s)", (user_id, sync_id, Jsonb({"status": "done" if ok else "failed", "events": len(made), "removed": removed, "failed": failed,
                                                                               "error_code": last_error})))
     logger.info("calendar sync finished events=%d failed=%d", len(made), failed)
 

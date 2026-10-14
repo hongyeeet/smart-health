@@ -31,7 +31,7 @@
 | Idea | Meaning |
 |---|---|
 | Who it is for | A person aged about 40 to 75 who is not technical. Large text, plain words, one thing per screen. Also a doctor, who gets a printable or shared report |
-| Two demo people | `demo` (a blank new user who goes through onboarding) and `mr-tan` (Mr Tan, a loaded patient: CGMacros participant 046, about 90 days of history, six medicines, 563 dose rows). The switcher in the header (`UserSwitch`) sends the `X-User` header. A new person can be started on the device ("Start as new person"). There is no sign-in yet |
+| Two demo people | `demo` (a blank new user who goes through onboarding) and `mr-tan` (Mr Tan, a loaded patient: CGMacros participant 046, about 90 days of history, six medicines, 563 dose rows). The switcher in the header (`UserSwitch`) sends the `X-User` header. A new person can be started on the device ("Start as new person": set-up for "New User N", saved only when set-up is finished). There is no sign-in yet |
 | What the AI does | Reads things (a medicine label, a meal photo), writes plain-language explanations and key findings for the doctor report, suggests possible medicine clashes, and answers questions in the chat. It never decides a number |
 | What code does | Every number, flag, threshold, streak, chart and report figure is computed in code from the stored data |
 | What it will not do | Give medical advice, tell anyone to stop, skip or change a medicine, call anything "safe" or "normal" |
@@ -92,7 +92,7 @@ These come from [rules.md](rules.md), [design.md](design.md) and decisions D-0xx
 | Screen wrapper | `Screen` (page padding, optional tab bar space, `tone="urgent"` for J1, `narrow` for forms: 640 px), `Header` (title, back arrow, `backTo` route id, optional sub-title and trailing item), `Footer` (sticky action area), `Split` (two columns from 1024 px), `Reveal` (fold-away), `TileGrid` (a list of tiles: one column on a phone, two on a tablet, three on a laptop, equal heights) |
 | Sheets | Bottom sheets (`Sheet`) opened with `go(id, { sheet: {...} })`; from 768 px they are centred and 560 px wide. Registered sheets: **E7** entry, **C7** why, **D2** marker, **L2** share, **H7** missed dose |
 | Outside the frame | `/brief/a4` (printable report) and `/s/:token` (doctor's shared report) have no tab bar |
-| User switch | `UserSwitch` in the header of Home, Meds and Me. Switches between `demo` and `mr-tan` ("Start as new person" was removed on 2026-10-13; a device that still holds a removed person's key goes back to the demo user). Switching to the demo user opens set-up |
+| User switch | `UserSwitch` in the header of Home, Meds and Me. Switches between `demo`, `mr-tan` and the people started on this device. "Start as new person" (restored 2026-10-14) opens set-up for "New User N" with the same pages as the demo user, with **Cancel. Do not create this user** in place of Skip. Nothing is written for that person until **Finish** on the summary (then `POST /users` makes the row and the answers are saved); leaving set-up first (Cancel, choosing another person, going to another screen, or a reload) drops them. Switching to the demo user opens set-up |
 | Navigation helper | `useGo()` takes a route id (`go('K3')`), so screens never hard-code paths. The registry `app/routeIds.ts` is the single list of screens |
 
 ### 3.2 Persisted client state (`smart-health-ui`)
@@ -139,7 +139,7 @@ Folder `features/onboarding/`. The answers are saved to the record **one page at
 
 **Reminder email before a profile exists.** The profile row is created by the first save, and the server refuses the email before then (`PUT /notify/email` returns 409). So an email typed earlier is kept by the screen and saved with **page 3** (the first About you page), with **Finish**, or in the chat with its first save, whichever comes first.
 
-**Who sees setup.** The demo user is sent to set-up every time the app opens on Home and every time someone switches to it, with a **Skip** link in place of "Finish later" (`features/onboarding/startGate.ts`). Mr Tan is never sent there. There are no other people: "Start as new person" was removed on 2026-10-13.
+**Who sees setup.** The demo user is sent to set-up every time the app opens on Home and every time someone switches to it, with a **Skip** link in place of "Finish later" (`features/onboarding/startGate.ts`). Mr Tan is never sent there. A person made with "Start as new person" goes through the same set-up, but only exists once they press Finish (`features/onboarding/newPerson.ts`).
 
 **A1 Welcome** · `/welcome` · from app start, Me ("Set up again")
 - Preferred name, the **email address** for reminders (**needed to continue**, example `name@example.com`; the reminder on/off switch stays), and **three consents**: use my health data (**required**), share a doctor brief (optional), use my data for research (optional).
@@ -524,7 +524,7 @@ FastAPI, `services/api/app/api/routers`, camelCase JSON, the `X-User` header sel
 | Router (prefix) | Endpoints |
 |---|---|
 | onboarding (`/onboarding`) | `GET /onboarding`, `PUT /onboarding/profile` (one page; only the keys sent are written), `POST /onboarding/complete`, `POST /onboarding/chat` (reads one chat answer; saves nothing) |
-| users (`/users`) and misc | `GET /api/v1/users` (the switcher list; `POST` was removed with "Start as new person") |
+| users (`/users`) and misc | `GET /api/v1/users` (the switcher list); `POST /api/v1/users` `{key}` creates a new person's user row, called once at Finish of set-up (key `person-` and 12 hex digits, made on the device) |
 | scans (`/scans`) | `POST /scans` (photo), `GET /scans/{id}`, `POST /scans/{id}/confirm` |
 | medications (`/medications`) | `GET /medications`, `POST /medications`, `DELETE /medications/{id}`, `GET /medications/stock` (the stock list), `POST /medications/{id}/stock` (`{"add": n}` bought more, or `{"set": n}` the exact count), `GET /medications/scope` (is the name one the app is for), `GET /medications/{id}` (the medicine page), `POST /medications/{id}/explanation` (`?refresh=true`; 404 when no reliable page, 429 at the daily text limit, 503 when the model cannot be reached, 502 when the answer cannot be read), `POST /medications/{id}/questions` |
 | calendar (`/medications`) | `GET /medications/{id}/calendar`, `POST /medications/{id}/calendar/retry` |
@@ -690,7 +690,7 @@ Row-level security is on. Reference data (drugs, foods, priors) is loaded once b
 | **Sodium for most foods** | Missing in the food list; flagged `sodium_unknown` |
 | **Routing rules** for eye, foot, kidney, lipids | Only 4 rows |
 | **Demo patient age** | Real data says 51; mocks say 58 |
-| **Sign-in and accounts** | None; the user switch is a demo tool, and "Start as new person" creates a key with no sign-in |
+| **Sign-in and accounts** | None; the user switch is a demo tool, and "Start as new person" makes a key on the device with no sign-in |
 | **Events** for newer actions | Not all in the `flow.md` event catalogue (for example the stock and blood pressure events, and the clash-alert actions) |
 | **`GET /patient` in the web client** | No route and no caller; left as it is |
 | **Data export (`GET /me/export`) and the new tables** | **Covered since the fix wave** (`services/api/app/services/me_settings.py`): onboarding answers, body measurements, conditions, allergies, devices, lab results, blood pressure readings, medicine stock counts, doctor questions and appointments. Not checked by opening a downloaded file |

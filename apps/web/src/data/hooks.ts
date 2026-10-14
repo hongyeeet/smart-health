@@ -4,6 +4,7 @@ import type { BloodPressureLogInput, LogInput, NewMedication, WorkoutLogInput } 
 import type { ClashStatus, HomeOverview, InsightsDays, LunchIdeas, MedicineStock, MissAnswer, Period, ReportDays, StockList, TimelineDays, UserList } from './types'
 import { request } from './repositories/http'
 import { useUi } from '@/state/store'
+import { dropPendingPerson } from '@/features/onboarding/newPerson'
 
 export const useHome = () => useQuery({ queryKey: ['home'], queryFn: () => api.getHome() })
 export const useInsights = (period: Period) => useQuery({ queryKey: ['insights', period], queryFn: () => api.getInsights(period) })
@@ -109,6 +110,7 @@ export function useSwitchUser() {
   const qc = useQueryClient()
   const setUserKey = useUi((s) => s.setUserKey)
   return (key: string) => {
+    dropPendingPerson(key)               // switching away from a set-up that was not finished drops that new person
     setUserKey(key)
     void qc.resetQueries()
   }

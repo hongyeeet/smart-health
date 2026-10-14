@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Providers } from './Providers'
 import { Shell } from './Shell'
 import { routedIds, screenFor } from './screens'
@@ -9,6 +10,7 @@ import { SharedReport } from '@/features/brief/SharedReport'
 import { Day } from '@/features/day/Day'
 import { useUi } from '@/state/store'
 import { startsInSetup } from '@/features/onboarding/startGate'
+import { dropPendingPerson } from '@/features/onboarding/newPerson'
 
 /* Set when the app opened at "/": only that first visit is checked. Later visits to Home (for example "Go to Home" from setup) are not. */
 const openedAtHome = typeof window !== 'undefined' && window.location.pathname === '/'
@@ -32,11 +34,29 @@ function StartGate({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+/**
+ * A new person whose set-up is open exists only inside set-up (the /welcome screens). If the app goes anywhere else before Finish (the
+ * address bar, a link, the browser's back button), the new person is dropped and the person shown before comes back.
+ */
+function NewPersonGuard() {
+  const { pathname } = useLocation()
+  const qc = useQueryClient()
+  useEffect(() => {
+    const { pending, setUserKey } = useUi.getState()
+    if (!pending || pathname.startsWith('/welcome')) return
+    dropPendingPerson()
+    setUserKey(pending.returnTo)
+    void qc.resetQueries()
+  }, [pathname, qc])
+  return null
+}
+
 /** Every routed screen in routeIds.ts gets a route. Unbuilt ones show a placeholder (see screens.tsx). */
 export function App() {
   return (
     <Providers>
       <BrowserRouter>
+        <NewPersonGuard />
         <Routes>
           {/* The printable report is a paper page, outside the app frame. */}
           <Route path={ROUTES.L3.path} element={<ReportA4 />} />

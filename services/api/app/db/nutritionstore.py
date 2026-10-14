@@ -524,25 +524,40 @@ def salt_nudge(user_id, now: datetime | None = None, lang: str = "en") -> dict[s
 
 
 # ----------------------------------------------------------------------------- the nudges the notification list should hold now
+def lunch_ideas_nudge(user_id, have: set[str], meals_today_lunch: int, now: datetime | None = None) -> tuple[str, str, str, str, str, datetime] | None:
+    """The lunch-ideas reminder (key, kind, title, body, route, valid until) when it is due and not stored yet: inside the person's lunch
+    window, no lunch logged today, and at least one idea that suits them (from what they have eaten and what the app has learned). The
+    text is a template, guarded before it is returned. Writes only the policy "tried" count for the ideas it names."""
+    now = now or datetime.now(TZ)
+    today = now.astimezone(TZ).date().isoformat()
+    mins = now.astimezone(TZ).hour * 60 + now.astimezone(TZ).minute
+    start, end = lunch_window(user_id)
+    lk = f"lunch-{today}"
+    if lk in have or not (start <= mins <= end) or meals_today_lunch != 0:
+        return None
+    opts = lunch_options(user_id)
+    if not opts:
+        return None
+    lang = texts.person_language(user_id)
+    names = ", ".join(o["name"] for o in opts[:3])
+    # the guard reads the English draft; the stored text is the same template in the person's language
+    if not guarded(user_id, texts.tr("en", "lunch.body", names=names), "lunch_ideas"):
+        return None
+    for o in opts:
+        policy_try(user_id, "suggestion", o["key"])
+    return (lk, "nudge", texts.tr(lang, "lunch.title"), texts.tr(lang, "lunch.body", names=names), "E8",
+            now.astimezone(TZ).replace(hour=end // 60 % 24, minute=end % 60, second=0, microsecond=0))
+
+
 def nutrition_nudges(user_id, have: set[str], meals_today_lunch: int, now: datetime | None = None, max_new: int = 99) -> list[tuple[str, str, str, str, str, datetime]]:
     """(key, kind, title, body, route, valid until) for keys not already stored. Texts are templates, guarded before they are returned."""
     now = now or datetime.now(TZ)
     today = now.astimezone(TZ).date().isoformat()
     out: list[tuple[str, str, str, str, str, datetime]] = []
-    mins = now.astimezone(TZ).hour * 60 + now.astimezone(TZ).minute
-    start, end = lunch_window(user_id)
     lang = texts.person_language(user_id)
-    lk = f"lunch-{today}"
-    if len(out) < max_new and lk not in have and start <= mins <= end and meals_today_lunch == 0:
-        opts = lunch_options(user_id)
-        if opts:
-            names = ", ".join(o["name"] for o in opts[:3])
-            # the guard reads the English draft; the stored text is the same template in the person's language
-            if guarded(user_id, texts.tr("en", "lunch.body", names=names), "lunch_ideas"):
-                body = texts.tr(lang, "lunch.body", names=names)
-                out.append((lk, "nudge", texts.tr(lang, "lunch.title"), body, "E8", now.astimezone(TZ).replace(hour=end // 60 % 24, minute=end % 60, second=0, microsecond=0)))
-                for o in opts:
-                    policy_try(user_id, "suggestion", o["key"])
+    idea = lunch_ideas_nudge(user_id, have, meals_today_lunch, now) if max_new > 0 else None
+    if idea:
+        out.append(idea)
     ak = f"activity-{today}"
     if len(out) < max_new and ak not in have:
         n = salt_nudge(user_id, now, lang)

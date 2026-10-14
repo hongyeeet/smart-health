@@ -96,3 +96,35 @@ def test_an_error_never_contains_the_address_the_token_or_the_medicine_name():
             client(Session(*replies)).create_event(PAYLOAD)
         text = str(e.value)
         assert URL not in text and TOKEN not in text and "CRESTOR" not in text and "secret-path" not in text
+
+
+# ------------------------------------------------------------------ the remove recipe
+REMOVE = "https://hooks.example.test/remove-path-456"
+
+
+def test_remove_event_posts_to_the_remove_address_with_the_same_token_header():
+    s = Session(Resp(200, {"status": "ok"}))
+    c = client(s, remove_url=REMOVE)
+    assert c.remove_configured is True
+    c.remove_event({"summary": "Take CRESTOR, 1 Tab"})
+    url, body, headers, _ = s.calls[0]
+    assert url == REMOVE and body == {"summary": "Take CRESTOR, 1 Tab"} and headers["API-TOKEN"] == TOKEN
+
+
+def test_remove_event_without_an_address_is_not_configured_and_never_calls_out():
+    s = Session()
+    c = client(s)
+    assert c.remove_configured is False
+    with pytest.raises(ExternalServiceError) as e:
+        c.remove_event({"summary": "x"})
+    assert e.value.code == "workato_not_configured" and s.calls == []
+
+
+def test_remove_event_is_refused_at_once_on_a_4xx_and_retried_on_a_5xx_without_leaking_the_address():
+    refused = client(Session(Resp(404)), remove_url=REMOVE)
+    with pytest.raises(ExternalServiceError) as e:
+        refused.remove_event({"summary": "x"})
+    assert e.value.code == "workato_refused" and REMOVE not in str(e.value) and TOKEN not in str(e.value)
+    s = Session(Resp(503), Resp(200, {"status": "ok"}))
+    client(s, remove_url=REMOVE).remove_event({"summary": "x"})
+    assert len(s.calls) == 2

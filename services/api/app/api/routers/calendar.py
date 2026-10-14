@@ -59,6 +59,21 @@ def schedule_sync(background: BackgroundTasks, user: str, med_id: str) -> None:
         logger.exception("could not queue calendar reminders")
 
 
+def schedule_cleanup(background: BackgroundTasks, user: str, med_id: str) -> None:
+    """After a medicine is removed: take its events that are still to come off the calendar, after the response. Never raises."""
+    try:
+        client = WorkatoClient.from_settings()
+        if not client.remove_configured:
+            return
+        with logstore.tx() as conn:
+            conn.row_factory = tuple_row
+            queued = sync.queue_cleanup(conn, user, med_id)
+        if queued:
+            background.add_task(sync.run, queued[0], client)
+    except Exception:   # noqa: BLE001 - the medicine is already removed; a calendar problem must not undo or hide that
+        logger.exception("could not queue the calendar cleanup")
+
+
 @router.get("/{med_id}/calendar", response_model=CalendarStatus, response_model_by_alias=True)
 async def get_calendar(med_id: str) -> CalendarStatus:
     return await run_in_threadpool(_status, str(logstore.current_user()), med_id)

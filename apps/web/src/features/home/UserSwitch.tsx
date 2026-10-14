@@ -1,7 +1,9 @@
 /**
- * Who the app is showing: the demo user or Mr Tan. A round initials button that opens a small menu. The choice is kept on the device
- * and sent with every request, and switching reloads everything for the other person. (There is no "Start as new person" any more:
- * the demo user is the one to try set-up with, and it opens in set-up.)
+ * Who the app is showing: the demo user, Mr Tan, or a new person started on this device. A round initials button that opens a small
+ * menu. The choice is kept on the device and sent with every request, and switching reloads everything for the new person.
+ *
+ * "Start as new person" opens set-up for "New User N" with the same pages as the demo user. The person is created only when set-up is
+ * finished; leaving set-up first (Cancel, or choosing another person here) drops them (newPerson.ts).
  */
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -10,6 +12,7 @@ import { href } from '@/app/routeIds'
 import { useSwitchUser, useUsers } from '@/data/hooks'
 import { useUi } from '@/state/store'
 import { startsInSetup } from '@/features/onboarding/startGate'
+import { useStartNewPerson } from '@/features/onboarding/newPerson'
 import { cn } from '@/lib/cn'
 import { Check } from '@/ui/icons'
 
@@ -31,13 +34,21 @@ export function UserSwitch() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const current = useUi((s) => s.userKey)
+  const people = useUi((s) => s.people)
+  const pending = useUi((s) => s.pending)
   const { data } = useUsers()
   const switchTo = useSwitchUser()
+  const startNew = useStartNewPerson()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
+  /* the server's people, then the people started on this device, then the one whose set-up is open */
   const base = data?.users ?? FALLBACK
-  const users = base.map((u) =>
+  const started = [
+    ...people.filter((p) => !base.some((u) => u.key === p.key)).map((p) => ({ key: p.key, label: p.label, sub: t('switch.startedHere', 'Started on this device') })),
+    ...(pending ? [{ key: pending.key, label: pending.label, sub: t('switch.settingUp', 'Setting up. Not saved yet') }] : []),
+  ]
+  const users = [...base, ...started].map((u) =>
     u.key === 'demo' ? { ...u, label: t('switch.user.demo', 'Demo user'), sub: t('switch.user.demoSub', 'A blank account for trying things') } : u.key === 'mr-tan' ? { ...u, sub: t('switch.user.tanSub', 'About 90 days of history') } : u,
   )
   const me = users.find((u) => u.key === current) ?? { key: current, label: t('switch.person', 'Person'), sub: '' }
@@ -99,6 +110,20 @@ export function UserSwitch() {
               </button>
             )
           })}
+          <div className="mt-1 border-t border-line pt-1">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                startNew(t('switch.newUserN', 'New User {{n}}', { n: people.length + 1 }))
+              }}
+              className="press flex min-h-14 w-full flex-col items-start gap-0.5 rounded-[12px] px-3 py-2 text-left hover:bg-well"
+            >
+              <span className="text-body font-bold leading-snug">{t('switch.startNew', 'Start as new person')}</span>
+              <span className="text-sub leading-snug text-ink2">{t('switch.startNewSubV2', 'Set-up from step 1, like the demo user. Saved only when you finish.')}</span>
+            </button>
+          </div>
         </div>
       )}
     </div>

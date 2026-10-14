@@ -1,6 +1,7 @@
 """Workato: the recipe that puts one dose on Google Calendar (docs/specs/f4-calendar.md, D-074).
 
-One call makes one calendar event (option A, chosen 2026-10-13: one event per day for the next 14 days). The call is a POST of JSON to the recipe's webhook, with the token in a header. The recipe
+One call makes one calendar event (option A, chosen 2026-10-13: one event per day for the next 14 days). A second recipe ("Medicine calendar
+remove", `remove_event`) takes one away again, found by its title and exact time, when a medicine is removed or a time moves. The call is a POST of JSON to the recipe's webhook, with the token in a header. The recipe
 answers with the id of the event it made. Timeout and retry follow rules.md section 6: timeouts, connection errors and 429 and 5xx are
 retried with backoff, any other 4xx is refused at once. The address, the token and the payload (which holds a medicine name) are never
 logged, and an error message never contains them.
@@ -28,9 +29,9 @@ class CalendarEvent:
 
 
 class WorkatoClient:
-    def __init__(self, url: str, token: str, header: str = "API-TOKEN", *, timeout_s: float = 30.0, max_retries: int = 2,
+    def __init__(self, url: str, token: str, header: str = "API-TOKEN", *, remove_url: str = "", timeout_s: float = 30.0, max_retries: int = 2,
                  session: requests.Session | None = None, sleep: Callable[[float], None] = time.sleep) -> None:
-        self._url, self._token, self._header = url, token, header
+        self._url, self._token, self._header, self._remove_url = url, token, header, remove_url
         self._timeout, self._retries = timeout_s, max_retries
         self._session = session or requests.Session()
         self._sleep = sleep
@@ -38,21 +39,35 @@ class WorkatoClient:
     @classmethod
     def from_settings(cls, settings: Settings | None = None) -> "WorkatoClient":
         s = settings or get_settings()
-        return cls(s.workato_webhook_url, s.workato_webhook_token.get_secret_value(), s.workato_token_header)
+        return cls(s.workato_webhook_url, s.workato_webhook_token.get_secret_value(), s.workato_token_header, remove_url=s.workato_calendar_remove_url)
 
     @property
     def configured(self) -> bool:
         return bool(self._url and self._token)
 
+    @property
+    def remove_configured(self) -> bool:
+        return bool(self._remove_url and self._token)
+
     def create_event(self, payload: Mapping[str, Any]) -> CalendarEvent:
-        """Ask the recipe to make one repeating event. Returns its id, or raises ExternalServiceError with a code and no private detail."""
+        """Ask the recipe to make one event. Returns its id, or raises ExternalServiceError with a code and no private detail."""
         if not self.configured:
             raise ExternalServiceError("Workato is not set up", code="workato_not_configured")
+        return self._post(self._url, payload)
+
+    def remove_event(self, payload: Mapping[str, Any]) -> None:
+        """Ask the remove recipe to delete the event with this title (`summary`) that sits exactly in `start` to `end`. Raises ExternalServiceError
+        (with a code and no private detail) when it could not be asked; returns when the recipe took the request."""
+        if not self.remove_configured:
+            raise ExternalServiceError("Workato removal is not set up", code="workato_not_configured")
+        self._post(self._remove_url, payload)
+
+    def _post(self, url: str, payload: Mapping[str, Any]) -> CalendarEvent:
         headers = {self._header: self._token, "Content-Type": "application/json", "User-Agent": USER_AGENT}
         last = "no attempt"
         for attempt in range(self._retries + 1):
             try:
-                r = self._session.post(self._url, json=dict(payload), headers=headers, timeout=self._timeout)
+                r = self._session.post(url, json=dict(payload), headers=headers, timeout=self._timeout)
             except requests.RequestException as e:
                 last = type(e).__name__
             else:

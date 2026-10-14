@@ -18,6 +18,7 @@ import { useUi } from '@/state/store'
 import { Screen } from '@/ui/layout'
 import { Alert, Card, TextLink } from '@/ui/primitives'
 import { PencilSimple } from '@/ui/icons'
+import { confirmPendingPerson, createPendingPerson, useIsNewPerson } from './newPerson'
 import { DemoNotice, Dock, Later, LoadNotice, LoadingAnswers, TopBar, clock } from './parts'
 import { labelOf, useOptions } from './options'
 import { allPagesBody, emailBody, useCompleteOnboarding, useOnboardingSource, useSaveStep } from './api'
@@ -39,6 +40,7 @@ export function Summary() {
   const src = useOnboardingSource()
   const save = useSaveStep()
   const complete = useCompleteOnboarding()
+  const newPerson = useIsNewPerson()
   /* null when nothing has gone wrong; otherwise the reason, which may be an empty string */
   const [failed, setFailed] = useState<string | null>(null)
   /* the reminder email could not be saved; the person can still finish */
@@ -204,6 +206,8 @@ export function Summary() {
     setFailed(null)
     setEmailNote(false)
     try {
+      /* a new person is made in the database now, at the end of set-up, and not before */
+      if (newPerson) await createPendingPerson()
       /* the reminder email is sent only when its saved value is known (or the box has something), so it is never cleared by mistake */
       const email = src.email.isSuccess || a.reminderEmail.trim() ? emailBody(a) : null
       const res = await save.mutateAsync({ profile: allPagesBody(a, !src.saved.data?.profile), email })
@@ -218,6 +222,7 @@ export function Summary() {
       setFailed(err instanceof Error ? err.message : '')
       return
     }
+    confirmPendingPerson()
     set({ completedAt: new Date().toISOString() })
     toast(t('onboarding.sum.done', 'Setup finished'))
     navigate(href('B1'), { replace: true })

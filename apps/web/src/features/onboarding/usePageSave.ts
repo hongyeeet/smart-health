@@ -7,12 +7,14 @@
  *   note: "We will save your email when your profile is created". The next press is "Continue anyway". The email stays in the answers
  *   and is saved with the next save that creates the profile (page 3, or Finish).
  * - The demo patient (Mr Tan) is never written: the page moves on and says so.
+ * - A new person ("Start as new person") is not written either until Finish: the page moves on, the answers stay on this device.
  * - Answers the server holds for later (the history before migration 0032) are not an error: they are kept on this device for now.
  */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUi } from '@/state/store'
 import { READ_ONLY_USER, useSaveStep, type ProfileBody } from './api'
+import { useIsNewPerson } from './newPerson'
 
 export interface EmailSave {
   email: string | null
@@ -23,6 +25,7 @@ export function usePageSave(cannotRead = false) {
   const { t } = useTranslation()
   const save = useSaveStep()
   const readOnly = useUi((s) => s.userKey) === READ_ONLY_USER
+  const newPerson = useIsNewPerson()                    // a new person's answers stay on this device until Finish creates them
   /** the last save failed: the person can fix the point, or continue anyway */
   const [error, setError] = useState<string | null>(null)
   /** the reminder email could not be stored yet (no profile): the person is told and can continue anyway */
@@ -33,7 +36,7 @@ export function usePageSave(cannotRead = false) {
   /** Saves what it is given. Returns true when the page may move on. */
   const commit = async (profile: ProfileBody | null, email: EmailSave | null): Promise<boolean> => {
     setNotice(null)
-    if (readOnly || (!profile && !email)) {
+    if (readOnly || newPerson || (!profile && !email)) {
       setError(null)
       setEmailWaiting(false)
       return true
