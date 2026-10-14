@@ -49,6 +49,16 @@ def emails() -> None:
         logger.exception("email dispatch failed")
 
 
+def food_pictures() -> None:
+    """Make the dish pictures that are waiting (at most 3 a minute; docs/specs/menu.md). Cheap when nothing is waiting."""
+    try:
+        from app.services import food_images
+
+        food_images.generate_pending(limit=3)
+    except Exception:   # noqa: BLE001 - a picture problem never stops the other jobs
+        logger.exception("dish pictures job crashed")
+
+
 def calendar_top_up() -> None:
     """Every day: the next 14 days of medicine reminders on Google Calendar for the people who agreed to them (services/calendar_sync.py)."""
     try:
@@ -109,6 +119,7 @@ def start() -> None:
     _scheduler = AsyncIOScheduler(timezone="Asia/Singapore")
     _scheduler.add_job(tick, IntervalTrigger(seconds=60), id="tick", max_instances=1, coalesce=True)
     _scheduler.add_job(emails, IntervalTrigger(seconds=60), id="emails", max_instances=1, coalesce=True)
+    _scheduler.add_job(food_pictures, IntervalTrigger(seconds=60), id="food_pictures", max_instances=1, coalesce=True)
     _scheduler.add_job(nightly, CronTrigger(hour=2, minute=0, timezone="Asia/Singapore"), id="nightly", max_instances=1, coalesce=True)
     _scheduler.add_job(calendar_top_up, CronTrigger(hour=3, minute=0, timezone="Asia/Singapore"), id="calendar_top_up", max_instances=1, coalesce=True)
     _scheduler.add_job(calendar_top_up, id="calendar_top_up_start", next_run_time=datetime.now(TZ) + timedelta(seconds=90), max_instances=1)   # after a restart

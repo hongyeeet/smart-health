@@ -131,3 +131,31 @@ def text_json(system: str, prompt: str, schema: type[T], model: str | None = Non
         return schema.model_validate_json(resp.text or "")
     except Exception as e:
         raise LLMUnavailable("The model answered in an unexpected format.", code="bad_response") from e
+
+
+def generate_image(prompt: str, model: str | None = None) -> bytes:
+    """One picture from a text prompt (the dish pictures). Returns the image bytes (PNG). Only the prompt text leaves the machine.
+    Every failure raises LLMUnavailable with a code."""
+    model = model or settings.food_image_model
+    if not usage.allowed("vertex_image"):
+        raise LLMUnavailable("The daily AI limit has been reached.", code="daily_limit")
+    try:
+        from google.genai import types
+
+        resp = _client().models.generate_content(
+            model=model,
+            contents=[prompt],
+            config=types.GenerateContentConfig(response_modalities=["IMAGE"], http_options=types.HttpOptions(timeout=settings.llm_timeout_s * 1000 * 2)),
+        )
+    except LLMUnavailable:
+        raise
+    except Exception as e:
+        logger.error("image call failed model=%s type=%s", model, type(e).__name__)
+        raise LLMUnavailable(str(e)[:200], code=_error_code(e)) from e
+    usage.record("vertex_image")
+    for cand in getattr(resp, "candidates", None) or []:
+        for part in getattr(getattr(cand, "content", None), "parts", None) or []:
+            data = getattr(getattr(part, "inline_data", None), "data", None)
+            if data:
+                return bytes(data)
+    raise LLMUnavailable("The model did not return a picture.", code="bad_response")

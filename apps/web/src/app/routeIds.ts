@@ -52,6 +52,7 @@ export const ROUTES = {
   E5: { path: '/log/checkin', title: 'Mood and sleep check-in', kind: 'screen', group: 'Log', from: 'E1', links: [l('Save', 'E6')] },
   E6: { path: '/log/done', title: 'Saved', kind: 'screen', group: 'Log', from: 'E2, E3, E4, E5, F1', links: [l('See your day', 'D1'), l('The related insight', 'C2'), l('Get help now', 'J1'), l('Done', 'B1')] },
   E8: { path: '/log/ideas', title: 'Lunch ideas', kind: 'screen', group: 'Log', from: 'B1, B2 (lunch reminder)', links: [l('Log my meal', 'E2')], note: 'Up to 3 options from your own history or the Singapore food database, each with the reason.' },
+  E9: { path: '/log/menu', title: 'Meal suggestions', kind: 'screen', group: 'Log', from: 'E1 (card at the bottom)', links: [l('Log my meal', 'E2')], note: 'A menu of dishes for one meal, with a picture made once per dish, the numbers, why it is suggested and its glucose rise (measured for your own meals, an estimate for the rest).' },
   E7: { path: '#entry', title: 'Edit or delete an entry', kind: 'sheet', group: 'Log', from: 'E1 (Recent entries)', links: [l('See it in your day', 'D1')] },
 
   F1: { path: '/log/workout', title: 'Log a workout', kind: 'screen', group: 'Log workout', from: 'B1, E1, C4', links: [l('Live strength tracker', 'F2'), l('Log a symptom', 'E4'), l('Save', 'E6')] },

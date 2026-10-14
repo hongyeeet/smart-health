@@ -696,6 +696,34 @@ export interface FoodHabit {
   outcomeText: string | null
   text: string
 }
+/** The Meal suggestions menu (GET /nutrition/menu). A glucose rise is measured for the person's own meals and estimated (a range) for the rest. */
+export type MenuMeal = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+export interface MenuItem {
+  key: string
+  name: string
+  section: 'own' | 'swap' | 'general'
+  why: string
+  serving: string | null
+  kcal: number | null
+  carbs: number | null
+  sodium: number | null
+  rise: number | null
+  riseLow: number | null
+  riseHigh: number | null
+  riseKind: 'measured' | 'estimate' | 'none'
+  seen: number | null
+  tags: string[]
+  dishKey: string
+  /** the picture: `url` is set only when it is ready (status 'ready'); otherwise the page shows a placeholder */
+  image: { status: 'pending' | 'generating' | 'ready' | 'failed'; url: string | null }
+}
+export interface Menu {
+  meal: MenuMeal
+  time: string
+  sections: { key: MenuItem['section']; items: MenuItem[] }[]
+  usual: { name: string; kcal: number | null; rise: number | null } | null
+  picturesWaiting: number
+}
 export interface LunchOption {
   key: string
   name: string

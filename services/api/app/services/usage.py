@@ -30,11 +30,12 @@ logger = logging.getLogger(__name__)
 RUN_TOKENS: ContextVar[dict[str, Any] | None] = ContextVar("run_tokens", default=None)
 
 # The kinds of AI call, in the order they are reported. Each has its own cap setting.
-PROVIDERS = ("vertex_vision", "vertex_generate", "vertex_embed", "jev")
+PROVIDERS = ("vertex_vision", "vertex_generate", "vertex_embed", "vertex_image", "jev")
 _CAP_SETTING = {
     "vertex_vision": "ai_cap_vertex_vision",
     "vertex_generate": "ai_cap_vertex_generate",
     "vertex_embed": "ai_cap_vertex_embed",
+    "vertex_image": "ai_cap_vertex_image",
     "jev": "ai_cap_jev",
 }
 

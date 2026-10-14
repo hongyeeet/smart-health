@@ -109,6 +109,8 @@ export const httpApi: Api = {
   getFoodNote: (food: string) => request(`/meals/response?food=${encodeURIComponent(food)}`),
   getFoodFlags: () => request('/nutrition/flags'),
   getLunchIdeas: () => request('/nutrition/lunch'),
+  getMenu: (meal) => request(`/nutrition/menu?meal=${meal}`),
+  pickMenuItem: (meal, key) => request<void>('/nutrition/menu/pick', { method: 'POST', body: JSON.stringify({ meal, key }) }).then(() => undefined),
   acceptSuggestion: (key: string) => request<void>('/nutrition/suggestions/accept', { method: 'POST', body: JSON.stringify({ key, kind: 'suggestion' }) }).then(() => undefined),
   dismissSuggestion: (key: string) => request<void>('/nutrition/suggestions/dismiss', { method: 'POST', body: JSON.stringify({ key, kind: 'suggestion' }) }).then(() => undefined),
   getAiUsage: () => request('/memory/usage'),
