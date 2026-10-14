@@ -325,6 +325,13 @@ class TLDailyUsualSet(Camel):
     spo2: TLDailyUsual
 
 
+class TLHealthBase(Camel):
+    """The same window as the baseline: average glucose, steps a day and glucose variation, the numbers the Health overview is graded against."""
+    avg_glucose: float | None
+    steps_per_day: int | None
+    cv: int | None
+
+
 class TLBaseline(Camel):
     days: int
     source: Literal["before", "start", "period"]
@@ -336,6 +343,7 @@ class TLBaseline(Camel):
     bp_diastolic: float | None
     bp_readings: int
     daily: TLDailyUsualSet
+    health: TLHealthBase
     glucose: TLHourly
     heart: TLHourly
     spo2: TLHourly
@@ -404,6 +412,13 @@ class TLMinMax(Camel):
     max: float | None
 
 
+class TLPrevious(Camel):
+    """The period of the same length just before this one, for "what changed"."""
+    avg_glucose: float | None
+    steps_per_day: int | None
+    doses_taken_pct: int | None
+
+
 class TLDay(Camel):
     """One local day: the stats bar and the one-point-a-day charts read this."""
     date: str
@@ -418,6 +433,7 @@ class TLDay(Camel):
     sodium_mg: float | None
     meals: int
     missed: int
+    scheduled: int
     symptoms: int
 
 
@@ -445,5 +461,6 @@ class Timeline(Camel):
     events: TLEvents
     work: TLWork
     values: TLValues
+    previous: TLPrevious
     day_rows: list[TLDay]
     compare: TLCompare

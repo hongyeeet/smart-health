@@ -4,10 +4,10 @@ laid on ONE shared time axis, so a marker that moves along it can read every cha
 Everything is read from `timeline_5min` (the Gold 5-minute table), averaged into buckets (7 days: 30 minutes; 30 and 90 days: a day).
 Times in the answer are minutes since local midnight of the first day (`m`), so the screen needs no clock maths.
 
-The BASELINE is the person's own average for each hour of the day over the 60 days before the period (24 numbers per measure), and one fixed
-number for blood pressure (readings are too few to split by hour). The USUAL range is the middle half (25th to 75th percentile) of the same
-hours. A baseline needs at least MIN_BASELINE_DAYS days behind it; with fewer days before the period it is the first 30 days of the period
-(`source` says which), and with fewer than that it is unavailable and the screen says so. `compare` sets the period's average and its most
+The BASELINE is the person's own average for each hour of the day over the 14 days before the period (24 numbers per measure), and one fixed
+number for blood pressure (readings are too few to split by hour). A baseline needs at least MIN_BASELINE_DAYS days behind it; with fewer days
+before the period it is the first 14 days of the period (`source` says which), and with fewer than that it is unavailable and the screen says so.
+`baseline.health` holds the same window's average glucose, steps a day and glucose variation, for the colour-coded Health overview. `compare` sets the period's average and its most
 recent days against the baseline and gives a slope per week, so a drift is visible; it is a number, never a verdict.
 """
 from __future__ import annotations
@@ -21,8 +21,8 @@ from app.services import day as D
 from app.services import insights as base
 
 STEP_MIN = {7: 30, 30: 1440, 90: 1440}   # 7 days: every half hour; 30 and 90 days: one point a day, so a drift is easy to see
-FIRST_DAYS = 30                  # with too few days before the period, the baseline is the first 30 days of the period
-BASELINE_DAYS = 60
+FIRST_DAYS = 14                  # with too few days before the period, the baseline is the first 14 days of the period
+BASELINE_DAYS = 14
 MIN_BASELINE_DAYS = 7
 MIN_BP_READINGS = 3
 MEAL_GAP_MIN = 30
@@ -186,7 +186,7 @@ def timeline(conn: psycopg.Connection[Any], user: str, days: int, today: date, e
         ev_rows.append({**dict(r), "m": m})
     events = merge_events(ev_rows)
 
-    # the baseline: the 60 days before the period; with fewer than MIN_BASELINE_DAYS of them, the first 30 days of the period ("start"), or the
+    # the baseline: the 14 days before the period; with fewer than MIN_BASELINE_DAYS of them, the first 14 days of the period ("start"), or the
     # whole period when it is shorter ("period"). `source` says which, so the screen can word it.
     b_lo, b_hi = lo - timedelta(days=BASELINE_DAYS), lo
     hourly = _hourly(conn, user, b_lo, b_hi)
@@ -203,6 +203,16 @@ def timeline(conn: psycopg.Connection[Any], user: str, days: int, today: date, e
         (user, b_lo, b_hi),
     ).fetchone() or {}
     bp_n = int(bpb.get("n") or 0)
+    hb = conn.execute(
+        "select avg(glucose_mmol) mean, stddev_samp(glucose_mmol) sd from timeline_5min where user_id=%s and bucket_start>=%s and bucket_start<%s", (user, b_lo, b_hi)).fetchone() or {}
+    bds = base._daily(conn, user, b_lo.astimezone(base.TZ).date(), (b_hi - timedelta(days=1)).astimezone(base.TZ).date())
+    b_steps = base._mean([float(v["steps_total"]) for v in bds.values() if v.get("steps_total") is not None])
+    b_mean = float(hb["mean"]) if hb.get("mean") is not None else None
+    health = {
+        "avgGlucose": _r(b_mean, 1),
+        "stepsPerDay": round(b_steps) if b_steps is not None else None,
+        "cv": round(100 * float(hb["sd"]) / b_mean) if b_mean and hb.get("sd") is not None else None,
+    } if enough else {"avgGlucose": None, "stepsPerDay": None, "cv": None}
     dusual = _daily_usual(conn, user, b_lo, b_hi) if enough else {k: {"mean": None, "lo": None, "hi": None} for k in ("glucose", "heart", "spo2")}
     baseline: dict[str, Any] = {
         "days": hourly["days"],
@@ -215,6 +225,7 @@ def timeline(conn: psycopg.Connection[Any], user: str, days: int, today: date, e
         "bpDiastolic": _r(bpb.get("d"), 0) if bp_n >= MIN_BP_READINGS else None,
         "bpReadings": bp_n,
         "daily": dusual,
+        "health": health,
     }
     for key in ("glucose", "heart", "spo2"):
         baseline[key] = hourly[key] if enough else {"mean": [None] * 24, "lo": [None] * 24, "hi": [None] * 24}
@@ -249,6 +260,7 @@ def timeline(conn: psycopg.Connection[Any], user: str, days: int, today: date, e
             "sodium_mg": _r(sm.get("sodium_mg"), 0) if ate else None,
             "meals": int(sm.get("meals_n") or 0),
             "missed": int(sm.get("doses_missed") or 0),
+            "scheduled": int(sm.get("doses_scheduled") or 0),
             "symptoms": int(sm.get("symptoms_n") or 0),
         })
 
@@ -290,6 +302,20 @@ def timeline(conn: psycopg.Connection[Any], user: str, days: int, today: date, e
         "sensorWornPct": min(100, round(100 * int(g.get("n") or 0) / (days * 288))) if g.get("n") else None,
     }
 
+    # the period of the same length just before this one, for "what changed"
+    p_start = start - timedelta(days=days)
+    pg = conn.execute("select avg(glucose_mmol) m from timeline_5min where user_id=%s and bucket_start>=%s and bucket_start<%s",
+                      (user, datetime.combine(p_start, datetime.min.time(), base.TZ), lo)).fetchone() or {}
+    pds = base._daily(conn, user, p_start, start - timedelta(days=1))
+    p_steps = base._mean([float(v["steps_total"]) for v in pds.values() if v.get("steps_total") is not None])
+    p_taken = sum(v.get("doses_taken") or 0 for v in pds.values())
+    p_sched = sum(v.get("doses_scheduled") or 0 for v in pds.values())
+    previous = {
+        "avgGlucose": _r(pg.get("m"), 1),
+        "stepsPerDay": round(p_steps) if p_steps is not None else None,
+        "dosesTakenPct": round(100 * p_taken / p_sched) if p_sched else None,
+    }
+
     has = any(v is not None for v in series["glucose"] + series["heart"] + series["spo2"] + series["steps"]) or bool(bp or events["meals"])
     return {
         "period": {**base._period(end, days, has), "bucketMinutes": step, "buckets": n, "latest": latest.isoformat(), "earliest": first["d"].isoformat() if first.get("d") else None},
@@ -299,6 +325,7 @@ def timeline(conn: psycopg.Connection[Any], user: str, days: int, today: date, e
         "events": events,
         "work": work,
         "values": values,
+        "previous": previous,
         "day_rows": day_rows,
         "compare": comp,
     }

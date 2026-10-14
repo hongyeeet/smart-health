@@ -1005,6 +1005,8 @@ export interface InsightsTimeline {
     bpReadings: number
     /** for the one-point-a-day views: the mean of the person's daily averages and the middle half of them */
     daily: Record<'glucose' | 'heart' | 'spo2', { mean: number | null; lo: number | null; hi: number | null }>
+    /** the same window's average glucose, steps a day and glucose variation: what the Health overview is graded against */
+    health: { avgGlucose: number | null; stepsPerDay: number | null; cv: number | null }
     glucose: InsightsHourly
     heart: InsightsHourly
     spo2: InsightsHourly
@@ -1020,6 +1022,8 @@ export interface InsightsTimeline {
   /** work_days: 1 = Monday ... 7 = Sunday; `set` is false when the person gave no work hours */
   work: { days: number[]; start: string | null; end: string | null; set: boolean }
   values: { avgGlucose: number | null; gmi: number | null; cv: number | null; stepsPerDay: number | null; dosesTakenPct: number | null; sensorWornPct: number | null }
+  /** the period of the same length just before this one, for "what changed" */
+  previous: { avgGlucose: number | null; stepsPerDay: number | null; dosesTakenPct: number | null }
   /** one row per day of the period */
   dayRows: InsightsTimelineDay[]
   compare: {
@@ -1044,6 +1048,8 @@ export interface InsightsTimelineDay {
   sodiumMg: number | null
   meals: number
   missed: number
+  /** doses planned that day (0 when none, or the day is not over) */
+  scheduled: number
   symptoms: number
 }
 /** the period set against the baseline: a number, never a verdict */

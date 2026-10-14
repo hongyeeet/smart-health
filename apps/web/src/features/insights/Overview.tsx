@@ -2,36 +2,32 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useInsightsOverview, useInsightsOverviewDays, useInsightsTimeline } from '@/data/hooks'
-import type { InsightsChange, InsightsGridKey } from '@/data/types'
+import type { InsightsGridKey } from '@/data/types'
 import { useGo } from '@/app/navigation'
 import { cn } from '@/lib/cn'
 import { Alert, Card, SectionTitle, Skeleton } from '@/ui/primitives'
-import { CaretLeft, CaretRight } from '@/ui/icons'
-import { Findings, Gate, InsightsFrame, Plain, Tile, TileGrid, num, useInsightsDays } from './shared'
+import { ArrowDown, ArrowUp, CaretLeft, CaretRight } from '@/ui/icons'
+import { Findings, Gate, InsightsFrame, Plain, num, useInsightsDays } from './shared'
+import { HealthOverview } from './HealthOverview'
 import { BaselineCompare, OverviewTimeline } from './Timeline'
 import { DayCalendar, monthRange, monthTitle, shiftMonth } from './grids'
 
 const MEASURES: InsightsGridKey[] = ['meals', 'activity', 'sleep', 'stress', 'doses']
 
-/** the local date `n` days after `iso` (negative: before), as YYYY-MM-DD */
-function shiftDays(iso: string, n: number): string {
-  const d = new Date(`${iso}T12:00:00`)
-  d.setDate(d.getDate() + n)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 export function Overview() {
   const { days, setDays } = useInsightsDays()
-  // how many whole periods back from the latest data the charts are showing (0: the latest)
-  const [back, setBack] = useState(0)
-  const [latest, setLatest] = useState<string | null>(null)
-  const endIso = back > 0 && latest ? shiftDays(latest, -back * days) : undefined
+  // the last day of the 7 days shown (a date picked in the calendar); null is "this week", the latest 7 days
+  const [endIso, setEndIso] = useState<string | null>(null)
   const { data } = useInsightsOverview(days)
-  const tl = useInsightsTimeline(days, endIso)
-  if (tl.data && tl.data.period.latest !== latest) setLatest(tl.data.period.latest)
+  const tl = useInsightsTimeline(days, days === 7 ? (endIso ?? undefined) : undefined)
   const pickDays = (d: typeof days) => {
-    setBack(0)
+    setEndIso(null)
     setDays(d)
+  }
+  // from a one-point-a-day view: show the 7 days ending on a day
+  const openWeek = (iso: string) => {
+    setEndIso(iso)
+    setDays(7)
   }
   const [browsed, setBrowsed] = useState<string | null>(null)
   const [measure, setMeasure] = useState<InsightsGridKey>('meals')
@@ -62,136 +58,55 @@ export function Overview() {
     stress: t('insights.overview.hint.stress', 'Your stress rating that day, from 1 (low) to 5 (high).'),
     doses: t('insights.overview.hint.doses', 'Share of that day’s scheduled doses you took.'),
   }
-  const changeName: Record<InsightsChange['id'], string> = {
-    tir: measureName.glucose,
-    fasting: t('insights.overview.change.fasting', 'Morning (fasting) glucose'),
-    steps: t('insights.overview.change.steps', 'Steps a day'),
-    exercise: measureName.activity,
-    sleep: measureName.sleep,
-    stress: measureName.stress,
-    doses: measureName.doses,
-  }
-
-  // Numbers are written with their unit, so "62%" and "7.2 hours a night" read the same way everywhere.
-  const valueText = (unit: InsightsChange['unit'], v: number) => {
-    switch (unit) {
-      case 'points':
-        return t('insights.overview.valuePct', '{{n}}%', { n: num(v) })
-      case 'mmol':
-        return t('insights.overview.valueMmol', '{{n}} mmol/L', {
-          n: num(v, 1),
-        })
-      case 'steps':
-        return t('insights.overview.valueSteps', '{{n}} steps a day', {
-          n: num(v),
-        })
-      case 'minutes':
-        return t('insights.overview.valueMinutes', '{{n}} minutes', {
-          n: num(v),
-        })
-      case 'hours':
-        return t('insights.overview.valueHours', '{{n}} hours a night', {
-          n: num(v, 1),
-        })
-      case 'score':
-        return t('insights.overview.valueScore', '{{n}} out of 5', {
-          n: num(v, 1),
-        })
-    }
-  }
-  const moveText = (unit: InsightsChange['unit'], d: number) => {
-    const a = Math.abs(d)
-    switch (unit) {
-      case 'points':
-        return t('insights.overview.amountPoints', '{{n}} points', {
-          n: num(a),
-        })
-      case 'mmol':
-        return t('insights.overview.amountMmol', '{{n}} mmol/L', {
-          n: num(a, 1),
-        })
-      case 'steps':
-        return t('insights.overview.amountSteps', '{{n}} steps a day', {
-          n: num(a),
-        })
-      case 'minutes':
-        return t('insights.overview.amountMinutes', '{{n}} minutes', {
-          n: num(a),
-        })
-      case 'hours':
-        return t('insights.overview.amountHours', '{{n}} hours', {
-          n: num(a, 1),
-        })
-      case 'score':
-        return t('insights.overview.amountPoints', '{{n}} points', {
-          n: num(a, 1),
-        })
-    }
-  }
-
-  const n = data?.period.days ?? days
-  const sentence = (c: InsightsChange) => {
-    const curWhen = t('insights.overview.lastDays', 'in the last {{n}} days', {
-      n,
-    })
-    const prevWhen = n === 7 ? t('insights.overview.before7', 'in the 7 days before') : t('insights.overview.beforeDays', 'in the {{n}} days before', { n })
-    const amount = moveText(c.unit, c.delta ?? 0)
-    const move = c.direction === 'up' ? t('insights.overview.up', 'Up {{amount}}', { amount }) : t('insights.overview.down', 'Down {{amount}}', { amount })
-    return t('insights.overview.changeLine', '{{label}}: {{current}} {{curWhen}}, {{previous}} {{prevWhen}}. {{move}}.', {
-      label: changeName[c.id],
-      current: valueText(c.unit, c.current ?? 0),
-      curWhen,
-      previous: valueText(c.unit, c.previous ?? 0),
-      prevWhen,
-      move,
-    })
-  }
-  const listOf = (xs: InsightsChange[]) => new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' }).format(xs.map((c) => changeName[c.id]))
-
-  // time in range is not shown on this page: the charts show the readings themselves against the person's own baseline
-  const changes = (data?.changes ?? []).filter((c) => c.id !== 'tir')
-  const moved = changes.filter((c) => c.direction === 'up' || c.direction === 'down')
-  const same = changes.filter((c) => c.direction === 'same')
-  const none = changes.filter((c) => c.direction === 'none')
-
   const tlData = tl.data
-  const v = tlData?.values
-  const valuesCard = (
-    <Card className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-h2 font-bold">{t('insights.overview.valuesTitle', 'What the values show')}</h2>
-        {tlData && <span className="text-sub text-ink3">{tlData.period.label}</span>}
+  // what changed: this period against the period of the same length just before it (from the timeline answer, so it follows the week picked)
+  const prev = tlData?.previous
+  const cur = tlData?.values
+  const moves: { key: string; name: string; note: string; delta: string; dir: 'up' | 'down' | 'same' }[] = []
+  if (cur && prev) {
+    const add = (key: string, name: string, now: number | null, before: number | null, digits: number, unit: string) => {
+      if (now == null || before == null) return
+      const d = Number((now - before).toFixed(digits))
+      moves.push({
+        key,
+        name,
+        note: t('insights.chg.note', '{{now}} now, {{before}} before', { now: `${num(now, digits)}${unit}`, before: `${num(before, digits)}${unit}` }),
+        delta: d === 0 ? t('insights.chg.same', 'About the same') : `${d > 0 ? '+' : '−'}${num(Math.abs(d), digits)}${unit === '%' ? ' pts' : ''}`,
+        dir: d === 0 ? 'same' : d > 0 ? 'up' : 'down',
+      })
+    }
+    add('glucose', t('insights.chg.glucose', 'Average glucose'), cur.avgGlucose, prev.avgGlucose, 1, '')
+    add('steps', t('insights.chg.steps', 'Steps a day'), cur.stepsPerDay, prev.stepsPerDay, 0, '')
+    add('doses', t('insights.chg.doses', 'Doses taken'), cur.dosesTakenPct, prev.dosesTakenPct, 0, '%')
+  }
+  const changeCard = (
+    <section
+      className="flex flex-col gap-1 rounded-card border border-line bg-card px-4 pb-2 pt-4 shadow-lift"
+      aria-label={t('insights.overview.whatChanged', 'What changed')}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+        <h2 className="text-h2 font-bold">{t('insights.overview.whatChanged', 'What changed')}</h2>
+        <span className="text-sub text-ink3">{t('insights.chg.vs', 'vs the {{n}} days before', { n: days })}</span>
       </div>
-      <TileGrid>
-        <Tile
-          label={t('insights.overview.v.avg', 'Average glucose')}
-          value={v?.avgGlucose != null ? num(v.avgGlucose, 1) : '–'}
-          unit={v?.avgGlucose != null ? 'mmol/L' : undefined}
-        />
-        <Tile
-          label={t('insights.overview.v.gmi', 'Estimated A1c (GMI)')}
-          value={v?.gmi != null ? num(v.gmi, 1) : '–'}
-          unit={v?.gmi != null ? '%' : undefined}
-        />
-        <Tile label={t('insights.overview.v.steps', 'Steps a day')} value={num(v?.stepsPerDay)} />
-        <Tile
-          label={t('insights.overview.v.cv', 'Glucose ups and downs (CV)')}
-          value={v?.cv != null ? num(v.cv) : '–'}
-          unit={v?.cv != null ? '%' : undefined}
-        />
-        <Tile
-          label={t('insights.overview.v.doses', 'Doses taken')}
-          value={v?.dosesTakenPct != null ? num(v.dosesTakenPct) : '–'}
-          unit={v?.dosesTakenPct != null ? '%' : undefined}
-        />
-        <Tile
-          label={t('insights.overview.v.sensor', 'Sensor worn')}
-          value={v?.sensorWornPct != null ? num(v.sensorWornPct) : '–'}
-          unit={v?.sensorWornPct != null ? '%' : undefined}
-        />
-      </TileGrid>
-      <p className="text-sub text-ink3">{t('insights.overview.valuesNote', 'Your doctor reviews what these mean.')}</p>
-    </Card>
+      {moves.length === 0 ? (
+        <p className="pb-2 text-sub text-ink2">{t('insights.chg.none', 'There is no earlier period with data to compare with.')}</p>
+      ) : (
+        <ul className="flex flex-col">
+          {moves.map((m) => (
+            <li key={m.key} className="flex min-h-[3.5rem] items-center gap-3 border-t border-line py-2 first:border-t-0">
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-well text-ink2" aria-hidden>
+                {m.dir === 'same' ? <span className="h-0.5 w-3.5 rounded bg-current" /> : m.dir === 'up' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold leading-tight">{m.name}</p>
+                <p className="break-words text-micro leading-tight text-ink2">{m.note}</p>
+              </div>
+              <span className="num flex-none text-right font-bold">{m.delta}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 
   return (
@@ -210,13 +125,10 @@ export function Overview() {
                   data={tlData}
                   days={days}
                   setDays={pickDays}
-                  nav={{
-                    canBack: !!tlData.period.earliest && tlData.period.start > tlData.period.earliest,
-                    canForward: back > 0,
-                    onBack: () => setBack((b) => b + 1),
-                    onForward: () => setBack((b) => Math.max(0, b - 1)),
-                  }}
-                  onOpenDay={(date) => go('D1', { params: { date } })}
+                  endIso={endIso}
+                  setEnd={setEndIso}
+                  openWeek={openWeek}
+                  openDay={(date) => go('D1', { params: { date } })}
                 />
               </Card>
               <section className="flex flex-col gap-3">
@@ -278,40 +190,10 @@ export function Overview() {
               </section>
             </div>
             <aside className="flex flex-col gap-4">
-              {valuesCard}
+              <HealthOverview data={tlData} />
               <BaselineCompare data={tlData} />
-              {data && back === 0 && (
-                <section className="flex flex-col gap-2">
-                  <SectionTitle>{t('insights.overview.whatChanged', 'What changed')}</SectionTitle>
-                  {moved.map((c) => (
-                    <Card key={c.id} onClick={() => go(c.to)} className="flex items-center gap-3">
-                      <span className="flex-1 text-body">{sentence(c)}</span>
-                      <CaretRight size={20} className="flex-none text-ink3" aria-hidden />
-                    </Card>
-                  ))}
-                  {moved.length === 0 && same.length > 0 && (
-                    <Card tone="soft">
-                      <p className="text-body text-ink2">{t('insights.overview.nothingMoved', 'Nothing changed much from the {{n}} days before.', { n })}</p>
-                    </Card>
-                  )}
-                  {moved.length > 0 && same.length > 0 && (
-                    <p className="text-body text-ink2">
-                      {t('insights.overview.alsoSame', 'About the same as the {{n}} days before: {{list}}.', { n, list: listOf(same) })}
-                    </p>
-                  )}
-                  {moved.length === 0 && same.length === 0 && (
-                    <Card tone="soft">
-                      <p className="text-body text-ink2">{t('insights.overview.noCompare', 'There is not enough data in both periods to compare yet.')}</p>
-                    </Card>
-                  )}
-                  {none.length > 0 && (
-                    <p className="text-sub text-ink3">
-                      {t('insights.overview.notEnough', 'Not enough data in one of the two periods to compare: {{list}}.', { list: listOf(none) })}
-                    </p>
-                  )}
-                </section>
-              )}
-              {back > 0 ? null : data ? (
+              {changeCard}
+              {data ? (
                 data.patterns.length > 0 ? (
                   <Findings title={t('insights.overview.learnt', 'What Smart Health has learnt')} items={data.patterns} onOpen={(to) => go(to)} />
                 ) : (
