@@ -52,7 +52,7 @@ const CHARTS: ChartCfg[] = [
   { key: 'heart', height: 120, color: 'var(--c-danger)', digits: 0, floor: 0 },
   { key: 'spo2', height: 100, color: 'var(--c-brass)', digits: 1, ceil: 100 },
 ]
-const COLOR: Record<PillKey, string> = {
+export const PILL_COLOR: Record<PillKey, string> = {
   glucose: 'var(--c-info)',
   heart: 'var(--c-danger)',
   spo2: 'var(--c-brass)',
@@ -131,7 +131,7 @@ function ChartHead({ color, name, unit, value, sub }: { color: string; name: str
 }
 
 /** One of the switches under the title: shows or hides a chart or a log lane. All on one line, scrolling sideways rather than wrapping on a narrow screen. */
-function Pill({ on, color, label, onClick }: { on: boolean; color: string; label: string; onClick: () => void }) {
+export function Pill({ on, color, label, onClick }: { on: boolean; color: string; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -439,7 +439,7 @@ export function OverviewTimeline({
         {pills.map((p, i) => (
           <span key={p.key} className="flex flex-none items-center gap-1">
             {i === 4 && <span className="mx-0.5 h-6 w-px bg-line" aria-hidden />}
-            <Pill on={show[p.key]} color={COLOR[p.key]} label={p.label} onClick={() => flip(p.key)} />
+            <Pill on={show[p.key]} color={PILL_COLOR[p.key]} label={p.label} onClick={() => flip(p.key)} />
           </span>
         ))}
       </div>
@@ -1000,7 +1000,7 @@ export function Plot({
         {show.bp && (
           <div>
             <ChartHead
-              color={COLOR.bp}
+              color={PILL_COLOR.bp}
               name={chartName(t, 'bp')}
               unit={t('insights.tl.bpUnit', 'mmHg')}
               value={
@@ -1059,7 +1059,7 @@ export function Plot({
                 <span key={r.m} className="pointer-events-none absolute inset-0">
                   <span
                     className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card"
-                    style={{ left: left(r.m), top: bY(r.systolic), background: COLOR.bp }}
+                    style={{ left: left(r.m), top: bY(r.systolic), background: PILL_COLOR.bp }}
                   />
                   <span
                     className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card"

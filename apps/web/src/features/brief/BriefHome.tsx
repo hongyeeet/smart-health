@@ -17,7 +17,7 @@ import { Header, Screen } from '@/ui/layout'
 import { Alert, Button, Card, Skeleton, StatusPill, TextLink, type Tone } from '@/ui/primitives'
 import { Segmented } from '@/ui/controls'
 import { FilePdf, Info, ShareNetwork, Warning, WarningCircle, type IconType } from '@/ui/icons'
-import { Plot, type PillKey } from '@/features/insights/Timeline'
+import { PILL_COLOR, Pill, Plot, type PillKey } from '@/features/insights/Timeline'
 import { GradeTile } from '@/features/insights/HealthOverview'
 import { Gate } from '@/features/insights/shared'
 import { TONE, statusWords, grade, NEUTRAL, type Level } from '@/features/insights/healthGrade'
@@ -31,20 +31,40 @@ const ALERT_TAG: Record<DoctorReport['alerts'][number]['priority'], { tone: Tone
   review: { tone: 'neutral', icon: Info },
 }
 
-/** Only the chart asked for is switched on; the marker, the stats for the day and the legend come with it. */
-const onlyChart = (k: PlotKey): Record<PillKey, boolean> => ({
+const ALL_ON: Record<PillKey, boolean> = {
+  glucose: true,
+  heart: true,
+  spo2: true,
+  bp: true,
+  meals: true,
+  exercise: true,
+  symptoms: true,
+  missed: true,
+  work: true,
+}
+
+/** One card's chart, with the log lanes the person has switched on; the marker, the stats for the day and the legend come with it. */
+const forChart = (k: PlotKey, on: Record<PillKey, boolean>): Record<PillKey, boolean> => ({
+  ...on,
   glucose: k === 'glucose',
   heart: k === 'heart',
   spo2: k === 'spo2',
   bp: k === 'bp',
-  meals: false,
-  exercise: false,
-  symptoms: false,
-  missed: false,
-  work: false,
 })
 
 /** The day shown as a short month and day in the clinic's time zone (Singapore), e.g. OCT and 28. */
+const PILLS: [PillKey, string, string][] = [
+  ['glucose', 'insights.tl.glucose', 'Glucose'],
+  ['heart', 'insights.tl.heart', 'Heart rate'],
+  ['spo2', 'insights.tl.spo2', 'SpO2'],
+  ['bp', 'insights.tl.bp', 'Blood pressure'],
+  ['meals', 'insights.tl.lane.meals', 'Meals'],
+  ['exercise', 'insights.tl.lane.exercise', 'Exercise'],
+  ['symptoms', 'insights.tl.lane.symptoms', 'Symptoms'],
+  ['missed', 'insights.tl.lane.missedDoses', 'Missed doses'],
+  ['work', 'insights.tl.lane.workDays', 'Work days'],
+]
+
 const dayParts = (iso: string) => {
   const d = new Date(iso)
   return {
@@ -75,6 +95,7 @@ export function BriefHome() {
   const add = useAddQuestion()
   const remove = useRemoveQuestion()
   const [draft, setDraft] = useState('')
+  const [show, setShow] = useState<Record<PillKey, boolean>>(ALL_ON)
   const data = report.data
   const tlData: InsightsTimeline | undefined = tl.data
 
@@ -236,17 +257,26 @@ export function BriefHome() {
                 empty={!!tlData && !tlData.period.hasData}
                 emptyText={t('brief.chartsEmpty', 'Log a few readings and your charts fill in here.')}
               >
+                {tlData && (
+                  <div role="group" aria-label={t('brief.filterLabel', 'Show on the charts')} className="flex flex-wrap gap-2">
+                    {PILLS.map(([k, label, fb]) => (
+                      <Pill key={k} on={show[k]} color={PILL_COLOR[k]} label={t(label, fb)} onClick={() => setShow((x) => ({ ...x, [k]: !x[k] }))} />
+                    ))}
+                  </div>
+                )}
                 {tlData &&
-                  plotReasons(t, tlData).map((r) => (
-                    <Card key={r.key} as="section" className="flex flex-col gap-2">
-                      <h2 className="text-body font-bold">{r.title}</h2>
-                      <p className="break-words text-sub text-ink2">
-                        <span className="font-bold text-ink">{t('brief.whyMatters', 'Why this matters.')}</span> {r.why}{' '}
-                        <span className="font-bold text-ink">{t('brief.sawLabel', 'What we saw.')}</span> {r.saw}
-                      </p>
-                      <Plot data={tlData} compact={r.key !== 'glucose'} show={onlyChart(r.key)} openDay={(date) => go('D1', { params: { date } })} />
-                    </Card>
-                  ))}
+                  plotReasons(t, tlData)
+                    .filter((r) => show[r.key])
+                    .map((r) => (
+                      <Card key={r.key} as="section" className="flex flex-col gap-2">
+                        <h2 className="text-body font-bold">{r.title}</h2>
+                        <p className="break-words text-sub text-ink2">
+                          <span className="font-bold text-ink">{t('brief.whyMatters', 'Why this matters.')}</span> {r.why}{' '}
+                          <span className="font-bold text-ink">{t('brief.sawLabel', 'What we saw.')}</span> {r.saw}
+                        </p>
+                        <Plot data={tlData} compact={r.key !== 'glucose'} show={forChart(r.key, show)} openDay={(date) => go('D1', { params: { date } })} />
+                      </Card>
+                    ))}
               </Gate>
 
               <Card as="section" className="flex flex-col gap-2">
