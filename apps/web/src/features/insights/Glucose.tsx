@@ -1,103 +1,68 @@
-/** C2 — Glucose. Time in range, the usual morning (fasting) level and whether it has drifted, and how steady the day is. From the sensor only. */
+/** C2 — Glucose. Time in range, the four headline numbers against the person's own baseline, the glucose by day (average, morning, highest), the usual morning level, the hour-of-day pattern and the findings from the history. From the sensor only. */
 import { useTranslation } from 'react-i18next'
-import { useInsightsGlucose } from '@/data/hooks'
-import type { GlucoseLevel } from '@/data/types'
-import { shortDate } from '@/lib/format'
+import { useDoctorReport, useInsightsGlucose, useInsightsTimeline } from '@/data/hooks'
 import { useGo } from '@/app/navigation'
-import { TirBar } from '@/charts/small'
-import { TrendChart } from '@/charts/TrendChart'
-import { Split } from '@/ui/layout'
-import { Alert, Card, SectionTitle, TextLink } from '@/ui/primitives'
+import { TextLink } from '@/ui/primitives'
 import { Drop } from '@/ui/icons'
-import { Findings, Gate, InsightsFrame, Plain, Tile, TileGrid, num, useInsightsDays } from './shared'
-
-const ORDER: GlucoseLevel[] = ['very_low', 'low', 'in_range', 'high', 'very_high']
+import { Gate, InsightsFrame, num, useInsightsDays } from './shared'
+import { ByDayCard } from './glucose/ByDayCard'
+import { StatTiles, TimeInRange } from './glucose/StatTiles'
+import { HistoryCard, HourCard, MorningCard } from './glucose/SideCards'
 
 export function GlucoseTab() {
   const days = useInsightsDays((s) => s.days)
   const { data, isError } = useInsightsGlucose(days)
+  const timeline = useInsightsTimeline(days).data
+  const report = useDoctorReport(days).data
   const go = useGo()
   const { t } = useTranslation()
-  const inRange = data?.bands.find((b) => b.key === 'in_range')?.pct
-  const segments = data ? ORDER.map((k) => ({ level: k, pct: data.bands.find((b) => b.key === k)?.pct ?? 0 })) : []
-  const end = data ? shortDate(data.period.end) : ''
+  const veryHigh = report?.glucose.veryHigh ?? null
+  const events = [
+    { n: data?.events.spikes, label: t('insights.glucose.sharpRises', 'sharp rises'), tone: 'text-warn' },
+    { n: data?.events.sustainedHigh, label: t('insights.glucose.longStretches', 'long stretches above range'), tone: 'text-brass' },
+    { n: data?.events.lows, label: t('insights.glucose.lowReadings', 'low readings'), tone: 'text-danger' },
+  ]
   return (
     <InsightsFrame tab="C2" period={data?.period} why="glucose">
-      <Gate data={data} isError={isError} empty={!!data && !data.hasData} emptyText={t('insights.glucose.empty', 'There are no sensor readings in this period. Once a glucose sensor is connected, your readings appear here.')}>
+      <Gate
+        data={data}
+        isError={isError}
+        empty={!!data && !data.hasData}
+        emptyText={t('insights.glucose.empty', 'There are no sensor readings in this period. Once a glucose sensor is connected, your readings appear here.')}
+      >
         {data && (
-          <Split>
-            <div className="flex flex-col gap-4">
-              <section className="flex flex-col gap-3">
-                <SectionTitle>{t('insights.glucose.timeInRange', 'Time in range')}</SectionTitle>
-                <Plain>
-                  {inRange != null ? t('insights.glucose.inRange', '{{pct}}% of your readings were between {{low}} and {{high}} mmol/L.', { pct: Math.round(inRange), low: data.low, high: data.high }) : ''}
-                </Plain>
-                <Card tone="hero">
-                  <TirBar segments={segments} />
-                </Card>
-                <TileGrid>
-                  <Tile label={t('insights.glucose.average', 'Average')} value={num(data.metrics.mean, 1)} unit="mmol/L" />
-                  <Tile
-                    label={t('insights.glucose.gmi', 'Estimated A1c (GMI)')}
-                    value={data.metrics.gmi != null ? `${num(data.metrics.gmi, 1)}%` : '–'}
-                    sub={t('insights.glucose.gmiSub', 'Worked out from your average')}
-                  />
-                  <Tile label={t('insights.glucose.cv', 'Ups and downs (CV)')} value={data.metrics.cv != null ? `${num(data.metrics.cv)}%` : '–'} sub={t('insights.glucose.cvSub', 'Lower is steadier')} />
-                  <Tile label={t('insights.glucose.worn', 'Sensor worn')} value={data.metrics.coverage != null ? `${num(data.metrics.coverage)}%` : '–'} sub={t('insights.glucose.wornSub', 'of this period')} />
-                </TileGrid>
-              </section>
-              <Card tone="soft" className="flex flex-col gap-1">
-                <p className="text-body font-bold">{t('insights.glucose.inThisPeriod', 'In this period')}</p>
-                <p className="text-body text-ink2">
-                  {t('insights.glucose.events', '{{spikes}} sharp rises, {{sustained}} long stretches above range, {{lows}} low readings.', {
-                    spikes: data.events.spikes,
-                    sustained: data.events.sustainedHigh,
-                    lows: data.events.lows,
-                  })}
-                </p>
-              </Card>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_332px] lg:items-start lg:gap-6">
+            <div className="flex min-w-0 flex-col gap-4">
+              <StatTiles metrics={data.metrics} timeline={timeline} />
+              <TimeInRange bands={data.bands} low={data.low} high={data.high} />
+              <ByDayCard
+                days={data.days}
+                dayRows={timeline?.dayRows}
+                morning={data.baseline ? { p25: data.baseline.p25, p75: data.baseline.p75 } : null}
+                baselineMean={timeline?.baseline.daily.glucose.mean ?? null}
+                baselineDays={timeline?.baseline.days ?? null}
+                low={data.low}
+                high={data.high}
+                veryHigh={veryHigh}
+              />
+              <div className="grid gap-3 sm:grid-cols-3">
+                {events.map((e) => (
+                  <div key={e.label} className="flex min-w-0 items-center gap-3 rounded-card border border-line bg-card px-4 py-3.5 shadow-lift">
+                    <span className={`num whitespace-nowrap text-[28px] font-bold leading-none ${e.tone}`}>{num(e.n)}</span>
+                    <span className="min-w-0 text-[14px] leading-[18px] text-ink2">{e.label}</span>
+                  </div>
+                ))}
+              </div>
               <TextLink icon={Drop} onClick={() => go('C8')}>
                 {t('insights.glucose.seeSensor', 'See your latest 14 days of sensor data')}
               </TextLink>
             </div>
-            <div className="flex flex-col gap-4">
-              <section className="flex flex-col gap-3">
-                <SectionTitle>{t('insights.glucose.fastingTitle', 'Morning (fasting) glucose')}</SectionTitle>
-                <p className="text-body text-ink">
-                  {data.baseline
-                    ? t('insights.glucose.fastingPlainBand', 'The average of your readings between 5 and 7 am each day. The shaded band is your usual range from the 60 days before.')
-                    : t('insights.glucose.fastingPlain', 'The average of your readings between 5 and 7 am each day.')}
-                </p>
-                {data.drift && (
-                  <Alert tone="info">
-                    {data.drift.text} {t('insights.glucose.worthDoctor', 'Worth mentioning to your doctor.')}
-                  </Alert>
-                )}
-                <Card tone="hero">
-                  <TrendChart
-                    label={t('insights.glucose.fastingChart', 'Morning fasting glucose by day, mmol/L')}
-                    points={data.days.map((d) => ({ date: d.date, v: d.fasting }))}
-                    baseline={data.baseline ? [data.baseline.p25, data.baseline.p75] : undefined}
-                    endLabel={end}
-                    drawKey={`fasting-${days}`}
-                  />
-                </Card>
-              </section>
-              <section className="flex flex-col gap-3">
-                <SectionTitle>{t('insights.glucose.avgEachDay', 'Average each day')}</SectionTitle>
-                <Card tone="hero">
-                  <TrendChart
-                    label={t('insights.glucose.avgChart', 'Average glucose by day, mmol/L')}
-                    points={data.days.map((d) => ({ date: d.date, v: d.mean }))}
-                    endLabel={end}
-                    color="var(--c-s2)"
-                    drawKey={`mean-${days}`}
-                  />
-                </Card>
-              </section>
-              <Findings items={data.patterns} whyLink={false} />
+            <div className="flex min-w-0 flex-col gap-4">
+              <MorningCard days={data.days} morning={data.baseline ? { p25: data.baseline.p25, p75: data.baseline.p75 } : null} drift={data.drift} />
+              <HourCard profile={report?.glucose.profile} high={data.high} />
+              <HistoryCard patterns={data.patterns} />
             </div>
-          </Split>
+          </div>
         )}
       </Gate>
     </InsightsFrame>

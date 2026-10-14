@@ -1,36 +1,57 @@
 /**
- * C3 — Food. What was eaten, day by day (calories, carbohydrate, protein, fat and salt), how each food moved glucose, the recent
- * entries with the detail of every meal, then "Your starting point" (the first two full weeks) and the macro calendar at the bottom (tap a day for its meals).
+ * C3 — Food. Day by day (calories, carbohydrate, protein, fat and salt) and how each food moved glucose, on the left; on the right the
+ * recent meals, your starting point (the first two full weeks against now), what the history shows and the menu nudge. Below: the
+ * full recent entries and the diet calendar (tap a day for its meals). The one "Why am I seeing this?" link is at the top.
  */
 import { useTranslation } from 'react-i18next'
 import { useDietDaysFor, useInsightsFood, useProgress } from '@/data/hooks'
 import type { InsightsPattern } from '@/data/types'
-import { Split } from '@/ui/layout'
-import { Card, SectionTitle, UnverifiedTag } from '@/ui/primitives'
-import { BaselineCard } from '@/features/me/progress/BaselineCard'
+import { useGo } from '@/app/navigation'
+import { cn } from '@/lib/cn'
+import { Button, Card, UnverifiedTag } from '@/ui/primitives'
 import { DietCalendar } from '@/features/me/progress/DietCalendar'
-import { Gate, InsightsFrame, Plain, useInsightsDays } from './shared'
+import { Gate, InsightsFrame, useInsightsDays } from './shared'
 import { MacroCharts } from './food/MacroCharts'
+import { MealTiles } from './food/MealTiles'
 import { FoodRanking } from './food/Ranking'
 import { RecentEntries } from './food/RecentEntries'
+import { RecentMeals } from './food/RecentMeals'
+import { StartingPoint } from './food/StartingPoint'
 
-/** The patterns from the person's own history. Always unverified: they compare two things and do not prove a cause. No link here, the one "Why am I seeing this?" is at the top. */
+/** The patterns from the person's own history, in one card. Always unverified: they compare two things and do not prove a cause. */
 function FoodFindings({ items }: { items: InsightsPattern[] }) {
   const { t } = useTranslation()
   if (!items.length) return null
   return (
-    <section className="flex flex-col gap-2">
-      <SectionTitle>{t('insights.shared.findings', 'What your history shows')}</SectionTitle>
-      {items.map((p) => (
-        <Card key={p.key} className="flex flex-col gap-2">
-          <p className="text-body">{p.text}</p>
-          <p className="num text-sub text-ink3">{t('insights.shared.basedOn', 'Based on {{n}} matched events in your own history.', { n: p.n })}</p>
+    <Card className="flex flex-col gap-3">
+      <h3 className="text-body font-bold">{t('insights.shared.findings', 'What your history shows')}</h3>
+      {items.map((p, i) => (
+        <div key={p.key} className={cn('flex flex-col gap-2', i > 0 && 'border-t border-line pt-3')}>
+          <p className="text-sub">{p.text}</p>
+          <p className="num text-micro text-ink3">{t('insights.shared.basedOn', 'Based on {{n}} matched events in your own history.', { n: p.n })}</p>
           <div>
             <UnverifiedTag />
           </div>
-        </Card>
+        </div>
       ))}
-    </section>
+    </Card>
+  )
+}
+
+/** Ideas for the next meal. The lunch ideas screen (E8) is the nearest existing screen; the full menu is not built yet. */
+function MenuNudge() {
+  const { t } = useTranslation()
+  const go = useGo()
+  return (
+    <div className="flex flex-col gap-3 rounded-card border border-line bg-brand-soft p-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-sub font-bold">{t('insights.food.nextTitle', 'Not sure what to eat next?')}</p>
+        <p className="text-sub text-ink2">{t('insights.food.nextSub', 'Ideas that fit you, as a menu.')}</p>
+      </div>
+      <Button size="md" className="self-start" onClick={() => go('E9')}>
+        {t('insights.food.openMenu', 'Open menu')}
+      </Button>
+    </div>
   )
 }
 
@@ -43,29 +64,33 @@ export function FoodTab() {
   const { t } = useTranslation()
   return (
     <InsightsFrame tab="C3" period={data?.period} why="food">
-      <Gate data={data} isError={isError} empty={!!data && data.totals.meals === 0} emptyText={t('insights.food.empty', 'Log a few meals and what you eat shows up here, with how each one moved your glucose.')}>
+      <Gate
+        data={data}
+        isError={isError}
+        empty={!!data && data.totals.meals === 0}
+        emptyText={t('insights.food.empty', 'Log a few meals and what you eat shows up here, with how each one moved your glucose.')}
+      >
         {data && (
           <>
-            <Plain>
-              {t('insights.food.mealsLogged', '{{meals}} meals logged. {{salt}} were high in salt and {{sugar}} high in sugar.', {
-                meals: data.totals.meals,
-                salt: data.totals.highSaltMeals,
-                sugar: data.totals.highSugarMeals,
-              })}
-            </Plain>
-            <section className="flex flex-col gap-3">
-              <SectionTitle>{t('insights.food.dayByDay', 'Day by day')}</SectionTitle>
-              <MacroCharts days={diet.data?.days} isError={diet.isError} />
-            </section>
-            <Split>
-              <FoodRanking responses={data.responses} stillLearning={data.stillLearning} />
-              <FoodFindings items={data.patterns} />
-            </Split>
+            <MealTiles totals={data.totals} days={data.period.days} kcalStart={progress.data?.compare?.avgKcal.first ?? null} />
+            <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_332px] xl:items-start xl:gap-6">
+              <div className="flex min-w-0 flex-col gap-4">
+                <MacroCharts days={diet.data?.days} isError={diet.isError} />
+                <FoodRanking responses={data.responses} stillLearning={data.stillLearning} />
+              </div>
+              <div className="flex min-w-0 flex-col gap-4">
+                <RecentMeals />
+                {progress.data && <StartingPoint progress={progress.data} />}
+                <FoodFindings items={data.patterns} />
+                <MenuNudge />
+              </div>
+            </div>
           </>
         )}
       </Gate>
-      <RecentEntries />
-      {progress.data && <BaselineCard progress={progress.data} />}
+      <section id="food-recent" className="scroll-mt-4">
+        <RecentEntries />
+      </section>
       <DietCalendar />
     </InsightsFrame>
   )

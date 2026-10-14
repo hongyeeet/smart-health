@@ -19,7 +19,8 @@ export const fmtPortion = (v: number) => (v === 0.5 ? '½' : v === 1.5 ? '1½' :
 
 export const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
-export const clock = (iso: string | number | Date) => new Date(iso).toLocaleTimeString(dateLocale('en-US'), { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+export const clock = (iso: string | number | Date) =>
+  new Date(iso).toLocaleTimeString(dateLocale('en-US'), { hour: 'numeric', minute: '2-digit' }).toLowerCase()
 
 /**
  * Reads what the person typed in a number box. A blank box means "not known" (null), never 0.
@@ -32,3 +33,22 @@ export function parseAmount(text: string): { ok: true; value: number | null } | 
   if (!Number.isFinite(n) || n < 0 || n > 100000) return { ok: false }
   return { ok: true, value: round1(n) }
 }
+
+/** Shows a number on the screen with a thousands separator and one decimal at most. Never used for the number boxes. */
+export const fmtShown = (v: number) => round1(v).toLocaleString('en-US', { maximumFractionDigits: 1 })
+
+/** The day `n` days from an ISO day (YYYY-MM-DD). */
+export function addDays(iso: string, n: number): string {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/** The average of the numbers that are known; null when none is known, so an unknown average is never shown as 0. */
+export function mean(values: (number | null | undefined)[]): number | null {
+  const known = values.filter((v): v is number => v != null && Number.isFinite(v))
+  return known.length ? known.reduce((a, b) => a + b, 0) / known.length : null
+}
+
+/** Small, Regular and Large scale the whole meal (the analysis does not give the share of each item). */
+export const SIZE_STEPS = [0.5, 1, 1.5] as const

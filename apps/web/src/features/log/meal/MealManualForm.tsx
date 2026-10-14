@@ -7,25 +7,37 @@ import type { Macros } from '@/data/types'
 import { parseAmount } from './mealMath'
 import type { MealDraft } from './mealDraft'
 
+/** The boxes filled in ahead, for "Log again" on a recent meal. Blank text means not known. */
+export interface ManualPrefill {
+  name: string
+  kcal: string
+  carbs: string
+  protein: string
+  fat: string
+  salt: string
+}
+
 interface Props {
   /** back to the photo step, when there is a photo to go back to */
   onBack?: () => void
+  /** starts the form filled in (a recent meal) */
+  initial?: ManualPrefill
   onStart: (d: MealDraft) => void
   onFinish: (d: MealDraft) => void
 }
 
 /**
- * Enter the meal by hand. Used when the photo cannot be read, or when the person prefers to type. Saves the same way a
- * photo reading does. A blank number means "not known" (saved as null, never 0).
+ * Enter the meal by hand. Used when the photo cannot be read, or when the person prefers to type, or to log a recent meal
+ * again. Saves the same way a photo reading does. A blank number means "not known" (saved as null, never 0).
  */
-export function MealManualForm({ onBack, onStart, onFinish }: Props) {
+export function MealManualForm({ onBack, initial, onStart, onFinish }: Props) {
   const { t } = useTranslation()
-  const [name, setName] = useState('')
-  const [kcal, setKcal] = useState('')
-  const [carbs, setCarbs] = useState('')
-  const [protein, setProtein] = useState('')
-  const [fat, setFat] = useState('')
-  const [salt, setSalt] = useState('')
+  const [name, setName] = useState(initial?.name ?? '')
+  const [kcal, setKcal] = useState(initial?.kcal ?? '')
+  const [carbs, setCarbs] = useState(initial?.carbs ?? '')
+  const [protein, setProtein] = useState(initial?.protein ?? '')
+  const [fat, setFat] = useState(initial?.fat ?? '')
+  const [salt, setSalt] = useState(initial?.salt ?? '')
   const [submitted, setSubmitted] = useState(false)
 
   const parsed = {
@@ -48,12 +60,28 @@ export function MealManualForm({ onBack, onStart, onFinish }: Props) {
       const p = parsed[k]
       return p.ok ? p.value : null
     }
-    const macros: Macros = { kcal: v('kcal'), carbsG: v('carbsG'), proteinG: v('proteinG'), fatG: v('fatG'), sugarG: null, fibreG: null, sodiumMg: v('sodiumMg') }
+    const macros: Macros = {
+      kcal: v('kcal'),
+      carbsG: v('carbsG'),
+      proteinG: v('proteinG'),
+      fatG: v('fatG'),
+      sugarG: null,
+      fibreG: null,
+      sodiumMg: v('sodiumMg'),
+    }
     return { name: name.trim(), description: '', portion: 1, macros, analysis: null, edited: true, valuesFrom: 'user' }
   }
 
   const amount = (label: string, k: keyof typeof parsed, value: string, set: (v: string) => void, unit: string) => (
-    <Field label={label} suffix={unit} inputMode="decimal" value={value} onChange={set} hint={t('log.meal.leaveBlank', 'Leave blank if you do not know.')} error={numberMissing(k) ? numberError : undefined} />
+    <Field
+      label={label}
+      suffix={unit}
+      inputMode="decimal"
+      value={value}
+      onChange={set}
+      hint={t('log.meal.leaveBlank', 'Leave blank if you do not know.')}
+      error={numberMissing(k) ? numberError : undefined}
+    />
   )
 
   return (
@@ -65,7 +93,13 @@ export function MealManualForm({ onBack, onStart, onFinish }: Props) {
           </span>
           <p className="text-sub text-ink2">{t('log.meal.byHandIntro', 'Type what you ate. The numbers are your own, so they are not marked as estimates.')}</p>
         </div>
-        <Field label={t('log.meal.nameMeal', 'What did you eat?')} value={name} onChange={setName} placeholder={t('log.meal.nameMealPh', 'For example: Chicken rice')} error={nameMissing ? t('log.meal.nameRequired', 'Please type what you ate.') : undefined} />
+        <Field
+          label={t('log.meal.nameMeal', 'What did you eat?')}
+          value={name}
+          onChange={setName}
+          placeholder={t('log.meal.nameMealPh', 'For example: Chicken rice')}
+          error={nameMissing ? t('log.meal.nameRequired', 'Please type what you ate.') : undefined}
+        />
         <div className="grid gap-4 md:grid-cols-2">
           {amount(t('log.meal.caloriesKcal', 'Calories (kcal)'), 'kcal', kcal, setKcal, 'kcal')}
           {amount(t('log.meal.carbsG', 'Carbohydrate (g)'), 'carbsG', carbs, setCarbs, 'g')}
@@ -80,16 +114,23 @@ export function MealManualForm({ onBack, onStart, onFinish }: Props) {
         )}
       </Card>
       <Footer>
-        <Button icon={Clock} onClick={() => {
-          const d = build()
-          if (d) onStart(d)
-        }}>
+        <Button
+          icon={Clock}
+          onClick={() => {
+            const d = build()
+            if (d) onStart(d)
+          }}
+        >
           {t('log.meal.startEating', 'Start eating')}
         </Button>
-        <Button variant="secondary" icon={CheckCircle} onClick={() => {
-          const d = build()
-          if (d) onFinish(d)
-        }}>
+        <Button
+          variant="secondary"
+          icon={CheckCircle}
+          onClick={() => {
+            const d = build()
+            if (d) onFinish(d)
+          }}
+        >
           {t('log.meal.alreadyAte', 'I already finished eating')}
         </Button>
       </Footer>
