@@ -159,3 +159,34 @@ def generate_image(prompt: str, model: str | None = None) -> bytes:
             if data:
                 return bytes(data)
     raise LLMUnavailable("The model did not return a picture.", code="bad_response")
+
+
+def describe_dish(name: str) -> str:
+    """Gemini 3.8 Flash (the app's text model) writes one short plain description of how a dish looks when served in Singapore: the parts
+    on the plate, colours and the dish it comes in. It is only used to make the picture prompt better. Raises LLMUnavailable on any failure."""
+    from app.llm import chat
+
+    if not usage.allowed("vertex_generate"):
+        raise LLMUnavailable("The daily AI limit has been reached.", code="daily_limit")
+    prompt = (
+        f"Describe how the dish \"{name}\" looks when it is served in Singapore, for a food photographer. One sentence of at most 35 words: "
+        "what is on the plate or in the bowl, the colours, and the plate or bowl it is served in. No opinions, no health words, no brand names."
+    )
+    try:
+        from google.genai import types
+
+        resp = _client().models.generate_content(
+            model=chat.model_name(),
+            contents=[prompt],
+            config=types.GenerateContentConfig(temperature=0.3, max_output_tokens=200, thinking_config=types.ThinkingConfig(thinking_budget=0),
+                                               http_options=types.HttpOptions(timeout=settings.llm_timeout_s * 1000)),
+        )
+    except Exception as e:
+        logger.error("dish description failed type=%s", type(e).__name__)
+        raise LLMUnavailable(str(e)[:200], code=_error_code(e)) from e
+    um = getattr(resp, "usage_metadata", None)
+    usage.record("vertex_generate", getattr(um, "prompt_token_count", 0) or 0, getattr(um, "candidates_token_count", 0) or 0)
+    text = " ".join((resp.text or "").split())
+    if not text:
+        raise LLMUnavailable("The model returned no description.", code="bad_response")
+    return text[:400]

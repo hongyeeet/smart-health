@@ -19,12 +19,12 @@ It replaces the old "Lunch ideas" cards as the place to browse ideas (E8 stays f
 
 ## Pictures (`app/services/food_images.py`)
 - One picture per DISH, shared by every person. `food_images.dish_key` is the dish name lower-cased, letters and digits joined by dashes.
-- A dish seen for the first time gets a `pending` row. A background job (every minute, at most 3 pictures) and the menu request itself make it with **`gemini-2.5-flash-image`** on Vertex
+- A dish seen for the first time gets a `pending` row. A background job (every minute, at most 3 pictures) and the menu request itself make it in two steps on Vertex: **Gemini 3.8 Flash** (`gemini-3.8-flash`, the app's text model, which cannot output images in this project) writes one short sentence on how the dish looks when served in Singapore, then **`gemini-2.5-flash-image`** draws it from the dish name plus that sentence. If the sentence fails the picture is still made from the name
   (the project's existing Vertex key works; no extra credentials). The result is shrunk to an 800 by 600 JPEG and stored in the **private** bucket `food-images`; the app loads it through
   `GET /api/v1/nutrition/food-image/{key}` with a one-year immutable cache header.
 - A `ready` dish is **never generated again**, and opening the page never generates a picture: it only reads the row. A failed one is retried after 15 minutes, at most 3 times in all.
   A daily cap `AI_CAP_VERTEX_IMAGE` (default 60) stops the worker; the dish keeps a plain placeholder until the next day. The page asks again every 8 seconds, up to 10 times, while pictures are waiting.
-- Only the dish name is sent to the model (a fixed prompt: overhead photo, plain light background, no text, no people). The page tells the person the pictures are AI-made and only a guide.
+- Only the dish name (and that one sentence) is sent to a model, in a fixed prompt: overhead photo, plain light background, no text, no people. The page tells the person the pictures are AI-made and only a guide.
 
 ## Data (Alembic 0039)
 - `food_images` (Reference): `dish_key` primary key, `name`, `status` (pending, generating, ready, failed), `storage_key`, `model`, `prompt_hash`, `attempts`, `last_error` (a code, no private detail), timestamps.

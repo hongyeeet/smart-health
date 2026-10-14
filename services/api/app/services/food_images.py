@@ -6,7 +6,7 @@ shrinks it to a small JPEG and keeps it in the private `food-images` bucket. A `
 never generates anything: it only reads the row. A failed picture is tried again later, at most 3 times; the daily cap (`vertex_image`)
 stops the worker when it is used up, and the dish simply keeps its plain placeholder until tomorrow.
 
-Only the dish NAME goes into the prompt: no person, no health value, no photo of a person's meal.
+Only the dish NAME (and a one-sentence description of how that dish looks, written by Gemini 3.8 Flash from the name alone) goes to a model: no person, no health value, no photo of a person's meal.
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ STUCK_AFTER = "10 minutes"          # a row left in 'generating' by a crashed wo
 SIZE = (800, 600)
 
 PROMPT = (
-    "Overhead photo of {name}, a dish eaten in Singapore, served plated on a plain light grey background. "
+    "Overhead photo of {name}, a dish eaten in Singapore, served plated on a plain light grey background.{look} "
     "Natural soft light, appetising and realistic, the whole dish in the middle of the frame. "
     "No text, no people, no hands, no logos, no watermark."
 )
@@ -42,8 +42,10 @@ def dish_key(name: str) -> str:
     return key[:80].strip("-")
 
 
-def prompt_for(name: str) -> str:
-    return PROMPT.format(name=re.sub(r"\s+", " ", name).strip())
+def prompt_for(name: str, look: str = "") -> str:
+    """The picture prompt. `look` is the one-sentence description Gemini 3.8 Flash wrote for this dish (empty when it could not)."""
+    look = re.sub(r"\s+", " ", look).strip()
+    return PROMPT.format(name=re.sub(r"\s+", " ", name).strip(), look=f" It looks like this: {look}" if look else "")
 
 
 def prompt_hash(name: str) -> str:
@@ -112,11 +114,19 @@ def _release(key: str) -> None:
         c.execute("update food_images set status='pending', attempts = greatest(attempts - 1, 0), updated_at=now() where dish_key=%s", (key,))
 
 
-def generate_one(row: dict[str, Any], *, make: Callable[[str], bytes] = gateway.generate_image, put: Callable[..., None] = storage.upload_object) -> str:
+def generate_one(row: dict[str, Any], *, make: Callable[[str], bytes] = gateway.generate_image, put: Callable[..., None] = storage.upload_object,
+                 describe: Callable[[str], str] = gateway.describe_dish) -> str:
     """Make and store the picture for one claimed dish. Returns 'ready', 'failed' or 'limit' (daily cap reached; the dish stays waiting)."""
     key, name = row["dish_key"], row["name"]
     try:
-        png = make(prompt_for(name))
+        try:
+            look = describe(name)            # Gemini 3.8 Flash writes how the dish looks; if that fails the picture is still made from the name
+        except gateway.LLMUnavailable as e:
+            if e.code == "daily_limit":
+                _release(key)
+                return "limit"
+            look = ""
+        png = make(prompt_for(name, look))
         jpeg = to_jpeg(png)
         storage_key = f"{key}.jpg"
         put(storage_key, jpeg, "image/jpeg", bucket=settings.food_image_bucket)

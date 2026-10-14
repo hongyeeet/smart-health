@@ -36,6 +36,24 @@ def _png(w: int, h: int) -> bytes:
     return out.getvalue()
 
 
+def test_description_goes_into_the_prompt_and_a_failed_description_does_not_stop_the_picture(monkeypatch):
+    _Rec(monkeypatch)
+    seen = []
+
+    def make(p):
+        seen.append(p)
+        return _png(800, 600)
+
+    fi.generate_one({"dish_key": "a", "name": "A"}, make=make, put=lambda *a, **k: None, describe=lambda n: "a white bowl of clear soup")
+    assert "It looks like this: a white bowl of clear soup" in seen[0]
+
+    def no_text(n):
+        raise gateway.LLMUnavailable("down", code="timeout")
+
+    assert fi.generate_one({"dish_key": "b", "name": "B"}, make=make, put=lambda *a, **k: None, describe=no_text) == "ready"
+    assert "It looks like" not in seen[1]
+
+
 @pytest.mark.parametrize("size", [(1024, 1024), (1600, 900), (500, 900)])
 def test_picture_is_shrunk_to_a_small_4_by_3_jpeg(size):
     jpeg = fi.to_jpeg(_png(*size))
@@ -54,7 +72,7 @@ class _Rec:
 def test_generate_one_stores_and_marks_ready(monkeypatch):
     rec = _Rec(monkeypatch)
     stored = {}
-    out = fi.generate_one({"dish_key": "fish-soup", "name": "Fish soup"}, make=lambda p: _png(1024, 1024), put=lambda k, d, ct, bucket=None: stored.update(k=k, ct=ct, bucket=bucket))
+    out = fi.generate_one({"dish_key": "fish-soup", "name": "Fish soup"}, make=lambda p: _png(1024, 1024), put=lambda k, d, ct, bucket=None: stored.update(k=k, ct=ct, bucket=bucket), describe=lambda n: "a white bowl of clear soup")
     assert out == "ready"
     assert stored["k"] == "fish-soup.jpg" and stored["ct"] == "image/jpeg" and stored["bucket"] == "food-images"
     assert rec.calls[-1][0] == "finish" and rec.calls[-1][2]["ok"] is True
@@ -66,7 +84,7 @@ def test_daily_limit_puts_the_dish_back_without_counting_the_try(monkeypatch):
     def make(p):
         raise gateway.LLMUnavailable("limit", code="daily_limit")
 
-    assert fi.generate_one({"dish_key": "a", "name": "A"}, make=make, put=lambda *a, **k: None) == "limit"
+    assert fi.generate_one({"dish_key": "a", "name": "A"}, make=make, put=lambda *a, **k: None, describe=lambda n: "") == "limit"
     assert rec.calls == [("release", "a")]
 
 
@@ -76,16 +94,16 @@ def test_model_or_storage_failure_marks_failed_with_a_code_only(monkeypatch):
     def bad_model(p):
         raise gateway.LLMUnavailable("secret details here", code="timeout")
 
-    assert fi.generate_one({"dish_key": "a", "name": "A"}, make=bad_model, put=lambda *a, **k: None) == "failed"
+    assert fi.generate_one({"dish_key": "a", "name": "A"}, make=bad_model, put=lambda *a, **k: None, describe=lambda n: "") == "failed"
     assert rec.calls[-1][2] == {"ok": False, "error": "timeout"}
 
     def bad_put(*a, **k):
         raise ExternalServiceError("no", code="storage_refused")
 
-    assert fi.generate_one({"dish_key": "b", "name": "B"}, make=lambda p: _png(800, 600), put=bad_put) == "failed"
+    assert fi.generate_one({"dish_key": "b", "name": "B"}, make=lambda p: _png(800, 600), put=bad_put, describe=lambda n: "") == "failed"
     assert rec.calls[-1][2]["error"] == "storage_refused"
 
-    assert fi.generate_one({"dish_key": "c", "name": "C"}, make=lambda p: b"not an image", put=lambda *a, **k: None) == "failed"
+    assert fi.generate_one({"dish_key": "c", "name": "C"}, make=lambda p: b"not an image", put=lambda *a, **k: None, describe=lambda n: "") == "failed"
 
 
 def test_generate_pending_stops_at_the_daily_limit(monkeypatch):
