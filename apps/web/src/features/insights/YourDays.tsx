@@ -35,13 +35,14 @@ export function YourDays() {
     stress: t('insights.overview.measure.stress', 'Stress'),
     doses: t('insights.overview.measure.doses', 'Doses taken'),
   }
-  const measureHint: Record<InsightsGridKey, string> = {
-    glucose: t('insights.overview.hint.glucose', 'Share of the day’s readings in range, as a percentage.'),
-    meals: t('insights.overview.hint.meals', 'Meals logged that day.'),
-    activity: t('insights.overview.hint.activity', 'Minutes of activity that day.'),
-    sleep: t('insights.overview.hint.sleep', 'Hours slept, from your watch.'),
-    stress: t('insights.overview.hint.stress', 'Your stress rating that day, from 1 (low) to 5 (high).'),
-    doses: t('insights.overview.hint.doses', 'Share of that day’s scheduled doses you took.'),
+  // short names, so the five choices fit on one row
+  const pillName: Record<InsightsGridKey, string> = {
+    glucose: t('insights.overview.pill.glucose', 'Glucose'),
+    meals: t('insights.overview.pill.meals', 'Meals'),
+    activity: t('insights.overview.pill.activity', 'Activity'),
+    sleep: t('insights.overview.pill.sleep', 'Sleep'),
+    stress: t('insights.overview.pill.stress', 'Stress'),
+    doses: t('insights.overview.pill.doses', 'Doses'),
   }
 
   return (
@@ -53,7 +54,7 @@ export function YourDays() {
         <h2 className="text-h2 font-bold">{t('insights.overview.yourDays', 'Your days')}</h2>
         <p className="text-sub text-ink2">{t('insights.overview.calendarPlain', 'One square for each day. Pick a measure, then tap a day to open it.')}</p>
       </div>
-      <div role="radiogroup" aria-label={t('insights.overview.measureLabel', 'Measure')} className="flex flex-wrap gap-2">
+      <div role="radiogroup" aria-label={t('insights.overview.measureLabel', 'Measure')} className="flex flex-nowrap gap-1.5">
         {MEASURES.map((k) => {
           const on = k === measure
           return (
@@ -62,13 +63,14 @@ export function YourDays() {
               type="button"
               role="radio"
               aria-checked={on}
+              aria-label={measureName[k]}
               onClick={() => setMeasure(k)}
               className={cn(
-                'press min-h-10 whitespace-nowrap rounded-chip border-[1.5px] px-3.5 py-1 text-sub',
+                'press min-h-10 min-w-0 flex-1 whitespace-nowrap rounded-chip border-[1.5px] px-2 py-1 text-sub',
                 on ? 'border-brand bg-brand-soft font-bold text-brand' : 'border-line bg-card text-ink',
               )}
             >
-              {measureName[k]}
+              {pillName[k]}
             </button>
           )
         })}
@@ -102,7 +104,6 @@ export function YourDays() {
       ) : (
         <Skeleton className="h-64" />
       )}
-      <p className="text-sub text-ink3">{measureHint[measure]}</p>
     </section>
   )
 }

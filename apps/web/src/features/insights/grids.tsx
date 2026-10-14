@@ -133,7 +133,6 @@ export function DayCalendar({ month, cells, today, measure }: { month: string; c
             )
           })}
       </ul>
-      <p className="text-sub text-ink3">{t('insights.grid.weekKey', 'A darker square means more. A dash means there is no data for that day.')}</p>
     </div>
   )
 }

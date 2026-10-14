@@ -25,7 +25,13 @@ const COLOR: Record<Metric, { text: string; tab: string; dot: string }> = {
 }
 
 const tabName = (t: TFunction, m: Metric) =>
-  m === 'glucose' ? t('home.chart.glucose', 'Glucose') : m === 'steps' ? t('home.chart.steps', 'Steps') : m === 'calories' ? t('home.chart.calories', 'Calories') : t('home.chart.heartRate', 'Heart rate')
+  m === 'glucose'
+    ? t('home.chart.glucose', 'Glucose')
+    : m === 'steps'
+      ? t('home.chart.steps', 'Steps')
+      : m === 'calories'
+        ? t('home.chart.calories', 'Calories')
+        : t('home.chart.heartRate', 'Heart rate')
 
 /** the value as written under the line and in the tooltip */
 function valueText(t: TFunction, m: Metric, v: number): { short: string; long: string } {
@@ -78,7 +84,10 @@ function paths(pos: (number | null)[]): { line: string; area: string } {
   const line = real.map((r) => r.map((pt, k) => `${k === 0 ? 'M' : 'L'} ${x(pt.i).toFixed(1)} ${y(pt.p).toFixed(1)}`).join(' ')).join(' ')
   const area = real
     .filter((r) => r.length > 1)
-    .map((r) => `${r.map((pt, k) => `${k === 0 ? 'M' : 'L'} ${x(pt.i).toFixed(1)} ${y(pt.p).toFixed(1)}`).join(' ')} L ${x(r[r.length - 1]!.i).toFixed(1)} ${H} L ${x(r[0]!.i).toFixed(1)} ${H} Z`)
+    .map(
+      (r) =>
+        `${r.map((pt, k) => `${k === 0 ? 'M' : 'L'} ${x(pt.i).toFixed(1)} ${y(pt.p).toFixed(1)}`).join(' ')} L ${x(r[r.length - 1]!.i).toFixed(1)} ${H} L ${x(r[0]!.i).toFixed(1)} ${H} Z`,
+    )
     .join(' ')
   return { line, area }
 }
@@ -99,7 +108,10 @@ export function HealthOverview({ chart }: { chart: HomeOverview['chart'] }) {
   const color = COLOR[metric]
 
   return (
-    <section aria-label={t('home.chart.title', 'Health overview')} className="flex flex-col gap-3 rounded-card border border-line bg-card p-4 shadow-lift">
+    <section
+      aria-label={t('home.chart.title', 'Health overview')}
+      className="flex flex-col gap-3 rounded-card border border-line bg-card p-4 shadow-lift h-full"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-h2 font-bold">{t('home.chart.title', 'Health overview')}</h2>
         <span className="rounded-chip border border-line px-3.5 py-1 text-sub">{t('home.chart.range', '7 days')}</span>
@@ -123,24 +135,47 @@ export function HealthOverview({ chart }: { chart: HomeOverview['chart'] }) {
       {noData ? (
         <p className="rounded-card bg-well p-4 text-sub text-ink2">{t('home.chart.none', 'Nothing to show for these 7 days yet.')}</p>
       ) : (
-        <div role="tabpanel" className="flex flex-col gap-1.5">
+        <div role="tabpanel" className="flex flex-1 flex-col justify-center gap-1.5">
           {/* the tooltip of the selected day: in the flow (so it never covers the line), kept inside the card */}
           <div className="min-h-[3.4rem]" aria-live="polite">
             {selVal != null && chart.days[sel] && (
-              <div className="w-max max-w-[9.5rem] rounded-[12px] bg-ink px-2.5 py-2 text-micro text-canvas" style={{ marginLeft: `clamp(0px, calc(${((sel + 0.5) / 7) * 100}% - 4.75rem), calc(100% - 9.5rem))` }}>
+              <div
+                className="w-max max-w-[9.5rem] rounded-[12px] bg-ink px-2.5 py-2 text-micro text-canvas"
+                style={{ marginLeft: `clamp(0px, calc(${((sel + 0.5) / 7) * 100}% - 4.75rem), calc(100% - 9.5rem))` }}
+              >
                 <p className="font-bold">{dayLong(chart.days[sel]!)}</p>
                 <p>{valueText(t, metric, selVal).long}</p>
               </div>
             )}
           </div>
 
-          <div className={cn('relative h-[200px]', color.text)}>
+          <div className={cn('relative h-[200px] min-h-[200px] flex-1 lg:max-h-[22rem]', color.text)}>
             <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
               {[0.25, 0.5, 0.75].map((g) => (
-                <line key={g} x1="0" x2={W} y1={H * g} y2={H * g} stroke="var(--c-line)" strokeWidth="1" strokeDasharray="4 6" vectorEffect="non-scaling-stroke" />
+                <line
+                  key={g}
+                  x1="0"
+                  x2={W}
+                  y1={H * g}
+                  y2={H * g}
+                  stroke="var(--c-line)"
+                  strokeWidth="1"
+                  strokeDasharray="4 6"
+                  vectorEffect="non-scaling-stroke"
+                />
               ))}
               {area && <path d={area} fill="currentColor" opacity="0.12" />}
-              {line && <path d={line} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+              {line && (
+                <path
+                  d={line}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
             </svg>
             <div className="absolute inset-0 grid grid-cols-7">
               {chart.days.map((d, i) => {
@@ -159,7 +194,11 @@ export function HealthOverview({ chart }: { chart: HomeOverview['chart'] }) {
                   >
                     {p != null && (
                       <span
-                        className={cn('absolute left-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card', color.dot, on ? 'h-[18px] w-[18px]' : 'h-3 w-3')}
+                        className={cn(
+                          'absolute left-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card',
+                          color.dot,
+                          on ? 'h-[18px] w-[18px]' : 'h-3 w-3',
+                        )}
                         style={{ top: `${((PAD + p * (H - PAD * 2)) / H) * 100}%` }}
                         aria-hidden
                       />
