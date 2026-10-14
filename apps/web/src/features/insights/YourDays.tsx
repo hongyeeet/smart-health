@@ -66,7 +66,7 @@ export function YourDays() {
               aria-label={measureName[k]}
               onClick={() => setMeasure(k)}
               className={cn(
-                'press min-h-10 min-w-0 flex-1 whitespace-nowrap rounded-chip border-[1.5px] px-2 py-1 text-sub',
+                'press flex min-h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-chip border-[1.5px] px-1 py-1 text-center text-sub',
                 on ? 'border-brand bg-brand-soft font-bold text-brand' : 'border-line bg-card text-ink',
               )}
             >
@@ -100,7 +100,7 @@ export function YourDays() {
       {cal.isError ? (
         <Alert tone="warn">{t('insights.shared.loadError', 'We could not load this just now. Please try again in a moment.')}</Alert>
       ) : calRow && cal.data ? (
-        <DayCalendar month={month} cells={calRow.cells} today={cal.data.today} measure={measureName[measure]} />
+        <DayCalendar month={month} cells={calRow.cells} today={cal.data.today} measure={measureName[measure]} full />
       ) : (
         <Skeleton className="h-64" />
       )}
