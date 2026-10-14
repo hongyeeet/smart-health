@@ -42,7 +42,7 @@ export function ScanReview() {
     return (
       <Screen narrow>
         <Header title={t('scanReview.title', 'Check what we read')} back backTo="H2" />
-        <Alert tone="warn" title={t('scanReview.offline', 'We could not reach Smart Health')}>
+        <Alert tone="warn" title={t('scanReview.offline', 'We could not reach Equinox')}>
           {t('scanReview.offlineBody', 'Check your connection and try again. Nothing has been saved.')}
         </Alert>
         <Footer>

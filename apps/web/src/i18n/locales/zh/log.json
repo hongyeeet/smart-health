@@ -134,8 +134,8 @@
     "notYet": "尚未",
     "noticed": {
       "check": "请检查是否正确。您可以确认、修改或删除。",
-      "many": "Smart Health 发现了 {{n}} 件事",
-      "one": "Smart Health 发现了一件事"
+      "many": "Equinox 发现了 {{n}} 件事",
+      "one": "Equinox 发现了一件事"
     },
     "numbers": {
       "loadError": "无法加载您的数值。点击重试。",
@@ -339,7 +339,7 @@
       "stillToLog": "待记录",
       "sub": "记下发生的事。所有内容都会出现在同一时间线上。",
       "suggestions": "餐食建议",
-      "suggestionsSub": "Smart Health 提供的餐食建议。请为每一项评分：合理、不合理或不安全。",
+      "suggestionsSub": "Equinox 提供的餐食建议。请为每一项评分：合理、不合理或不安全。",
       "symptom": "症状",
       "symptomSub": "您的感受",
       "takePhoto": "拍照",
@@ -417,7 +417,7 @@
         "badPhoto": "无法使用此照片",
         "dailyLimit": "今天无法使用 AI 识别",
         "generic": "本次无法识别",
-        "network": "无法连接至 Smart Health",
+        "network": "无法连接至 Equinox",
         "notFood": "照片中未发现食物",
         "timeout": "读取照片耗时过长"
       },

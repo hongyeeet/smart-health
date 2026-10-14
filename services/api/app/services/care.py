@@ -49,7 +49,7 @@ ORIGIN_LABELS = {
     "user": "Added by you",
     "refused_chat": "From your chat",
     "checkin": "From your check-in",
-    "agent_suggested": "Suggested by Smart Health",
+    "agent_suggested": "Suggested by Equinox",
 }
 # A question marked done is stored as "asked" (the table's status check has no "done"); "open" is on the list, "archived" is removed.
 DONE_STATUS = "asked"
@@ -117,7 +117,7 @@ def short_when(dt: datetime) -> str:
 def suggested_text(reason: Any) -> str | None:
     if not isinstance(reason, dict):
         return None
-    return SUGGESTED_BECAUSE.get(str(reason.get("due")), "Suggested by Smart Health.")
+    return SUGGESTED_BECAUSE.get(str(reason.get("due")), "Suggested by Equinox.")
 
 
 def freshness(last_at: datetime | None, now: datetime) -> str:
@@ -260,7 +260,7 @@ def check_question_text(text: str) -> str:
     return clean
 
 
-# The starter questions Smart Health offers under the writing box. Fixed wording that asks, never advises. The app shows them in the
+# The starter questions Equinox offers under the writing box. Fixed wording that asks, never advises. The app shows them in the
 # person's language; only the key is checked here, so a made-up key is saved as the person's own question.
 SUGGESTED_QUESTIONS = ("results", "medicines", "checks", "highlow", "bp", "food_activity")
 

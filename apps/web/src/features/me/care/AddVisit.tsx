@@ -1,7 +1,7 @@
 /**
  * The visit parts of the Care plan page (K3): the card for a planned visit (with Cancel) and the "Add a visit" form. A visit is saved
  * with a kind, a date and a time (Singapore time). Cancelling keeps the row (its status changes), so the history stays. No calendar is
- * called from here. Visits Smart Health once suggested are not offered any more: the person adds a visit themselves.
+ * called from here. Visits Equinox once suggested are not offered any more: the person adds a visit themselves.
  */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'

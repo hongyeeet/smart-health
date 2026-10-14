@@ -84,7 +84,7 @@ function YourData() {
             <p className="text-body text-ink2">
               {t(
                 'me.data.deleteWhat',
-                'This removes your logs, your medicines and doses, your profile, and what Smart Health has learned about you. It cannot be undone.',
+                'This removes your logs, your medicines and doses, your profile, and what Equinox has learned about you. It cannot be undone.',
               )}
             </p>
             <Button variant="secondary" icon={Trash} onClick={() => setStep('confirm')}>

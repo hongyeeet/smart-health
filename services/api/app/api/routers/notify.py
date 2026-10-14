@@ -87,7 +87,7 @@ def _test(user: str) -> TestResult:
     if not sender.configured:
         return TestResult(sent=False, message="Sending emails is not set up on this server yet.")
     row = svc.Row("test", user, "nudge", datetime.now(logstore.TZ), None,
-                  {"key": "test", "title": "Your reminders are working", "body": "This is a test email from Smart Health. If you can read it, reminders will reach you here.", "to": "B1"},
+                  {"key": "test", "title": "Your reminders are working", "body": "This is a test email from Equinox. If you can read it, reminders will reach you here.", "to": "B1"},
                   0, "person", None, state.email, True, None, None)
     try:
         sender.send(svc.build_message(row))
@@ -117,5 +117,5 @@ async def unsubscribe(t: str = Query("", max_length=200)) -> Any:
     ok = await run_in_threadpool(_unsub, t)
     body = ("<h1>You are unsubscribed</h1><p>We will not send you reminder emails. You can turn them back on in the app, under Me, then Privacy.</p>" if ok
             else "<h1>This link did not work</h1><p>It may be out of date. You can turn reminder emails off in the app, under Me, then Privacy.</p>")
-    return HTMLResponse(f"<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'><title>Smart Health</title>"
+    return HTMLResponse(f"<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'><title>Equinox</title>"
                         f"<body style='font-family:Arial,sans-serif;max-width:480px;margin:48px auto;padding:0 16px;color:#16201B'>{body}</body>", status_code=200 if ok else 400)

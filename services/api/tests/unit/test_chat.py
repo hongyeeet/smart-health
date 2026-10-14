@@ -1,4 +1,4 @@
-"""Ask Smart Health (I1): urgent bypass, self-harm words, the speed limit, identifiers, the fallback when the model is down, storage through
+"""Ask Equinox (I1): urgent bypass, self-harm words, the speed limit, identifiers, the fallback when the model is down, storage through
 send(), starters and the 8-message limit.
 
 No database and no network: the model (AI.triage, AI.answer), JEV, storage and the trace are fakes. The rules themselves are tested in
@@ -74,7 +74,7 @@ def env(monkeypatch):
         calls["triage"].append(safe)
         return AI.Triage(intent="data_summary")
 
-    def answer(lang_name, context_text, history, safe_text):
+    def answer(lang_name, context_text, history, safe_text, **kw):
         calls["model"].append((lang_name, context_text, history, safe_text))
         return AI.Reply(reply=ANSWER, reply_en=ANSWER)
 
@@ -270,7 +270,7 @@ def test_send_stores_the_exchange_and_never_raises(env, stored, monkeypatch):
 
 
 def test_model_failure_gives_the_persons_own_summary_through_send(env, stored, monkeypatch):
-    def down(*a):
+    def down(*a, **kw):
         raise LLMUnavailable("down")
 
     monkeypatch.setattr(AI, "answer", down)

@@ -5,7 +5,7 @@
  * at the top, then reminders (GET /notifications/history), grouped by day, newest day first. Nothing is ever cleared from this page:
  * opening a reminder marks it seen (the dot goes) and goes to the matching log, even when it is done or from an earlier day. Refill and dose reminders
  * belong to the Medicines group with the interaction alerts.
- * The design's care-team notes and pharmacy pick-up cards are not here: Smart Health has no care-team or pharmacy link.
+ * The design's care-team notes and pharmacy pick-up cards are not here: Equinox has no care-team or pharmacy link.
  */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'

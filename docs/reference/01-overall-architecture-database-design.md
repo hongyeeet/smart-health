@@ -1,10 +1,10 @@
 > **Superseded.** This is a starting template. The maintained versions are `memory.md`, `schema.md` and `architecture.md` in `docs/specs/`. In `memory.md`, JEV is the OpenJev typed decision layer (not a memory governor), nothing is "validated", and table names are standardised. Kept for reference only.
 
-# Smart Health: Overall Architecture & Database Design
+# Equinox: Overall Architecture & Database Design
 
 ## 1. Purpose
 
-This document defines the overall data architecture, database design, security boundaries, provenance model, and deterministic health-processing components for Smart Health, an AI companion for Type 2 diabetes self-care.
+This document defines the overall data architecture, database design, security boundaries, provenance model, and deterministic health-processing components for Equinox, an AI companion for Type 2 diabetes self-care.
 
 The app helps patients understand and organize their daily health data while producing an evidence-backed brief for clinicians. It does not diagnose, prescribe, or independently change medication instructions.
 

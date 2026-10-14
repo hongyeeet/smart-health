@@ -34,7 +34,7 @@ export function Eligibility() {
   return (
     <Screen narrow>
       <TopBar />
-      <StepHead step={2} name={t('onboarding.elig.step', 'A quick check')} title={t('onboarding.elig.title', 'Is this app right for you?')} sub={t('onboarding.elig.sub', 'Smart Health is made for adults living with type 2 diabetes.')} />
+      <StepHead step={2} name={t('onboarding.elig.step', 'A quick check')} title={t('onboarding.elig.title', 'Is this app right for you?')} sub={t('onboarding.elig.sub', 'Equinox is made for adults living with type 2 diabetes.')} />
       <Group>
         <div className="flex flex-col gap-2">
           <p className="text-sub font-bold">{q1}</p>
@@ -50,7 +50,7 @@ export function Eligibility() {
         </div>
       </Group>
       {out ? (
-        <Alert tone="info" icon={ShieldCheck} title={t('onboarding.elig.outTitle', 'Smart Health is not built for this yet')}>
+        <Alert tone="info" icon={ShieldCheck} title={t('onboarding.elig.outTitle', 'Equinox is not built for this yet')}>
           {t('onboarding.elig.out', 'It is made for adults living with type 2 diabetes. Please talk to your care team, who can support you better. You have not been enrolled.')}
         </Alert>
       ) : t2 === 'unsure' ? (

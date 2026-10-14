@@ -1,4 +1,4 @@
-# Flow — Smart Health user journeys, screens and event logging
+# Flow — Equinox user journeys, screens and event logging
 
 > **Superseded for the built app (2026-10-10):** what is actually built, screen by screen, is in [app-flow-and-features.md](app-flow-and-features.md). This file is kept for the original plan: journeys, the event catalogue and the demo script.
 
@@ -28,7 +28,7 @@ Launch
     ├─ Log        [+] glucose · meal · workout · symptom · mood/sleep ; recent entries
     ├─ Meds       med list (with clash badge) · [Scan] · [Add manually] → Med detail (explainer, TTS, history, refill)
     ├─ Insights   glucose trend · momentum cards · food responses · activity · sleep · adherence
-    └─ Me         profile · "What Smart Health has learned" · appointments · doctor questions · briefs · devices · language · consents
+    └─ Me         profile · "What Equinox has learned" · appointments · doctor questions · briefs · devices · language · consents
  Global: Chat (floating button) · Urgent (full-screen modal, can open over anything) · Notifications
 ```
 
@@ -170,12 +170,12 @@ Each journey lists: **Trigger → Steps (screen · system action · events)**.
 | 3d | Urgent keywords → J8 | | `guard.urgent` |
 | 4 | Session ends (idle 10 min) → episode summary + embedding (async) | | `memory.episode.created` |
 
-### J13 "What Smart Health has learned about you" (F16)
+### J13 "What Equinox has learned about you" (F16)
 | # | Step | System | Events |
 |---|---|---|---|
 | 1 | Nightly reflection proposes/updates facts with evidence | `memory_facts` | `memory.fact.proposed/activated/superseded` |
 | 2 | New active fact → gentle card "I've noticed you usually walk after dinner. Is that right?" [Yes] [Not really] | | `memory.fact.prompted` |
-| 3 | Me → What Smart Health has learned: list by category (routines, preferences, barriers, food responses) with "why I think this" (evidence) | | `memory.screen.viewed` |
+| 3 | Me → What Equinox has learned: list by category (routines, preferences, barriers, food responses) with "why I think this" (evidence) | | `memory.screen.viewed` |
 | 4 | Confirm / edit / delete | status change + version | `memory.fact.confirmed` / `.edited` / `.rejected` |
 
 ### J15 Lifestyle timeline and day traces (F18)
@@ -227,6 +227,6 @@ Adding a new event = add it here first, then implement.
 6. **Food response (45 s):** Insights → food responses from the CGM days (gentlest and spikiest foods, from `meal_response`): chicken rice vs yong tau foo; log chicken rice → factual note.
 7. **Decline flag and check-in (30 s):** the "outside your usual range" card (fires from early September in the demo data) → targeted question about the tingling in his left foot.
 8. **Urgent (20 s):** replay a 2.8 mmol/L reading → urgent screen (no AI in the loop, by design).
-9. **Memory (20 s):** "What Smart Health has learned" → confirm a fact.
+9. **Memory (20 s):** "What Equinox has learned" → confirm a fact.
 10. **Doctor brief (60 s, finale):** open brief: the four charts (heart rate, SpO2, glucose, blood pressure) with his usual range and the day's overlay, prescription timeline with glucose overlay, miss reasons, food leaderboard, patterns labelled unverified with evidence, completeness bar → share link opened on a second device ("the doctor's view").
 11. **Close (10 s):** trust-boundary diagram + "Explain, organise, remind. Never advise."

@@ -1,4 +1,4 @@
-# Smart Health API — Python dependencies
+# Equinox API — Python dependencies
 # Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0 async (architecture.md)
 
 # Web framework

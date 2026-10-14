@@ -220,7 +220,7 @@ function DayBody({ data, onMove, go }: { data: InsightsDay; onMove: (iso: string
       <DateRow data={data} onMove={onMove} />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20.75rem] lg:items-start lg:gap-6 [&>*]:min-w-0">
         <div className="flex flex-col gap-4">
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_17rem]">
+          <div className="grid gap-4 min-[1500px]:grid-cols-[minmax(0,1fr)_17rem]">
             <section className="flex flex-col gap-2.5 rounded-card border border-line bg-card p-4 shadow-lift" aria-label={t('day.score', 'Health score')}>
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="text-body font-bold">{t('day.score', 'Health score')}</h2>
@@ -927,9 +927,7 @@ function Ideas({ data }: { data: InsightsDay }) {
               <>
                 {t('day.walkLearned', 'After evening walks, your morning glucose was {{n}} mmol/L lower', { n: walk.learned.lowerBy })}{' '}
                 <span className="text-ink3">
-                  {walk.learned.confirmed
-                    ? t('day.youConfirmed', '(you confirmed this)')
-                    : t('day.notConfirmed', '(noticed by Smart Health, not confirmed yet)')}
+                  {walk.learned.confirmed ? t('day.youConfirmed', '(you confirmed this)') : t('day.notConfirmed', '(noticed by Equinox, not confirmed yet)')}
                 </span>
               </>
             ) : (
@@ -938,7 +936,7 @@ function Ideas({ data }: { data: InsightsDay }) {
           </>,
         )}
       {!swap && !walk && (
-        <p className="text-sub text-ink2">{t('day.noIdeas', 'No ideas for this day. Keep logging meals and Smart Health will suggest lighter swaps.')}</p>
+        <p className="text-sub text-ink2">{t('day.noIdeas', 'No ideas for this day. Keep logging meals and Equinox will suggest lighter swaps.')}</p>
       )}
       <p className="text-[11px] leading-snug text-ink3">{t('day.ideasNote', 'Ideas from your own records, not medical advice.')}</p>
     </section>

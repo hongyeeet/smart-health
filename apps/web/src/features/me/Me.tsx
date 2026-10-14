@@ -1,7 +1,7 @@
 /**
  * K1 — Me.
  *
- * The person's own corner: what Smart Health has learned about them (and the things waiting for a yes), their appointments, questions for
+ * The person's own corner: what Equinox has learned about them (and the things waiting for a yes), their appointments, questions for
  * the doctor, doctor brief and reminders, then their settings (sources, language, and Data and account, which holds their details,
  * emergency contacts and consents). Adding a visit is on Track appointments (K3).
  */
@@ -22,7 +22,7 @@ export function Me() {
   const care = useCarePlan()
   const openQuestions = care.data?.questions.filter((q) => q.status === 'open').length
   const rows: { id: RouteId; title: string; sub: string; icon: IconType; badge?: number }[] = [
-    { id: 'K2', title: t('me.learned.title', 'What Smart Health has learned'), sub: t('me.menu.learnedSub', 'Everything it noticed about you, and why. You decide what stays.'), icon: Brain, badge: data?.toConfirm },
+    { id: 'K2', title: t('me.learned.title', 'What Equinox has learned'), sub: t('me.menu.learnedSub', 'Everything it noticed about you, and why. You decide what stays.'), icon: Brain, badge: data?.toConfirm },
     { id: 'K3', title: t('me.care.titleV2', 'Track appointments'), sub: t('me.menu.careSubV2', 'Add and cancel visits, and see which checks are due.'), icon: CalendarCheck },
     { id: 'K12', title: t('me.questions.title', 'Questions for your doctor'), sub: t('me.menu.questionsSub', 'What you want to ask at your next visit, and what is done.'), icon: ChatCircleDots, badge: openQuestions },
     { id: 'L1', title: t('me.menu.brief', 'Doctor brief'), sub: t('me.menu.briefSub', 'A printable report of your readings, symptoms and medicines for your next visit.'), icon: Stethoscope },

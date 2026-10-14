@@ -44,7 +44,7 @@ export function MacroCharts({ days, isError }: { days: DietDay[] | undefined; is
         <div
           role="radiogroup"
           aria-label={t('insights.food.metricPick', 'What to chart')}
-          className="flex flex-wrap gap-1 rounded-chip border border-line bg-well p-1"
+          className="flex w-full flex-nowrap gap-0.5 rounded-chip border border-line bg-well p-1 sm:w-full"
         >
           {metrics.map((x) => {
             const on = x.key === m.key
@@ -56,7 +56,7 @@ export function MacroCharts({ days, isError }: { days: DietDay[] | undefined; is
                 aria-checked={on}
                 onClick={() => setKey(x.key)}
                 className={cn(
-                  'press min-h-11 flex-1 whitespace-nowrap rounded-chip px-3 text-sub sm:flex-none',
+                  'press min-h-10 flex-1 whitespace-nowrap rounded-chip px-2.5 text-sub sm:flex-none',
                   on ? 'bg-card font-bold text-ink shadow-lift' : 'text-ink2',
                 )}
               >

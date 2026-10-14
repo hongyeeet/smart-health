@@ -1,4 +1,4 @@
-# Ask Smart Health: guidance reading (knowledge base)
+# Ask Equinox: guidance reading (knowledge base)
 
 Status: spec only. Nothing is loaded and no loader exists yet. The chat already reads from this table if it has rows (see `passages()` in
 `services/api/app/services/chat.py`), and quotes what it finds as general information, never as something about the person.

@@ -165,7 +165,7 @@ def build_message(row: Row) -> dict[str, Any]:
 <span style="display:none;max-height:0;overflow:hidden">{esc(body[:110])}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" style="max-width:520px;background:#FFFEFB;border:1px solid #E1DDD0;border-radius:16px" cellpadding="0" cellspacing="0"><tr><td style="padding:28px 24px">
-<p style="margin:0 0 4px;font-size:14px;color:#46524B">Smart Health</p>
+<p style="margin:0 0 4px;font-size:14px;color:#46524B">Equinox</p>
 <p style="margin:0 0 16px;font-size:16px">{esc(greeting)}</p>
 <h1 style="margin:0 0 8px;font-size:24px;line-height:1.25;font-weight:600">{esc(title)}</h1>
 <p style="margin:0 0 24px;font-size:17px;line-height:1.45;color:#46524B">{esc(body)}</p>

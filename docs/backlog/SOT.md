@@ -1,4 +1,4 @@
-# Smart Health: central tracker
+# Equinox: central tracker
 
 The single place to see where the project stands. **Everything between the generated markers is rewritten by `python scripts/update_tracker.py`. Do not edit it by hand.** Progress comes from the three personal backlogs: [Hong Yi](hongyi.md), [Joely](joely.md) and [Damien](damien.md). Each person edits only their own file, then runs the script.
 

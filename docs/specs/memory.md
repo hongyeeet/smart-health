@@ -1,6 +1,6 @@
 # Memory, evidence and decisions
 
-How Smart Health stores what it learns about a person, how that memory is read and written, and where fast typed decisions (JEV) fit. This replaces the two starting-template documents (kept in `docs/reference/`). Read it with [architecture.md](architecture.md) (system), [schema.md](schema.md) (tables) and [rules.md](rules.md) (boundaries).
+How Equinox stores what it learns about a person, how that memory is read and written, and where fast typed decisions (JEV) fit. This replaces the two starting-template documents (kept in `docs/reference/`). Read it with [architecture.md](architecture.md) (system), [schema.md](schema.md) (tables) and [rules.md](rules.md) (boundaries).
 
 > **Nothing in this project is clinically validated yet.** No status, label or table in this document means "validated". Reference lookups are matched against unreviewed data, thresholds are marked "clinical validation pending", and every learned pattern is an association.
 

@@ -132,6 +132,6 @@ def test_a_suggested_visit_of_an_old_kind_can_be_confirmed_with_that_kind(conn, 
 
 def test_a_question_taken_from_the_suggestions_says_so_and_a_made_up_key_does_not(conn, user):
     q = svc.add_question(conn, user, "Are my results where they should be for me?", "results")
-    assert q["origin"] == "agent_suggested" and q["origin_label"] == "Suggested by Smart Health"
+    assert q["origin"] == "agent_suggested" and q["origin_label"] == "Suggested by Equinox"
     other = svc.add_question(conn, user, "Can I walk after dinner?", "not-a-key")
     assert other["origin"] == "user"

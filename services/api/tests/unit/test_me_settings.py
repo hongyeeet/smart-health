@@ -116,7 +116,7 @@ def test_export_counts_match_the_sections_in_the_file():
     out = M.build_export(None, sections, [], NOW)
     assert out["counts"] == {"meals": 2, "workouts": 0, "doses": 1}
     assert out["meals"] == sections["meals"] and out["profile"] is None
-    assert out["exported_at"] == NOW.isoformat() and out["format"] == "smart-health-export"
+    assert out["exported_at"] == NOW.isoformat() and out["format"] == "equinox-export"
 
 
 def test_plain_turns_money_dates_and_ids_into_json_values():

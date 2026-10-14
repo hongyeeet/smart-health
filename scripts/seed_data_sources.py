@@ -27,8 +27,8 @@ SOURCES = [
     ("Open Food Facts", "dataset", "Database Contents License (DbCL 1.0)", "https://www.kaggle.com/datasets/openfoodfacts/world-food-facts", date(2026, 10, 1), "Foods with nutrients (Singapore and Malaysia products)", "Manifest #17. Packaged foods only; most lack sodium"),
     ("Doctor Specialty", "dataset", "CC BY-SA 4.0", "https://www.kaggle.com/datasets/ebrahimelgazar/doctor-specialist-recommendation-system", date(2026, 10, 1), "Which kind of doctor for which condition (routing only)", "Manifest #37. Weak provenance; only Doctor_Versus_Disease.csv, disease-to-specialty pairs"),
     ("GlucoBench", "dataset", "Apache 2.0 (source not cited)", "https://www.kaggle.com/datasets/omenkj/glucobench-glucose-monitoring-and-lifestyle-data", date(2026, 10, 1), "Test fixture only; not loaded into the database", "Not in the manifest (allowed by the data policy). May be synthetic; never evidence"),
-    ("Smart Health team placeholder (clinical review pending)", "own", "Team-written, not from any dataset", None, date(2026, 10, 2), "Check-up intervals and default targets", "Owner approved 2026-10-02 as placeholders; a clinician must review before real use"),
-    ("Smart Health simulator (demo)", "own", "Team-written, not from any dataset", None, date(2026, 10, 2), "Simulated 60-day history for the demo patient", "Built from cited data only and disclosed in data/demo/DISCLOSURE.md"),
+    ("Equinox team placeholder (clinical review pending)", "own", "Team-written, not from any dataset", None, date(2026, 10, 2), "Check-up intervals and default targets", "Owner approved 2026-10-02 as placeholders; a clinician must review before real use"),
+    ("Equinox simulator (demo)", "own", "Team-written, not from any dataset", None, date(2026, 10, 2), "Simulated 60-day history for the demo patient", "Built from cited data only and disclosed in data/demo/DISCLOSURE.md"),
 ]
 
 

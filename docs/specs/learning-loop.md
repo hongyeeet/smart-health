@@ -250,7 +250,7 @@ Autonomous prompt or rule rewriting; exercise framed as compensation or punishme
 - JEV gateway (`app/llm/jev.py`): `noul`, `choice`, `score`, batch calls, de-identification, conservative path, and the three frozen guard questions (`GUARD_VERSION`).
 - Food habit loop (`app/agents/food.py`, `app/db/nutritionstore.py`): JEV food types, habit rule over the person's logged meals, shelf search, comparison against the person's own logged numbers, JEV substitute check, savings including protein; habits proposed as memory facts.
 - **Memory lifecycle** (`app/db/memorystore.py`, `/memory/*`): list, confirm, edit (new version, in the person's words) and delete; a deleted idea is never proposed again, and the agent never supersedes a fact the person confirmed or edited (unit-tested with a fake connection).
-- **Screens:** Me (K1), What Smart Health has learned (K2) with the weekly digest (LL8), the audit list and per-fact "why"; How it is going (K10) with first-two against latest-two weeks; Home cards for the habit, lunch ideas and "Smart Health noticed something".
+- **Screens:** Me (K1), What Equinox has learned (K2) with the weekly digest (LL8), the audit list and per-fact "why"; How it is going (K10) with first-two against latest-two weeks; Home cards for the habit, lunch ideas and "Equinox noticed something".
 - Lunch ideas (E8) with an "instead of your usual" tier; LL9 high-salt prompt with gates; learning policy in `nudge_policy` with 15% exploration.
 - Adherence agent (barriers, anchor rule, proposals that stay `proposed`) as a replay: `python scripts/run_learning_replay.py`.
 - 50 unit tests (`tests/unit/test_learning_loop.py`).

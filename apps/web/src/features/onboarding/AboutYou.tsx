@@ -63,7 +63,7 @@ export function AboutYou() {
   const between = (lo: number, hi: number, unit: string) => t('onboarding.err.between', 'Enter a number from {{lo}} to {{hi}} {{unit}}, or leave it blank.', { lo, hi, unit })
   const e: Errors = {}
   if (a.birthYear.trim() && !yearOk(a.birthYear)) e.birthYear = t('onboarding.err.year', 'Enter a 4-digit year, like 1968.')
-  else if (a.birthYear.trim() && thisYear - Number(a.birthYear) < MIN_AGE) e.birthYear = t('onboarding.err.adult', 'Smart Health is for adults aged 18 or older.')
+  else if (a.birthYear.trim() && thisYear - Number(a.birthYear) < MIN_AGE) e.birthYear = t('onboarding.err.adult', 'Equinox is for adults aged 18 or older.')
   if (!inRange(a.heightCm, LIMITS.heightCm)) e.heightCm = between(...LIMITS.heightCm, 'cm')
   if (!inRange(a.weightKg, LIMITS.weightKg)) e.weightKg = between(...LIMITS.weightKg, 'kg')
   if (!inRange(a.waistCm, LIMITS.waistCm)) e.waistCm = between(...LIMITS.waistCm, 'cm')

@@ -82,7 +82,7 @@ export function InteractionDetail() {
                 ) : (
                   <p className="text-body text-ink2">{t('alerts.detail.noSources', 'No source page was recorded for this flag.')}</p>
                 )}
-                <p className="text-sub text-ink3">{t('alerts.detail.sourcesNote', 'These pages have not been reviewed by a clinician for Smart Health. Not medical advice.')}</p>
+                <p className="text-sub text-ink3">{t('alerts.detail.sourcesNote', 'These pages have not been reviewed by a clinician for Equinox. Not medical advice.')}</p>
               </div>
             )}
           </Card>

@@ -1,6 +1,6 @@
-# PRD — Smart Health: an AI companion for Type 2 diabetes self-care
+# PRD — Equinox: an AI companion for Type 2 diabetes self-care
 
-> Project name: Smart Health.
+> Project name: Equinox.
 > Track: AI CAN DO IT Tencent Cloud Hackathon SG 2026 · Healthcare (NTU LKC Medicine) · Challenge 2 "AI Healthier Every Day" · Scenario 2 — Type 2 Diabetes self-care, adults 45–65.
 > Submission: 16 Oct 2026 · Demo Day: ~3 Nov 2026 · Must be built with CodeBuddy/WorkBuddy (keep chat-log screenshots as proof).
 
@@ -37,17 +37,17 @@ The data exists, spread across a watch, a glucometer, a pill box and memory, but
 
 ## 4. What makes this different
 
-| Typical diabetes/health app | Smart Health |
+| Typical diabetes/health app | Equinox |
 |---|---|
 | Logs data for the patient to look at | **Turns logs into a clinician-grade pre-visit brief**: the doctor is a first-class user |
 | Generic reminders ("take your pill") | **Captures *why* a dose was missed** (side effects, cost, ran out, felt fine) and reports the barrier pattern to the doctor |
 | Generic diet advice | **Personal food-response learning**: the days a CGM is worn (for example a 14-day sensor before a review) learn which local foods spike *this* patient (e.g. chicken rice vs yong tau foo), and that knowledge keeps working after the sensor is removed |
 | Alerts on fixed thresholds | **Momentum engine**: tracks each metric against the patient's *own* fixed baseline, so drift is caught before it becomes a crisis |
 | Chatbot that "answers anything" | **Bounded by design**: a deterministic safety gate. The AI explains and organises but never advises on medication; interaction checks are a database lookup, not LLM guesses |
-| "AI memory" hidden from the user | **Visible learning ("What Smart Health has learned about you")**: every learned fact has evidence, confidence and version history, and the patient can confirm, correct or delete it |
+| "AI memory" hidden from the user | **Visible learning ("What Equinox has learned about you")**: every learned fact has evidence, confidence and version history, and the patient can confirm, correct or delete it |
 | English only | Explanations in **English, Mandarin, Malay, Tamil**, with text-to-speech |
 
-**One-line pitch:** *"Smart Health is the everyday companion for your health, and the notes your doctor always wished they had."*
+**One-line pitch:** *"Equinox is the everyday companion for your health, and the notes your doctor always wished they had."*
 
 ## 5. Goals & success metrics
 
@@ -224,7 +224,7 @@ Patient collects questions anytime (typed, voice, or "add to doctor questions" f
 In-app assistant for "what is this med for", "how was my week", "what does this reading mean in general". Grounded in the user's data and the corpus, passes the safety gate, and uses memory.
 - AC: the chat supplements the app; every feature is reachable without chat.
 
-### F16 "What Smart Health has learned about you" (transparent memory)
+### F16 "What Equinox has learned about you" (transparent memory)
 *Data (data model v2, see [data-flow.md](data-flow.md) section 6): reads and writes `memory_facts` (versioned).*
 
 A screen listing learned facts (preferences, routines, barriers, food responses) with evidence, confidence and date. The user can confirm, correct or delete; changes are versioned.

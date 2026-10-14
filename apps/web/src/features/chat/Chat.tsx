@@ -1,5 +1,5 @@
 /**
- * I1 — Ask Smart Health.
+ * I1 — Ask Equinox.
  *
  * A chat that answers only from the person's own data (POST /chat/messages). Urgent words and medicine or diagnosis questions get a fixed
  * reply from the server, never a model answer; a refused question can be added to the doctor questions. Every answer shows where its numbers
@@ -53,7 +53,7 @@ export function Chat() {
     <div className="absolute inset-0 flex flex-col">
       <div className="hide-scroll scroll-area flex-1 overflow-y-auto overflow-x-hidden px-5 pt-1 md:px-8">
         <div className="mx-auto flex w-full flex-col gap-4 pb-4 md:max-w-[720px]">
-          <Header title={t('chat.title', 'Ask Smart Health')} back backTo="B1" />
+          <Header title={t('chat.title', 'Ask Equinox')} back backTo="B1" />
           <div role="log" aria-live="polite" aria-label={t('chat.conversation', 'Conversation')} className="flex flex-col gap-3">
             {items.length === 0 && (
               <div className="flex flex-col gap-3">
@@ -122,7 +122,7 @@ export function Chat() {
               <span className="sr-only">{t('chat.send', 'Send')}</span>
             </Button>
           </form>
-          <p className="text-micro text-ink3">{t('chat.note', 'Smart Health answers from your own data. It cannot give medical advice. For emergencies call 995.')}</p>
+          <p className="text-micro text-ink3">{t('chat.note', 'Equinox answers from your own data. It cannot give medical advice. For emergencies call 995.')}</p>
         </div>
       </div>
     </div>
@@ -135,7 +135,7 @@ function Row({ item, showFollowUps, onAsk, onRetry }: { item: Item; showFollowUp
     return (
       <Alert tone="warn" title={t('chat.failedTitle', 'That did not go through')}>
         <div className="flex flex-col gap-2">
-          <span>{t('chat.failedText', 'We could not reach Smart Health. Your question was not answered.')}</span>
+          <span>{t('chat.failedText', 'We could not reach Equinox. Your question was not answered.')}</span>
           <Button variant="secondary" size="md" onClick={onRetry}>
             {t('chat.retry', 'Try again')}
           </Button>

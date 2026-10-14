@@ -1,4 +1,4 @@
-"""Ask Smart Health, the whole decision order (chat.decide and chat.send) with fakes: no network, no database.
+"""Ask Equinox, the whole decision order (chat.decide and chat.send) with fakes: no network, no database.
 
 The fakes are AI.triage, AI.answer (the two model calls), jev (optional, only when a key exists), the storage helpers and the trace. Each
 test changes one piece of the world (what triage says, what the model returns, whether JEV is there, what data the person has) and checks
@@ -487,8 +487,8 @@ def test_when_the_model_is_down_the_own_data_summary_still_ends_warmly(world):
     assert o.text.endswith(texts.tr("en", "chat.closing"))
 
 
-# ----------------------------------------------------------------------------- (l) ideas from what Smart Health has learned, confirmed or not
-LEARNED = C.Section("learned", "What Smart Health has learned", "K2", [
+# ----------------------------------------------------------------------------- (l) ideas from what Equinox has learned, confirmed or not
+LEARNED = C.Section("learned", "What Equinox has learned", "K2", [
     "After sweet drinks, your glucose rose 1.4 mmol/L more than after other meals. (a pattern from 43 matched days in your own records; not confirmed by you, not proven)",
     "You usually take your Metformin about 15 minutes after the set time. (not confirmed by you yet)"])
 IDEA_BULLETS = ("- After sweet drinks your glucose rose 1.4 mmol/L more (not confirmed yet), so you could try water or unsweetened tea.\n"
@@ -507,12 +507,12 @@ def test_an_advice_question_uses_learned_lines_confirmed_or_not_and_ends_with_no
     monkeypatch.setattr(C, "learned_section", lambda conn, uid: LEARNED)
     world["ans"] = AI.Reply(reply=IDEA_BULLETS, reply_en=IDEA_BULLETS, closing=CLOSING, closing_en=CLOSING)
     o = turn("How should I improve my readings?")
-    assert world["answer"][-1]["advice"] is True and "What Smart Health has learned".upper() in world["answer"][-1]["context"]
+    assert world["answer"][-1]["advice"] is True and "What Equinox has learned".upper() in world["answer"][-1]["context"]
     assert "not confirmed by you" in world["answer"][-1]["context"]                       # unconfirmed lines reach the model, labelled as such
     assert o.text.startswith(IDEA_BULLETS)
     assert "\n- " + texts.tr("en", "chat.advice_dose") in o.text                       # the dose line is written by code (the records show a missed dose)
     assert texts.tr("en", "chat.advice_note") in o.text and texts.tr("en", "chat.sign_learned") in o.text and texts.tr("en", "chat.sign_food") in o.text
-    assert {"kind": "open", "label": "Open what Smart Health has learned", "to": "K2", "text": None} in o.actions
+    assert {"kind": "open", "label": "Open what Equinox has learned", "to": "K2", "text": None} in o.actions
     assert o.text.endswith(CLOSING)
 
 
@@ -530,7 +530,7 @@ def test_an_idea_that_advises_on_a_medicine_is_blocked(world, monkeypatch):
 
 
 def test_the_dose_line_is_left_out_when_the_records_show_no_missed_dose(world, monkeypatch):
-    monkeypatch.setattr(C, "learned_section", lambda conn, uid: C.Section("learned", "What Smart Health has learned", "K2", ["Walks after dinner (you confirmed this)"]))
+    monkeypatch.setattr(C, "learned_section", lambda conn, uid: C.Section("learned", "What Equinox has learned", "K2", ["Walks after dinner (you confirmed this)"]))
     world["rows"] = dict(ROWS, daily=[dict(ROWS["daily"][0], doses_missed=0, doses_taken=3)])
     world["ans"] = AI.Reply(reply=IDEA_BULLETS, reply_en=IDEA_BULLETS, closing=CLOSING, closing_en=CLOSING)
     o = turn("Any tips?")

@@ -3,7 +3,7 @@
  * Clinical thresholds are placeholders and are marked as pending clinical review.
  */
 export const appConfig = {
-  name: 'Smart Health',
+  name: 'Equinox',
   /** 'column' fills a phone and centres a 480 px column on wider windows; 'device' draws a phone frame on wide windows */
   frame: 'column' as 'column' | 'device',
   /** clinical review pending: these are placeholders, never presented as advice */

@@ -1,4 +1,4 @@
-"""What Smart Health has learned (PRD F16): list, confirm, edit and delete facts; the weekly digest; the progress view.
+"""What Equinox has learned (PRD F16): list, confirm, edit and delete facts; the weekly digest; the progress view.
 
 Every action by the person is written to the append-only `event_log` (actor `user`). Editing never overwrites: it creates a new
 version that supersedes the old one. Deleting marks the fact `rejected`, and a rejected fact is never proposed again with the same

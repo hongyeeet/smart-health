@@ -113,30 +113,33 @@ function MealTile({ progress, recent }: { progress: ProgressItem | undefined; re
       ? t('log.hub.usually', 'Usually {{window}}', { window: progress.window })
       : t('log.hub.mealBig', 'One photo is enough. We read it and estimate the nutrients.')
   return (
-    <div className="flex min-h-[21.5rem] flex-col gap-3 rounded-card border border-brand bg-brand p-5 text-on-brand shadow-lift sm:col-span-2 sm:row-span-2 sm:p-6">
-      <div className="flex items-start justify-between gap-2">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-on-brand/15">
+    <div className="col-span-2 flex flex-col gap-4 rounded-card border border-brand bg-brand p-5 text-on-brand shadow-lift sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <span className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-on-brand/15">
           <ForkKnife size={30} aria-hidden />
         </span>
-        {progress && (
-          <span className="whitespace-nowrap rounded-chip bg-on-brand px-3 py-0.5 text-micro font-bold text-brand">
-            {progress.status === 'due'
-              ? t('log.hub.goodTimeShort', 'Good time')
-              : progress.count > 0
-                ? t('log.hub.ofTarget', '{{count}} of {{target}}', { count: progress.count, target: progress.target })
-                : t('log.hub.notYet', 'Not yet')}
-          </span>
-        )}
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-serif text-h1 font-medium leading-tight">{t('log.hub.meal', 'Meal')}</p>
+            {progress && (
+              <span className="whitespace-nowrap rounded-chip bg-on-brand px-3 py-0.5 text-micro font-bold text-brand">
+                {progress.status === 'due'
+                  ? t('log.hub.goodTimeShort', 'Good time')
+                  : progress.count > 0
+                    ? t('log.hub.ofTarget', '{{count}} of {{target}}', { count: progress.count, target: progress.target })
+                    : t('log.hub.notYet', 'Not yet')}
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-body opacity-90">{sub}</p>
+          <p className="mt-1 text-micro opacity-75">{lastLine(recent, 'meal', t)}</p>
+        </div>
       </div>
-      <div className="mt-auto">
-        <p className="font-serif text-h1 font-medium leading-tight">{t('log.hub.meal', 'Meal')}</p>
-        <p className="mt-1 text-body opacity-90">{sub}</p>
-      </div>
-      <div className="flex flex-wrap gap-2.5">
+      <div className="flex flex-none flex-wrap gap-2.5 sm:flex-col sm:items-stretch">
         <button
           type="button"
           onClick={() => go('E2')}
-          className="press flex min-h-11 items-center gap-2 rounded-field bg-on-brand px-4 text-btn-sm font-bold text-brand"
+          className="press flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-field bg-on-brand px-4 text-btn-sm font-bold text-brand"
         >
           <Camera size={20} aria-hidden />
           {t('log.hub.takePhoto', 'Take a photo')}
@@ -144,12 +147,11 @@ function MealTile({ progress, recent }: { progress: ProgressItem | undefined; re
         <button
           type="button"
           onClick={() => go('E9')}
-          className="press flex min-h-11 items-center rounded-field border-[1.5px] border-on-brand/50 px-4 text-btn-sm font-bold"
+          className="press flex min-h-11 items-center justify-center whitespace-nowrap rounded-field border-[1.5px] border-on-brand/50 px-4 text-btn-sm font-bold"
         >
           {t('log.hub.pickMenu', 'Pick from the menu')}
         </button>
       </div>
-      <p className="text-micro opacity-75">{lastLine(recent, 'meal', t)}</p>
     </div>
   )
 }
@@ -302,7 +304,7 @@ export function LogHub() {
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-4 sm:grid-rows-[repeat(2,minmax(10.5rem,auto))]">
+            <div className="grid grid-cols-2 gap-3.5">
               <MealTile progress={item('meals')} recent={recent} />
               <SmallTile
                 id="F1"

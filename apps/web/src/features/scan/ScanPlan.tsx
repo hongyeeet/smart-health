@@ -60,7 +60,7 @@ export function ScanPlan() {
     return (
       <Screen narrow>
         <Header title={t('scanPlan.title', 'Your dose plan')} back backTo="H3" />
-        <Alert tone="warn" title={t('scanPlan.offline', 'We could not reach Smart Health')}>
+        <Alert tone="warn" title={t('scanPlan.offline', 'We could not reach Equinox')}>
           {t('scanPlan.offlineBody', 'Check your connection and try again. Nothing has been saved.')}
         </Alert>
         <Footer>
@@ -141,14 +141,14 @@ export function ScanPlan() {
       </Card>
 
       {outOfScope && (
-        <Alert tone="info" title={t('scanPlan.scope.title', 'Is this one for Smart Health?')}>
-          {t('scanPlan.scope.body', 'Smart Health is for diabetes medicines and the medicines or supplements you take every day. We do not recognise this name, so please check it is right. You can still add it.')}
+        <Alert tone="info" title={t('scanPlan.scope.title', 'Is this one for Equinox?')}>
+          {t('scanPlan.scope.body', 'Equinox is for diabetes medicines and the medicines or supplements you take every day. We do not recognise this name, so please check it is right. You can still add it.')}
         </Alert>
       )}
 
       {data.asNeeded && (
         <Alert tone="info">
-          {t('scanPlan.asNeeded', 'Your label says to take this when it is needed. Smart Health saves it as a daily medicine, so choose the times it should appear.')}
+          {t('scanPlan.asNeeded', 'Your label says to take this when it is needed. Equinox saves it as a daily medicine, so choose the times it should appear.')}
         </Alert>
       )}
 

@@ -84,7 +84,7 @@ $config = ConvertTo-Json -InputObject @(
   [ordered]@{ keyword = "application"; name = "google_calendar"; provider = "google_calendar"; skip_validation = $false; account_id = $ConnectionId }
 ) -Depth 5 -Compress
 
-$body = ConvertTo-Json -Depth 6 -InputObject @{ recipe = @{ name = "Medicine calendar reminders"; description = "Adds one repeating Google Calendar event per medicine dose time. Called by the Smart Health backend (docs/specs/f4-calendar.md)."; code = $code; config = $config; folder_id = [string]$FolderId } }
+$body = ConvertTo-Json -Depth 6 -InputObject @{ recipe = @{ name = "Medicine calendar reminders"; description = "Adds one repeating Google Calendar event per medicine dose time. Called by the Equinox backend (docs/specs/f4-calendar.md)."; code = $code; config = $config; folder_id = [string]$FolderId } }
 if ($RecipeId -gt 0) {
   $r = Invoke-RestMethod -Method Put -Uri "$base/recipes/$RecipeId" -Headers $h -ContentType "application/json" -Body $body
 } else {

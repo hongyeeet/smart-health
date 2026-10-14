@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     demo_mode: bool = True
 
     # App
-    app_name: str = "Smart Health"
+    app_name: str = "Equinox"
     cors_origins: str = "http://localhost:5173,http://localhost:5174"
 
     # Storage

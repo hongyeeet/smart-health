@@ -107,7 +107,7 @@ DOMAIN_WORDS = _rx(
     r"\b(walk|exercise|workout|steps?|active|activity|gym|run|running|sleep|slept|rest|heart rate|spo2|oxygen|blood pressure|bp|pulse|weight|waist)\b",
     r"\b(medic\w*|tablets?|pills?|capsules?|dose|doses|drug|supplement|metformin|statin|insulin|prescription|refill|stock|side effects?|pharmacist)\b",
     r"\b(doctor|appointment|visit|clinic|brief|report|question|questions|check-?ups?|screening)\b", r"\b(insights?|overview|trend|trends|week|today|yesterday|month|average|my data|my health|logged|log|history|noticed|learned|summary|summarise|summarize)\b",
-    r"\b(smart health|this app|the app|dashboard|tab|screen|feature|reminder|notification|alert)\b", r"\bmy\b",
+    r"\b(Equinox|this app|the app|dashboard|tab|screen|feature|reminder|notification|alert)\b", r"\bmy\b",
 )
 
 _GREETING = re.compile(r"^\W*(hi|hello|hey|good (morning|afternoon|evening)|thanks|thank you|thx|ok|okay|bye|goodbye|cheers)\W*$", re.I)
@@ -157,8 +157,8 @@ def low_sugar_with_symptoms(text: str) -> bool:
 
 # the model's honest answer when the person's data has nothing on the question: a short sentence, no numbers
 _NO_DATA = re.compile(
-    r"^\W*(sorry[,. ]+)?(i|smart health|there)\s+(do not|don't|did not|didn't|cannot|can't|could not|couldn't|have no|has no|is no|is not any|am not able to)\b[^.?!]{0,80}\b(in|from|on|about|for) (your|the) (data|records?|logs?|readings?|entries|information|app)\b"
-    r"|^\W*(sorry[,. ]+)?(i|smart health)\s+(do not|don't|have no|has no)\b[^.?!]{0,60}\b(data|information|records?)\b[^.?!]{0,30}\b(on|about|for) (that|this|it)\b", re.I)
+    r"^\W*(sorry[,. ]+)?(i|Equinox|there)\s+(do not|don't|did not|didn't|cannot|can't|could not|couldn't|have no|has no|is no|is not any|am not able to)\b[^.?!]{0,80}\b(in|from|on|about|for) (your|the) (data|records?|logs?|readings?|entries|information|app)\b"
+    r"|^\W*(sorry[,. ]+)?(i|Equinox)\s+(do not|don't|have no|has no)\b[^.?!]{0,60}\b(data|information|records?)\b[^.?!]{0,30}\b(on|about|for) (that|this|it)\b", re.I)
 
 
 def is_no_data_reply(reply: str) -> bool:
@@ -330,7 +330,7 @@ _ADVICE = re.compile(
 
 
 def wants_advice(text: str) -> bool:
-    """The question asks how to improve, what to do or for tips: the answer is a few small ideas from what Smart Health has learned (words only; no model)."""
+    """The question asks how to improve, what to do or for tips: the answer is a few small ideas from what Equinox has learned (words only; no model)."""
     return bool(_ADVICE.search(text or ""))
 
 
@@ -338,7 +338,7 @@ def signposts(intent: str, wants_food: bool, noticed: bool, advice: bool = False
     """Where in the app to look next, chosen by code from the triage labels. The model never decides a link."""
     out: list[Signpost] = []
     if advice:
-        out.append(Signpost("chat.sign_learned", "K2", "Open what Smart Health has learned"))
+        out.append(Signpost("chat.sign_learned", "K2", "Open what Equinox has learned"))
     if wants_food or intent == "food_ideas" or advice:
         out.append(Signpost("chat.sign_food", "K11", "Open Meal suggestions"))
         out.append(Signpost("chat.sign_food", "E8", "Open Lunch ideas"))

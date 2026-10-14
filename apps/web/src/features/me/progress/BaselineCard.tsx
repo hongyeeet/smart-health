@@ -55,7 +55,7 @@ export function BaselineCard({ progress }: { progress: Progress }) {
         </>
       )}
       <p className="text-micro text-ink3">
-        {t('me.diet.note', 'This shows what you logged and did. It does not show that Smart Health caused any change.')}
+        {t('me.diet.note', 'This shows what you logged and did. It does not show that Equinox caused any change.')}
       </p>
     </Card>
   )

@@ -1,5 +1,5 @@
 /**
- * K12. Questions for your doctor. On the left: the box to add a question, and under it the questions Smart Health suggests (a plain list,
+ * K12. Questions for your doctor. On the left: the box to add a question, and under it the questions Equinox suggests (a plain list,
  * each with an Add link). On the right: the questions log, a ruled list of everything added. Remove sits at the top right of each item;
  * "Already asked" marks one done and it can be put back. Open questions come first, then the ones already asked. The open ones also go into
  * the doctor brief (L1). The suggestions are fixed starter questions that ask, never advise; one already on the list is not offered again.
@@ -85,8 +85,8 @@ function Suggestions({ asked }: { asked: string[] }) {
   const left = all.filter((s) => !asked.includes(s.text))
   if (left.length === 0) return null
   return (
-    <section className="flex flex-col gap-1" aria-label={t('me.questions.suggestedTitle', 'Suggested by Smart Health')}>
-      <SectionTitle>{t('me.questions.suggestedTitle', 'Suggested by Smart Health')}</SectionTitle>
+    <section className="flex flex-col gap-1" aria-label={t('me.questions.suggestedTitle', 'Suggested by Equinox')}>
+      <SectionTitle>{t('me.questions.suggestedTitle', 'Suggested by Equinox')}</SectionTitle>
       <p className="text-sub text-ink2">{t('me.questions.suggestedSub', 'Common things to ask. Add the ones that matter to you.')}</p>
       <ul className="divide-y divide-line border-y border-line">
         {left.map((s) => (

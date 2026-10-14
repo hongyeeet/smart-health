@@ -73,7 +73,7 @@ def swap_idea(conn: psycopg.Connection[Any], user: str, meals: list[dict[str, An
 
 
 def walk_idea(conn: psycopg.Connection[Any], user: str) -> dict[str, Any]:
-    """Shown only when no exercise was logged. Carries what Smart Health has learnt about walks, confirmed or not, when it has learnt something."""
+    """Shown only when no exercise was logged. Carries what Equinox has learnt about walks, confirmed or not, when it has learnt something."""
     r = conn.execute(
         "select pattern_key, n_pairs, median_delta, status::text st from pattern_candidates where user_id=%s and pattern_key='evening_walk__next_morning_fasting' and status not in ('dismissed','rejected','retired') limit 1",
         (user,),

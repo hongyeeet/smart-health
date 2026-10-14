@@ -6,7 +6,7 @@
  * stays here, the reason is shown, and nothing is said to be saved that was not. Mr Tan (the demo patient) is never written.
  *
  * Damien's Stitch design ends on a clinical target profile with stages, risk tiers and targets. Those are left out:
- * Smart Health does not classify the person or set targets (rules.md 1.1, 1.6, 1.15). What is kept is the read-back, plain
+ * Equinox does not classify the person or set targets (rules.md 1.1, 1.6, 1.15). What is kept is the read-back, plain
  * arithmetic (age, BMI, unit conversions, no category), and a short list of gaps worth raising with the doctor.
  */
 import { dateLocale } from '@/lib/locale'
@@ -262,7 +262,7 @@ export function Summary() {
         <Card as="section" tone="hero" className="flex flex-col gap-1">
           <h2 className="font-serif text-h2 font-medium tracking-tight">{t('onboarding.calc.title', 'Worked out from your answers')}</h2>
           {table(calc)}
-          <p className="pt-1 text-sub text-ink3">{t('onboarding.calc.note', 'Simple arithmetic and unit conversion only. Smart Health does not judge these numbers; your doctor does.')}</p>
+          <p className="pt-1 text-sub text-ink3">{t('onboarding.calc.note', 'Simple arithmetic and unit conversion only. Equinox does not judge these numbers; your doctor does.')}</p>
         </Card>
       )}
 
@@ -303,7 +303,7 @@ export function Summary() {
           {failed && <p className="mt-1.5">{failed}</p>}
         </Alert>
       )}
-      <p className="text-center text-sub text-ink3">{t('onboarding.sum.fine', 'Smart Health explains, organises and reminds. It is not a diagnosis and does not replace your doctor.')}</p>
+      <p className="text-center text-sub text-ink3">{t('onboarding.sum.fine', 'Equinox explains, organises and reminds. It is not a diagnosis and does not replace your doctor.')}</p>
 
       <Later />
       <Dock onBack={() => navigate(step(LAST_PAGE))} onNext={finish} nextDisabled={save.isPending || complete.isPending} nextLabel={t('onboarding.sum.finish', 'Finish')} />

@@ -1,4 +1,4 @@
-# Architecture — Smart Health
+# Architecture — Equinox
 
 Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/why*, [schema.md](schema.md) for tables, [flow.md](flow.md) for journeys, [rules.md](rules.md) for coding boundaries, [design.md](design.md) for UI, [memory.md](memory.md) for memory, evidence and the JEV decision layer.
 
@@ -137,7 +137,7 @@ smart-health/
 │     │  ├─ meds/[id].tsx            # explainer + TTS + history
 │     │  ├─ log/{glucose,meal,workout,symptom,checkin}.tsx
 │     │  ├─ brief/[id].tsx           # patient view of brief + share
-│     │  ├─ memory.tsx               # "What Smart Health has learned about you"
+│     │  ├─ memory.tsx               # "What Equinox has learned about you"
 │     │  ├─ appointments/            # list, new
 │     │  ├─ questions.tsx            # questions for my doctor
 │     │  ├─ chat.tsx                 # companion chat

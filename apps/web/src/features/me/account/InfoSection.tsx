@@ -1,5 +1,5 @@
 /**
- * "Your information": what the person told Smart Health when they set up, grouped, each with a grey underlined "edit". Edit opens a small
+ * "Your information": what the person told Equinox when they set up, grouped, each with a grey underlined "edit". Edit opens a small
  * pop-up with that one question and Save; only that answer is written (PUT /onboarding/profile). Nothing is shown that the server does
  * not have: an empty answer reads "Not set". Mr Tan's record is shown but never changed from here.
  */
@@ -42,7 +42,7 @@ export function InfoSection() {
   return (
     <section id="information" className="flex scroll-mt-4 flex-col gap-3">
       <SectionTitle>{t('me.account.infoTitle', 'Your information')}</SectionTitle>
-      <p className="text-sub text-ink2">{t('me.account.infoSub', 'What you told Smart Health when you set up. Change any answer here and it is saved to your account.')}</p>
+      <p className="text-sub text-ink2">{t('me.account.infoSub', 'What you told Equinox when you set up. Change any answer here and it is saved to your account.')}</p>
       {user === READ_ONLY_USER && <Alert tone="info">{t('me.account.exampleNoticeV2', 'Mr Tan is an example record. It is not changed from here. Create your own user to keep your own information.')}</Alert>}
       {saved.isPending && <Skeleton className="h-64" />}
       {saved.isError && <Alert tone="warn">{t('me.account.infoError', 'We could not load your information just now. Please try again in a moment.')}</Alert>}

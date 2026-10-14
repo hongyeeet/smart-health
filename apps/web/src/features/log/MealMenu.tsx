@@ -222,7 +222,7 @@ function RightNow({ nowMeal }: { nowMeal: MenuMeal }) {
   const usual = data?.usual
   return (
     <Card className="flex flex-col gap-2">
-      <p className="num text-micro font-bold uppercase tracking-wide text-ink3">{clockNow()}</p>
+      <p className="num text-micro font-bold tracking-wide text-ink3">{clockNow()}</p>
       <h2 className="text-body font-bold">{t('log.menu.timeFor', 'Time for {{meal}}', { meal: name })}</h2>
       {data?.time && (
         <p className="text-sub text-ink2">{t('log.menu.usuallyAt', 'You usually have {{meal}} around {{time}}.', { meal: name, time: data.time })}</p>
@@ -305,7 +305,11 @@ export function MealMenu() {
       />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_332px] [&>*]:min-w-0">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label={t('log.menu.mealLabel', 'Meal')}>
+          <div
+            className="hide-scroll flex w-full items-center gap-2 overflow-x-auto sm:overflow-visible"
+            role="tablist"
+            aria-label={t('log.menu.mealLabel', 'Meal')}
+          >
             {MEALS.map((m) => {
               const on = m.id === meal
               return (
@@ -319,7 +323,7 @@ export function MealMenu() {
                     setPicks([])
                   }}
                   className={cn(
-                    'press flex min-h-[2.9rem] min-w-[7.5rem] flex-col items-center justify-center rounded-[14px] border-[1.5px] px-6 text-center leading-tight',
+                    'press flex min-h-[2.9rem] min-w-[5.6rem] flex-none flex-col items-center justify-center rounded-[14px] border-[1.5px] px-3 text-center leading-tight sm:min-w-0 sm:flex-1 sm:basis-0',
                     on ? 'border-brand bg-brand text-on-brand' : 'border-line bg-card text-ink',
                   )}
                 >
@@ -328,14 +332,8 @@ export function MealMenu() {
                 </button>
               )
             })}
-            <span className="ml-auto hidden items-center gap-1.5 text-micro text-ink2 sm:flex">
-              <span className="h-2 w-2 rounded-full bg-ok" aria-hidden />
-              {t('log.menu.legendMeasured', 'Measured on you')}
-              <span className="ml-2 h-2 w-2 rounded-full bg-brass" aria-hidden />
-              {t('log.menu.legendEstimate', 'Estimate')}
-            </span>
           </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label={t('log.menu.filterLabel', 'Show only')}>
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('log.menu.filterLabel', 'Show only')}>
             {FILTERS.map((f) => {
               const on = filters.includes(f.id)
               return (
@@ -353,6 +351,12 @@ export function MealMenu() {
                 </button>
               )
             })}
+            <span className="ml-auto hidden items-center gap-1.5 text-micro text-ink2 sm:flex">
+              <span className="h-2 w-2 rounded-full bg-ok" aria-hidden />
+              {t('log.menu.legendMeasured', 'Measured on you')}
+              <span className="ml-2 h-2 w-2 rounded-full bg-brass" aria-hidden />
+              {t('log.menu.legendEstimate', 'Estimate')}
+            </span>
           </div>
           {isError && <Alert tone="warn">{t('log.menu.loadError', 'We could not load the suggestions just now.')}</Alert>}
           {isLoading && <Skeleton className="h-72" />}

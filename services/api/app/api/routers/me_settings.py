@@ -81,7 +81,7 @@ async def export():
     return Response(
         content=json.dumps(data, ensure_ascii=False, indent=2, default=str),
         media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="smart-health-export-{stamp}.json"', "Cache-Control": "no-store"},
+        headers={"Content-Disposition": f'attachment; filename="equinox-export-{stamp}.json"', "Cache-Control": "no-store"},
     )
 
 

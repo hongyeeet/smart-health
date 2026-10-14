@@ -226,7 +226,7 @@ For each feature: what a user action writes (Bronze then Silver or App), and wha
 | F13 Preventive care and scheduler | `appointments`, `patient_preventive_status` | `preventive_items`, `care_summary` (overdue and due soon), `clinical_flags`, `lab_results` (HbA1c) |
 | F14 Healthcare preparation | `doctor_questions` | `care_summary`, `briefs` |
 | F15 Companion chat | `conversations`, `messages`, `agent_*`; refused advice adds a `doctor_questions` row | Memory Service (section 5.1) |
-| F16 What Smart Health has learned | `memory_facts` | `memory_facts`, evidence rows |
+| F16 What Equinox has learned | `memory_facts` | `memory_facts`, evidence rows |
 | F17 Multilingual and TTS | none | `user_profile.language` |
 | F18 Lifestyle timeline and day traces | none | `timeline_5min`, `meal_response`, `exercise_response`, `glucose_events`, `baselines` |
 

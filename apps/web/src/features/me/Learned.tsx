@@ -1,5 +1,5 @@
 /**
- * K2 — What Smart Health has learnt (PRD F16).
+ * K2 — What Equinox has learnt (PRD F16).
  *
  * The agent only proposes. Here the person sees each thing it noticed, why it thinks so, and decides: confirm it, say it in their own
  * words, or delete it (a deleted idea is never proposed again). Four counts sit on top, then the list of things waiting for the person,
@@ -48,8 +48,7 @@ function FactRow({ row, icon: Icon, pattern = false }: { row: Row; icon: IconTyp
     ALL_TIME_COUNT,
     (_m, n: string) => `(${n} ${Number(n) === 1 ? t('me.learned.time', 'time') : t('me.learned.times', 'times')}, ${t('me.learned.allTime', 'all time')})`,
   )
-  const source =
-    f.source === 'user' ? t('me.learned.ownWords', 'In your own words') : t('me.learned.noticedBy', 'Noticed by Smart Health, {{pct}}% sure', { pct })
+  const source = f.source === 'user' ? t('me.learned.ownWords', 'In your own words') : t('me.learned.noticedBy', 'Noticed by Equinox, {{pct}}% sure', { pct })
 
   const statusLabel = confirmed
     ? t('me.learned.confirmed', 'Confirmed')
@@ -126,11 +125,11 @@ function FactRow({ row, icon: Icon, pattern = false }: { row: Row; icon: IconTyp
   }
 
   return (
-    <div className="flex gap-3.5 border-t border-line py-3.5 first:border-t-0">
+    <div className="flex flex-wrap gap-x-3.5 gap-y-2 border-t border-line py-3.5 first:border-t-0 sm:flex-nowrap">
       <span className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-brand-soft text-brand">
         <Icon size={18} aria-hidden />
       </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 basis-[calc(100%-3.5rem)] flex-col gap-1 sm:flex-1 sm:basis-auto">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-micro font-bold uppercase tracking-wide text-ink3">{row.groupLabel}</span>
           <span className={pill}>{statusLabel}</span>
@@ -146,7 +145,7 @@ function FactRow({ row, icon: Icon, pattern = false }: { row: Row; icon: IconTyp
         {editBox}
         {error}
       </div>
-      {!editing && <div className="flex flex-none flex-col gap-1.5 self-center">{actions}</div>}
+      {!editing && <div className="flex w-full flex-none flex-row flex-wrap gap-1.5 pl-[3.125rem] sm:w-auto sm:flex-col sm:self-center sm:pl-0">{actions}</div>}
     </div>
   )
 }
@@ -274,7 +273,7 @@ export function Learned() {
   return (
     <Screen wide>
       <Header
-        title={t('me.learned.title', 'What Smart Health has learnt')}
+        title={t('me.learned.title', 'What Equinox has learnt')}
         back
         backTo="K1"
         sub={t('me.learned.sub', 'Everything it noticed about you, and why. You decide what stays.')}

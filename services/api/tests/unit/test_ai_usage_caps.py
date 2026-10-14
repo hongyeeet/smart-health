@@ -162,7 +162,7 @@ def test_today_reports_per_provider_calls_caps_blocked_and_over_cap(db):
     assert by["vertex_embed"]["overCap"] is False and by["vertex_embed"]["calls"] == 1200
     assert by["vertex_generate"]["calls"] == 0  # every known kind is listed, even with no calls yet
     assert t["caps"] == {"vertex_vision": settings.ai_cap_vertex_vision, "vertex_generate": settings.ai_cap_vertex_generate,
-                         "vertex_embed": settings.ai_cap_vertex_embed, "jev": settings.ai_cap_jev}
+                         "vertex_embed": settings.ai_cap_vertex_embed, "vertex_image": settings.ai_cap_vertex_image, "jev": settings.ai_cap_jev}
     assert t["calls"] == settings.ai_cap_vertex_vision + 1200 and t["blocked"] == 4
     assert t["callCap"] == sum(t["caps"].values())
     assert t["overCap"] is True

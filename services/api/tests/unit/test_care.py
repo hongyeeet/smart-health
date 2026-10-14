@@ -121,9 +121,9 @@ def test_appointment_must_be_in_the_future():
 def test_question_out_labels_the_origin():
     row = {"id": "1", "text": "t", "origin": "agent_suggested", "status": "open", "created_at": NOW}
     out = svc.question_out(row)
-    assert out["origin_label"] == "Suggested by Smart Health" and out["can_remove"] is True
+    assert out["origin_label"] == "Suggested by Equinox" and out["can_remove"] is True
     done = svc.question_out({**row, "status": "asked"})
-    assert done["can_remove"] is True and done["origin_label"] == "Suggested by Smart Health"
+    assert done["can_remove"] is True and done["origin_label"] == "Suggested by Equinox"
 
 
 # ----------------------------------------------------------------------------------------------- one rule for the next appointment

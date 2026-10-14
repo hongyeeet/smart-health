@@ -382,7 +382,7 @@ Done: 1 of 32 tasks.
 
 ### E17-2 What it learned screen · P0
 
-- **Ask:** Build the 'What Smart Health has learned about you' screen: facts grouped by type with 'why I think this', and buttons to confirm, edit or delete.
+- **Ask:** Build the 'What Equinox has learned about you' screen: facts grouped by type with 'why I think this', and buttons to confirm, edit or delete.
 - **Status:** backlog
 - **Needs first:** E17-1, E0-2
 - **Needed later:** none

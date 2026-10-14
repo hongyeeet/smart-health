@@ -21,7 +21,7 @@ export function Welcome() {
   const page = usePageSave(src.loadFailed)
 
   const consents = [
-    { key: 'consentData' as const, title: t('onboarding.consent.data', 'Use my health data'), sub: t('onboarding.consent.dataSub', 'Required. I agree to Smart Health collecting and using the health information I enter and the readings from my devices.') },
+    { key: 'consentData' as const, title: t('onboarding.consent.data', 'Use my health data'), sub: t('onboarding.consent.dataSub', 'Required. I agree to Equinox collecting and using the health information I enter and the readings from my devices.') },
     { key: 'consentShare' as const, title: t('onboarding.consent.share', 'Share a doctor brief'), sub: t('onboarding.consent.shareSub', 'Optional. You decide each time.') },
     { key: 'consentResearch' as const, title: t('onboarding.consent.research', 'Use my data for research'), sub: t('onboarding.consent.researchSub', 'Optional. For diabetes research, without my name or contact details.') },
   ]
@@ -61,8 +61,8 @@ export function Welcome() {
       <StepHead
         step={1}
         name={t('onboarding.welcome.step', 'Welcome')}
-        title={t('onboarding.welcome.title', 'Set up Smart Health for you')}
-        sub={t('onboarding.welcome.sub', 'It takes about 5 minutes. Your answers help Smart Health follow your days and prepare a clear summary for your doctor. It never gives medical advice and never diagnoses.')}
+        title={t('onboarding.welcome.title', 'Set up Equinox for you')}
+        sub={t('onboarding.welcome.sub', 'It takes about 5 minutes. Your answers help Equinox follow your days and prepare a clear summary for your doctor. It never gives medical advice and never diagnoses.')}
       />
       {src.loadFailed && <LoadNotice />}
       {src.readOnly && <DemoNotice />}

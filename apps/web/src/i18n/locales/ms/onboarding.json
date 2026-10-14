@@ -17,7 +17,7 @@
       "bmi": "Indeks jisim badan (BMI)",
       "fpg": "Glukosa semasa berpuasa dalam unit lain",
       "hba1c": "HbA1c dalam unit lain",
-      "note": "Pengiraan mudah dan penukaran unit sahaja. Smart Health tidak menilai nombor ini; doktor anda yang menilainya.",
+      "note": "Pengiraan mudah dan penukaran unit sahaja. Equinox tidak menilai nombor ini; doktor anda yang menilainya.",
       "title": "Dikira daripada jawapan anda"
     },
     "cancelNew": "Batal. Jangan cipta pengguna ini",
@@ -72,7 +72,7 @@
     },
     "consent": {
       "data": "Gunakan data kesihatan saya",
-      "dataSub": "Diperlukan. Saya bersetuju untuk Smart Health mengumpul dan menggunakan maklumat kesihatan yang saya masukkan dan bacaan daripada peranti saya.",
+      "dataSub": "Diperlukan. Saya bersetuju untuk Equinox mengumpul dan menggunakan maklumat kesihatan yang saya masukkan dan bacaan daripada peranti saya.",
       "research": "Gunakan data saya untuk penyelidikan",
       "researchSub": "Pilihan. Untuk penyelidikan diabetes, tanpa nama atau butiran hubungan saya.",
       "share": "Kongsi ringkasan doktor",
@@ -99,10 +99,10 @@
     "elig": {
       "adult": "Adakah anda berumur 18 tahun ke atas?",
       "out": "Ia direka untuk orang dewasa yang menghidap diabetes jenis 2. Sila berbincang dengan pasukan penjagaan anda yang boleh membantu anda dengan lebih baik. Anda belum didaftarkan.",
-      "outTitle": "Smart Health belum direka untuk ini",
+      "outTitle": "Equinox belum direka untuk ini",
       "pregnant": "Adakah anda hamil?",
       "step": "Pemeriksaan pantas",
-      "sub": "Smart Health direka untuk orang dewasa yang menghidap diabetes jenis 2.",
+      "sub": "Equinox direka untuk orang dewasa yang menghidap diabetes jenis 2.",
       "t2": "Adakah anda menghidap diabetes jenis 2?",
       "title": "Adakah aplikasi ini sesuai untuk anda?",
       "unsure": "Jika anda tidak pasti, tanya doktor anda dahulu. Anda masih boleh meneruskan dan melihat-lihat."
@@ -118,7 +118,7 @@
       "waiting": "Kami akan menyimpan e-mel anda apabila profil anda dicipta. Ia disimpan pada peranti ini sehingga itu."
     },
     "err": {
-      "adult": "Smart Health adalah untuk orang dewasa berumur 18 tahun ke atas.",
+      "adult": "Equinox adalah untuk orang dewasa berumur 18 tahun ke atas.",
       "between": "Masukkan nombor dari {{lo}} hingga {{hi}} {{unit}}, atau biarkan kosong.",
       "diagYear": "Masukkan tahun 4 digit, bukan sebelum anda dilahirkan dan bukan pada masa depan.",
       "email": "Masukkan alamat e-mel seperti name@gmail.com, atau biarkan kosong.",
@@ -175,12 +175,12 @@
       "addTitle": "Tambah setiap ubat daripada labelnya",
       "byHand": "Taipkan sendiri",
       "error": "Kami tidak dapat memuatkan ubat anda tadi. Anda boleh teruskan, dan semaknya kemudian di bahagian Ubat-ubatan.",
-      "intro": "Smart Health menyalin apa yang ada pada label, dan anda menyemaknya. Anda juga boleh melakukannya kemudian daripada bahagian Ubat-ubatan.",
+      "intro": "Equinox menyalin apa yang ada pada label, dan anda menyemaknya. Anda juga boleh melakukannya kemudian daripada bahagian Ubat-ubatan.",
       "none": "Belum ada ubat yang disimpan.",
-      "note": "Smart Health memberi penjelasan dan peringatan. Ia tidak sekali-kali menyuruh anda memula, menghentikan atau menukar ubat.",
+      "note": "Equinox memberi penjelasan dan peringatan. Ia tidak sekali-kali menyuruh anda memula, menghentikan atau menukar ubat.",
       "savedTitle": "Ubat yang disimpan setakat ini",
       "scan": "Imbas label",
-      "scope": "Smart Health adalah untuk ubat diabetes dan ubat atau suplemen yang anda ambil setiap hari."
+      "scope": "Equinox adalah untuk ubat diabetes dan ubat atau suplemen yang anda ambil setiap hari."
     },
     "mention": {
       "eye": "Pemeriksaan mata diabetes terakhir anda lebih daripada setahun yang lalu, atau anda tidak pasti bila.",
@@ -260,7 +260,7 @@
       "emailUnknown": "Tidak dapat menyemaknya tadi",
       "eye": "Pemeriksaan mata terakhir",
       "failed": "Persediaan belum selesai. Jawapan anda masih ada pada peranti ini. Betulkan perkara di bawah, atau periksa sambungan anda, kemudian ketik Selesai sekali lagi.",
-      "fine": "Smart Health memberi penerangan, menyusun dan mengingatkan. Ia bukan diagnosis dan tidak menggantikan doktor anda.",
+      "fine": "Equinox memberi penerangan, menyusun dan mengingatkan. Ia bukan diagnosis dan tidak menggantikan doktor anda.",
       "finish": "Selesai",
       "foot": "Pemeriksaan kaki terakhir",
       "gold": "Tahu bila hipo bermula (1 sentiasa, 7 tidak pernah)",
@@ -306,8 +306,8 @@
     "weight": "Berat badan",
     "welcome": {
       "step": "Selamat datang",
-      "sub": "Ia mengambil masa kira-kira 5 minit. Jawapan anda membantu Smart Health mengikuti hari anda dan menyediakan ringkasan yang jelas untuk doktor anda. Ia tidak sekali-kali memberikan nasihat perubatan dan tidak sekali-kali membuat diagnosis.",
-      "title": "Sediakan Smart Health untuk anda"
+      "sub": "Ia mengambil masa kira-kira 5 minit. Jawapan anda membantu Equinox mengikuti hari anda dan menyediakan ringkasan yang jelas untuk doktor anda. Ia tidak sekali-kali memberikan nasihat perubatan dan tidak sekali-kali membuat diagnosis.",
+      "title": "Sediakan Equinox untuk anda"
     },
     "work": {
       "days": "Hari anda biasanya bekerja",

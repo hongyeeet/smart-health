@@ -3,7 +3,7 @@
  *   (a) the dose banner: a dose due now ("<Medicine> due now", its time, one Taken button that marks it taken);
  *   (b) directly below it, the food banner: an unfinished meal (MealBanner, which replaces it) or else the first of
  *       a lighter lunch idea (inside the lunch window), "Time to log <meal>?" (the open mealtime), a food habit high in salt or sugar,
- *       and ideas Smart Health noticed and is waiting for the person to check.
+ *       and ideas Equinox noticed and is waiting for the person to check.
  * The x hides that banner for the rest of the day for that person on this device (storage in FoodBanner.tsx). The words are written
  * here and give no advice; the numbers come from the person's own data.
  */
@@ -249,7 +249,7 @@ export function HomeBanners() {
           <Banner
             tone="brass"
             icon={<Bell size={20} aria-hidden />}
-            title={learned.toConfirm === 1 ? t('home.noticed.one', 'Smart Health noticed something') : t('home.noticed.many', 'Smart Health noticed {{n}} things', { n: learned.toConfirm })}
+            title={learned.toConfirm === 1 ? t('home.noticed.one', 'Equinox noticed something') : t('home.noticed.many', 'Equinox noticed {{n}} things', { n: learned.toConfirm })}
             sub={t('home.noticed.check', 'Check it is right. You can confirm, change or delete it.')}
             action={
               <button type="button" onClick={() => go('K2')} className={cn(BTN, 'bg-brand text-on-brand')}>

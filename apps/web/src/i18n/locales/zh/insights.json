@@ -499,8 +499,8 @@
         "stress": "您当天的压力评分，从 1（低）到 5（高）。"
       },
       "lastDays": "在过去 {{n}} 天内",
-      "learnt": "Smart Health 了解到的情况",
-      "learntNone": "Smart Health 还需要记录多几次餐食和读数，才能显示从您的记录中了解到的情况。",
+      "learnt": "Equinox 了解到的情况",
+      "learntNone": "Equinox 还需要记录多几次餐食和读数，才能显示从您的记录中了解到的情况。",
       "measure": {
         "activity": "活动分钟数",
         "doses": "已服用剂量",

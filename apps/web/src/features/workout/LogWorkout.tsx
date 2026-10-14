@@ -679,7 +679,7 @@ export function LogWorkout() {
             className="press flex w-full items-center gap-3 rounded-card border border-line bg-card p-3.5 text-left shadow-lift"
           >
             <span className="min-w-0 flex-1 text-sub font-bold text-brand underline underline-offset-4">
-              {t('workout.log.learnt', 'See what Smart Health has learnt')}
+              {t('workout.log.learnt', 'See what Equinox has learnt')}
             </span>
             <CaretRight size={20} className="flex-none text-ink3" aria-hidden />
           </button>

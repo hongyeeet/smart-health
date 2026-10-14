@@ -49,7 +49,7 @@ No table was created: Alembic is still at 0007.
 
 | Item | Status |
 |---|---|
-| `preventive_items` (eye 12, foot 12, kidney 12, HbA1c 6, flu vaccination 12, diabetes review 6 months) and the default targets on Mr Tan's profile (fasting 4.0 to 7.0, after meals up to 10.0, HbA1c up to 7.0) | **Placeholders, clinical review pending.** Hong Yi approved them as placeholders on 2026-10-02; `source = 'Smart Health team placeholder (clinical review pending)'` |
+| `preventive_items` (eye 12, foot 12, kidney 12, HbA1c 6, flu vaccination 12, diabetes review 6 months) and the default targets on Mr Tan's profile (fasting 4.0 to 7.0, after meals up to 10.0, HbA1c up to 7.0) | **Placeholders, clinical review pending.** Hong Yi approved them as placeholders on 2026-10-02; `source = 'Equinox team placeholder (clinical review pending)'` |
 | Clarithromycin in the drug list | Added as the demo drug (owner-approved, D-033) |
 | `routing_rules` | **Only 4 rows** (diabetes and hypoglycaemia to endocrinologist; high blood pressure and heart attack to cardiologist). The source file has nothing for eye, foot, kidney or lipids, and the owner agreed to leave those out. **Damien (E15): healthcare preparation has no routing for those complications** |
 | `foods` | 53 Singapore/Malaysia packaged products; **only 13 have sodium**, the other 40 are flagged `sodium_unknown`. No local dishes (the AI estimate covers dishes, D-011) |

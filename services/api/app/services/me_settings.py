@@ -157,7 +157,7 @@ def _plain(row: dict[str, Any]) -> dict[str, Any]:
 def build_export(profile: dict[str, Any] | None, sections: dict[str, list[dict[str, Any]]], consents: list[dict[str, Any]], now: datetime) -> dict[str, Any]:
     """The file the person downloads. `counts` is computed from the sections, so it always matches what is in the file."""
     return {
-        "format": "smart-health-export",
+        "format": "equinox-export",
         "format_version": 1,
         "exported_at": now.isoformat(),
         "profile": profile,

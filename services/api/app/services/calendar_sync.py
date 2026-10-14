@@ -109,7 +109,7 @@ def plan(conn: psycopg.Connection, user_id: str, med_id: str, now: datetime) -> 
             events.append({
                 "request_id": f"{med_id}:{sid}:{day.isoformat()}", "source": "smart-health", "schedule_id": str(sid), "date": day.isoformat(),
                 "time": t.strftime("%H:%M"), "offset_min": learned, "summary": f"Take {title}",
-                "description": f"{title}{', with food' if meal != 'na' else ''}. From your Smart Health medicine list.",
+                "description": f"{title}{', with food' if meal != 'na' else ''}. From your Equinox medicine list.",
                 "start": {"dateTime": at.isoformat(), "timeZone": "Asia/Singapore"},
                 "end": {"dateTime": (at + timedelta(minutes=EVENT_MINUTES)).isoformat(), "timeZone": "Asia/Singapore"},
             })

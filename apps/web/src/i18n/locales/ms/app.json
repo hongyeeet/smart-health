@@ -24,7 +24,7 @@
       "noSummary": "Tiada penjelasan direkodkan untuk amaran ini. Ahli farmasi atau doktor anda boleh memberitahu sama ada ini penting untuk anda.",
       "originLabel": "Dari mana datangnya amaran ini",
       "sources": "Dari mana maklumat ini diperoleh",
-      "sourcesNote": "Laman-laman ini belum disemak oleh pakar klinikal untuk Smart Health. Bukan nasihat perubatan.",
+      "sourcesNote": "Laman-laman ini belum disemak oleh pakar klinikal untuk Equinox. Bukan nasihat perubatan.",
       "title": "Semak tindak balas",
       "unreviewed": "Belum disemak oleh pakar klinikal",
       "why": "Sebab ini ditandakan"
@@ -114,7 +114,7 @@
     "noReading": "tiada bacaan",
     "noSymptoms": "Tiada simptom direkodkan dalam tempoh ini.",
     "notConfirmed": "Belum disahkan",
-    "note": "Nombor-nombor ini ialah kiraan daripada apa yang anda dan peranti anda rekodkan, yang dikira mengikut peraturan tetap. Jika dapatan utama menyatakan analisis AI, AI menulis ayat-ayat tersebut berdasarkan nombor-nombor itu. Ia adalah untuk ditafsirkan oleh doktor anda. Smart Health tidak membuat diagnosis atau memberi nasihat tentang ubat.",
+    "note": "Nombor-nombor ini ialah kiraan daripada apa yang anda dan peranti anda rekodkan, yang dikira mengikut peraturan tetap. Jika dapatan utama menyatakan analisis AI, AI menulis ayat-ayat tersebut berdasarkan nombor-nombor itu. Ia adalah untuk ditafsirkan oleh doktor anda. Equinox tidak membuat diagnosis atau memberi nasihat tentang ubat.",
     "of": "daripada",
     "open": "Buka laporan yang boleh dicetak",
     "openCareV2": "Jejak temu janji saya",
@@ -172,7 +172,7 @@
     "think": {
       "f1": "Mencari hidangan anda dan senarai makanan Singapura",
       "f2": "Mencari pilihan lebih sihat yang boleh anda gantikan",
-      "i1": "Melihat perkara yang dipelajari oleh Smart Health tentang anda",
+      "i1": "Melihat perkara yang dipelajari oleh Equinox tentang anda",
       "i2": "Memadankannya dengan hari-hari kebelakangan ini",
       "i3": "Memilih perubahan kecil yang boleh anda cuba",
       "k1": "Menyemak panduan kesihatan yang dipercayai",
@@ -255,8 +255,8 @@
     "nMeals": "{{n}} hidangan",
     "noBase": "belum ada garis dasar",
     "noExercise": "tiada yang direkodkan hari ini",
-    "noIdeas": "Tiada cadangan untuk hari ini. Teruskan merekodkan makanan dan Smart Health akan mencadangkan pilihan pengganti yang lebih ringan.",
-    "notConfirmed": "(dikesan oleh Smart Health, belum disahkan)",
+    "noIdeas": "Tiada cadangan untuk hari ini. Teruskan merekodkan makanan dan Equinox akan mencadangkan pilihan pengganti yang lebih ringan.",
+    "notConfirmed": "(dikesan oleh Equinox, belum disahkan)",
     "oneMeal": "1 hidangan",
     "oneReading": "satu bacaan pada {{time}}",
     "pickOne": "Pilih satu untuk melihatnya pada carta",
@@ -333,7 +333,7 @@
   },
   "shell": {
     "ask": "Tanya",
-    "askAria": "Tanya Smart Health",
+    "askAria": "Tanya Equinox",
     "mainNav": "Utama"
   },
   "sources": {

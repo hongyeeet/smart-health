@@ -149,7 +149,7 @@ function AskButton({ inRail }: { inRail?: boolean }) {
     <button
       type="button"
       onClick={() => go('I1')}
-      aria-label={t('shell.askAria', 'Ask Smart Health')}
+      aria-label={t('shell.askAria', 'Ask Equinox')}
       tabIndex={away ? -1 : undefined}
       className={cn(
         'press flex min-h-12 items-center gap-2 bg-ink px-4 text-ctl font-bold text-canvas',

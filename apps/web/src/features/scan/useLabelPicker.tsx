@@ -47,7 +47,7 @@ export function useLabelPicker(): {
       // upload is given up after the time limit (an AbortError). The last two read the same way: the photo could not be read.
       setError(
         e instanceof TypeError
-          ? t('scanFrame.network', 'We could not reach Smart Health. Check your connection and try again.')
+          ? t('scanFrame.network', 'We could not reach Equinox. Check your connection and try again.')
           : e instanceof DOMException && e.name === 'AbortError'
             ? t('scanFrame.slow', 'Reading the label is taking longer than usual. Please try again, or type it in.')
             : t('scanFrame.general', 'We could not read this. Take another photo or type it in.'),

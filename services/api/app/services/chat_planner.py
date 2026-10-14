@@ -1,4 +1,4 @@
-"""Ask Smart Health: the retrieval planner. For one question it decides which EXTRA views of the person's own data are loaded.
+"""Ask Equinox: the retrieval planner. For one question it decides which EXTRA views of the person's own data are loaded.
 
 Rule based on purpose: a keyword and phrase map, deterministic, no model call, no extra delay and no cost. The default 14-day sections
 (glucose, doses, medicines, meals, activity, sleep, symptoms, blood pressure, questions, learned facts, alerts, next visit) are always
@@ -10,7 +10,7 @@ Views (the same words are the Section keys in chat.py):
   profile         conditions, allergies, the year diabetes was diagnosed, where the diabetes is looked after
   baseline        the person's usual morning glucose and steps (60 days before) next to the last 14 days
   preventive      eye, foot, kidney, vaccination and HbA1c check dates
-  responses       the person's own computed responses after meals and exercise, and the patterns Smart Health found
+  responses       the person's own computed responses after meals and exercise, and the patterns Equinox found
   longer_history  weekly summaries over 30, 60 or 90 days
 
 `needs_guidance(text)` is the second decision: a plain question about the person's own numbers does not need general guidance passages,

@@ -64,7 +64,7 @@ def unknown_choice_messages(values: Mapping[str, Any], labels: Mapping[str, froz
         if value is None or value in labels.get(enum, frozenset()):
             continue
         choices = ", ".join(sorted(labels.get(enum, frozenset())))
-        out.append(f"{field.replace('_', ' ')} '{value}' is not a choice Smart Health knows. Choose one of: {choices}.")
+        out.append(f"{field.replace('_', ' ')} '{value}' is not a choice Equinox knows. Choose one of: {choices}.")
     return out
 
 
@@ -100,7 +100,7 @@ def check_profile(
     problems += unknown_choice_messages({k: v for k, v in values.items() if k != "gender"}, labels)
     gender = values.get("gender")
     if gender is not None and gender not in GENDERS_ACCEPTED:
-        problems.append(f"gender '{gender}' is not a choice Smart Health knows. Choose male or female.")
+        problems.append(f"gender '{gender}' is not a choice Equinox knows. Choose male or female.")
     problems += history_problems(values, today or date(this_year, 12, 31))
     if values.get("display_name") is not None and (p := name_problem(values["display_name"])):
         problems.append(p)
@@ -108,7 +108,7 @@ def check_profile(
         problems.append(p)
     birth = values.get("birth_year")
     if birth is not None and birth > this_year - ADULT_AGE:
-        problems.append("Smart Health is for adults aged 18 or older.")
+        problems.append("Equinox is for adults aged 18 or older.")
     days = values.get("work_days")
     if days is not None and any(d not in range(1, 8) for d in days):
         problems.append("work days must be numbers from 1 (Monday) to 7 (Sunday).")
@@ -172,7 +172,7 @@ HBA1C_IFCC_DIVISOR = Decimal("10.929")          # the same conversion the form s
 def _choice_problem(name: str, value: Any, choices: frozenset[str]) -> str | None:
     if value is None or value in choices:
         return None
-    return f"{name} '{value}' is not a choice Smart Health knows. Choose one of: {', '.join(sorted(choices))}."
+    return f"{name} '{value}' is not a choice Equinox knows. Choose one of: {', '.join(sorted(choices))}."
 
 
 def _range_problem(label: str, value: Any, bounds: tuple[Decimal, Decimal], unit: str) -> list[str]:
@@ -224,7 +224,7 @@ def history_problems(values: Mapping[str, Any], today: date) -> list[str]:
             out += _range_problem("Fasting insulin", values["fasting_insulin"], INSULIN_RANGE, "µIU/mL")
     for code in values.get("conditions") or []:
         if code != "none" and code not in CONDITION_NAMES:
-            out.append(f"'{code}' is not a condition Smart Health knows.")
+            out.append(f"'{code}' is not a condition Equinox knows.")
     return out
 
 

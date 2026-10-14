@@ -65,7 +65,7 @@ export function MedDetail() {
         <Header title={t('medDetail.title', 'Medicine')} back backTo="H1" />
         <Alert tone="warn">
           {error instanceof TypeError
-            ? t('medDetail.offline', 'We could not reach Smart Health. Check your connection and try again.')
+            ? t('medDetail.offline', 'We could not reach Equinox. Check your connection and try again.')
             : t('medDetail.couldNotOpen', 'We could not open this medicine.')}
         </Alert>
       </Screen>
@@ -112,7 +112,7 @@ export function MedDetail() {
       {explain.isError && (
         <Alert tone="warn" title={ex ? t('medDetail.couldNotUpdate', 'We could not update this information') : t('medDetail.couldNotLook', 'We could not look this up')}>
           {explain.error instanceof TypeError
-            ? t('medDetail.offline', 'We could not reach Smart Health. Check your connection and try again.')
+            ? t('medDetail.offline', 'We could not reach Equinox. Check your connection and try again.')
             : explain.error instanceof Error && explain.error.message && !/^\d{3}/.test(explain.error.message)
               ? explain.error.message
               : t('medDetail.tryLater', 'Please try again in a moment.')}

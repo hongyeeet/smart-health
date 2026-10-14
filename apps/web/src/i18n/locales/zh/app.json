@@ -24,7 +24,7 @@
       "noSummary": "未记录此提示的说明。您的药剂师或医生可以告诉您这是否会对您有影响。",
       "originLabel": "此提示的来源",
       "sources": "此信息的来源",
-      "sourcesNote": "这些页面未经临床医生专为 Smart Health 进行审核。这不属于医疗建议。",
+      "sourcesNote": "这些页面未经临床医生专为 Equinox 进行审核。这不属于医疗建议。",
       "title": "查看相互作用",
       "unreviewed": "未经临床医生审核",
       "why": "为何会有此提示"
@@ -114,7 +114,7 @@
     "noReading": "无读数",
     "noSymptoms": "在此期间未记录任何症状。",
     "notConfirmed": "未确认",
-    "note": "这些数据是根据您和您的设备所记录的内容，通过固定规则统计得出的。在主要发现注明“AI 分析”之处，是由 AI 根据这些数据生成的文字。这些内容供您的医生参考解读。Smart Health 不提供诊断或用药建议。",
+    "note": "这些数据是根据您和您的设备所记录的内容，通过固定规则统计得出的。在主要发现注明“AI 分析”之处，是由 AI 根据这些数据生成的文字。这些内容供您的医生参考解读。Equinox 不提供诊断或用药建议。",
     "of": "共",
     "open": "打开可打印的报告",
     "openCareV2": "查看我的预约",
@@ -172,7 +172,7 @@
     "think": {
       "f1": "正在搜索您的餐食和新加坡食物清单",
       "f2": "正在寻找更清淡的选择供您替换",
-      "i1": "正在查看 Smart Health 对您的了解",
+      "i1": "正在查看 Equinox 对您的了解",
       "i2": "正在与您近几天的记录进行对比",
       "i3": "正在挑选您可以尝试的细微改变",
       "k1": "正在查阅值得信赖的健康指引",
@@ -254,8 +254,8 @@
     "nMeals": "{{n}} 餐",
     "noBase": "暂无基线",
     "noExercise": "今天没有记录",
-    "noIdeas": "这一天没有建议。继续记录饮食，Smart Health 会建议更清淡的替换选择。",
-    "notConfirmed": "（Smart Health 检测到，未确认）",
+    "noIdeas": "这一天没有建议。继续记录饮食，Equinox 会建议更清淡的替换选择。",
+    "notConfirmed": "（Equinox 检测到，未确认）",
     "oneMeal": "1 餐",
     "oneReading": "{{time}} 有 1 项读数",
     "pickOne": "选择一项以在图表中查看",
@@ -325,7 +325,7 @@
   },
   "shell": {
     "ask": "提问",
-    "askAria": "询问 Smart Health",
+    "askAria": "询问 Equinox",
     "mainNav": "主页"
   },
   "sources": {

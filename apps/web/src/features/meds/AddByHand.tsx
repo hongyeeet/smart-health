@@ -105,7 +105,7 @@ export function AddByHand() {
       <Card tone="soft" className="flex items-start gap-3">
         <Info size={20} className="mt-0.5 flex-none text-ink3" aria-hidden />
         <p className="text-sub text-ink2">
-          {t('addByHand.scope', 'Smart Health is for diabetes medicines and the medicines or supplements you take every day.')}
+          {t('addByHand.scope', 'Equinox is for diabetes medicines and the medicines or supplements you take every day.')}
         </p>
       </Card>
 
@@ -119,7 +119,7 @@ export function AddByHand() {
       <Field label={t('addByHand.name', 'Medicine name')} value={name} onChange={setName} placeholder={t('addByHand.namePlaceholder', 'As written on the label')} />
 
       {outOfScope && (
-        <Alert tone="info" title={t('addByHand.scopeNoteTitle', 'Is this one for Smart Health?')}>
+        <Alert tone="info" title={t('addByHand.scopeNoteTitle', 'Is this one for Equinox?')}>
           {t('addByHand.scopeNote', 'We do not recognise this name yet, so please check it is right. You can still save it as printed on your label.')}
         </Alert>
       )}
@@ -223,7 +223,7 @@ export function AddByHand() {
         <Alert tone="danger" title={t('addByHand.couldNotSave', 'Could not save')}>
           {/* The server explains a refusal in plain words ("This scan was already saved..."); a bare status such as "500 Internal Server Error" is not shown. */}
           {add.error instanceof TypeError
-            ? t('addByHand.offline', 'We could not reach Smart Health. Check your connection and try again. Nothing has been saved.')
+            ? t('addByHand.offline', 'We could not reach Equinox. Check your connection and try again. Nothing has been saved.')
             : add.error instanceof Error && add.error.message && !/^\d{3}/.test(add.error.message)
               ? add.error.message
               : t('addByHand.saveFailed', 'We could not save this medicine. Check the details and try again.')}

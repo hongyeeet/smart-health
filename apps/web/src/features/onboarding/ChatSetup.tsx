@@ -95,7 +95,7 @@ export function ChatSetup() {
         setNotice(res.reply)
       }
     } catch {
-      setNotice(t('setup.offline', 'Smart Health could not reach the server just now. Your answer is not lost. Try again in a moment, or use the form.'))
+      setNotice(t('setup.offline', 'Equinox could not reach the server just now. Your answer is not lost. Try again in a moment, or use the form.'))
     }
   }
 
@@ -266,7 +266,7 @@ function Bubble({ from, children, action }: { from: 'bot' | 'me'; children: Reac
   const me = from === 'me'
   return (
     <li className={cn('flex max-w-[90%] flex-col gap-1', me && 'self-end items-end')}>
-      <span className="text-micro font-bold text-ink2">{me ? t('setup.you', 'You') : t('setup.us', 'Smart Health')}</span>
+      <span className="text-micro font-bold text-ink2">{me ? t('setup.you', 'You') : t('setup.us', 'Equinox')}</span>
       <div className={cn('break-words rounded-card border-[1.5px] px-3.5 py-2.5 text-body text-ink', me ? 'border-brand bg-brand-soft' : 'border-line bg-card')}>{children}</div>
       {action}
     </li>

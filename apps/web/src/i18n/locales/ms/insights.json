@@ -499,8 +499,8 @@
         "stress": "Penilaian stres anda pada hari itu, dari 1 (rendah) hingga 5 (tinggi)."
       },
       "lastDays": "dalam {{n}} hari yang lalu",
-      "learnt": "Apa yang telah dipelajari Smart Health",
-      "learntNone": "Smart Health memerlukan beberapa lagi hidangan dan bacaan yang dipadankan sebelum ia dapat menunjukkan apa yang telah dipelajarinya daripada sejarah anda sendiri.",
+      "learnt": "Apa yang telah dipelajari Equinox",
+      "learntNone": "Equinox memerlukan beberapa lagi hidangan dan bacaan yang dipadankan sebelum ia dapat menunjukkan apa yang telah dipelajarinya daripada sejarah anda sendiri.",
       "measure": {
         "activity": "Minit aktif",
         "doses": "Dos diambil",

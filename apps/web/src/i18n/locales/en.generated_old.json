@@ -422,12 +422,12 @@
       "addTitle": "Add each medicine from its label",
       "byHand": "Type it in",
       "error": "We could not load your medicines just now. You can carry on, and check them later in Medications.",
-      "intro": "Smart Health copies what is on the label, and you check it. You can also do this later from Medications.",
+      "intro": "Equinox copies what is on the label, and you check it. You can also do this later from Medications.",
       "none": "No medicines saved yet.",
-      "note": "Smart Health explains and reminds. It never tells you to start, stop or change a medicine.",
+      "note": "Equinox explains and reminds. It never tells you to start, stop or change a medicine.",
       "savedTitle": "Medicines saved so far",
       "scan": "Scan a label",
-      "scope": "Smart Health is for diabetes medicines and the medicines or supplements you take every day."
+      "scope": "Equinox is for diabetes medicines and the medicines or supplements you take every day."
     },
     "race": {
       "other": "Or type it in"

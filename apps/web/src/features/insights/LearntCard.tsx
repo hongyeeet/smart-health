@@ -1,5 +1,5 @@
 /**
- * Insights → Overview, "What Smart Health has learnt": the patterns the nightly job found in the person's own history, as short lines. One note says what
+ * Insights → Overview, "What Equinox has learnt": the patterns the nightly job found in the person's own history, as short lines. One note says what
  * they are (patterns, not proven) instead of repeating a tag on every line. The long sentence from the server is kept in the title (hover, and read by a screen
  * reader); the line shows a short form built from the same number.
  */
@@ -62,16 +62,16 @@ export function LearntCard({ items, onOpen, onAll }: { items: InsightsPattern[];
   return (
     <section
       className="flex flex-col gap-2 rounded-card border border-line bg-card p-3.5 shadow-lift"
-      aria-label={t('insights.overview.learnt', 'What Smart Health has learnt')}
+      aria-label={t('insights.overview.learnt', 'What Equinox has learnt')}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-body font-bold">{t('insights.overview.learnt', 'What Smart Health has learnt')}</h2>
+        <h2 className="text-body font-bold">{t('insights.overview.learnt', 'What Equinox has learnt')}</h2>
       </div>
       {items.length === 0 ? (
         <p className="text-sub text-ink2">
           {t(
             'insights.overview.learntNone',
-            'Smart Health needs a few more matched meals and readings before it can show what it has learnt from your own history.',
+            'Equinox needs a few more matched meals and readings before it can show what it has learnt from your own history.',
           )}
         </p>
       ) : (

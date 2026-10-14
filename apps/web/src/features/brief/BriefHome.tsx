@@ -165,7 +165,7 @@ export function BriefHome() {
       {data && (
         <>
           {/* the patient record and the analysis side by side from a laptop up, one column on a phone */}
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start [&>*]:min-w-0">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] [&>*]:min-w-0">
             <Card as="section" className="flex flex-col gap-3">
               <h2 className="font-serif text-h2 font-medium tracking-tight">{t('brief.patient', 'Patient record')}</h2>
               <dl className="flex flex-col divide-y divide-line text-body">
@@ -338,7 +338,7 @@ export function BriefHome() {
               <Alert tone="info">
                 {t(
                   'brief.note',
-                  'The numbers are counts from what you and your devices recorded, worked out by fixed rules. Where the key findings say AI insight, an AI wrote the sentences from those numbers. They are for your doctor to interpret. Smart Health does not diagnose or advise on medicines.',
+                  'The numbers are counts from what you and your devices recorded, worked out by fixed rules. Where the key findings say AI insight, an AI wrote the sentences from those numbers. They are for your doctor to interpret. Equinox does not diagnose or advise on medicines.',
                 )}
               </Alert>
             </div>

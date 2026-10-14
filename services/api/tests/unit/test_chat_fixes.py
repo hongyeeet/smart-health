@@ -1,4 +1,4 @@
-"""Fix wave (12 Oct 2026), Ask Smart Health, English only: urgent words, imperative dosing, the diagnosis line, honest no-data replies,
+"""Fix wave (12 Oct 2026), Ask Equinox, English only: urgent words, imperative dosing, the diagnosis line, honest no-data replies,
 JEV off or capped, and the scrubbed stored message. Everything is stubbed: no model, no JEV, no database."""
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ SELF_HARM_PHRASES = [
 ]
 CALM_PHRASES = [
     "my sugar was low yesterday", "chest day at the gym", "How was my glucose this week?", "How is my blood pressure lately?", "arm day at the gym",
-    "what is a heart attack", "I had a heart attack in 2019", "backstroke swimming at the pool", "What did Smart Health learn about me?",
+    "what is a heart attack", "I had a heart attack in 2019", "backstroke swimming at the pool", "What did Equinox learn about me?",
     "my low sugar readings this week", "the fitting room", "What is Metformin for?",
 ]
 
@@ -77,7 +77,7 @@ def test_an_imperative_dosing_reply_is_replaced_by_the_persons_own_summary(world
     assert o.verdict == "blocked_med_advice"
 
 
-@pytest.mark.parametrize("question", ["How is my blood pressure lately?", "How was my glucose this week?", "What did Smart Health learn about me?"])
+@pytest.mark.parametrize("question", ["How is my blood pressure lately?", "How was my glucose this week?", "What did Equinox learn about me?"])
 def test_ordinary_questions_scored_between_the_strict_and_the_diagnosis_line_are_answered(world, question):
     world["key"] = "k"
     world["res"] = {"med_advice": 0.0, "diagnosis": 0.42, "urgent": 0.0}
@@ -136,7 +136,7 @@ def test_a_no_data_sentence_that_also_gives_advice_is_still_blocked(world):
 
 
 @pytest.mark.parametrize("reply, ok", [("I do not have that in your data yet.", True), ("I don't have any information about your blood pressure in your data.", True),
-                                       ("Smart Health has no data on that yet.", True), ("I do not have 5 readings in your data.", False), ("Your glucose was steady.", False)])
+                                       ("Equinox has no data on that yet.", True), ("I do not have 5 readings in your data.", False), ("Your glucose was steady.", False)])
 def test_is_no_data_reply(reply, ok):
     assert G.is_no_data_reply(reply) is ok
 

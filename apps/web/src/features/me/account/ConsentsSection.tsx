@@ -1,5 +1,5 @@
 /**
- * "Consents": a switch for each thing the person lets Smart Health do. Turning off "Use my health data" asks first (it stops the app
+ * "Consents": a switch for each thing the person lets Equinox do. Turning off "Use my health data" asks first (it stops the app
  * working). "Allow reminder notifications" is the reminder email switch (GET/PUT /notify/email): reminders for medicines and for logs such
  * as food and exercise are sent by email; "Change email address" sits under it. Turning one off does not delete any data.
  */
@@ -25,7 +25,7 @@ export function ConsentsSection() {
     {
       kind: 'data_processing',
       title: t('me.privacy.dataTitle', 'Use my health data'),
-      sub: t('me.privacy.dataSub', 'Lets Smart Health read what you log and what your devices send, so it can show your insights, reminders and doctor brief.'),
+      sub: t('me.privacy.dataSub', 'Lets Equinox read what you log and what your devices send, so it can show your insights, reminders and doctor brief.'),
       required: true,
     },
     {
@@ -36,7 +36,7 @@ export function ConsentsSection() {
     {
       kind: 'calendar_access',
       title: t('me.privacy.calendarTitleV2', 'Put my medicine reminders on Google Calendar'),
-      sub: t('me.privacy.calendarSubV2', 'Lets Smart Health add your dose times to Google Calendar, so your phone reminds you. You can turn this off at any time.'),
+      sub: t('me.privacy.calendarSubV2', 'Lets Equinox add your dose times to Google Calendar, so your phone reminds you. You can turn this off at any time.'),
     },
     {
       kind: 'caregiver_view',
@@ -108,7 +108,7 @@ export function ConsentsSection() {
                       <p>
                         {t(
                           'me.privacy.askOffText',
-                          'Smart Health will stop reading what you log and what your devices send. Insights, reminders and the doctor brief will stop until you turn this on again. Nothing is deleted.',
+                          'Equinox will stop reading what you log and what your devices send. Insights, reminders and the doctor brief will stop until you turn this on again. Nothing is deleted.',
                         )}
                       </p>
                       <div className="mt-3 flex flex-col gap-2">

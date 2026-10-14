@@ -113,7 +113,7 @@ def real(to: str) -> int:
         print("WORKATO_EMAIL_WEBHOOK_URL and WORKATO_EMAIL_WEBHOOK_TOKEN are not both set in .env.")
         return 2
     row = svc.Row("test", "check", "nudge", datetime.now(svc.TZ), None,
-                  {"key": "check", "title": "[Test] Your reminders are working", "body": "This is a test email from Smart Health. If you can read it, reminders will reach you here.", "to": "B1"},
+                  {"key": "check", "title": "[Test] Your reminders are working", "body": "This is a test email from Equinox. If you can read it, reminders will reach you here.", "to": "B1"},
                   0, "person", None, to, True, None, None)
     msg = svc.build_message(row)
     msg["subject"] = "[Test] " + msg["subject"] if not msg["subject"].startswith("[Test]") else msg["subject"]

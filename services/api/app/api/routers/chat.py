@@ -1,4 +1,4 @@
-"""Ask Smart Health (screen I1):
+"""Ask Equinox (screen I1):
 
   POST /chat/route               {text} -> what kind of request it is (for the waiting message); its JEV and triage results are reused by the answer
   POST /chat/messages            {text, conversationId?} -> the reply, sources, actions and follow-up questions

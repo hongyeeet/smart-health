@@ -1,4 +1,4 @@
-# Smart Health
+# Equinox
 
 An AI health companion for adults with Type 2 diabetes. It learns each person from their own food, watch, glucose and exercise data, helps them every day (medication understanding, reminders, tracking), and turns the weeks between visits into a clear, evidence-backed brief for their doctor. It explains, organises and reminds. It never advises on medication and never diagnoses.
 

@@ -1,4 +1,4 @@
-"""Adversarial corpus for the Ask Smart Health input rules (app/services/chat_guard.py) and the decision order (app/services/chat.py).
+"""Adversarial corpus for the Ask Equinox input rules (app/services/chat_guard.py) and the decision order (app/services/chat.py).
 
 Two lists, so the owner can see the gaps:
   CAUGHT           the input rules must catch the message and label it with the intent given.

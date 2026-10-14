@@ -13,7 +13,7 @@ The list has about 60 items. They fall into **eight pieces of work**. They shoul
 | 3 | Blood pressure logging, and the Log / Food move | Blood pressure feeds Insights and the brief | Medium |
 | 4 | Medicines: scanner, scope, stock ("medicine warehouse"), wording | Stock needs piece 1 | Large |
 | 5 | Doctor brief changes | Needs the onboarding data from 2 and blood pressure from 3 | Large |
-| 6 | Care plan, questions page, "How it is going", "What Smart Health has learned" | Small, independent | Medium |
+| 6 | Care plan, questions page, "How it is going", "What Equinox has learned" | Small, independent | Medium |
 | 7 | Insights changes (all six tabs) | Needs heart rate, SpO2 and blood pressure from 3 | Large |
 | 8 | Home page and the food banner | Last, because it shows things made by the other pieces | Small |
 
@@ -110,7 +110,7 @@ The problem you described: answers stay in the browser (`smart-health-onboarding
 3. Add a clearer failure screen: "We could not read this. Take another photo or type it in."
 
 ### 4.2 Scope: diabetes medicines and daily medicines or supplements
-- The add screens (scan and by hand) and onboarding step 5 are for **diabetes medicines and other daily medicines or supplements**. A medicine that is clearly outside (for example a one-off antibiotic) is not blocked but gets a note: "Smart Health is for diabetes and daily medicines."
+- The add screens (scan and by hand) and onboarding step 5 are for **diabetes medicines and other daily medicines or supplements**. A medicine that is clearly outside (for example a one-off antibiotic) is not blocked but gets a note: "Equinox is for diabetes and daily medicines."
 - The "only when needed" choice I added on 2026-10-06 conflicts with this. See Q3 before removing it.
 
 ### 4.3 Medicine warehouse (stock tracker)
@@ -162,7 +162,7 @@ Hong Yi built the latest brief changes ("Worth discussing", overnight heart rate
 - **Remove "Each week".**
 - Add a **calendar view**: each day coloured by the macros logged (calories, carbohydrate, protein, fat), tap a day to see the totals. Uses data from `GET /insights/food` or a new `GET /memory/progress/days`.
 
-### 6.4 What Smart Health has learned (K2)
+### 6.4 What Equinox has learned (K2)
 - **"What gets in the way" becomes a dashboard KPI**: a small row of numbers (barrier counts, doses missed this week) instead of the text list.
 - Remove the **"some missed doses were because of running out"** text. Also **check Mr Tan's database**: query `medication_log` and `dose_events` for `ran_out` reasons and for the adherence barrier facts in `memory_facts`; if the statement comes from a bad fact (made by the nightly learning run), delete it and fix the rule that proposed it (`agents/adherence.py`).
 - Remove **"See what it did"** (the audit list) from the screen. Keep the audit data in the database.

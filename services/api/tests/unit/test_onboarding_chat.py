@@ -167,7 +167,7 @@ def test_a_valid_answer_is_understood_and_fills_the_store_field(step_id, text, k
 INVALID = [
     ("name", "Mr 123", {}, FALLBACK_REPLY),
     ("reminderEmail", "mei@gmail", {}, FALLBACK_REPLY),
-    ("birthYear", "2015", {}, "Smart Health is for adults aged 18 or older."),
+    ("birthYear", "2015", {}, "Equinox is for adults aged 18 or older."),
     ("birthYear", "55", {}, FALLBACK_REPLY),
     ("gender", "other", {}, FALLBACK_REPLY),
     ("gender", "prefer not to say", {}, FALLBACK_REPLY),
@@ -311,7 +311,7 @@ def test_free_text_and_allergies_are_taken_only_from_the_question_asked():
 
 def test_a_model_problem_for_the_question_asked_is_said_plainly():
     res = answer_step("birthYear", "born in the year 2015 I think", LABELS, THIS_YEAR, extract=lambda *_: {"birthYear": "2015"}, known={}, today=TODAY)
-    assert res["understood"] is False and res["reply"] == "Smart Health is for adults aged 18 or older."
+    assert res["understood"] is False and res["reply"] == "Equinox is for adults aged 18 or older."
 
 
 def test_when_the_model_is_unavailable_the_person_is_sent_to_the_form():

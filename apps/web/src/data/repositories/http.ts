@@ -60,7 +60,7 @@ async function analyzeMealPhoto(file: File, description: string | undefined, sig
     } catch (e) {
       if (signal?.aborted) throw e
       if (limit.signal.aborted) throw new MealReadError('timeout', 'Reading the photo took too long. Please try again, or type the meal in.')
-      throw new MealReadError('network', 'We could not reach Smart Health. Check your internet connection, then try again.')
+      throw new MealReadError('network', 'We could not reach Equinox. Check your internet connection, then try again.')
     }
     const body = (await res.json().catch(() => null)) as { detail?: unknown; code?: unknown } | null
     if (!res.ok) {

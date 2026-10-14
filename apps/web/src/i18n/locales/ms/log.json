@@ -134,8 +134,8 @@
     "notYet": "Belum",
     "noticed": {
       "check": "Semak sama ada ia betul. Anda boleh sahkan, tukar atau padam.",
-      "many": "Smart Health ada menyedari {{n}} perkara",
-      "one": "Smart Health ada menyedari sesuatu"
+      "many": "Equinox ada menyedari {{n}} perkara",
+      "one": "Equinox ada menyedari sesuatu"
     },
     "numbers": {
       "loadError": "Kami tidak dapat memuatkan nombor anda. Ketik untuk cuba lagi.",
@@ -339,7 +339,7 @@
       "stillToLog": "Belum direkodkan",
       "sub": "Tambah apa yang berlaku. Semuanya masuk ke satu garis masa.",
       "suggestions": "Cadangan hidangan",
-      "suggestionsSub": "Idea hidangan daripada Smart Health. Nilaikan setiap satu: munasabah, tidak munasabah atau tidak selamat.",
+      "suggestionsSub": "Idea hidangan daripada Equinox. Nilaikan setiap satu: munasabah, tidak munasabah atau tidak selamat.",
       "symptom": "Simptom",
       "symptomSub": "Bagaimana anda rasa",
       "takePhoto": "Ambil foto",
@@ -417,7 +417,7 @@
         "badPhoto": "Kami tidak dapat menggunakan foto ini",
         "dailyLimit": "Bacaan AI tidak tersedia hari ini",
         "generic": "Bacaan tidak berjaya kali ini",
-        "network": "Tidak dapat menyambung ke Smart Health",
+        "network": "Tidak dapat menyambung ke Equinox",
         "notFood": "Tiada makanan ditemui dalam foto ini",
         "timeout": "Membaca foto mengambil masa terlalu lama"
       },

@@ -93,7 +93,7 @@ def test_known_choices_pass_and_unknown_ones_get_a_plain_message():
 
 def test_check_profile_reports_each_problem_once():
     assert svc.check_profile({"birth_year": 1968, "work_days": [1, 2, 3], "work_start": "07:30", "work_end": "17:00"}, LABELS, THIS_YEAR) == []
-    assert svc.check_profile({"birth_year": 2015}, LABELS, THIS_YEAR) == ["Smart Health is for adults aged 18 or older."]
+    assert svc.check_profile({"birth_year": 2015}, LABELS, THIS_YEAR) == ["Equinox is for adults aged 18 or older."]
     assert any("cannot be blank" in p for p in svc.check_profile({"display_name": None}, LABELS, THIS_YEAR))
     assert any("1 (Monday) to 7" in p for p in svc.check_profile({"work_days": [0, 8]}, LABELS, THIS_YEAR))
     assert any("like 07:30" in p for p in svc.check_profile({"work_start": "25:00"}, LABELS, THIS_YEAR))
@@ -285,7 +285,7 @@ def test_get_returns_camel_case_and_no_profile_for_a_new_person(client):
 def test_put_profile_refuses_an_unknown_choice_with_a_plain_422(client):
     res = client.put("/api/v1/onboarding/profile", json={"gender": "robot"})
     assert res.status_code == 422
-    assert "gender 'robot' is not a choice Smart Health knows" in res.json()["detail"]
+    assert "gender 'robot' is not a choice Equinox knows" in res.json()["detail"]
 
 
 def test_put_profile_saves_and_reports_fields_that_could_not_be_stored(client):

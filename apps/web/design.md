@@ -1,4 +1,4 @@
-# Smart Health web app (production): design and build notes
+# Equinox web app (production): design and build notes
 
 > This is the production app. It has the shell, design system, charts and the data layer, and **no screens**: every screen shows a "not built yet" placeholder until you build it. The finished clickable version, with every screen on demo data, is in [apps/mock](../mock). Copy a screen from there, point it at real data, and register it in `src/app/screens.tsx`. The design system is duplicated between the two apps for now; when it starts to drift, move `theme`, `motion`, `ui` and `charts` into a shared package.
 

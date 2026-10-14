@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from etl_common import PROCESSED, RAW, bulk_insert, connect, count, report, uid  # noqa: E402
 
 RETRIEVED = date(2026, 10, 2)
-PLACEHOLDER = "Smart Health team placeholder (clinical review pending)"
+PLACEHOLDER = "Equinox team placeholder (clinical review pending)"
 SIDE_EFFECT_SHARE = 0.30
 NAME_COL_PREFIX_SIDE = "sideEffect"
 

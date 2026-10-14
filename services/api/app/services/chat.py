@@ -1,4 +1,4 @@
-"""Ask Smart Health (screen I1): a chat that answers only from the signed-in person's own data.
+"""Ask Equinox (screen I1): a chat that answers only from the signed-in person's own data.
 
 What it does, in this order, for every message:
   1. trims and limits the text; 2. a rule check for urgent words (no model is called when it matches); 3. the frozen JEV guard on the
@@ -347,7 +347,7 @@ def build_sections(rows: dict[str, Any], today: date) -> Context:
     secs.append(Section("sleep", "Your sleep", "C5", [f"average {_num(sum(sl) / len(sl))} hours a night on {len(sl)} night{'s' if len(sl) != 1 else ''}"] if sl else [], span))
 
     secs.append(Section("questions", "Your doctor questions", "K3", [q for q in rows["questions"]]))
-    secs.append(Section("facts", "What Smart Health has learned", "K2", [f for f in rows["facts"]]))
+    secs.append(Section("facts", "What Equinox has learned", "K2", [f for f in rows["facts"]]))
 
     sym: list[str] = []
     by_kind: dict[str, list[dict[str, Any]]] = {}
@@ -376,7 +376,7 @@ def build_sections(rows: dict[str, Any], today: date) -> Context:
         bpl.append(f"latest {_short(latest['measured_at'].astimezone(TZ).date())}: {latest['systolic']} over {latest['diastolic']} mmHg" + (f", pulse {latest['pulse']}" if latest.get("pulse") else ""))
     secs.append(Section("blood_pressure", "Your blood pressure", "C5", bpl, "last 30 days"))
 
-    secs.append(Section("medicine_alerts", "Medicine alerts from Smart Health", "H5", list(rows.get("alerts", []))))
+    secs.append(Section("medicine_alerts", "Medicine alerts from Equinox", "H5", list(rows.get("alerts", []))))
 
     visit = rows.get("visit")
     secs.append(Section("appointments", "Your next visit", "K3",
@@ -390,7 +390,7 @@ def build_sections(rows: dict[str, Any], today: date) -> Context:
 
 # ----------------------------------------------------------------------------- reading the rows
 def learned_section(conn, uid: str) -> Section:
-    """Everything Smart Health has learned about the person, CONFIRMED OR NOT, each line saying which: the facts it proposed or the person confirmed, and the
+    """Everything Equinox has learned about the person, CONFIRMED OR NOT, each line saying which: the facts it proposed or the person confirmed, and the
     patterns found in their own days. Used when the question asks for ideas; an idea is offered as something to try, never as a proven fact."""
     lines: list[str] = []
     try:
@@ -402,8 +402,8 @@ def learned_section(conn, uid: str) -> Section:
         for p in insights.patterns_for(insights._patterns(conn, uid))[:6]:
             lines.append(f"{p['text']} (a pattern from {p['n']} matched days in your own records; not confirmed by you, not proven)")
     except Exception:
-        logger.exception("what Smart Health has learned was not readable for the chat")
-    return Section("learned", "What Smart Health has learned", "K2", [x for x in (G.sanitize_data_line(l, 300) for l in lines) if x])
+        logger.exception("what Equinox has learned was not readable for the chat")
+    return Section("learned", "What Equinox has learned", "K2", [x for x in (G.sanitize_data_line(l, 300) for l in lines) if x])
 
 
 def dose_hint(ctx: "Context") -> bool:
@@ -705,7 +705,7 @@ def _response_lines(r: dict[str, Any], facts: list[str]) -> list[str]:
                    f"after earlier dinners: average {_num(late['other_avg'])} mmol/L on {late['other_n']} mornings")
     for p in r.get("patterns") or []:
         out.append(f"{p['text']} (from {int(p['n'])} matched days)")
-    out += [f"Smart Health has learned: {f}" for f in facts[:5] if f]
+    out += [f"Equinox has learned: {f}" for f in facts[:5] if f]
     return out
 
 

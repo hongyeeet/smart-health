@@ -172,5 +172,5 @@ def run(user_id, write: bool = False) -> dict[str, Any]:
 
 
 def nudges(user_id, now: datetime, have_keys: set[str], max_new: int) -> list[tuple[str, str, str, str, str, datetime]]:
-    """Nothing here: the observations are shown in What Smart Health has learned, not as reminders."""
+    """Nothing here: the observations are shown in What Equinox has learned, not as reminders."""
     return []

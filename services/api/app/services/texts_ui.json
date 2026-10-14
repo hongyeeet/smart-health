@@ -198,10 +198,10 @@
   "ta": "உங்கள் செக்-இன் பதிவிலிருந்து"
  },
  "care.origin.agent_suggested": {
-  "en": "Suggested by Smart Health",
-  "zh": "由 Smart Health 建议",
-  "ms": "Dicadangkan oleh Smart Health",
-  "ta": "Smart Health பரிந்துரைத்தது"
+  "en": "Suggested by Equinox",
+  "zh": "由 Equinox 建议",
+  "ms": "Dicadangkan oleh Equinox",
+  "ta": "Equinox பரிந்துரைத்தது"
  },
  "care.origin.saved": {
   "en": "Saved",

@@ -1,4 +1,4 @@
-"""Ask Smart Health, the planned views and the meaning-based search (app/services/chat.py). Stubbed rows and a stubbed embedding call: no
+"""Ask Equinox, the planned views and the meaning-based search (app/services/chat.py). Stubbed rows and a stubbed embedding call: no
 database, no network, no model."""
 from __future__ import annotations
 
@@ -133,11 +133,11 @@ def test_responses_have_counts_averages_late_dinner_and_patterns_and_leave_unkno
     assert "4 exercise sessions with sensor data: glucose fell by 1.2 mmol/L on average" in text and "1 of 4 were followed by a low reading" in text
     assert "9 pm or later: average 7.4 mmol/L on 6 mornings; after earlier dinners: average 6.8 mmol/L on 20 mornings" in text
     assert "0.6 mmol/L higher. (from 7 matched days)" in text
-    assert "Smart Health has learned: Walks after dinner" in text
+    assert "Equinox has learned: Walks after dinner" in text
 
 
 def test_responses_with_nothing_computed_say_nothing():
-    assert build(responses={"meals": [], "exercise": None, "late": None, "patterns": []})["responses"].lines == ["Smart Health has learned: Walks after dinner"]
+    assert build(responses={"meals": [], "exercise": None, "late": None, "patterns": []})["responses"].lines == ["Equinox has learned: Walks after dinner"]
     only = C.build_view_sections({"responses": {"meals": [], "exercise": None, "late": None, "patterns": []}}, TODAY, [])
     assert only[0].lines == []
 

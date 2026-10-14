@@ -138,7 +138,7 @@ def test_gender_accepts_only_male_or_female_and_clearing_it():
         assert svc.check_profile({"gender": ok}, LABELS, 2026) == []
     for bad in ("other", "prefer_not_to_say", "robot"):
         assert svc.check_profile({"gender": bad}, LABELS, 2026) == [
-            f"gender '{bad}' is not a choice Smart Health knows. Choose male or female."]
+            f"gender '{bad}' is not a choice Equinox knows. Choose male or female."]
 
 
 def test_a_refused_gender_writes_nothing(ready):
@@ -166,7 +166,7 @@ def test_a_full_valid_history_passes_every_check():
 ])
 def test_a_choice_outside_its_list_is_refused_with_a_plain_message(field, bad):
     problems = svc.history_problems({field: bad}, TODAY)
-    assert len(problems) == 1 and f"'{bad}' is not a choice Smart Health knows" in problems[0]
+    assert len(problems) == 1 and f"'{bad}' is not a choice Equinox knows" in problems[0]
 
 
 def test_diagnosed_year_must_be_past_and_not_before_birth():
@@ -190,7 +190,7 @@ def test_labs_need_a_date_units_and_a_value_in_range():
 
 def test_waist_and_condition_codes_are_checked():
     assert svc.history_problems({"waist_cm": Decimal(39)}, TODAY) == ["Waist must be between 40 and 200 cm."]
-    assert svc.history_problems({"conditions": ["gout"]}, TODAY) == ["'gout' is not a condition Smart Health knows."]
+    assert svc.history_problems({"conditions": ["gout"]}, TODAY) == ["'gout' is not a condition Equinox knows."]
     assert svc.history_problems({"conditions": ["none"]}, TODAY) == []
 
 

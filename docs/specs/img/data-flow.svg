@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1400" viewBox="0 0 2000 1400">
 <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
 <rect width="2000" height="1400" fill="#FFFFFF"/>
-<text x="30" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" fill="#2C2C2A" text-anchor="start">Smart Health data flow: Bronze, Silver, Gold and where JEV sits</text>
+<text x="30" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" fill="#2C2C2A" text-anchor="start">Equinox data flow: Bronze, Silver, Gold and where JEV sits</text>
 <text x="30" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="400" fill="#5F5E5A" text-anchor="start">Data only moves down. Bronze is never edited, Gold is built only from Silver, and JEV and the LLM reach data only through the Memory Service.</text>
 <text x="30" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#5F5E5A" text-anchor="start">SOURCES</text>
 <rect x="30" y="118" width="280" height="76" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width="1.2"/>

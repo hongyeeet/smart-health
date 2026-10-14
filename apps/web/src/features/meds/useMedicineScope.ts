@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { request } from '@/data/repositories/http'
 
 /**
- * Is the typed or scanned name outside what Smart Health is for? GET /medications/scope answers with a gentle flag only: it never
+ * Is the typed or scanned name outside what Equinox is for? GET /medications/scope answers with a gentle flag only: it never
  * blocks a save. The name is checked a moment after the person stops typing, so the page does not ask on every letter.
  * Returns false while unknown (the note simply does not show).
  */

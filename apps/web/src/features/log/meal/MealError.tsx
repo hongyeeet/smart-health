@@ -29,7 +29,7 @@ export function MealError({ error, onTryAgain, onChoosePhoto, onManual }: Props)
       case 'timeout':
         return t('log.meal.err.timeout', 'Reading the photo took too long')
       case 'network':
-        return t('log.meal.err.network', 'Could not reach Smart Health')
+        return t('log.meal.err.network', 'Could not reach Equinox')
       default:
         // the server's sentence under this title says what went wrong, so the title must not repeat it
         return t('log.meal.err.generic', 'The reading did not work this time')

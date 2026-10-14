@@ -742,7 +742,7 @@ export interface LunchIdeas {
   options: LunchOption[]
 }
 
-/* ---------------- what Smart Health has learned: facts, weekly digest, audit, progress ---------------- */
+/* ---------------- what Equinox has learned: facts, weekly digest, audit, progress ---------------- */
 export interface LearnedFact {
   id: string
   key: string
@@ -1321,7 +1321,7 @@ export interface InsightsDay {
   exercise: { m0: number; m1: number; type: string }[]
   ideas: {
     swap: { fromFood: string; fromCarbsG: number | null; toFood: string; toCarbsG: number | null; mealType: string | null } | null
-    /** shown only when no exercise was logged; `learned` is what Smart Health has learnt about walks, confirmed or not */
+    /** shown only when no exercise was logged; `learned` is what Equinox has learnt about walks, confirmed or not */
     walk: { learned: { lowerBy: number | null; days: number; confirmed: boolean } | null } | null
   }
 }

@@ -1,4 +1,4 @@
-# Smart Health: what is built, every screen, and the flow (v2)
+# Equinox: what is built, every screen, and the flow (v2)
 
 **Written 2026-10-10. Updated 2026-10-11 from the code on branch `dev`, twice: in the morning, and again in the evening after the fix wave, the QA wave and two design critic passes (second docs pass).** The work of 2026-10-11 and 2026-10-12 (onboarding, medicine stock, blood pressure, the doctor brief, Insights, Home, care plan, logs, workouts, the design changes, the rebuilt chat) is **committed and pushed on `dev`**. Where this file says "built", it means present in the code on disk. Database migrations are in the repository up to `0037`. **Migrations `0032` to `0036` were applied on 2026-10-11 and `0037` (layer comments only) on 2026-10-12, each by the owner's approval** (`alembic current` is `0037`). The code still checks each new column at run time. This file **replaces [flow.md](flow.md) as the description of the app that exists today**. `flow.md` still holds the original plan (journeys J1 to J15, the event catalogue and the demo script) and is kept for the planned-but-unbuilt parts. Where the two disagree, this file is right about what is built.
 
@@ -26,7 +26,7 @@
 
 ## 1. The product in one page
 
-**Smart Health** is a companion web app for **adults with type 2 diabetes in Singapore**. It helps a person take their medicines, log meals, blood pressure, symptoms, mood, sleep and workouts, see how their glucose responds, and prepare for the doctor. It is a **hackathon build** (shared Supabase Postgres, Vertex AI Gemini, a Workato sandbox).
+**Equinox** is a companion web app for **adults with type 2 diabetes in Singapore**. It helps a person take their medicines, log meals, blood pressure, symptoms, mood, sleep and workouts, see how their glucose responds, and prepare for the doctor. It is a **hackathon build** (shared Supabase Postgres, Vertex AI Gemini, a Workato sandbox).
 
 | Idea | Meaning |
 |---|---|
@@ -49,9 +49,9 @@
 | Workouts | Quick workout log (how hard it felt is optional; an unrated workout is saved and is not counted toward active minutes), live strength tracker with heart-rate effort from the server, labelled "Estimated from your heart rate" | F1, F2 |
 | Medicines | List with "My stock" and a refill estimate, scan a label (name threshold 0.6), check what we read (the name needs a tick below the standard bar), dose plan (every day), add by hand, medicine detail with the four-part explanation, clash box, clash details, "why was it missed", remove a medicine | H1 to H8 |
 | Urgent | Low-glucose alert (two tiers), call buttons, "I'm okay", email the emergency contact, demo trigger | J1 |
-| Me | Hub of eight cards: what Smart Health has learned, track appointments, questions for your doctor, doctor brief, reminders, connected sources, language and display, data and account. **Data and account** holds the person's details (each with an edit), emergency contacts (more than one), consents and the data download or deletion | K1 to K12 |
+| Me | Hub of eight cards: what Equinox has learned, track appointments, questions for your doctor, doctor brief, reminders, connected sources, language and display, data and account. **Data and account** holds the person's details (each with an edit), emergency contacts (more than one), consents and the data download or deletion | K1 to K12 |
 | Doctor brief | Brief home, share by link, printable A4 report with AI-worded key findings (with a fallback), read-only page for the doctor | L1, L2, L3, `/s/:token` |
-| Chat | "Ask Smart Health": a personal assistant that reads the person's own data (glucose, meals, food ideas, activity, sleep, blood pressure, medicines, symptoms they logged, doctor questions, what the app noticed) with its own guardrails: no diagnosis, no medicine advice, no verdicts, always a doctor referral for symptoms and an offer to add a doctor question, fixed pointers to Insights, Lunch ideas and Review suggestions. See [chat-guardrails.md](chat-guardrails.md). The Ask button is in the side rail on every screen from 768 px (not on the chat itself), and a floating pill above the tab bar on Home and the Insights overview on a phone | I1 |
+| Chat | "Ask Equinox": a personal assistant that reads the person's own data (glucose, meals, food ideas, activity, sleep, blood pressure, medicines, symptoms they logged, doctor questions, what the app noticed) with its own guardrails: no diagnosis, no medicine advice, no verdicts, always a doctor referral for symptoms and an offer to add a doctor question, fixed pointers to Insights, Lunch ideas and Review suggestions. See [chat-guardrails.md](chat-guardrails.md). The Ask button is in the side rail on every screen from 768 px (not on the chat itself), and a floating pill above the tab bar on Home and the Insights overview on a phone | I1 |
 | Background | Reminders every minute, reminder emails, nightly learning, calendar events for doses (backend built; the recipe is paused, see section 11) | scheduler |
 
 Not built: manual glucose entry (there is no screen) and connect or disconnect for sensors and watches. See section 11.
@@ -67,7 +67,7 @@ These come from [rules.md](rules.md), [design.md](design.md) and decisions D-0xx
 3. **"Not checked" is never "safe".** A medicine or product the system could not look at shows a "Not checked" badge. A check that could not finish says so ("This is not the same as all clear").
 4. **Unknown stays unknown.** A missing value is a dash, "No data yet" or a hatched gap, never zero, and a chart line is never joined across a gap.
 5. **Estimates are labelled.** Anything read from a photo or worked out from a model is shown as an estimate until the person confirms it.
-6. **The person decides.** The system only proposes; "What Smart Health has learned" lets the person confirm, reword or delete each idea. A deleted idea is never proposed again.
+6. **The person decides.** The system only proposes; "What Equinox has learned" lets the person confirm, reword or delete each idea. A deleted idea is never proposed again.
 7. **Scan fields:** when a scanned field has low confidence the person must go to manual entry (D-064). The medicine name is the one exception: it has a lower bar (0.6), and a name below the standard bar must be ticked on the review screen (D-083). A scan is pure extraction (D-070): the AI does not add what the label does not say.
 8. **Privacy.** Patient name, NRIC, phone and address on a label are masked on the device before anything is stored. The event log holds ids, counts and enums only, never names or free text. A shared doctor link shows name, sex, age and diagnosis, nothing else.
 9. **Soft delete.** Removed medicines get `deleted_at`; they disappear from every screen and keep their history. The event log is append-only.
@@ -115,7 +115,7 @@ Launch
     │          └─ J1 Low-glucose alert (banner, demo link)
     ├─ C1 Insights ── C2 Glucose · C3 Food · C4 Activity · C5 Sleep and stress · C6 Medication
     │               ├─ C8 Sprint (also from K4) · C7 Why? sheet · D1 Day
-    │               └─ I1 Ask Smart Health (Ask button)
+    │               └─ I1 Ask Equinox (Ask button)
     ├─ E1 Log ── E2 Meal · E3 Blood pressure · E4 Symptom (red flag → J1) · E5 Check-in
     │          ├─ F1 Workout (→ F2 live) · E7 entry sheet → E6 Saved
     ├─ H1 Meds ── H2 Scan → H3 Review → H4 Plan · H8 By hand · H6 Detail · H5 Clash detail · My stock sheet
@@ -310,11 +310,11 @@ Folder `features/meds/` and `features/scan/`.
 
 **H4 Your dose plan** · `/meds/scan/plan`
 - **Kind chips** (prescription, supplement, herbal). **Dose times** list with add and remove (a time per dose; the label gives no clock times, so these are suggestions). **Add to my medicines** saves (`POST /scans/{id}/confirm`) and starts a background clash check.
-- **There is no "only when needed" choice.** Every new medicine is saved as a **daily** medicine. When the label says "when necessary", the screen says: "Smart Health saves it as a daily medicine, so choose the times it should appear" (decision D-084).
+- **There is no "only when needed" choice.** Every new medicine is saved as a **daily** medicine. When the label says "when necessary", the screen says: "Equinox saves it as a daily medicine, so choose the times it should appear" (decision D-084).
 
 **H8 Add a medicine by hand** · `/meds/add`
 - Same fields as H3 and H4, typed in. **No every-day or only-when-needed switch.** `POST /medications`. Used also from onboarding A3 page 5.
-- A gentle **scope note** (`GET /medications/scope`): "Smart Health is for diabetes medicines and the medicines or supplements you take every day." The note never blocks a save. Supplements and herbal products are not checked against the list.
+- A gentle **scope note** (`GET /medications/scope`): "Equinox is for diabetes medicines and the medicines or supplements you take every day." The note never blocks a save. Supplements and herbal products are not checked against the list.
 
 **H6 Medicine detail** · `/meds/:id`
 - **What it is for** in four short labelled parts: **What it is for in your diabetes**, **How it works**, **What you may notice**, **Why timing matters** (prompt version 2). Where a part is not found in the pages read, it says "Not found in the pages we read."
@@ -349,7 +349,7 @@ Unchanged today.
 Folder `features/me/`.
 
 **K1 Me** · `/me` (tab) · a list of cards with an icon, title, one-line description and arrow, in this order:
-1. What Smart Health has learned (K2), with a count of ideas to confirm
+1. What Equinox has learned (K2), with a count of ideas to confirm
 2. Track appointments (K3, formerly Care plan; renamed 2026-10-13)
 3. Questions for your doctor (K12), with a count of open questions
 4. Doctor brief (L1)
@@ -360,7 +360,7 @@ Folder `features/me/`.
 
 Moved out on 2026-10-13: Diet tracking (the starting point and the calendar are at the bottom of Insights, Food), Emergency contact and Privacy and consent (now in Data and account), Review suggestions (now **Meal suggestions**, a card at the bottom of the Log page), Set up again (removed; the set-up pages stay at A1).
 
-**K2 What Smart Health has learned** · `/me/learned` (`features/me/Learned.tsx`)
+**K2 What Equinox has learned** · `/me/learned` (`features/me/Learned.tsx`)
 - **AI use today**: one line per kind of AI call (photo and label reads, text written for you, search lookups, safety checks, other AI use), with the paused note "Paused until tomorrow" when a kind has reached its daily limit (section 10).
 - **What gets in the way**: a row of numbers (`BarrierKpis`, from `GET /memory/barriers/summary`): doses missed this week (out of the doses scheduled), doses taken on time (over the last 30 days, of the confirmed doses), the most common reason for a missed dose, and confirmed ideas waiting for the person. No data shows a dash and "No data yet".
 - **This week** (digest of what it did) and **Suggestions it is learning from**.
@@ -373,10 +373,10 @@ Moved out on 2026-10-13: Diet tracking (the starting point and the calendar are 
 - **Checks and screenings**: eye, foot, kidney, HbA1c test, flu vaccine, diabetes review, each with a status pill (up to date, due soon, overdue, no date) based only on the dates on record.
 - The link to Questions for your doctor (K12) and the Generate my doctor brief button were **removed on 2026-10-13**: both have their own cards on Me, so this page is only the next visit and the checks.
 
-**K7 Log an appointment** · `/me/appointment`: moved on 2026-10-13. The address opens Track appointments (K3), which now holds the **Add a visit** form (kind, date, time in Singapore time; a time in the future) and the **Upcoming visits** list with Cancel (cancel keeps the row). The kinds: GP review, diabetes review, eye screening, foot screening, kidney test, blood test, other (no Place field). **Visits Smart Health suggested are no longer shown or confirmed**; the person adds a visit themselves. No calendar is called from here.
+**K7 Log an appointment** · `/me/appointment`: moved on 2026-10-13. The address opens Track appointments (K3), which now holds the **Add a visit** form (kind, date, time in Singapore time; a time in the future) and the **Upcoming visits** list with Cancel (cancel keeps the row). The kinds: GP review, diabetes review, eye screening, foot screening, kidney test, blood test, other (no Place field). **Visits Equinox suggested are no longer shown or confirmed**; the person adds a visit themselves. No calendar is called from here.
 
 **K12 Questions for your doctor** · `/me/questions` (`features/me/Questions.tsx`)
-- Left: the add-question box, then **Suggested by Smart Health** as a plain ruled list (six fixed starter questions that ask, never advise; each has an Add link; one already on the list is not offered again; an added one is stored with origin `agent_suggested`, key checked against `care.SUGGESTED_QUESTIONS`). Right: **Your questions log**, a ruled list (not boxes): open questions first, then asked ones; each shows the question, where it came from and the date, **Remove** (underlined, top right, with a confirm), and **Already asked** (or **Not asked yet** to put it back). There is no "To ask" pill.
+- Left: the add-question box, then **Suggested by Equinox** as a plain ruled list (six fixed starter questions that ask, never advise; each has an Add link; one already on the list is not offered again; an added one is stored with origin `agent_suggested`, key checked against `care.SUGGESTED_QUESTIONS`). Right: **Your questions log**, a ruled list (not boxes): open questions first, then asked ones; each shows the question, where it came from and the date, **Remove** (underlined, top right, with a confirm), and **Already asked** (or **Not asked yet** to put it back). There is no "To ask" pill.
 - Open questions go into the doctor brief (L1 and L3).
 - Endpoints: `POST /care/questions` (`text`, optional `suggestedKey`), `POST /care/questions/{id}/done`, `DELETE /care/questions/{id}`.
 
@@ -389,7 +389,7 @@ Moved out on 2026-10-13: Diet tracking (the starting point and the calendar are 
 **K6 Privacy and consent** and **K9 Emergency contact** · `/me/privacy`, `/me/contact`: these addresses now open Data and account at the Consents and Emergency contacts sections.
 
 **K8 Data and account** · `/me/data` (`features/me/DataAccount.tsx`, parts in `features/me/account/`). Sections from the top:
-1. **Your information**: what the person told Smart Health at set-up (name, year of birth, sex, ethnic group, height, weight, waist; diagnosis year, where care is given, Healthier SG, lows in 3 months, help with a low; conditions, allergies, eye and foot checks; latest results; watch and sensor; work). Each answer has a grey underlined **edit** (or **add** when empty) that opens a pop-up with that one question and Save, written with `PUT /onboarding/profile` (only that answer). The list is data (`account/fields.tsx`), so a question can be dropped or added in one place. Mr Tan's record is shown, never changed (the pop-up says so and Save is off). With no profile yet it offers "Start set-up".
+1. **Your information**: what the person told Equinox at set-up (name, year of birth, sex, ethnic group, height, weight, waist; diagnosis year, where care is given, Healthier SG, lows in 3 months, help with a low; conditions, allergies, eye and foot checks; latest results; watch and sensor; work). Each answer has a grey underlined **edit** (or **add** when empty) that opens a pop-up with that one question and Save, written with `PUT /onboarding/profile` (only that answer). The list is data (`account/fields.tsx`), so a question can be dropped or added in one place. Mr Tan's record is shown, never changed (the pop-up says so and Save is off). With no profile yet it offers "Start set-up".
 2. **Emergency contacts**: a list (name, relationship, phone, email, edit, remove) and **Add another emergency contact**. After a save the pop-up closes, a toast says it is saved, and the contact shows a green "Saved to your account" mark. The first contact stays on `user_profile` (set-up, chat and the alert read it there); later ones are rows in `extra_emergency_contacts` (migration 0038, soft delete). Removing the first moves the next one up. The urgent alert emails every contact that has a valid email (one request each). Endpoints: `GET/POST /me/contacts`, `PUT/DELETE /me/contacts/{id}` (`primary` is the first); `GET/PUT /me/contact` kept.
 3. **Consents**: Use my health data (asks before turning off), Share my doctor brief, Let a caregiver see my data, Use my data for research, and **Allow reminder notifications** (reminders for medicines and for logs such as food and exercise, sent by email; it is the existing email opt-in, `GET/PUT /notify/email`) with an underlined **Change email address**. The calendar consent is no longer shown (the stored value is untouched). No On/Off captions, no history card.
 4. **Your data**: **Download my data** (`GET /me/export`, which now also lists extra emergency contacts) and **Delete my account and data** (type DELETE; recorded, processed within 30 days).
@@ -752,7 +752,7 @@ Unchanged from 2026-10-10. It is still a proposal.
 | **Log** | The five log types, workout; unchanged content. Recent entries are on Insights, Food |
 | **Medicines** | My stock, list, add (one "Add medicine" button with scan, photo, type), clash box and refill inside the list, detail pages |
 | **Insights** | Overview, Glucose, Food, Activity, Sleep, Medication, Day |
-| **Me** | A profile header, then grouped sections: *My care* (care plan, appointments, questions, doctor brief), *My data* (what Smart Health has learned, diet tracking, connected sources), *Settings* (language and display, privacy and consent, emergency contact, reminders, data and account), *Help* (set up again, review suggestions for reviewers) |
+| **Me** | A profile header, then grouped sections: *My care* (care plan, appointments, questions, doctor brief), *My data* (what Equinox has learned, diet tracking, connected sources), *Settings* (language and display, privacy and consent, emergency contact, reminders, data and account), *Help* (set up again, review suggestions for reviewers) |
 | Global | A notification bell in the header of every tab (alerts first, then reminders); the Ask button appears only when chat exists (it does now, on Home and Insights) |
 
 ### 12.4 Per-screen guidance (keep / change)

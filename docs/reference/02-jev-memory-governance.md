@@ -1,10 +1,10 @@
 > **Superseded.** This is a starting template. The maintained versions are `memory.md`, `schema.md` and `architecture.md` in `docs/specs/`. In `memory.md`, JEV is the OpenJev typed decision layer (not a memory governor), nothing is "validated", and table names are standardised. Kept for reference only.
 
-# Smart Health: JEV Memory Governance
+# Equinox: JEV Memory Governance
 
 ## 1. Purpose
 
-This document defines how JEV governs application memory, retrieval, relationship discovery, memory updates, evidence quality, and downstream AI reasoning in Smart Health.
+This document defines how JEV governs application memory, retrieval, relationship discovery, memory updates, evidence quality, and downstream AI reasoning in Equinox.
 
 JEV is the **memory governor**, not the system of record. It operates above the Bronze, Silver, and Gold data architecture described in `01-overall-architecture-database-design.md`.
 
@@ -89,7 +89,7 @@ Query
   -> LLM generates the answer once
 ```
 
-For Smart Health, this is especially useful because the application has several memory dimensions:
+For Equinox, this is especially useful because the application has several memory dimensions:
 
 - Semantic memory for goals, preferences, routines, barriers, and confirmed facts.
 - Temporal memory for health events and time windows.
@@ -107,7 +107,7 @@ Use when the user asks about meaning, preferences, context, goals, routines, or 
 Examples:
 
 - “What reminders work best for me?”
-- “What has Smart Health learned about my routine?”
+- “What has Equinox learned about my routine?”
 - “What is my current health goal?”
 - “Why do I keep missing my evening dose?”
 
@@ -736,4 +736,4 @@ Possible output:
 
 ## 19. Summary architecture statement
 
-> Medallion architecture gives Smart Health reliable and traceable data. Gold gives the application structured memory across semantic, temporal, entity, and relationship dimensions. JEV governs how that memory is retrieved, related, updated, and presented. The Memory Service enforces scope and policy. Deterministic services control calculations, medication-interaction checks, and urgent escalation. The LLM explains approved evidence but does not become the system of record or clinical decision-maker.
+> Medallion architecture gives Equinox reliable and traceable data. Gold gives the application structured memory across semantic, temporal, entity, and relationship dimensions. JEV governs how that memory is retrieved, related, updated, and presented. The Memory Service enforces scope and policy. Deterministic services control calculations, medication-interaction checks, and urgent escalation. The LLM explains approved evidence but does not become the system of record or clinical decision-maker.

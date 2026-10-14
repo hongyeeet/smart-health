@@ -1,4 +1,4 @@
-"""Read-only check of the Ask Smart Health retrieval planner against live data. NO model call, NO write.
+"""Read-only check of the Ask Equinox retrieval planner against live data. NO model call, NO write.
 
 For each question it prints: the extra views the planner picks, whether guidance search would run, the context size in characters now
 (with the planned views) against the default 14-day context, and which sections have lines. Run it when the database is reachable:

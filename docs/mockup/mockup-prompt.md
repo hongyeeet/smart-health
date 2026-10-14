@@ -1,14 +1,14 @@
-# Prompt for Claude Design: Smart Health interactive mockup
+# Prompt for Claude Design: Equinox interactive mockup
 
 Copy everything below the line into Claude Design.
 
 ---
 
-Design a high-fidelity, clickable mobile app prototype called **Smart Health**. It is an AI health companion for working adults aged 40 to 65+ who live with Type 2 diabetes. The prototype exists so a 3-person hackathon team can see how the whole product works end to end. Build it as linked screens with working navigation, not disconnected pictures. Also design one A4 "doctor brief" document view.
+Design a high-fidelity, clickable mobile app prototype called **Equinox**. It is an AI health companion for working adults aged 40 to 65+ who live with Type 2 diabetes. The prototype exists so a 3-person hackathon team can see how the whole product works end to end. Build it as linked screens with working navigation, not disconnected pictures. Also design one A4 "doctor brief" document view.
 
 ## 1. What the product is
 
-Smart Health learns one person from their own data and turns it into two things: daily support for the patient, and a clear summary for their doctor. It combines many data types on one clock: food, glucose readings and sensor data, watch data (heart rate, steps, sleep, stress), workouts, medications, symptoms and mood. It then shows how these fit together, so the person and the doctor can see how the person has been living their life.
+Equinox learns one person from their own data and turns it into two things: daily support for the patient, and a clear summary for their doctor. It combines many data types on one clock: food, glucose readings and sensor data, watch data (heart rate, steps, sleep, stress), workouts, medications, symptoms and mood. It then shows how these fit together, so the person and the doctor can see how the person has been living their life.
 
 It **explains, organises and reminds**. It never gives medication advice, never diagnoses, and never says "normal" or "abnormal". Trends are phrased as "higher than your usual" and "worth mentioning to your doctor".
 
@@ -51,9 +51,9 @@ Bottom bar with 5 items: **Home, Insights, Log (centre, prominent), Medications,
 ## 6. Screens (build all, link as described)
 
 ### A. Onboarding (3 screens)
-1. **Welcome:** what Smart Health does and does not do (one line each), language choice (English / 中文 / Bahasa Melayu / தமிழ்), consent to use data (required), consent to share a doctor brief (optional). Next.
+1. **Welcome:** what Equinox does and does not do (one line each), language choice (English / 中文 / Bahasa Melayu / தமிழ்), consent to use data (required), consent to share a doctor brief (optional). Next.
 2. **About you:** age, diagnosis year, typical work week (desk / shifts / on my feet), medicines (buttons: "Scan a label" or "Add by hand"), reminder times. Next.
-3. **Connect your data:** three rows with status: Smart watch (connected), Glucose sensor (connected), Phone camera (allowed). Text: "These only send data to Smart Health." Finish goes to Home.
+3. **Connect your data:** three rows with status: Smart watch (connected), Glucose sensor (connected), Phone camera (allowed). Text: "These only send data to Equinox." Finish goes to Home.
 
 ### B. Home (dashboard, the most important screen)
 Greeting and date, then in this order:
@@ -114,21 +114,21 @@ Purpose: capture how the person really moves so the doctor sees how they live.
 - **Medicine detail:** what it is for, how you take it (from your own label), common side effects, when to tell your doctor, and a source note ("Source: your label and drug information dataset, not medical advice"). A "Listen" button and a language toggle (English / 中文) that shows the page translated.
 - **Miss-reason sheet** (opened from Home): one-tap reasons (forgot, side effects, ran out, felt fine, cost, away from home, other), an optional note, and "Skip". "Side effects" offers to add a symptom and a doctor question.
 
-### I. Chat ("Ask Smart Health")
+### I. Chat ("Ask Equinox")
 A simple chat with suggestion chips ("How was my week?", "What is metformin for?"). Include the key demo exchange: the user types "My sugar is fine today, can I skip my metformin?" The reply appears in a visibly different style (shield icon) as a fixed safety message: "I can't advise on changing your medication, but your doctor or pharmacist can. Want me to add this to your questions for your visit?" with buttons "Add to my doctor questions" and "Not now". "Add" leads to the Care plan's questions list.
 
 ### J. Urgent screen (opened from Home's "Simulate a low reading")
 Full screen with a soft red background, clear icon and text: "Your glucose reading is very low: 2.8 mmol/L. Get help now." Large buttons: "Call 995", "Call my clinic", "I'm okay now". A line "Steps from your doctor's low-sugar plan will show here" (placeholder). A "Recheck in 15 minutes" timer. Make clear that this screen involves no AI.
 
 ### K. Me
-A grouped list: **What Smart Health has learned about you**, **Doctor brief**, **Care plan**, **Connected sources**, **Language**, **Privacy and consent**.
+A grouped list: **What Equinox has learned about you**, **Doctor brief**, **Care plan**, **Connected sources**, **Language**, **Privacy and consent**.
 
-- **What Smart Health has learned** (a key screen): a list of learned facts grouped by category (routines, preferences, barriers, food responses, activity), each with a confidence indicator (dots), "why I think this" (the evidence, for example "14 evenings"), and Confirm / Edit / Delete controls. Above it, a **"Week 1 vs Week 8"** comparison card: fasting baseline (6.6 then, 7.9 now, flagged), evening reminder time (6:00 pm then, 7:30 pm now), walk reminders acted on (1 of 5 then, 3 of 5 now), facts learned (2 then, 9 now), and a strip showing the data types used (food, glucose, watch, workouts, sleep, medication). A line: "Still learning: how stress affects your evenings."
+- **What Equinox has learned** (a key screen): a list of learned facts grouped by category (routines, preferences, barriers, food responses, activity), each with a confidence indicator (dots), "why I think this" (the evidence, for example "14 evenings"), and Confirm / Edit / Delete controls. Above it, a **"Week 1 vs Week 8"** comparison card: fasting baseline (6.6 then, 7.9 now, flagged), evening reminder time (6:00 pm then, 7:30 pm now), walk reminders acted on (1 of 5 then, 3 of 5 now), facts learned (2 then, 9 now), and a strip showing the data types used (food, glucose, watch, workouts, sleep, medication). A line: "Still learning: how stress affects your evenings."
 - **Care plan:** next appointment card; preventive checklist (eye screening overdue, foot check due in 3 weeks, HbA1c 4 months ago, flu vaccination not recorded) each with a status chip; "My questions for the doctor" list (the two patient questions plus one added from Chat); primary button "Generate my doctor brief".
-- **Connected sources:** rows for watch, sensor, camera with last synced time and "Simulate a sync" (prototype only). Text: "These only send data to Smart Health."
+- **Connected sources:** rows for watch, sensor, camera with last synced time and "Simulate a sync" (prototype only). Text: "These only send data to Equinox."
 
 ### L. Doctor brief (A4 view plus in-app view)
-The in-app page shows a preview with "Share with my doctor" and "Download". The A4 page is dense, structured and printable in grayscale, with the footer "Generated by Smart Health from patient-reported and device data. Not a diagnosis. Numbers are computed, not written by AI." Sections in this order:
+The in-app page shows a preview with "Share with my doctor" and "Download". The A4 page is dense, structured and printable in grayscale, with the footer "Generated by Equinox from patient-reported and device data. Not a diagnosis. Numbers are computed, not written by AI." Sections in this order:
 1. Header: initials and birth year, period covered (last 4 weeks), data completeness bar.
 2. **Top 3 to discuss:** rising fasting glucose; reduced activity and sleep; missed evening doses.
 3. **Medication and adherence:** the prescription timeline chart with glucose overlay, adherence 86%, reasons, interaction flags including the "not checked" tonic.
@@ -152,7 +152,7 @@ A **Share sheet:** requires consent, link expires in 72 hours, "Revoke access", 
 4. **Explore a day:** Insights, Overview, tap a day in "Your week", Day view, tap a marker, detail sheet.
 5. **New medicine:** Medications, Scan a label, Review, Confirm, Interaction sheet, "Add to my doctor questions", Care plan.
 6. **Safety moment:** Ask button, type the metformin question, safety reply, "Add to my doctor questions", Care plan.
-7. **Learning:** Me, "What Smart Health has learned", Week 1 vs Week 8, tap a fact's evidence to open the related insight.
+7. **Learning:** Me, "What Equinox has learned", Week 1 vs Week 8, tap a fact's evidence to open the related insight.
 8. **Doctor visit:** Home "Prepare for the visit" or Me, Care plan, Generate my doctor brief, Brief preview, Share sheet.
 9. **Urgent:** Home, "Simulate a low reading", Urgent screen, "I'm okay now" returns to Home.
 

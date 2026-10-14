@@ -1,7 +1,7 @@
 """GET /memory/facts, POST /memory/facts/{id}/action, GET /memory/digest, GET /memory/audit, GET /memory/progress,
 GET /memory/progress/days, GET /memory/barriers/summary.
 
-"What Smart Health has learned" (PRD F16): the person sees every fact the agent proposed, with why, and can confirm, edit or delete it.
+"What Equinox has learned" (PRD F16): the person sees every fact the agent proposed, with why, and can confirm, edit or delete it.
 """
 from __future__ import annotations
 

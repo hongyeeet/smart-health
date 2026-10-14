@@ -125,7 +125,7 @@ export async function downloadMyData(): Promise<void> {
     const detail = ((await res.json().catch(() => null)) as { detail?: unknown } | null)?.detail
     throw new Error(typeof detail === 'string' ? detail : `${res.status} ${res.statusText}`)
   }
-  const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? 'smart-health-export.json'
+  const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? 'equinox-export.json'
   const url = URL.createObjectURL(await res.blob())
   const a = document.createElement('a')
   a.href = url

@@ -37,7 +37,7 @@ The recipe starts from a **webhook** (Workato "New event via webhook" trigger, a
   "schedule_id": "<uuid>",
   "time": "08:00",
   "title": "Take CRESTOR, 1 Tab",
-  "description": "CRESTOR, 1 Tab. From your Smart Health medicine list.",
+  "description": "CRESTOR, 1 Tab. From your Equinox medicine list.",
   "start": "2026-10-09T08:00:00+08:00",
   "end": "2026-10-09T08:15:00+08:00",
   "timezone": "Asia/Singapore",

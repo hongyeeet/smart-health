@@ -116,7 +116,7 @@ function SourcesLine({ sources }: { sources: ChatSource[] }) {
   )
 }
 
-/** One message. The person's words sit on the right; Smart Health's on the left. An urgent reply says so in words and shape, not colour alone. */
+/** One message. The person's words sit on the right; Equinox's on the left. An urgent reply says so in words and shape, not colour alone. */
 export function Bubble({ item, sources, askText }: { item: Item; sources?: ChatSource[]; askText?: string }) {
   const { t } = useTranslation()
   const mine = item.role === 'user'
@@ -129,7 +129,7 @@ export function Bubble({ item, sources, askText }: { item: Item; sources?: ChatS
           mine ? 'bg-brand text-on-brand' : urgent ? 'border-2 border-danger bg-danger-soft text-ink' : 'border border-line bg-card text-ink',
         )}
       >
-        {!mine && <span className="sr-only">{t('chat.saysPrefix', 'Smart Health says:')} </span>}
+        {!mine && <span className="sr-only">{t('chat.saysPrefix', 'Equinox says:')} </span>}
         {urgent && (
           <span className="mb-1 flex items-center gap-1.5 font-bold">
             <Warning size={20} weight="fill" aria-hidden /> {t('chat.urgentTag', 'Urgent')}
@@ -186,9 +186,9 @@ export function ThinkingSteps({ question, route }: { question: string; route: Ch
       t('chat.think.s4', 'Writing a simple summary for you'),
       t('chat.think.s5', 'Checking it is safe to show'),
     ],
-    // ideas from what Smart Health has learned
+    // ideas from what Equinox has learned
     ideas: [
-      t('chat.think.i1', 'Looking at what Smart Health has learned about you'),
+      t('chat.think.i1', 'Looking at what Equinox has learned about you'),
       t('chat.think.i2', 'Matching it with your recent days'),
       t('chat.think.i3', 'Picking small changes you could try'),
       t('chat.think.s5', 'Checking it is safe to show'),

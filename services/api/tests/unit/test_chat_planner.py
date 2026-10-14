@@ -1,4 +1,4 @@
-"""Ask Smart Health, the retrieval planner (app/services/chat_planner.py): which extra views a question loads. Rules only, no model, no database."""
+"""Ask Equinox, the retrieval planner (app/services/chat_planner.py): which extra views a question loads. Rules only, no model, no database."""
 from __future__ import annotations
 
 import sys

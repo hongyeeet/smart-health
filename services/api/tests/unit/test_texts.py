@@ -134,12 +134,12 @@ OLD_ENGLISH = [
     ("email.subject.checkin", {}, "How did you sleep? It takes thirty seconds"),
     ("email.subject.workout", {}, "A short walk counts today"),
     ("email.subject.lunch", {}, "Lunch ideas picked for you"),
-    ("email.subject.default", {}, "A reminder from Smart Health"),
+    ("email.subject.default", {}, "A reminder from Equinox"),
     ("email.greeting.named", {"name": "Mr Tan"}, "Hi Mr Tan,"),
     ("email.greeting.plain", {}, "Hi,"),
     ("email.button.E2", {}, "Log my meal"),
-    ("email.button.default", {}, "Open Smart Health"),
-    ("email.foot.contact", {}, "You are getting this because someone added you as their emergency contact in Smart Health."),
+    ("email.button.default", {}, "Open Equinox"),
+    ("email.foot.contact", {}, "You are getting this because someone added you as their emergency contact in Equinox."),
     ("email.unsubscribe.line", {"url": "https://x.test/u?t=1"}, "Unsubscribe: https://x.test/u?t=1"),
     # urgent alert and the contact's email
     ("urgent.title.very_low", {}, "Very low glucose"),
@@ -328,7 +328,7 @@ def test_the_contact_email_uses_the_persons_language():
     assert contact["to"] == "mei@gmail.com"
     assert contact["text"].startswith("Hai,")
     assert contact["subject"] == "Tolong periksa Mei: mungkin gula darah rendah"
-    assert "Buka Smart Health:" in contact["text"]
+    assert "Buka Equinox:" in contact["text"]
 
 
 def test_an_unknown_recipient_language_is_english():

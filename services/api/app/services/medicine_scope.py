@@ -1,6 +1,6 @@
 """Is a medicine name one the app is for? (docs/specs/implementation-plan-2026-10-11.md section 4.2)
 
-Smart Health is for diabetes medicines and the medicines or supplements a person takes every day. The add screens say so, and a name
+Equinox is for diabetes medicines and the medicines or supplements a person takes every day. The add screens say so, and a name
 that is not on our drug list (`drug_reference` generic names and `drug_aliases`) gets a gentle note. The note never blocks a save and
 never says the medicine is wrong or unsafe. Supplements and herbal products are not checked against the list (they are never on it).
 

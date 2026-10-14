@@ -83,7 +83,7 @@ class NewQuestion(Camel):
 class NewAppointment(Camel):
     kind: StoredAppointmentKind          # the service refuses a removed kind unless it confirms a suggested visit of that kind
     scheduled_for: datetime              # a naive time is Singapore time, as the form sends it
-    suggested_id: UUID | None = None     # confirming a visit Smart Health suggested, rather than adding a new one
+    suggested_id: UUID | None = None     # confirming a visit Equinox suggested, rather than adding a new one
 
 
 class SourceOut(Camel):
