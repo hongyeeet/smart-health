@@ -82,8 +82,8 @@ def world(monkeypatch):
             raise w["tri_exc"]
         return w["tri"]
 
-    def answer(lang_name, context_text, history, safe_text):
-        w["answer"].append({"lang": lang_name, "context": context_text, "history": history, "safe": safe_text})
+    def answer(lang_name, context_text, history, safe_text, advice=False):
+        w["answer"].append({"lang": lang_name, "context": context_text, "history": history, "safe": safe_text, "advice": advice})
         if w["ans_exc"]:
             raise w["ans_exc"]
         return w["ans"]
@@ -485,3 +485,53 @@ def test_when_the_model_is_down_the_own_data_summary_still_ends_warmly(world):
     world["ans_exc"] = LLMUnavailable("down")
     o = turn("How was my glucose this week?")
     assert o.text.endswith(texts.tr("en", "chat.closing"))
+
+
+# ----------------------------------------------------------------------------- (l) ideas from what Smart Health has learned, confirmed or not
+LEARNED = C.Section("learned", "What Smart Health has learned", "K2", [
+    "After sweet drinks, your glucose rose 1.4 mmol/L more than after other meals. (a pattern from 43 matched days in your own records; not confirmed by you, not proven)",
+    "You usually take your Metformin about 15 minutes after the set time. (not confirmed by you yet)"])
+IDEA_BULLETS = ("- After sweet drinks your glucose rose 1.4 mmol/L more (not confirmed yet), so you could try water or unsweetened tea.\n"
+                "- Your records link evening walks with lower morning glucose, so you could try a short walk after dinner.")
+
+
+@pytest.mark.parametrize("text, yes", [
+    ("how should i improve the readings then? is there any anomalies in my data?", True), ("What can I do to lower my sugar?", True), ("Any tips?", True),
+    ("Please recommend something", True), ("How do I cut down on snacks", True), ("How was my glucose this week?", False), ("What is metformin for?", False),
+])
+def test_wants_advice_is_decided_by_the_words(text, yes):
+    assert G.wants_advice(text) is yes
+
+
+def test_an_advice_question_uses_learned_lines_confirmed_or_not_and_ends_with_notes_links_and_warmth(world, monkeypatch):
+    monkeypatch.setattr(C, "learned_section", lambda conn, uid: LEARNED)
+    world["ans"] = AI.Reply(reply=IDEA_BULLETS, reply_en=IDEA_BULLETS, closing=CLOSING, closing_en=CLOSING)
+    o = turn("How should I improve my readings?")
+    assert world["answer"][-1]["advice"] is True and "What Smart Health has learned".upper() in world["answer"][-1]["context"]
+    assert "not confirmed by you" in world["answer"][-1]["context"]                       # unconfirmed lines reach the model, labelled as such
+    assert o.text.startswith(IDEA_BULLETS)
+    assert "\n- " + texts.tr("en", "chat.advice_dose") in o.text                       # the dose line is written by code (the records show a missed dose)
+    assert texts.tr("en", "chat.advice_note") in o.text and texts.tr("en", "chat.sign_learned") in o.text and texts.tr("en", "chat.sign_food") in o.text
+    assert {"kind": "open", "label": "Open what Smart Health has learned", "to": "K2", "text": None} in o.actions
+    assert o.text.endswith(CLOSING)
+
+
+def test_a_plain_data_question_is_not_in_advice_mode(world):
+    o = turn("How was my glucose this week?")
+    assert world["answer"][-1]["advice"] is False and texts.tr("en", "chat.advice_note") not in o.text
+
+
+def test_an_idea_that_advises_on_a_medicine_is_blocked(world, monkeypatch):
+    monkeypatch.setattr(C, "learned_section", lambda conn, uid: LEARNED)
+    bad = "- You could try to take your metformin with your meals.\n- You could try a short walk."
+    world["ans"] = AI.Reply(reply=bad, reply_en=bad, closing=CLOSING, closing_en=CLOSING)
+    o = turn("What can I do to lower my sugar?")
+    assert "metformin with your meals" not in o.text and o.text.startswith(texts.tr("en", "chat.fallback_intro"))
+
+
+def test_the_dose_line_is_left_out_when_the_records_show_no_missed_dose(world, monkeypatch):
+    monkeypatch.setattr(C, "learned_section", lambda conn, uid: C.Section("learned", "What Smart Health has learned", "K2", ["Walks after dinner (you confirmed this)"]))
+    world["rows"] = dict(ROWS, daily=[dict(ROWS["daily"][0], doses_missed=0, doses_taken=3)])
+    world["ans"] = AI.Reply(reply=IDEA_BULLETS, reply_en=IDEA_BULLETS, closing=CLOSING, closing_en=CLOSING)
+    o = turn("Any tips?")
+    assert texts.tr("en", "chat.advice_dose") not in o.text

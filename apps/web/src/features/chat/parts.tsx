@@ -160,46 +160,37 @@ export function topicsOf(question: string, t: (k: string, d: string) => string):
 }
 
 /**
- * Shown while the answer is on its way: the steps the assistant is really going through, one after another, like a progress list. Done steps get a
- * tick and stay; the current one spins. It sits at the last step until the answer arrives. With reduced motion there is no spinner or fade, only the
- * words changing. The words come from the question's topic, so "accessing your meals" is shown only when the question is about meals.
+ * Shown while the answer is on its way: ONE line that changes as the assistant works (reading, accessing the data, comparing, writing, almost done),
+ * with a soft shimmer, like a chat that is thinking out loud. It stays on "Almost done" until the answer arrives. With reduced motion there is no shimmer,
+ * spinner or fade, only the words changing. The words follow the question's topic, so "accessing your meals" is shown only for a question about meals.
  */
 export function ThinkingSteps({ question }: { question: string }) {
   const { t } = useTranslation()
   const topics = topicsOf(question, (k, d) => t(k, d))
   const list = new Intl.ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(topics)
+  const asksIdeas = /improv|tips?|advice|recommend|what (can|should) i|how (can|should|do) i|lower|reduce|cut down|anomal|unusual/i.test(question)
   const steps = [
     t('chat.think.s1', 'Reading your question'),
     t('chat.think.s2', 'Accessing your data: {{list}}', { list }),
     t('chat.think.s3', 'Comparing with your own usual numbers'),
+    ...(asksIdeas ? [t('chat.think.s3b', 'Looking at what Smart Health has learned about you')] : []),
     t('chat.think.s4', 'Writing a simple summary for you'),
     t('chat.think.s5', 'Checking it is safe to show'),
+    t('chat.think.s6', 'Almost done'),
   ]
   const [at, setAt] = useState(0)
   useEffect(() => {
     if (at >= steps.length - 1) return
-    const id = window.setTimeout(() => setAt((n) => n + 1), at === 1 ? 2200 : 1500)
+    const id = window.setTimeout(() => setAt((n) => n + 1), at === 1 ? 2000 : 1500)
     return () => window.clearTimeout(id)
   }, [at, steps.length])
   return (
     <div role="status" aria-live="polite" className="flex">
-      <div className="flex max-w-[88%] flex-col gap-2 rounded-card border border-line bg-card px-4 py-3 text-sub text-ink2">
-        <span className="sr-only">{steps[at]}</span>
-        <ul className="flex flex-col gap-1.5" aria-hidden>
-          {steps.slice(0, at + 1).map((s, i) => {
-            const done = i < at
-            return (
-              <li key={i} className={cn('flex items-center gap-2.5 motion-safe:animate-[fadeUp_0.3s_ease-out]', done ? 'text-ink3' : 'font-semibold text-ink')}>
-                {done ? (
-                  <Check size={16} weight="bold" className="flex-none text-brand" />
-                ) : (
-                  <span className="h-4 w-4 flex-none rounded-full border-2 border-brand/30 border-t-brand motion-safe:animate-spin" />
-                )}
-                <span>{s}{done ? '' : '…'}</span>
-              </li>
-            )
-          })}
-        </ul>
+      <div className="flex max-w-[88%] items-center gap-3 rounded-card border border-line bg-card px-4 py-3 text-body">
+        <span className="h-4 w-4 flex-none rounded-full border-2 border-brand/30 border-t-brand motion-safe:animate-spin" aria-hidden />
+        <span key={at} className="motion-safe:animate-[fadeUp_0.35s_ease-out]">
+          <span className="think-shimmer">{steps[at]}…</span>
+        </span>
       </div>
     </div>
   )

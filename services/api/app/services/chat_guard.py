@@ -323,10 +323,23 @@ class Signpost:
     label: str | None = None      # the button label (English; the app translates the screen's own words)
 
 
-def signposts(intent: str, wants_food: bool, noticed: bool) -> list[Signpost]:
+_ADVICE = re.compile(
+    r"\bhow (should|can|could|do|would) i (improve|lower|reduce|control|manage|fix|bring|get|cut|do better|be better)\b|\bwhat (should|can|could|do) i do\b|\b(any )?(tips?|advice|ideas?)\b"
+    r"|\brecommend\w*|\bwhat do you (suggest|recommend)\b|\bhow to (improve|lower|reduce|control|manage|get better)\b|\bimprov\w+ (my|the)\b|\bhelp me (to )?(lower|improve|control|reduce|do better)\b"
+    r"|\banything (i|that i) (can|could|should)\b|\bwhat can help\b|\bcut down\b|\bdo better\b", re.I)
+
+
+def wants_advice(text: str) -> bool:
+    """The question asks how to improve, what to do or for tips: the answer is a few small ideas from what Smart Health has learned (words only; no model)."""
+    return bool(_ADVICE.search(text or ""))
+
+
+def signposts(intent: str, wants_food: bool, noticed: bool, advice: bool = False) -> list[Signpost]:
     """Where in the app to look next, chosen by code from the triage labels. The model never decides a link."""
     out: list[Signpost] = []
-    if wants_food or intent == "food_ideas":
+    if advice:
+        out.append(Signpost("chat.sign_learned", "K2", "Open what Smart Health has learned"))
+    if wants_food or intent == "food_ideas" or advice:
         out.append(Signpost("chat.sign_food", "K11", "Open Meal suggestions"))
         out.append(Signpost("chat.sign_food", "E8", "Open Lunch ideas"))
     if noticed or intent == "insights":

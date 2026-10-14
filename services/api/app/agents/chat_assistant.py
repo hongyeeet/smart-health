@@ -83,10 +83,20 @@ Hard rules, always:
 Return JSON with four fields: "reply" (the 3-bullet summary, in English unless a language is asked at the end of these instructions), "reply_en" (the same summary in English; identical to "reply" when the language is English), "closing" (the one encouraging sentence, in the same language as "reply") and "closing_en" (the same sentence in English)."""
 
 
-def system_for(lang_name: str) -> str:
+ADVICE_ADD = """
+SUGGESTIONS MODE. The QUESTION asks how to improve, what to do, for tips, or whether anything looks unusual. The three bullets of "reply" change:
+- Base every idea on a line under WHAT SMART HEALTH HAS LEARNED, or on the responses and records in the CONTEXT. Say whether Smart Health only noticed it ("not confirmed by you yet") or the person confirmed it ("you confirmed this"), as the line says. Lines that are not confirmed are still usable: offer them as ideas to try, never as facts.
+- Each bullet is one small practical idea: what the records show (the number as written in the CONTEXT), then "you could try" and ONE simple action. Allowed actions: choose lower-sugar or lower-salt food or drinks, swap to a lighter dish named in FOOD IDEAS or in their own meals, walk or move at the time the records show helps, cut down snacks or sweet drinks, eat dinner earlier, go to bed earlier. Up to 25 words per bullet.
+- NEVER mention medicines, doses, tablets or reminders in an idea: the app adds that itself. Never say what is causing a reading, never promise a result, never say a number is good or bad or improving or worsening. Say "your records link" or "associated with".
+- If the QUESTION also asks about anything unusual: one bullet names the days or readings that stood out, using the numbers in the CONTEXT (for example the highest and lowest daily glucose averages), without saying why.
+- If there is nothing learned and no records to base an idea on, "reply" is the one sentence "I do not have that in your data yet. Smart Health needs a few more days of logging first." and "closing" is empty."""
+
+
+def system_for(lang_name: str, advice: bool = False) -> str:
+    base = ANSWER_SYSTEM + (ADVICE_ADD if advice else "")
     if lang_name == "English":
-        return ANSWER_SYSTEM
-    return ANSWER_SYSTEM + f"\nLanguage: write \"reply\" in {lang_name}. Keep medicine names, dish names and numbers exactly as they appear in the CONTEXT. Write \"closing\" in the same language, and \"reply_en\" and \"closing_en\" in English."
+        return base
+    return base + f"\nLanguage: write \"reply\" in {lang_name}. Keep medicine names, dish names and numbers exactly as they appear in the CONTEXT. Write \"closing\" in the same language, and \"reply_en\" and \"closing_en\" in English."
 
 
 def triage(safe_text: str) -> Triage:
@@ -94,9 +104,9 @@ def triage(safe_text: str) -> Triage:
     return gateway.text_json(TRIAGE_SYSTEM, f"<message>\n{safe_text}\n</message>", Triage)
 
 
-def answer(lang_name: str, context_text: str, history: list[tuple[str, str]], safe_text: str) -> Reply:
+def answer(lang_name: str, context_text: str, history: list[tuple[str, str]], safe_text: str, advice: bool = False) -> Reply:
     """A reply from the person's own data. Raises LLMUnavailable. The caller checks the reply before it is shown."""
     recent = "\n".join(f"{'person' if r == 'user' else 'assistant'}: {t}" for r, t in history[-6:]) or "(none)"
     prompt = (f"<context>\n{context_text}\n</context>\n\n<recent_chat>\n{recent}\n</recent_chat>\n\n"
               f"<message>\n{safe_text}\n</message>")
-    return gateway.text_json(system_for(lang_name), prompt, Reply)
+    return gateway.text_json(system_for(lang_name, advice), prompt, Reply)

@@ -244,6 +244,7 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
     "doses": ("dose", "missed", "taken", "tablet", "pill", "on time"),
     "questions": ("doctor", "appointment", "ask"),
     "facts": ("routine", "habit", "learned", "know about me", "noticed"),
+    "learned": ("learned", "noticed", "pattern", "records link", "improve", "tips", "ideas"),
     "symptoms": ("symptom", "feel", "dizz", "nausea", "pain", "tired", "thirst", "tingling", "blurred", "headache", "sweat", "shak"),
     "blood_pressure": ("blood pressure", " bp", "pulse"),
     "appointments": ("appointment", "visit", "clinic", "check-up", "checkup"),
@@ -381,6 +382,36 @@ def build_sections(rows: dict[str, Any], today: date) -> Context:
 
 
 # ----------------------------------------------------------------------------- reading the rows
+def learned_section(conn, uid: str) -> Section:
+    """Everything Smart Health has learned about the person, CONFIRMED OR NOT, each line saying which: the facts it proposed or the person confirmed, and the
+    patterns found in their own days. Used when the question asks for ideas; an idea is offered as something to try, never as a proven fact."""
+    lines: list[str] = []
+    try:
+        for r in conn.execute(
+            """select key, statement, user_confirmed_at from memory_facts where user_id=%s and status in ('proposed','active') and key not like 'preventive.%%'
+               order by (user_confirmed_at is not null) desc, confidence desc limit 10""", (uid,)):
+            tag = "you confirmed this" if r["user_confirmed_at"] else "not confirmed by you yet"
+            lines.append(f"{r['statement'] or r['key']} ({tag})")
+        for p in insights.patterns_for(insights._patterns(conn, uid))[:6]:
+            lines.append(f"{p['text']} (a pattern from {p['n']} matched days in your own records; not confirmed by you, not proven)")
+    except Exception:
+        logger.exception("what Smart Health has learned was not readable for the chat")
+    return Section("learned", "What Smart Health has learned", "K2", [x for x in (G.sanitize_data_line(l, 300) for l in lines) if x])
+
+
+def dose_hint(ctx: "Context") -> bool:
+    """Do the person's own records show missed doses, or a dose habit worth a reminder? Then code (never the model) adds the line about keeping to the set times."""
+    for s in ctx.sections:
+        if s.key == "doses":
+            for l in s.lines:
+                m = re.search(r"(\d+) marked missed", l)
+                if m and int(m.group(1)) > 0:
+                    return True
+        if s.key in ("learned", "facts") and any(re.search(r"\b(forgot|missed|set time)\b", l, re.I) for l in s.lines):
+            return True
+    return False
+
+
 def _strength_free(name: str) -> str:
     return re.sub(r"\s+\d[\d.,]*\s*(mg|mcg|g|ml|iu|units?)?\b.*$", "", name, flags=re.I).strip() or name
 
@@ -1054,7 +1085,7 @@ def fallback_text(ctx: Context, lang: str, question: str = "") -> str | None:
     return (texts.tr(lang, "chat.fallback_intro") + "\n" + "\n".join(f"- {x}" for x in lines)) if lines else None
 
 
-def compose(lang: str, answer: str, intent: str, symptom: bool, wants_food: bool, noticed: bool, verdict_q: bool = False, closing: str = "") -> tuple[str, list[dict[str, Any]], bool]:
+def compose(lang: str, answer: str, intent: str, symptom: bool, wants_food: bool, noticed: bool, verdict_q: bool = False, closing: str = "", advice: bool = False) -> tuple[str, list[dict[str, Any]], bool]:
     """The answer plus what code always adds: the doctor referral, where to look in the app, and the offer to add a doctor question. The
     warm closing sentence comes last, so the message ends on encouragement, after the links."""
     tail: list[str] = []
@@ -1062,7 +1093,9 @@ def compose(lang: str, answer: str, intent: str, symptom: bool, wants_food: bool
         tail.append(texts.tr(lang, "chat.med_refer" if intent == "medicine_info" and not symptom else "chat.symptom_refer"))
     if verdict_q:
         tail.append(texts.tr(lang, "chat.verdict_note"))
-    posts = G.signposts(intent, wants_food, noticed)
+    if advice:
+        tail.append(texts.tr(lang, "chat.advice_note"))
+    posts = G.signposts(intent, wants_food, noticed, advice)
     tail += [texts.tr(lang, k) for k in G.signpost_text_keys(posts)]
     offer = G.offers_doctor_question(intent, symptom) or verdict_q
     if offer:
@@ -1133,14 +1166,19 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
         return _fixed(uid, run, lang, intent, safe)
     wants_food = bool(tri.wants_food_ideas or intent == "food_ideas")
     noticed = bool(tri.about_noticed_things or intent == "insights")
+    advice = G.wants_advice(text) and intent not in ("food_ideas", "symptoms", "medicine_info", "appointments") and not symptom
 
     holder: list[Context] = []
-    views = P.plan(text)             # the extra views this question needs (rules only, no model call); empty for a plain 14-day question
+    views = set(P.plan(text))        # the extra views this question needs (rules only, no model call); empty for a plain 14-day question
+    if advice:
+        views |= {"responses", "baseline"}      # what the person's own days show after meals and walks, and against their usual: the ideas stand on these
 
     def load() -> dict:
         with tx() as c, _reuse(c):       # ONE connection for the 14-day rows, the planned views, the guidance search and the embedding counter
             holder.append(build_context(c, uid, today, text, views))
-        if intent in ("food_ideas", "diet") or wants_food:
+            if advice:
+                holder[0].sections.append(learned_section(c, uid))
+        if intent in ("food_ideas", "diet") or wants_food or advice:
             holder[0].sections.append(food_ideas_section(uid))
         return {"sections": {s.key: len(s.lines) for s in holder[0].sections}, "passages": len(holder[0].passages), "views": sorted(views)}
 
@@ -1149,12 +1187,16 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
     keys = INTENT_SECTIONS.get(intent)
     if wants_food and keys is not None:
         keys = set(keys) | {"food_ideas"}
+    if advice and keys is not None:
+        keys = set(keys) | {"learned", "food_ideas", "glucose", "doses", "activity", "food"}
     if views and keys is not None:
         keys = set(keys) | views         # a planned view is sent whatever the intent (the default sections keep their per-intent limits)
     sent = ctx.only(keys)
 
     def finish(answer: str, kind: str = "answer", verdict: str | None = "pass", sources: list[Section] | None = None, closing: str = "") -> Outcome:
-        full, actions, offer = compose(lang, answer, intent, symptom, wants_food, noticed, verdict_q, closing)
+        if advice and kind == "answer" and dose_hint(sent):
+            answer = answer + "\n- " + texts.tr(lang, "chat.advice_dose")      # written by code, so a model can never give dose advice
+        full, actions, offer = compose(lang, answer, intent, symptom, wants_food, noticed, verdict_q, closing, advice)
         return Outcome(kind, full, sources or [], offer_question=offer, verdict=verdict, actions=actions)
 
     if sent.empty():
@@ -1164,7 +1206,7 @@ def decide(uid: str, text: str, history: list[tuple[str, str]], run: Any, today:
 
     def ask() -> dict:
         hist = [(r, scrub(G.scrub_pii(t), ctx.names)) for r, t in history]
-        out.append(AI.answer(texts.LANG_NAMES.get(lang, "English"), sent.text(), hist, scrub(G.scrub_pii(text), ctx.names)))
+        out.append(AI.answer(texts.LANG_NAMES.get(lang, "English"), sent.text(), hist, scrub(G.scrub_pii(text), ctx.names), advice=advice))
         return {"chars": len(out[0].reply)}
 
     try:

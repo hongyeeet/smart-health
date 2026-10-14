@@ -464,6 +464,24 @@ CATALOG: dict[str, dict[str, str]] = {
         "ms": "Anda boleh melihat lebih lanjut di tab Insight, di bawah [[C1|Gambaran]].",
         "ta": "மேலும் விவரங்களை Insights தாவலில், [[C1|Overview]] பகுதியில் பார்க்கலாம்.",
     },
+    "chat.sign_learned": {
+        "en": "You can confirm or correct what Smart Health has learned in [[K2|What Smart Health has learned]].",
+        "zh": "你可以在[[K2|Smart Health 了解到的内容]]中确认或更正。",
+        "ms": "Anda boleh mengesahkan atau membetulkan apa yang Smart Health telah pelajari di [[K2|Apa yang Smart Health pelajari]].",
+        "ta": "Smart Health கற்றுக்கொண்டதை [[K2|Smart Health கற்றுக்கொண்டவை]] பகுதியில் உறுதிப்படுத்தலாம் அல்லது திருத்தலாம்.",
+    },
+    "chat.advice_note": {
+        "en": "These ideas come from patterns in your own records, and some are not confirmed yet. They are not medical advice, so please check with your doctor before you change your routine.",
+        "zh": "这些想法来自你自己记录中的规律，其中一些还没有确认。它们不是医疗建议，改变日常安排前请先咨询你的医生。",
+        "ms": "Idea-idea ini datang daripada corak dalam rekod anda sendiri, dan ada yang belum disahkan. Ia bukan nasihat perubatan, jadi sila tanya doktor anda sebelum mengubah rutin anda.",
+        "ta": "இந்த யோசனைகள் உங்கள் சொந்தப் பதிவுகளில் உள்ள போக்குகளிலிருந்து வந்தவை; சில இன்னும் உறுதிப்படுத்தப்படவில்லை. இவை மருத்துவ ஆலோசனை அல்ல, எனவே உங்கள் வழக்கத்தை மாற்றும் முன் மருத்துவரிடம் கேளுங்கள்.",
+    },
+    "chat.advice_dose": {
+        "en": "Your records show some doses missed, so keep to the dose times you set and use your reminders. If a dose is hard to fit in, ask your doctor or pharmacist.",
+        "zh": "你的记录显示有些剂量漏服，请按你设定的时间服药并使用提醒。如果某次剂量很难安排，请咨询你的医生或药剂师。",
+        "ms": "Rekod anda menunjukkan ada dos yang terlepas, jadi ikut masa dos yang anda tetapkan dan gunakan peringatan anda. Jika sesuatu dos sukar dimuatkan, tanya doktor atau ahli farmasi anda.",
+        "ta": "உங்கள் பதிவுகளில் சில டோஸ்கள் தவறியிருப்பது தெரிகிறது; நீங்கள் அமைத்த நேரங்களைப் பின்பற்றி நினைவூட்டல்களைப் பயன்படுத்துங்கள். ஒரு டோஸை எடுத்துக்கொள்ள கடினமாக இருந்தால் மருத்துவர் அல்லது மருந்தாளுநரிடம் கேளுங்கள்.",
+    },
     "chat.sign_food": {
         "en": "You can find more ideas in [[K11|Meal suggestions]], on the Log tab, and in [[E8|Lunch ideas]].",
         "zh": "你可以在“记录”页的[[K11|餐食建议]]和[[E8|午餐灵感]]中找到更多想法。",

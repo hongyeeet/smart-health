@@ -237,3 +237,26 @@ html:not([lang='en']) [data-ts='2'] {
     transform: none;
   }
 }
+
+/* the one-line "thinking" text in the chat: a soft light that moves across the words (plain text when the person asks for less motion) */
+.think-shimmer {
+  color: var(--c-ink2);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .think-shimmer {
+    background: linear-gradient(90deg, var(--c-ink3) 0%, var(--c-ink) 45%, var(--c-ink3) 90%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 1.8s linear infinite;
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
