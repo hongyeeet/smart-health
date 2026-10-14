@@ -7,17 +7,14 @@
  */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAiUsage, useDigest, useLearned, useLearnedAction } from '@/data/hooks'
+import { useAiUsage, useDigest, useInsightsOverview, useLearned, useLearnedAction } from '@/data/hooks'
 import type { LearnedFact } from '@/data/types'
 import { cn } from '@/lib/cn'
 import { Header, Screen } from '@/ui/layout'
 import { Alert, Button, Card, EmptyState, Field, Skeleton } from '@/ui/primitives'
-import { Bell, Brain, CheckCircle, Clock, ForkKnife, Footprints, ListChecks, type IconType } from '@/ui/icons'
+import { Bell, Brain, CheckCircle, Clock, ForkKnife, Footprints, type IconType } from '@/ui/icons'
 
-/** The categories that are patterns from the person's history (food and activity). They sit in the side card, not in the list. */
-const PATTERN_CATEGORIES = ['food_response', 'activity']
-
-type Kind = 'all' | 'doses' | 'routine' | 'other'
+type Kind = 'all' | 'doses' | 'meals' | 'checks'
 type ListKind = Exclude<Kind, 'all'>
 
 /** The barrier sentences end in a count such as "(43 times)". That count covers all time, while the other numbers are the last 30 days. */
@@ -30,10 +27,11 @@ interface Row {
   groupLabel: string
 }
 
-function kindOf(category: string): ListKind {
-  if (category === 'barrier') return 'doses'
-  if (category === 'routine') return 'routine'
-  return 'other'
+/** Which group a fact belongs to, from its key: dose habits and reasons, meal habits, check-ups. */
+function kindOf(key: string): ListKind {
+  if (key.startsWith('barrier.') || key.startsWith('routine.dose_timing')) return 'doses'
+  if (key.startsWith('food.')) return 'meals'
+  return 'checks'
 }
 
 /** One thing the agent noticed. The list version is the large card row; the pattern version is the compact row in the side card. */
@@ -213,8 +211,8 @@ export function AiUseToday() {
 const FILTERS: { key: Kind; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'doses', label: 'Doses' },
-  { key: 'routine', label: 'Routine' },
-  { key: 'other', label: 'Other' },
+  { key: 'meals', label: 'Meals' },
+  { key: 'checks', label: 'Check-ups' },
 ]
 
 export function Learned() {
@@ -224,24 +222,27 @@ export function Learned() {
   const [filter, setFilter] = useState<Kind>('all')
 
   const rows: Row[] = []
-  const patterns: Row[] = []
+  const overview = useInsightsOverview(90)
+  const patterns = overview.data?.patterns ?? []
   for (const g of data?.groups ?? []) {
     for (const f of g.facts) {
-      const kind = kindOf(g.category)
+      const kind = kindOf(f.key)
       const groupLabel =
-        kind === 'doses' ? t('me.learned.catDoses', 'Doses and reminders') : kind === 'routine' ? t('me.learned.catRoutine', 'Your routine') : g.label
-      const row: Row = { fact: f, kind, category: g.category, groupLabel }
-      if (PATTERN_CATEGORIES.includes(g.category)) patterns.push(row)
-      else rows.push(row)
+        kind === 'doses'
+          ? t('me.learned.catDoses', 'Doses and reminders')
+          : kind === 'meals'
+            ? t('me.learned.catMeals', 'Your meals')
+            : t('me.learned.catChecks', 'Check-ups')
+      rows.push({ fact: f, kind, category: g.category, groupLabel })
     }
   }
-  const everything = [...rows, ...patterns]
+  const everything = rows
   const waiting = everything.filter((r) => r.fact.status === 'proposed').length
   const confirmed = everything.filter((r) => r.fact.status === 'active').length
   const deleted = digest ? digest.lines.filter((l) => l.status === 'rejected').length : null
   const shown = rows.filter((r) => filter === 'all' || r.kind === filter)
 
-  const iconFor = (r: Row): IconType => (r.kind === 'doses' ? Bell : r.kind === 'routine' ? Clock : ListChecks)
+  const iconFor = (r: Row): IconType => (r.kind === 'doses' ? Bell : r.kind === 'meals' ? ForkKnife : Clock)
 
   const tiles = [
     {
@@ -353,10 +354,26 @@ export function Learned() {
             <p className="mb-1 mt-0.5 text-micro text-ink3">
               {t('me.learned.patternsSub', 'Two things that go together in your logs. They do not prove a cause.')}
             </p>
-            {data && patterns.length === 0 && <p className="py-3 text-sub text-ink3">{t('me.learned.patternsNone', 'No patterns yet.')}</p>}
+            {overview.data && patterns.length === 0 && <p className="py-3 text-sub text-ink3">{t('me.learned.patternsNone', 'No patterns yet.')}</p>}
             {!data && !isError && <Skeleton className="my-2 h-24" />}
-            {patterns.map((r) => (
-              <FactRow key={r.fact.id} row={r} icon={r.category === 'food_response' ? ForkKnife : Footprints} pattern />
+            {patterns.map((p) => (
+              <div key={p.key} className="flex min-h-[3.75rem] items-center gap-3 border-t border-line/60 py-2 first:border-t-0">
+                <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full bg-brand-soft text-brand" aria-hidden>
+                  {p.key.includes('walk') ? <Footprints size={15} /> : <ForkKnife size={15} />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sub leading-snug">{p.text}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="relative h-[5px] w-[60px] overflow-hidden rounded-[3px] bg-well">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-brand/60"
+                        style={{ width: `${Math.round((p.n / Math.max(...patterns.map((x) => x.n))) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-micro text-ink3">{t('me.learned.patternN', '{{n}} matched', { n: p.n })}</span>
+                  </div>
+                </div>
+              </div>
             ))}
           </Card>
           <AiUseToday />

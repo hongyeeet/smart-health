@@ -313,7 +313,7 @@ export function LogWorkout() {
             )}
 
             <div>
-              <div className="mb-2.5 flex items-baseline justify-between">
+              <div className="mb-2.5 flex items-baseline justify-between gap-3">
                 <p className="text-sub font-bold">{t('workout.log.kindQ', 'What did you do?')}</p>
                 <p className="text-micro text-ink2">{t('workout.log.pickOne', 'Pick one')}</p>
               </div>
@@ -364,21 +364,21 @@ export function LogWorkout() {
                 </div>
                 <label
                   className={cn(
-                    'mt-2.5 flex h-12 w-[200px] max-w-full items-center justify-between gap-3 rounded-field border-[1.5px] bg-card px-3.5',
+                    'mt-2.5 flex h-12 w-[240px] max-w-full items-center justify-between gap-3 rounded-field border-[1.5px] bg-card px-3.5',
                     minutesText.trim() !== '' && minutes == null ? 'border-danger' : 'border-line',
                   )}
                 >
-                  <span className="text-micro text-ink2">{t('workout.log.minutesLabel', 'Minutes')}</span>
+                  <span className="flex-none text-micro text-ink2">{t('workout.log.minutesLabel', 'Minutes')}</span>
                   <span className="flex items-baseline gap-1">
                     <input
                       value={minutesText}
                       onChange={(e) => setMinutesText(e.target.value)}
                       inputMode="numeric"
-                      placeholder={t('workout.log.minutesPh', 'For example 30')}
+                      placeholder={t('workout.log.minutesPh', 'e.g. 30')}
                       aria-label={t('workout.log.minutesLabel', 'Minutes')}
-                      className="num w-20 bg-transparent text-right text-body font-bold text-ink placeholder:font-normal placeholder:text-ink3 focus:outline-none"
+                      className="num w-20 min-w-0 bg-transparent text-right text-body font-bold text-ink placeholder:font-normal placeholder:text-ink3 focus:outline-none"
                     />
-                    <span className="text-micro text-ink2">min</span>
+                    <span className="flex-none text-micro text-ink2">min</span>
                   </span>
                 </label>
                 {minutesText.trim() !== '' && minutes == null && (
@@ -453,9 +453,9 @@ export function LogWorkout() {
 
             <div className="grid gap-7 md:grid-cols-2">
               <div>
-                <div className="mb-2.5 flex items-baseline justify-between">
+                <div className="mb-2.5 flex items-baseline justify-between gap-3">
                   <p className="text-sub font-bold">{t('workout.log.hard', 'How hard did it feel?')}</p>
-                  <p className="text-micro text-ink2">{t('workout.log.optional', 'Optional')}</p>
+                  <p className="flex-none text-micro text-ink2">{t('workout.log.optional', 'Optional')}</p>
                 </div>
                 <div role="radiogroup" aria-label={t('workout.log.hard', 'How hard did it feel?')} className="grid grid-cols-5 gap-2">
                   {[1, 2, 3, 4, 5].map((n) => {
@@ -485,11 +485,11 @@ export function LogWorkout() {
               </div>
 
               <div>
-                <div className="mb-2.5 flex items-baseline justify-between">
-                  <p className="text-sub font-bold">{t('workout.log.feel', 'How did you feel afterwards?')}</p>
-                  <p className="text-micro text-ink2">{t('workout.log.optional', 'Optional')}</p>
+                <div className="mb-2.5 flex items-baseline justify-between gap-3">
+                  <p className="text-sub font-bold">{t('workout.log.feel', 'How did you feel after?')}</p>
+                  <p className="flex-none text-micro text-ink2">{t('workout.log.optional', 'Optional')}</p>
                 </div>
-                <div role="radiogroup" aria-label={t('workout.log.feel', 'How did you feel afterwards?')} className="grid grid-cols-5 gap-2">
+                <div role="radiogroup" aria-label={t('workout.log.feel', 'How did you feel after?')} className="grid grid-cols-5 gap-2">
                   {FEEL_LABELS.map(([key, fallback], i) => {
                     const n = i + 1
                     const on = feeling === n

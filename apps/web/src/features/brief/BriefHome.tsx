@@ -193,7 +193,7 @@ export function BriefHome() {
               </div>
 
               {tlData ? (
-                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                   {healthTiles(t, tlData).map((x) => (
                     <GradeTile key={x.kind} kind={x.kind} label={x.label} value={x.value} unit={x.unit} graded={x.graded} />
                   ))}
