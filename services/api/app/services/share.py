@@ -18,6 +18,7 @@ from uuid import UUID
 from psycopg.types.json import Jsonb
 
 from app.services import care, doctor_report
+from app.services import insights_timeline
 from app.services.me_settings import set_consent
 
 ALLOWED_HOURS = (24, 72, 168)
@@ -164,3 +165,20 @@ def context(conn: Any, user: UUID, now: datetime) -> dict[str, Any]:
         "next_appointment": care.next_appointment(conn, str(user), now),
     }
 
+
+def public_extras(conn: Any, token: str, now: datetime) -> dict[str, Any] | None:
+    """The chart data, what the app learnt and the next visit for a link's owner and period, so the shared page can show the same
+    four charts, filters and patterns as the printed brief. Read only; None when the link is not open (the report call writes the access row)."""
+    from app.db import memorystore
+    from app.db.logstore import TZ
+
+    row = open_share(conn, token, now)
+    if row is None:
+        return None
+    user = row["user_id"]
+    days = int(row["days"])
+    timeline = insights_timeline.timeline(conn, str(user), days, now.astimezone(TZ).date(), None)
+    groups = memorystore.list_facts(user)["groups"]
+    learned = [{"statement": f["statement"], "why": f["why"], "confirmed": bool(f["confirmed"])} for g in groups for f in g["facts"]]
+    learned.sort(key=lambda x: not x["confirmed"])
+    return {"timeline": timeline, "learned": learned, "next_appointment": care.next_appointment(conn, str(user), now)}

@@ -93,3 +93,21 @@ async def public_report(token: str, request: Request) -> DoctorReport:
     # outside the transaction: the key findings may wait on the model, the same report as the owner's (see routers/brief.py)
     report = await run_in_threadpool(doctor_report.word_findings, report)
     return DoctorReport.model_validate(report)
+
+
+@router.get("/public/{token}/extras", response_model=S.ShareExtras, response_model_by_alias=True)
+async def public_extras(token: str) -> S.ShareExtras:
+    """The data behind the four charts, what the app learnt and the next visit, for the same link and period as the report."""
+    now = _now()
+
+    def work() -> dict | None:
+        with logstore.tx() as conn:
+            return svc.public_extras(conn, token, now)
+
+    extras = await run_in_threadpool(work)
+    if extras is None:
+        raise HTTPException(404, svc.NOT_AVAILABLE)
+    from app.schemas.insights import Timeline
+
+    extras["timeline"] = Timeline.model_validate(extras["timeline"]).model_dump(by_alias=True, mode="json")
+    return S.ShareExtras.model_validate(extras)

@@ -59,3 +59,17 @@ class AppointmentItem(Camel):
 class ShareContext(Camel):
     questions: list[QuestionItem]
     next_appointment: AppointmentItem | None = None
+
+
+class LearnedItem(Camel):
+    """One thing the app learnt, as the doctor sees it. `confirmed` is false for what the person has not confirmed yet."""
+    statement: str
+    why: str
+    confirmed: bool
+
+
+class ShareExtras(Camel):
+    """What the shared page shows besides the report: the four charts' data, what the app learnt, the next visit. Same as the printed brief."""
+    timeline: dict
+    learned: list[LearnedItem]
+    next_appointment: AppointmentItem | None = None

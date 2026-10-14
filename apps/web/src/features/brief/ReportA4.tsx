@@ -17,10 +17,10 @@ import { useTranslation } from 'react-i18next'
 import { useDoctorReport, useInsightsTimeline, useLearned } from '@/data/hooks'
 import type { ReportDays } from '@/data/types'
 import { href } from '@/app/routeIds'
-import { ReportView, type ReportExtra } from '@/features/brief/ReportView'
-import { healthTiles, learnedRows, plotReasons } from '@/features/brief/analysis'
-import { APPOINTMENT_KIND, formatWhen, useShareContext } from '@/features/brief/shareApi'
-import { FILTERS_ON, FILTER_LIST, type ChartFilter } from '@/features/brief/PrintCharts'
+import { ReportView } from '@/features/brief/ReportView'
+import { useShareContext } from '@/features/brief/shareApi'
+import { FILTERS_ON, FilterBar, type ChartFilter } from '@/features/brief/PrintCharts'
+import { buildExtra } from '@/features/brief/extras'
 import './report.css'
 
 const DAYS: ReportDays[] = [7, 14, 30, 90]
@@ -45,23 +45,14 @@ export function ReportA4() {
   }
 
   // the signed-in extras: built in code from the same answers the brief screen uses, so the printed page matches the screen
-  const extra: ReportExtra | undefined = tl.data
-    ? {
-        tiles: healthTiles(t, tl.data).map((x) => ({ label: x.label, value: x.value, unit: x.unit, status: x.status })),
-        timeline: tl.data,
+  const extra = tl.data
+    ? buildExtra(
+        t,
+        tl.data,
+        learned.data?.groups.flatMap((g) => g.facts),
+        context.data ? context.data.nextAppointment : undefined,
         show,
-        reasons: plotReasons(t, tl.data).map((x) => ({ title: x.title, why: x.why, saw: x.saw })),
-        learned: learned.data ? learnedRows(learned.data.groups.flatMap((g) => g.facts)) : undefined,
-        appointment: context.data
-          ? context.data.nextAppointment
-            ? {
-                kind: APPOINTMENT_KIND[context.data.nextAppointment.kind] ?? context.data.nextAppointment.kind,
-                when: formatWhen(context.data.nextAppointment.scheduledFor),
-                location: context.data.nextAppointment.location,
-              }
-            : null
-          : undefined,
-      }
+      )
     : undefined
 
   return (
@@ -84,24 +75,7 @@ export function ReportA4() {
           </button>
         </div>
       </div>
-      {tl.data && (
-        <div className="rp-bar rp-filters" role="group" aria-label="Show on the charts">
-          <div>
-            <span>Show on the charts</span>
-            {FILTER_LIST.map(([k, label]) => (
-              <button
-                key={k}
-                type="button"
-                aria-pressed={show[k]}
-                className={show[k] ? 'rp-on' : 'rp-off'}
-                onClick={() => setShow((x) => ({ ...x, [k]: !x[k] }))}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {tl.data && <FilterBar show={show} setShow={setShow} />}
       {isLoading && <p className="rp-state">Preparing the report…</p>}
       {isError && (
         <p className="rp-state">

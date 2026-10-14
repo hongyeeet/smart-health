@@ -6,7 +6,7 @@ import { dateLocale } from '@/lib/locale'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { appConfig } from '@/config/app'
 import { request } from '@/data/repositories/http'
-import type { DoctorReport } from '@/data/types'
+import type { DoctorReport, InsightsTimeline } from '@/data/types'
 
 export type ShareDays = 7 | 14 | 30 | 90
 export type ShareHours = 24 | 72 | 168
@@ -74,6 +74,28 @@ export async function fetchSharedReport(token: string): Promise<DoctorReport> {
   if (!res.ok) throw new SharedReportError(res.status)
   return (await res.json()) as DoctorReport
 }
+
+/** What the shared page shows besides the report: the four charts' data, what the app learnt, the next visit. The same as the printed brief. */
+export interface SharedExtras {
+  timeline: InsightsTimeline
+  learned: { statement: string; why: string; confirmed: boolean }[]
+  nextAppointment: { id: string; kind: string; scheduledFor: string; location: string | null } | null
+}
+
+export async function fetchSharedExtras(token: string): Promise<SharedExtras> {
+  const res = await fetch(`${appConfig.apiBaseUrl}/brief/shares/public/${encodeURIComponent(token)}/extras`)
+  if (!res.ok) throw new SharedReportError(res.status)
+  return (await res.json()) as SharedExtras
+}
+
+export const useSharedExtras = (token: string | undefined) =>
+  useQuery({
+    queryKey: ['sharedExtras', token],
+    queryFn: () => fetchSharedExtras(token ?? ''),
+    enabled: Boolean(token),
+    retry: (count, err) => !(err instanceof SharedReportError && err.status === 404) && count < 2,
+    refetchOnWindowFocus: false,
+  })
 
 export const useSharedReport = (token: string | undefined) =>
   useQuery({
