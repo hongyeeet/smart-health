@@ -7,18 +7,78 @@ import type { ReactNode } from 'react'
 import type { InsightsTimeline } from '@/data/types'
 
 type Reason = { title: string; why: string; saw: string }
+export type ChartFilter = 'glucose' | 'heart' | 'spo2' | 'bp' | 'meals' | 'exercise' | 'symptoms' | 'missed'
+export const FILTERS_ON: Record<ChartFilter, boolean> = {
+  glucose: true,
+  heart: true,
+  spo2: true,
+  bp: true,
+  meals: true,
+  exercise: true,
+  symptoms: true,
+  missed: true,
+}
+export const FILTER_LIST: [ChartFilter, string][] = [
+  ['glucose', 'Glucose'],
+  ['heart', 'Heart rate'],
+  ['spo2', 'SpO2'],
+  ['bp', 'Blood pressure'],
+  ['meals', 'Meals'],
+  ['exercise', 'Exercise'],
+  ['symptoms', 'Symptoms'],
+  ['missed', 'Missed doses'],
+]
 type Pt = number | null
 
 const W = 700
 const H = 150
-const L = 44
+const L = 66
 const R = 14
 const T = 10
 const B = 24
 
 const shortDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
-function Frame({ title, unit, reason, children }: { title: string; unit: string; reason?: Reason; children: ReactNode }) {
+/** The log rows under a chart: meals, exercise, symptoms and missed doses on the same time axis. */
+function Lanes({ tl, show }: { tl: InsightsTimeline; show: Record<ChartFilter, boolean> }) {
+  const total = tl.period.days * 1440
+  const x = (m: number) => L + (Math.min(Math.max(m, 0), total) / total) * (W - L - R)
+  const rows: { key: ChartFilter; label: string; items: ReactNode[] }[] = []
+  const e = tl.events
+  if (show.meals)
+    rows.push({ key: 'meals', label: 'Meals', items: e.meals.map((m, i) => <rect key={i} x={x(m.m) - 2} y={2} width={4} height={10} fill="#8A6A1F" />) })
+  if (show.exercise)
+    rows.push({
+      key: 'exercise',
+      label: 'Exercise',
+      items: e.exercise.map((m, i) => <rect key={i} x={x(m.m0)} y={3} width={Math.max(4, x(m.m1) - x(m.m0))} height={8} rx={2} fill="#1D6B47" />),
+    })
+  if (show.symptoms)
+    rows.push({ key: 'symptoms', label: 'Symptoms', items: e.symptoms.map((m, i) => <circle key={i} cx={x(m.m)} cy={7} r={3.5} fill="#175CD3" />) })
+  if (show.missed)
+    rows.push({ key: 'missed', label: 'Missed doses', items: e.missed.map((m, i) => <circle key={i} cx={x(m.m)} cy={7} r={3.5} fill="#B42318" />) })
+  if (rows.length === 0) return null
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${rows.length * 14 + 2}`}
+      role="img"
+      aria-label="Meals, exercise, symptoms and missed doses"
+      style={{ display: 'block', width: '100%', height: 'auto', maxWidth: 700 }}
+    >
+      {rows.map((r, k) => (
+        <g key={r.key} transform={`translate(0 ${k * 14})`}>
+          <text x={L - 6} y={11} textAnchor="end" fontSize={10} fill="#475467" fontFamily="Atkinson Hyperlegible, sans-serif">
+            {r.label}
+          </text>
+          <line x1={L} y1={7} x2={W - R} y2={7} stroke="#EAECF0" strokeWidth="1" />
+          {r.items}
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+function Frame({ title, unit, reason, lanes, children }: { title: string; unit: string; reason?: Reason; lanes?: ReactNode; children: ReactNode }) {
   return (
     <figure className="rp-chart" style={{ margin: '8px 0 14px', breakInside: 'avoid' }}>
       <div className="rp-strong">
@@ -29,6 +89,7 @@ function Frame({ title, unit, reason, children }: { title: string; unit: string;
           <b>Why this matters.</b> {reason.why} <b>What we saw.</b> {reason.saw}
         </p>
       )}
+      {lanes}
       {children}
     </figure>
   )
@@ -72,6 +133,7 @@ function Line({
   color,
   base,
   reason,
+  lanes,
   decimals = 1,
 }: {
   data: { avg: Pt[]; min: Pt[]; max: Pt[] }
@@ -81,6 +143,7 @@ function Line({
   color: string
   base: { mean: number | null; lo: number | null; hi: number | null }
   reason?: Reason
+  lanes?: ReactNode
   decimals?: number
 }) {
   const n = data.avg.length
@@ -110,7 +173,7 @@ function Line({
   }
   const bandRuns = runs(data.avg).map((r) => r.filter((p) => data.min[p.i] != null && data.max[p.i] != null))
   return (
-    <Frame title={label} unit={unit} reason={reason}>
+    <Frame title={label} unit={unit} reason={reason} lanes={lanes}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         role="img"
@@ -147,7 +210,7 @@ function Line({
   )
 }
 
-function Bp({ tl, reason }: { tl: InsightsTimeline; reason?: Reason }) {
+function Bp({ tl, reason, lanes }: { tl: InsightsTimeline; reason?: Reason; lanes?: ReactNode }) {
   const pts = tl.bp
   if (pts.length === 0) {
     return (
@@ -165,7 +228,7 @@ function Bp({ tl, reason }: { tl: InsightsTimeline; reason?: Reason }) {
   const x = (m: number) => L + (m / total) * (W - L - R)
   const y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B)
   return (
-    <Frame title="Blood pressure" unit="mmHg" reason={reason}>
+    <Frame title="Blood pressure" unit="mmHg" reason={reason} lanes={lanes}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         role="img"
@@ -198,33 +261,53 @@ function Bp({ tl, reason }: { tl: InsightsTimeline; reason?: Reason }) {
   )
 }
 
-export function PrintCharts({ tl, reasons }: { tl: InsightsTimeline; reasons?: Reason[] }) {
+export function PrintCharts({ tl, reasons, show = FILTERS_ON }: { tl: InsightsTimeline; reasons?: Reason[]; show?: Record<ChartFilter, boolean> }) {
   const why = (t: string) => reasons?.find((r) => r.title.toLowerCase().startsWith(t))
   const s = tl.series
   const b = tl.baseline.daily
+  const lanes = <Lanes tl={tl} show={show} />
+  const any = show.glucose || show.heart || show.spo2 || show.bp
   return (
     <div>
-      <Line
-        data={{ avg: s.glucose, min: s.glucoseMin, max: s.glucoseMax }}
-        tl={tl}
-        label="Glucose"
-        unit="mmol/L"
-        color="#175CD3"
-        base={b.glucose}
-        reason={why('glucose')}
-      />
-      <Line
-        data={{ avg: s.heart, min: s.heartMin, max: s.heartMax }}
-        tl={tl}
-        label="Heart rate"
-        unit="bpm"
-        color="#B42318"
-        base={b.heart}
-        reason={why('heart')}
-        decimals={0}
-      />
-      <Line data={{ avg: s.spo2, min: s.spo2Min, max: s.spo2Max }} tl={tl} label="SpO2" unit="%" color="#7A5C12" base={b.spo2} reason={why('spo')} />
-      <Bp tl={tl} reason={why('blood')} />
+      {show.glucose && (
+        <Line
+          data={{ avg: s.glucose, min: s.glucoseMin, max: s.glucoseMax }}
+          tl={tl}
+          label="Glucose"
+          unit="mmol/L"
+          color="#175CD3"
+          base={b.glucose}
+          reason={why('glucose')}
+          lanes={lanes}
+        />
+      )}
+      {show.heart && (
+        <Line
+          data={{ avg: s.heart, min: s.heartMin, max: s.heartMax }}
+          tl={tl}
+          label="Heart rate"
+          unit="bpm"
+          color="#B42318"
+          base={b.heart}
+          reason={why('heart')}
+          lanes={lanes}
+          decimals={0}
+        />
+      )}
+      {show.spo2 && (
+        <Line
+          data={{ avg: s.spo2, min: s.spo2Min, max: s.spo2Max }}
+          tl={tl}
+          label="SpO2"
+          unit="%"
+          color="#7A5C12"
+          base={b.spo2}
+          reason={why('spo')}
+          lanes={lanes}
+        />
+      )}
+      {show.bp && <Bp tl={tl} reason={why('blood')} lanes={lanes} />}
+      {!any && lanes}
     </div>
   )
 }

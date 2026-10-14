@@ -7,6 +7,10 @@
 .rp-bar { max-width: 794px; margin: 16px auto 0; padding: 0 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; font-size: 15px; color: #111; }
 .rp-bar button, .rp-bar select { font: inherit; font-weight: 700; min-height: 44px; padding: 8px 16px; border-radius: 10px; border: 2px solid #111; background: #fff; color: #111; cursor: pointer; }
 .rp-bar .rp-primary { background: #1d4a3c; border-color: #1d4a3c; color: #fff; }
+.rp-bar.rp-filters { margin-top: 8px; }
+.rp-bar .rp-off { opacity: .55; border-style: dashed; }
+.rp-bar .rp-on { background: #e6f4ee; }
+.rp-bar.rp-filters button { min-height: 36px; padding: 4px 12px; font-size: 14px; }
 .rp-bar > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
 .rp-sheet { width: 794px; max-width: calc(100% - 16px); min-height: 1123px; box-sizing: border-box; margin: 20px auto; padding: 44px 48px 36px; background: #fff; color: #101828; box-shadow: 0 10px 40px -20px rgba(0, 0, 0, 0.35); font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; font-size: 13px; line-height: 1.45; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 14px; overflow-x: auto; }

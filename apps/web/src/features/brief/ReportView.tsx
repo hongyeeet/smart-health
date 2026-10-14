@@ -7,7 +7,7 @@
  */
 import { Fragment, type ReactNode } from 'react'
 import type { DoctorReport, GlucoseBandKey, InsightsTimeline } from '@/data/types'
-import { PrintCharts } from './PrintCharts'
+import { PrintCharts, type ChartFilter } from './PrintCharts'
 import { appConfig } from '@/config/app'
 import { palettes } from '@/theme/palettes'
 import './report.css'
@@ -610,6 +610,8 @@ const SECTION_VIEW: Record<ReportSection, (r: DoctorReport) => ReactNode> = {
 export interface ReportExtra {
   /** the Overview data for the period, drawn as the four charts */
   timeline?: InsightsTimeline
+  /** which charts and log rows to print; all when left out */
+  show?: Record<ChartFilter, boolean>
   /** the six health numbers for the period, already worded */
   tiles?: { label: string; value: string; unit?: string; status: string }[]
   /** one reasoning line per Overview chart */
@@ -647,11 +649,11 @@ function TilesSection({ tiles }: { tiles: NonNullable<ReportExtra['tiles']> }) {
   )
 }
 
-function ChartsSection({ reasons, timeline }: { reasons: NonNullable<ReportExtra['reasons']>; timeline?: InsightsTimeline }) {
+function ChartsSection({ reasons, timeline, show }: { reasons: NonNullable<ReportExtra['reasons']>; timeline?: InsightsTimeline; show?: ReportExtra['show'] }) {
   return (
     <section>
       <h2>Glucose, heart rate, SpO2 and blood pressure</h2>
-      {timeline ? <PrintCharts tl={timeline} reasons={reasons} /> : null}
+      {timeline ? <PrintCharts tl={timeline} reasons={reasons} show={show} /> : null}
       <table className="rp-stack" hidden={!!timeline}>
         <thead>
           <tr>
@@ -751,7 +753,7 @@ export function ReportView({ r, extra }: { r: DoctorReport; extra?: ReportExtra 
       </div>
 
       {extra?.tiles && extra.tiles.length > 0 && <TilesSection tiles={extra.tiles} />}
-      {extra?.reasons && extra.reasons.length > 0 && <ChartsSection reasons={extra.reasons} timeline={extra.timeline} />}
+      {extra?.reasons && extra.reasons.length > 0 && <ChartsSection reasons={extra.reasons} timeline={extra.timeline} show={extra.show} />}
 
       {REPORT_SECTIONS.map((key) => (
         <Fragment key={key}>{SECTION_VIEW[key](r)}</Fragment>

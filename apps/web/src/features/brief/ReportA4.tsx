@@ -11,6 +11,7 @@
  * return to it. "Back to the app" therefore goes back to the Doctor brief entry it came from, or replaces this entry with it
  * when the page was opened directly (a new tab or a reload).
  */
+import { useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDoctorReport, useInsightsTimeline, useLearned } from '@/data/hooks'
@@ -19,6 +20,7 @@ import { href } from '@/app/routeIds'
 import { ReportView, type ReportExtra } from '@/features/brief/ReportView'
 import { healthTiles, learnedRows, plotReasons } from '@/features/brief/analysis'
 import { APPOINTMENT_KIND, formatWhen, useShareContext } from '@/features/brief/shareApi'
+import { FILTERS_ON, FILTER_LIST, type ChartFilter } from '@/features/brief/PrintCharts'
 import './report.css'
 
 const DAYS: ReportDays[] = [7, 14, 30, 90]
@@ -34,6 +36,7 @@ export function ReportA4() {
   const tl = useInsightsTimeline(days)
   const learned = useLearned()
   const context = useShareContext()
+  const [show, setShow] = useState<Record<ChartFilter, boolean>>(FILTERS_ON)
   const cameFromBrief = (location.state as { from?: string } | null)?.from === 'L1'
 
   function backToApp() {
@@ -46,6 +49,7 @@ export function ReportA4() {
     ? {
         tiles: healthTiles(t, tl.data).map((x) => ({ label: x.label, value: x.value, unit: x.unit, status: x.status })),
         timeline: tl.data,
+        show,
         reasons: plotReasons(t, tl.data).map((x) => ({ title: x.title, why: x.why, saw: x.saw })),
         learned: learned.data ? learnedRows(learned.data.groups.flatMap((g) => g.facts)) : undefined,
         appointment: context.data
@@ -80,6 +84,24 @@ export function ReportA4() {
           </button>
         </div>
       </div>
+      {tl.data && (
+        <div className="rp-bar rp-filters" role="group" aria-label="Show on the charts">
+          <div>
+            <span>Show on the charts</span>
+            {FILTER_LIST.map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={show[k]}
+                className={show[k] ? 'rp-on' : 'rp-off'}
+                onClick={() => setShow((x) => ({ ...x, [k]: !x[k] }))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {isLoading && <p className="rp-state">Preparing the report…</p>}
       {isError && (
         <p className="rp-state">
