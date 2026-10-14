@@ -30,9 +30,10 @@ const FILTERS = [
 const MAX_PICKS = 3
 
 /** The meal that fits the time of day in Singapore: the first tab the person sees. */
-const mealNow = (): MenuMeal => {
+export const mealNow = (): MenuMeal => {
   const h = Number(new Date().toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Singapore' }))
-  return h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h < 20 ? 'dinner' : 'snack'
+  // breakfast to 10, lunch to 3 pm, an afternoon snack to 5, dinner to 10 pm, then a late snack
+  return h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h < 17 ? 'snack' : h < 22 ? 'dinner' : 'snack'
 }
 
 const fmt = (n: number) => n.toLocaleString('en-US')
