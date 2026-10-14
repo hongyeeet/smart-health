@@ -71,7 +71,7 @@ function RiseChip({ item }: { item: MenuItem }) {
 function DishCard({ item, picked, full, onToggle }: { item: MenuItem; picked: boolean; full: boolean; onToggle: () => void }) {
   const { t } = useTranslation()
   const measured = item.riseKind === 'measured'
-  const badge = measured ? t('log.menu.measured', 'Measured on you · seen {{n}} times', { n: item.seen ?? 0 }) : t('log.menu.estimate', 'Estimate')
+  const badge = measured ? t('log.menu.measured', 'Measured on you') : t('log.menu.estimate', 'Estimate')
   const disabled = !picked && full
   return (
     <Card className={cn('flex flex-col overflow-hidden !p-0', picked && 'border-brand')}>
