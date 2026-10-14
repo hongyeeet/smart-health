@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     # True (the default): the local text reader blacks out name, ID, phone and address on a label photo before it leaves the machine, and
     # its text checks what the model quotes. False (SCAN_OCR_ENABLED=false): the photo is sent as it is. Joely's test switch, 2026-10-12.
     scan_ocr_enabled: bool = True
+    # Threads the offline text reader may use. 0 = automatic (6, or fewer on a smaller machine). The reader's own default, every core, was slower and
+    # got slower with use on a 20-core machine (about 7 s a photo against 0.6 s with 6 threads, 2026-10-14).
+    scan_ocr_threads: int = 0
+    # Which text reader the scanner uses first. "local" (the default): the offline reader only, so the photo never leaves the machine (D-063).
+    # "vision": Google Cloud Vision reads the ORIGINAL photo (name and ID still on it), then they are blacked out before the AI model sees it;
+    # falls back to the offline reader when Vision cannot be used. Turned on by SCAN_OCR_ENGINE=vision, a decision that changes D-063.
+    scan_ocr_engine: str = "local"
 
 
 @lru_cache

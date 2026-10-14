@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Sequence
@@ -98,9 +99,12 @@ class RapidOcrAdapter:
     """Wraps RapidOCR (package `rapidocr`, github.com/RapidAI/RapidOCR) so it answers like the older package did:
     a call with a BGR image returns ([[corners, text, score], ...], None). It keeps the spaces between words."""
 
-    def __init__(self) -> None:
+    def __init__(self, threads: int | None = None) -> None:
         from rapidocr import RapidOCR
-        self._engine = RapidOCR()
+
+        n = threads or auto_threads()
+        # the reader's default (every core) was slower, and slower with each photo, on a many-core machine: a few threads are enough
+        self._engine = RapidOCR(params={"EngineConfig.onnxruntime.intra_op_num_threads": n, "EngineConfig.onnxruntime.inter_op_num_threads": 1})
 
     def __call__(self, bgr: Any) -> tuple[list[Any] | None, None]:
         out: Any = self._engine(bgr)
@@ -109,8 +113,22 @@ class RapidOcrAdapter:
         return [[box.tolist(), str(txt), float(score)] for box, txt, score in zip(out.boxes, out.txts, out.scores, strict=False)], None
 
 
+def auto_threads() -> int:
+    """SCAN_OCR_THREADS if set, else 6 (the fastest of 2 to 16 on a 20-core laptop), or every core on a smaller machine."""
+    from app.core.settings import get_settings
+
+    return get_settings().scan_ocr_threads or min(6, os.cpu_count() or 4)
+
+
 def default_ocr() -> Any:
-    """RapidOCR runs offline on this machine. Imported lazily because it is slow to load."""
+    """The text reader the scanner uses (SCAN_OCR_ENGINE). "local" (default): RapidOCR, offline on this machine, imported lazily because it is slow to
+    load. "vision": Google Cloud Vision, with the offline reader behind it for when Vision cannot be used (integrations/vision_ocr.py)."""
+    from app.core.settings import get_settings
+
+    if get_settings().scan_ocr_engine.strip().lower() == "vision":
+        from app.integrations.vision_ocr import FallbackOcr, VisionOcr
+
+        return FallbackOcr(VisionOcr.from_settings(), RapidOcrAdapter)
     return RapidOcrAdapter()
 
 
