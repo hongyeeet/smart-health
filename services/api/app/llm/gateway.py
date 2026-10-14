@@ -149,8 +149,8 @@ def generate_image(prompt: str, model: str | None = None) -> bytes:
         raise LLMUnavailable("No Vertex AI key: set GOOGLE_API_KEY in .env", code="model_unavailable")
     body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": {"responseModalities": ["IMAGE"]}}
     try:
-        client = VertexClient(settings.google_api_key, settings.google_cloud_project, "global", max_retries=3)
-        j = client._post(model, body, timeout_s=settings.llm_timeout_s * 2)
+        client = VertexClient(settings.google_api_key, settings.google_cloud_project, "global", max_retries=1)
+        j = client._post(model, body, timeout_s=150)       # a picture can take over a minute
     except ExternalServiceError as e:
         logger.error("image call failed model=%s code=%s", model, e.code)
         raise LLMUnavailable(str(e)[:200], code="timeout" if "timeout" in str(e).lower() else "model_unavailable") from e
