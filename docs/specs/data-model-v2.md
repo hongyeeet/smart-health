@@ -2,6 +2,8 @@
 
 Status: **built and deployed to the shared Supabase project on 2026-10-05** at Hong Yi's request (Alembic 0017 to 0020; the old Bronze, Silver and Gold tables and the other 23 demo users were deleted after a CSV backup). **Not yet committed or pushed, and the team has not approved it yet.** Section 11 lists what was built, where it differs from the design above, and what is still open. `docs/data_dictionary.md` is regenerated from the new database.
 
+**Update 2026-10-15:** the database is now at Alembic **0040** with **76 tables** (Bronze 10, Silver 17, Gold 15, App 16, Reference 12, Operations 6) and 6 views. The sections below describe the design and the 2026-10-05 build; the tables and columns added later (migrations 0021 to 0040) are listed in section 11, "Changes since 2026-10-05".
+
 Last updated 2026-10-05 (second pass: race, required emergency contact, medication schedule, work-schedule overlay, symptom notes). Written in review with Hong Yi; it includes Joely's scope decisions of 2026-10-04.
 
 ## 1. Design in one page
@@ -12,18 +14,23 @@ Last updated 2026-10-05 (second pass: race, required emergency contact, medicati
 4. **Demo:** 3 months of synthetic data for the demo patient, marked `demo_dataset` (section 8).
 
 ```
-Bronze (10 tables, as received)  ->  Silver (13 tables, typed)  ->  Gold (timeline, baselines, summaries)
+Bronze (10 tables, as received)  ->  Silver (17 tables, typed)  ->  Gold (timeline, baselines, summaries)
 ```
 
 ## 1b. Table index by layer
 
+![Equinox data model: 76 tables by layer](../assets/diagrams/01-data-model.png)
+
+*Figure: the full data model, 76 tables by layer (Alembic 0040).*
+
+
 | Layer | Tables | Rule |
 |---|---|---|
 | **Bronze** (10) | `bronze_profile`, `bronze_medication`, `bronze_lab`, `bronze_watch`, `bronze_cgm`, `bronze_blood_pressure`, `bronze_exercise`, `bronze_food`, `bronze_symptom`, `bronze_wellbeing` | raw input as received, never edited |
-| **Silver** (13) | `user_profile`, `medications`, `medication_schedule`, `medication_log`, `lab_results`, `watch_readings`, `cgm_readings`, `blood_pressure_readings`, `exercise_logs`, `exercise_sets`, `food_logs`, `symptom_logs`, `wellbeing_logs` | typed facts, each with a `bronze_id` (the children `medication_schedule` and `exercise_sets` use their parent's) |
+| **Silver** (17) | `user_profile`, `medications`, `medication_schedule`, `medication_log`, `lab_results`, `watch_readings`, `cgm_readings`, `blood_pressure_readings`, `exercise_logs`, `exercise_sets`, `food_logs`, `symptom_logs`, `wellbeing_logs`, `body_measurements`, `conditions`, `allergies`, `devices` (the last four added in 0032) | typed facts, each with a `bronze_id` (the children `medication_schedule` and `exercise_sets` use their parent's) |
 | **Gold** (15) | `timeline_5min`, `baselines`, `daily_summary`, `care_summary`, `meal_response`, `exercise_response`, `glucose_events`, `clinical_flags`, `pattern_candidates`, `briefs`, `brief_shares`, `brief_share_access`, `memory_facts`, `memory_episodes`, `interaction_alerts` | computed from Silver, never written by the app |
-| **App** (10) | `users`, `consents`, `notifications`, `refill_forecasts`, `patient_preventive_status`, `doctor_questions`, `appointments`, `prescription_scans`, `medication_explanations`, `calendar_syncs` | application state and records outside the Bronze -> Silver -> Gold pipeline: no Bronze twin, no `bronze_id` |
-| **Reference** (11) | `data_sources`, `drug_aliases`, `drug_reference`, `drug_side_effects`, `foods`, `interaction_rules`, `knowledge_chunks`, `knowledge_documents`, `population_priors`, `preventive_items`, `routing_rules` | shared lookups, not per user |
+| **App** (16) | `users`, `consents`, `notifications`, `refill_forecasts`, `patient_preventive_status`, `doctor_questions`, `appointments`, `prescription_scans`, `medication_explanations`, `calendar_syncs`, `nudge_policy`, `adherence_barriers`, `content_proposals`, `ai_usage_daily`, `extra_emergency_contacts`, `food_suggestions` | application state and records outside the Bronze -> Silver -> Gold pipeline: no Bronze twin, no `bronze_id` |
+| **Reference** (12) | `data_sources`, `drug_aliases`, `drug_reference`, `drug_side_effects`, `foods`, `interaction_rules`, `knowledge_chunks`, `knowledge_documents`, `population_priors`, `preventive_items`, `routing_rules`, `food_images` | shared lookups, not per user |
 | **Operations** (6) | `agent_runs`, `agent_steps`, `conversations`, `messages`, `event_log`, `guardrail_events` | how the app itself ran |
 | **Views** (6) | `timeline_events`, `health_state`, `trends`, `adherence_summary`, `insight_context`, `jev_decisions` | read-only views over the tables above (`security_invoker`) |
 
@@ -77,7 +84,9 @@ Deleting an original removes the stored object and sets `processing_status = 'de
 
 ---
 
-## 4. SILVER (13 tables)
+## 4. SILVER (17 tables)
+
+The 13 tables designed here were joined by `body_measurements`, `conditions`, `allergies` and `devices` in migration 0032 (2026-10-11); see section 11, "Changes since 2026-10-05".
 
 ### 4.1 One-time records
 
@@ -588,7 +597,7 @@ Lifestyle recommendations for the user, based on the patterns in the timeline, `
 ### Open
 
 1. **Team approval** of this design. The database has already been changed (section 11).
-2. **Migrations are local only:** the shared database is at Alembic 0020, but 0017 to 0020 are not pushed yet. Anyone who runs `alembic` before they are pushed will get "can't locate revision 0020".
+2. **Migrations (was local only on 2026-10-05):** the migrations up to 0040 are in `services/api/alembic/versions/` in the repository; check `git log` for whether they are pushed before running `alembic` against the shared database.
 3. **Unreviewed tables** (section 9) and the proposed Gold drops. `momentum_snapshots`, `nudge_stats` and the others were dropped with the old Gold tables in 0018.
 4. **Tune the starting values:** the 20% / 3-of-5 decline rule, the context windows in `glucose_events`, the 18:00 start of the sleep night, and the 60-minute "late" cutoff.
 5. **Free-plan space:** after the reset the database is about 30 MB of 500 MB.
@@ -622,5 +631,12 @@ Lifestyle recommendations for the user, based on the patterns in the timeline, `
 - Sleep, steps and exercise sessions in the real window are derived from his real active energy and heart rate; HRV uses only the spread of a BIG IDEAs participant; race is empty and there is no fasting insulin (both need `bio.csv`).
 
 **Legacy scripts that no longer match the database** (they write the old tables; not deleted, not run): `scripts/bronze.py`, `etl_common.py` helpers for Bronze, `import_cgmacros.py`, `import_bigideas.py`, `import_fitbit_kaggle.py`, `seed_demo.py`, `simulate_persona.py`, `replay.py`, `verify_loaded.py`, `load_all.py`. Replaced by `generate_mr_tan.py`, `load_mr_tan_v2.py`, `build_gold_v2.py`, `profile_mr_tan.py`, `v2_backup.py`, `plot_mr_tan.py` and `plot_report_charts.py`.
+
+**Changes since 2026-10-05** (read from `services/api/alembic/versions/`, 2026-10-15; the database was unreachable, so the live table count is the one given by the lead, not re-checked):
+- 0021 learning loop: Singapore food columns on `foods`, and `nudge_policy`, `adherence_barriers`, `content_proposals` (App). It also created `food_matches`, which 0022 dropped again. 0023 `ai_usage_daily` (App; 0034 and 0040 add the providers `vertex_generate` and `vertex_image` to its counting).
+- 0024 to 0030 medicine columns and tables: label fields and `total_quantity`, `medication_explanations`, `pack_started_on`, `medication_log.miss_note`, clash alert details, `calendar_syncs`, `medications.as_needed` (described in section 4.1 above).
+- 0031 e-mail reminders: a delivery marker on every notification. 0032 onboarding and stock: `body_measurements`, `conditions`, `allergies`, `devices` (Silver, recreated after 0018 dropped them), stock columns on `medications`, a new `entry_source` value `onboarding`. 0033 explanation parts. 0035 blood pressure columns. 0036 workout intensity optional. 0037 layer comments on four tables.
+- 0038 `extra_emergency_contacts` (App; contacts after the first, which stays on `user_profile`; soft delete). 0039 `food_images` (Reference; one picture per dish) and `food_suggestions` (App; the dishes shown to a person for one meal on one day). 0040 lets `ai_usage_daily` count the provider `vertex_image`.
+- Table count at 0040: 76 (Bronze 10, Silver 17, Gold 15, App 16, Reference 12, Operations 6) and 6 views.
 
 **Checks:** `python -m pytest services/api/tests/db -q` (68 tests, all pass) and `python scripts/check_schema.py` (63 of 63 tables, 6 of 6 views, row-level security on).

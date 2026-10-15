@@ -1,5 +1,7 @@
 # Reminder emails (Workato)
 
+**Status (2026-10-15):** our side is built and checked against the code (`app/services/notify_email.py`, `app/integrations/workato_email.py`, `app/api/routers/notify.py`). The Workato recipes (this e-mail recipe and the Google Calendar dose-reminder recipe) are owned by Joely and are not finished, so with the webhook blank nothing is sent. Three e-mails a day at most (`EMAIL_DAILY_CAP`), none in quiet hours (22:00 to 07:00 Singapore time).
+
 Decided by Hong Yi on 2026-10-10. The app already writes every reminder to the `notifications` table for the in-app list. This adds a second way
 to reach the person: a gentle email, in the spirit of a habit app's reminder, sent through a Workato recipe. Our API pushes each email to the
 recipe's webhook. Workato never reads our database and never holds database credentials.

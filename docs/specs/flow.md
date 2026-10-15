@@ -2,10 +2,16 @@
 
 > **Superseded for the built app (2026-10-10):** what is actually built, screen by screen, is in [app-flow-and-features.md](app-flow-and-features.md). This file is kept for the original plan: journeys, the event catalogue and the demo script.
 
+> **Where the plan differs from the build (checked against the code 2026-10-15):** there is no sign-in or sign-up. The app opens on Mr Tan's example record, which is read-only for everyone (any write is refused with a plain message), and anyone can create their own user from the avatar menu; the user is chosen by the `X-User` header (demo-grade). The demo user and the "Start as demo patient" button were removed. The Today tab is called **Home**. There is no manual glucose entry screen (glucose comes from the sensor). Meal ideas are the delivery-style menu page ([menu.md](menu.md)), not only "Lunch ideas" cards. The API has no `POST /events` route; events are written by the server. Where a row below says otherwise, it is the original plan.
+
 How users move through the product, which tools and services each step touches, and **what gets logged at every step**. Screen and route names match [architecture.md](architecture.md) §3; event names are written to `event_log` ([schema.md](schema.md) §9). Feature IDs (F#) refer to [prd.md](prd.md).
 
 **Tables.** The "System" column names the tables of data model v2 ([data-model-v2.md](data-model-v2.md)). Every typed entry or upload first lands in a Bronze row (`bronze_*`, the input as received) and then in its Silver table; Gold is built by code and never written by the app. Which feature reads and writes which table is in [data-flow.md](data-flow.md) section 6.
 
+
+![How each agent works, by use case](../assets/diagrams/05-agent-flows.png)
+
+*Figure: the agent flows by use case, with the JEV and rule gates (2026-10-15).*
 ## 0. Logging contract
 
 - **Every step in this document emits at least one event.** Client events go through `logEvent(name, payload)` → batched `POST /events` (with `client_event_id` for dedupe, and offline-queued). Server events are written in the same DB transaction as the change they describe.
@@ -19,7 +25,7 @@ How users move through the product, which tools and services each step touches, 
 
 ```
 Launch
- ├─ (auth) Sign in / Sign up
+ ├─ (auth) Sign in / Sign up   [planned; not built]
  ├─ Onboarding ─ Choose method ─┬─ Form (steps 1–7)
  │                              └─ Chat (onboarding agent)
  │              → Review summary → Consents → Devices → Reminder times → Done
@@ -44,7 +50,7 @@ Each journey lists: **Trigger → Steps (screen · system action · events)**.
 | # | Screen | System | Events |
 |---|---|---|---|
 | 1 | Welcome, language picker | set `users.locale` | `app.opened`, `user.locale.set` |
-| 2 | Sign up | create user | `user.account.created` |
+| 2 | Sign up (not built; a user is made from the avatar menu at Finish of set-up) | create user | `user.account.created` |
 | 3 | Eligibility (T2D? age ≥ 18? pregnant?) | out-of-scope → info screen, stop | `onboarding.eligibility.checked` {eligible} |
 | 4 | Choose **Form** or **Chat** | | `onboarding.method.chosen` {method} |
 | 5a | Form steps: about you (birth year, gender, race, height, weight) → diagnosis and HbA1c → conditions and allergies (two free-text notes; family history is no longer a separate step) → work week (days, hours, type) → emergency contact (name, phone and relationship, all required in the form) → meds (manual or scan → J2) → watch and CGM model | each step is saved to `bronze_profile` and upserts `user_profile` (resume-able) | `onboarding.step.completed` {step} |
@@ -90,7 +96,7 @@ Each journey lists: **Trigger → Steps (screen · system action · events)**.
 ### J5 Logging (F6)
 | Log | Path | System | Events |
 |---|---|---|---|
-| Glucose | Log → Glucose → value (a finger-prick; the context fasting / pre / post is no longer stored, it is worked out from the time of day and the last meal) | `bronze_cgm` → `cgm_readings` (`source = manual`); thresholds check (sync) → maybe J8 | `glucose.reading.logged` {context, source}, `threshold.checked` {tier} |
+| Glucose | (not built: there is no glucose log screen) Log → Glucose → value (a finger-prick; the context fasting / pre / post is no longer stored, it is worked out from the time of day and the last meal) | `bronze_cgm` → `cgm_readings` (`source = manual`); thresholds check (sync) → maybe J8 | `glucose.reading.logged` {context, source}, `threshold.checked` {tier} |
 | Meal | Log → Meal → photo or text → AI estimates the meal's macros (shown as "Estimated") → edit or confirm → portion → save | `bronze_food` (original and raw LLM answer) → `food_logs`; nutrition flags in code; when 3 hours of CGM exist, `meal_response` is computed | `meal.logged` {items_n, flags}, `meal.analysis.completed` {items_n, min_confidence}, `meal.estimate.confirmed`, `meal.estimate.edited`, `food.flag.shown` {flag} |
 | Exercise | Log → Exercise → type, start and end, intensity 1 to 5, how it felt (or auto from wearable); strength sessions add sets | `bronze_exercise` → `exercise_logs` (+ `exercise_sets`) | `workout.logged` {source} |
 | Symptom | Log → Symptom → picker + how strong + how long + a note (for numbness: which part of the body) | `bronze_symptom` → `symptom_logs`; red-flag symptom → J8 | `symptom.logged` |

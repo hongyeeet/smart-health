@@ -6,8 +6,8 @@ Status: spec only. Nothing is loaded and no loader exists yet. The chat already 
 ## What the chat does with it
 
 For a question that asks for general reading ("what is a glucose spike", "why does sleep matter"), the chat turns the question into a
-meaning vector and takes the nearest chunks. If there are no vectors, no embedding is allowed (daily cap `AI_CAP_VERTEX_EMBED`), or anything
-fails, it falls back to a word search over the same chunks. Plain questions about the person's own numbers do not search at all.
+meaning vector (one embedding call, remembered for repeated questions) and takes the nearest chunks, at most 3. If there are no vectors, no embedding is allowed (daily cap `AI_CAP_VERTEX_EMBED`), or anything
+fails, it falls back to a word search over the same chunks. The retrieval planner (`services/api/app/services/chat_planner.py needs_guidance`, rules, no model call) decides whether the meaning-based search runs: a plain question about the person's own numbers skips the embedding call and uses only the word search.
 The model sees each chunk as quoted text with its document title in brackets, and is told it is general information.
 
 ## Sources that would be acceptable

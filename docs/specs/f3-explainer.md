@@ -1,6 +1,6 @@
 # F3 Medicine explainer: what it is, how it works, what is still open
 
-**Status (2026-10-08): F3 done (approved by Joely).** Updated 2026-10-11: the explanation has **four labelled parts** (prompt version 2, migration 0033), the page says **"Additional information"**, the older layout is made again, and the cost is counted under its own kind of AI call. Fix wave (evening of 2026-10-11): sources are shown once per site, the "no reliable page" answer is a 404 with a plain sentence, and a failed update has its own alert. English page only. Text-to-speech (Listen) and the other languages are not part of F3 for now: Joely will discuss them with the team first.
+**Status (2026-10-08): F3 done (approved by Joely).** Updated 2026-10-11: the explanation has **four labelled parts** (prompt version 2, migration 0033), the page says **"Additional information"**, the older layout is made again, and the cost is counted under its own kind of AI call. Fix wave (evening of 2026-10-11): sources are shown once per site, the "no reliable page" answer is a 404 with a plain sentence, and a failed update has its own alert. **Updated 2026-10-15:** the model still writes in English, but the page shows the explanation in the language the person chose, through a translation-only step (`app/services/ui_translate.py`, called from `app/api/routers/med_explain.py`; any failure returns the English). These machine translations wait for review (docs/review/translations.md). Text-to-speech (Listen) is not part of F3 for now: Joely will discuss it with the team first.
 
 ## 1. What the person sees (screen H6, `/meds/:id`)
 
@@ -14,8 +14,8 @@ Tap a medicine on the Meds page. The page shows, in this order:
 These four are the **parts** (`parts` in the database, keys `for_diabetes`, `how_it_works`, `what_you_may_notice`, `why_timing_matters`). A part the pages read do not give is shown as "Not found in the pages we read." It is never filled with a guess.
 
 5. **How you take it (from your own label)**: times a day and the label's own words. This is built from the saved schedule and the label text, never from the model.
-6. **Side effects**: three to six short items, the common ones only.
-7. **Tell your doctor if…**: signs that mean contacting a doctor or pharmacist.
+6. **Common side effects**: three to six short items, the common ones only.
+7. **When to tell your doctor**: signs that mean contacting a doctor or pharmacist.
 8. **Refill**: the stock-based or estimated "may run out in about N days" (regular medicines only).
 9. **Additional information**: links to the web pages used. Under it, in small grey type: "Not an authoritative drug label". Then "This is not medical advice".
 10. **Ask your doctor**: a box; the question is saved to the doctor-question list (`doctor_questions`, origin `user`, status `open`) with the medicine's name in front, so it shows up in the care plan (K12) and the doctor brief.
@@ -86,9 +86,9 @@ The explanation is shown with "Additional information" and "Not an authoritative
 
 ## 7. Not built yet, and open
 
-- **Listen and languages** (English, Chinese, Malay, Tamil; the mock-up has a Listen button and an English or Chinese toggle on Metformin). Left out on purpose: Joely will discuss text-to-speech with the team before anything is built. It would need the text-to-speech service and reviewed translations.
+- **Listen** (the mock-up has a Listen button). Left out on purpose: Joely will discuss text-to-speech with the team before anything is built. It would need the text-to-speech service. The page text itself is translated by a machine step whose translations are not yet reviewed.
 - **Refusal template** for "can I stop, double or skip" questions (belongs to the chat, F12).
 - **Someone should check the wording clinically.** The explanations are model summaries of web pages, labelled as such, but a pharmacist or doctor has not reviewed the prompt (version 2) or sample outputs. The four-part wording is new and not reviewed.
-- **Refresh button:** the page has no "refresh" button; `?refresh=true` on the endpoint makes it again.
+- **Refresh button:** the page has no general "refresh" button; `?refresh=true` on the endpoint makes it again. The only button is "Update this information", shown for an explanation in the older layout (and after a failed update).
 - A medicine whose search fails shows "We could not look this up" with a Try again button; nothing is saved. When an explanation already exists and an update fails, the alert reads "We could not update this information" (button "Update this information"). Found with no reliable page: "We could not find a reliable page for this medicine yet" (404). Both are plain sentences, not codes.
 - Whether migration 0033 is applied to the shared database is not verified. Until it is, the four parts are neither read nor written, and the page shows the older layout.

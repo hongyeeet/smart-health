@@ -1,15 +1,17 @@
 # F12 Doctor report: how it works and what is open
 
-**Status (2026-10-10): built by Damien's session.** **Updated 2026-10-11:** the key findings are worded by an AI model from code-computed facts, with checks and a code-written fallback (decision D-081, a departure from rules.md 1.2 and 1.8 that waits for Hong Yi). The report also has a Health summary from the onboarding answers, a 14-day baseline, blood pressure readings, and "Symptoms and your latest values". The overnight section and the dates of missed doses are removed. **Fix wave (evening of 2026-10-11):** adherence is a dash, never 0%, when nothing was answered; devices are shown by name, not by code; the Data notes say SpO2 is simulated when the report's `simulated` flag is on; the share sheet's consent line is accurate (section 4). Migrations 0032 and 0035 are applied on the shared database (2026-10-11, the owner's approval). The numbers are covered by unit tests, and the fix wave ran the database tests; the report's `load()` against the real API and the screens were **not verified** in a browser. This is the doctor brief (prd F12). Hong Yi's tasks E13-1 to E13-3 cover the full brief; this document says what exists now.
+**Status (2026-10-10): built by Damien's session.** **Updated 2026-10-15:** the printable report now carries four charts (glucose, blood pressure, SpO2, heart rate) with eight topic filters, and the shared link page shows the same report, charts and extras as the printable one (section 1). **Updated 2026-10-11:** the key findings are worded by an AI model from code-computed facts, with checks and a code-written fallback (decision D-081, a departure from rules.md 1.2 and 1.8 that waits for Hong Yi). The report also has a Health summary from the onboarding answers, a 14-day baseline, blood pressure readings, and "Symptoms and your latest values". The overnight section and the dates of missed doses are removed. **Fix wave (evening of 2026-10-11):** adherence is a dash, never 0%, when nothing was answered; devices are shown by name, not by code; the Data notes say SpO2 is simulated when the report's `simulated` flag is on; the share sheet's consent line is accurate (section 4). Migrations 0032 and 0035 are applied on the shared database (2026-10-11, the owner's approval). The numbers are covered by unit tests, and the fix wave ran the database tests; the report's `load()` against the real API and the screens were **not verified** in a browser. This is the doctor brief (prd F12). Hong Yi's tasks E13-1 to E13-3 cover the full brief; this document says what exists now.
 
 ## 1. What the person sees
 
 - **Me → Doctor brief** (L1, `/brief`): choose the period (7, 14, 30 or 90 days), read the key findings, the worth-discussing items, the questions and the alerts, and tap **Open the printable report**.
 - **The printable report** (L3, `/brief/a4?days=14`): a paper-style page outside the app frame, "Diabetes monitoring report", with **Print or save as PDF**. **"Back to the app"** goes back to the Doctor brief it came from (browser back), or opens the Doctor brief (L1) when the page was opened directly. It is the fix for the earlier problem after printing. Layout follows Damien's report design (an HTML mock-up of a two-page report, 2026-10-09), with the changes in section 4.
 
-There is one report. The person sees exactly what the doctor sees (rules.md 1.8). The report is also shown on the read-only page `/s/:token` (`ReportView`).
+There is one report. The person sees exactly what the doctor sees (rules.md 1.8). The report is also shown on the read-only page `/s/:token` (`SharedReport.tsx`, `ReportView`).
 
-**Sharing (L2).** Creating a link turns on "Share my doctor brief" in Privacy (the server grants that consent when a link is made and none is active), and the sheet says so. Turning off a link does not turn that consent off; the sheet says sharing stays on in Privacy until it is switched off there (`services/api/app/services/share.py`).
+**Charts and topic filters.** Above the sections, the printable page (and the shared page) adds, from the Insights timeline for the same period: a Health overview table (six health numbers compared with the person's own baseline), four charts (glucose, heart rate, SpO2 and blood pressure, `PrintCharts.tsx`) each with a one-line reason, and below the sections the patterns the app learnt (Confirmed or Not confirmed) and the next appointment. A filter bar (`FilterBar`) lets the person or the doctor choose what is drawn: Glucose, Heart rate, SpO2, Blood pressure, Meals, Exercise, Symptoms and Missed doses (the last four are log rows on the same time axis). All are on by default. These extras are built in code (`features/brief/extras.ts`, `analysis.ts`); no model writes them.
+
+**Sharing (L2).** The link opens `/s/:token`, which reads `GET /api/v1/brief/shares/public/{token}/report` (the same report) and `GET /api/v1/brief/shares/public/{token}/extras` (the chart data, what the app learnt and the next visit, for the link's own period). Creating a link turns on "Share my doctor brief" in Privacy (the server grants that consent when a link is made and none is active), and the sheet says so. Turning off a link does not turn that consent off; the sheet says sharing stays on in Privacy until it is switched off there (`services/api/app/services/share.py`).
 
 ## 2. What is in the report
 
@@ -83,7 +85,7 @@ The AI wording is checked by the same code as the rest of the report; it can cha
 
 ## 5. The period
 
-The period ends on the day of the person's latest sensor reading (today if there is none) and runs back 7, 14, 30 or 90 days in their timezone. This keeps a full report for a loaded demo patient whose data stops earlier.
+The period ends on the day of the person's latest sensor reading (today if there is none) and runs back 7, 14, 30 or 90 days in their timezone. This keeps a full report for a person whose data stops earlier, such as Mr Tan's example record.
 
 ## 6. Where things are
 
@@ -92,9 +94,9 @@ The period ends on the day of the person's latest sensor reading (today if there
 | Calculations (pure, no database) and the row reader | `services/api/app/services/doctor_report.py` (`build`, `load`, `read`, `assemble`) |
 | The AI wording and its checks | `services/api/app/agents/report_insight.py` (prompt version `report-insight-1`) |
 | Onboarding answers in the report | `services/api/app/services/onboarding.py` (`onboarding_report_fields`) |
-| Route | `GET /api/v1/brief/report?days=14` in `app/api/routers/brief.py`; shape in `app/schemas/brief.py`. The read-only page uses `GET /api/v1/brief/shares/public/{token}/report` |
-| Screens | `apps/web/src/features/brief/BriefHome.tsx` (L1), `ReportA4.tsx` (L3, with "Back to the app" and print) and `ReportView.tsx` (the sections), `report.css` |
-| Tests | `services/api/tests/unit/test_doctor_report.py` (band boundaries, percentages adding up, mean, SD, CV and GMI, no data, too little data, the daily profile, symptom matching, dose counts, alert order and wording, activity, the API shape); `tests/unit/test_doctor_report_brief.py` and `tests/unit/test_report_insight.py` (added 2026-10-11) |
+| Route | `GET /api/v1/brief/report?days=14` in `app/api/routers/brief.py`; shape in `app/schemas/brief.py`. The read-only page uses `GET /api/v1/brief/shares/public/{token}/report` and `.../extras` (`app/api/routers/share.py`, `app/services/share.py`) |
+| Screens | `apps/web/src/features/brief/BriefHome.tsx` (L1), `ReportA4.tsx` (L3, with "Back to the app" and print) and `ReportView.tsx` (the sections), `PrintCharts.tsx` (the four charts and the filter bar), `extras.ts` and `analysis.ts` (health overview and reasons), `ShareSheet.tsx` (L2), `SharedReport.tsx` (`/s/:token`), `report.css` |
+| Tests | `services/api/tests/unit/test_doctor_report.py` (band boundaries, percentages adding up, mean, SD, CV and GMI, no data, too little data, the daily profile, symptom matching, dose counts, alert order and wording, activity, the API shape); `tests/unit/test_doctor_report_brief.py` and `tests/unit/test_report_insight.py` (added 2026-10-11); `tests/unit/test_share.py` for the share link |
 
 Tables read: `user_profile`, `cgm_readings`, `symptom_logs`, `medications`, `medication_log`, `watch_readings`, `wellbeing_logs`, `interaction_alerts`, `doctor_questions`, `blood_pressure_readings`, `body_measurements`, `conditions`, `allergies`, `lab_results`, `devices`. Nothing is written.
 
@@ -105,7 +107,7 @@ Tables read: `user_profile`, `cgm_readings`, `symptom_logs`, `medications`, `med
 - **Clinical review** of the reference figures, the alert rules (what counts as Urgent or Review), the fixed sentences and the AI wording. Damien designed the layout; he has not signed off the wording.
 - **Hong Yi to confirm** the AI key findings (D-081), since they depart from rules.md 1.2 and 1.8 and the "Worth discussing" and overnight sections are his.
 - **Left open:** the four top tables and the glucose position (D-091).
-- The rest of prd F12: nutrition, exercise and sleep sections, preventive care status, day traces, data completeness per stream, the share link (L2) and a server-made PDF. The older `BriefData` type and `getBrief` in `apps/web` are untouched and still unwired.
+- The rest of prd F12: nutrition, exercise and sleep sections, preventive care status, day traces, data completeness per stream, and a server-made PDF (the share link, L2, is built). The older `BriefData` type and `getBrief` in `apps/web` are untouched and still unwired.
 - Events (`brief.viewed`, `brief.pdf.downloaded`) are not emitted.
 - The report is not saved in `briefs`; it is recomputed each time (the AI wording is cached in memory for a day).
 - Strings on the printable page are English only and not yet in the translation files.

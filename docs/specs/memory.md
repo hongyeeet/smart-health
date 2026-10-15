@@ -16,7 +16,7 @@ One vocabulary for every document, table and prompt.
 | **Memory planes** | The four ways Gold memory is organised: **semantic** (meaning, preferences, routines), **temporal** (what happened when), **entity** (medications and their schedule, foods, appointments, the care summary), **relationship** (evidence-backed associations). Episodic recall (past chat summaries) is part of semantic |
 | **Memory Service** | Our scoped read/write API over Gold and approved Silver. Every read and write goes through it |
 | **JEV** | The typed decision layer, implemented with [OpenJev](https://github.com/razorback16/openjev), a "System One" decision server. You send it a state and typed questions (`noul` yes/no, `choice`, `score`, optionally with images). It returns a probability and a confidence for each answer, read directly from the model's probabilities, so an answer cannot go off-schema. It does not store memory, run analytics or decide safety |
-| **Decision gateway** | Our adapter (`app/decision/`) that calls JEV. If JEV is off or unreachable, the conservative path applies (no model fallback) |
+| **Decision gateway** | Our adapter (`app/llm/jev.py`) that calls JEV. If JEV is off or unreachable, the conservative path applies (no model fallback) |
 | **Evidence packet** | The structured input the LLM answers from (section 7) |
 | **Evidence status** | `observed`, `derived`, `inferred`, `reference_matched` (section 4) |
 | **Confidence** | A 0 to 1 number, separate from evidence status |
@@ -195,7 +195,7 @@ Our own code, not JEV. It is the only path to memory for agents, the LLM, JEV an
 
 Requirements for every call:
 
-- The user id comes from the demo session, never from the caller's arguments.
+- The user id comes from the session (the `X-User` key the app sends; there is no real sign-in yet), never from the caller's arguments.
 - Only the memory types allowed for that caller, with result-size and depth limits.
 - Returns minimal fields with source ids, evidence status, confidence and freshness. Never returns a name, email, phone, NRIC or address.
 - Writes an `agent_steps` row (route, tool, counts, ids).
@@ -341,7 +341,7 @@ Log control decisions, not health content, using existing tables:
 
 ## 13. Demo scope
 
-**Build now:** Memory Service functions with user scope from the session; evidence packet; `memory_facts` lifecycle with `evidence_status`; the decision gateway with JEV and the conservative path; meal analysis (raw answer kept in `bronze_food`); the table index by layer; six views.
+**Build now (built, 2026-10-15: memory store in `app/db/memorystore.py`, routes `/memory/*`, JEV adapter `app/llm/jev.py`):** Memory Service functions with user scope from the session; evidence packet; `memory_facts` lifecycle with `evidence_status`; the decision gateway with JEV and the conservative path; meal analysis (raw answer kept in `bronze_food`); the table index by layer; six views.
 
 **Minimum now:** row-level security is enabled on every table with no policies, so the public Supabase key can do nothing, and only the backend connects with server-side credentials.
 

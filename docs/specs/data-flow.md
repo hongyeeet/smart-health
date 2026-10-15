@@ -4,6 +4,15 @@ Where every piece of data comes from, who may write it, and which feature reads 
 
 ## 1. The whole flow
 
+![Equinox data model: 76 tables by layer](../assets/diagrams/01-data-model.png)
+
+*Figure: the full data model, 76 tables by layer (Alembic 0040).*
+
+![How Equinox keeps its data](../assets/diagrams/02-core-tables.png)
+
+*Figure: the core tables on one slide.*
+
+
 ```mermaid
 flowchart TB
   subgraph SRC["SOURCES"]
@@ -21,13 +30,13 @@ flowchart TB
   AI["Vision / LLM extraction: candidates only, labelled inferred"]
 
   subgraph SLV["SILVER: typed facts, UTC time, canonical units. Every row carries a bronze_id"]
-    V1["Profile and medicines: user_profile, medications, medication_schedule, medication_log, lab_results"]
+    V1["Profile and medicines: user_profile, medications, medication_schedule, medication_log, lab_results, body_measurements, conditions, allergies, devices"]
     V2["Sensors: watch_readings (5-minute buckets), cgm_readings, blood_pressure_readings"]
     V3["Logs: food_logs, exercise_logs, exercise_sets, symptom_logs, wellbeing_logs"]
   end
 
-  APP[("APP tables: users, consents, prescription_scans, medication_explanations, calendar_syncs, appointments, doctor_questions, notifications, refill_forecasts, patient_preventive_status")]
-  REF[("REFERENCE: seeded lookups. drug_reference, interaction_rules, foods, preventive_items, routing_rules, population_priors, knowledge_chunks")]
+  APP[("APP tables: users, consents, prescription_scans, medication_explanations, calendar_syncs, appointments, doctor_questions, notifications, refill_forecasts, patient_preventive_status, nudge_policy, adherence_barriers, content_proposals, ai_usage_daily, extra_emergency_contacts, food_suggestions")]
+  REF[("REFERENCE: seeded lookups. drug_reference, interaction_rules, foods, preventive_items, routing_rules, population_priors, knowledge_chunks, food_images")]
 
   subgraph GLD["GOLD: built only from Silver"]
     G1["The master timeline: timeline_5min (44 features on one 5-minute clock)"]
@@ -85,9 +94,9 @@ Reading it: data only moves down. Gold never writes back into Silver, and Bronze
 | Layer | Holds | Who writes rows | Can be changed? | Every table must carry |
 |---|---|---|---|---|
 | **Bronze** (10 tables) | `bronze_*`: the input as received (`payload` jsonb, optional `object_key` for a photo or file) | The ingest path, once per input | No. Only `processing_status` changes; the guard trigger blocks the rest | `source`, `checksum` (UNIQUE per user, so a re-sent batch does nothing), `received_at` |
-| **Silver** (13 tables) | Typed facts | User, importers, and services after the user confirms | Yes for logs (soft delete, `updated_at`); sensor tables are append-only | `user_id`, `source`, `bronze_id`; UTC timestamps; canonical units (mmol/L, g, mg); NULL for "no data" |
-| **App** (10 tables) | Application state and records outside the pipeline: `users`, `consents`, `prescription_scans`, `appointments`, `doctor_questions`, `notifications`, `refill_forecasts`, `patient_preventive_status`, `medication_explanations`, `calendar_syncs` | The app and services | Yes | `user_id` |
-| **Reference** (11 tables) | Seeded lookups with source and licence | Seed scripts only | Versioned reload | `source`, licence |
+| **Silver** (17 tables) | Typed facts | User, importers, and services after the user confirms | Yes for logs (soft delete, `updated_at`); sensor tables are append-only | `user_id`, `source`, `bronze_id`; UTC timestamps; canonical units (mmol/L, g, mg); NULL for "no data" |
+| **App** (16 tables) | Application state and records outside the pipeline: `users`, `consents`, `prescription_scans`, `appointments`, `doctor_questions`, `notifications`, `refill_forecasts`, `patient_preventive_status`, `medication_explanations`, `calendar_syncs`, `nudge_policy`, `adherence_barriers`, `content_proposals`, `ai_usage_daily`, `extra_emergency_contacts`, `food_suggestions` | The app and services | Yes | `user_id` |
+| **Reference** (12 tables) | Seeded lookups with source and licence | Seed scripts only | Versioned reload | `source`, licence |
 | **Gold** (15 tables, 6 views) | Derived values and application memory | Deterministic code (`scripts/build_gold_v2.py` today), nightly reflection through the Memory Service | Recomputed; `briefs` are fixed once `ready` | `user_id`; `built_at` on derived tables |
 | **Operations** (6 tables) | Logs, conversations, audit trail | The harness and services | `event_log` is append-only | Ids and digests only, never health values or free text |
 
@@ -229,9 +238,10 @@ For each feature: what a user action writes (Bronze then Silver or App), and wha
 | F16 What Equinox has learned | `memory_facts` | `memory_facts`, evidence rows |
 | F17 Multilingual and TTS | none | `user_profile.language` |
 | F18 Lifestyle timeline and day traces | none | `timeline_5min`, `meal_response`, `exercise_response`, `glucose_events`, `baselines` |
+| Meal suggestions (menu, [menu.md](menu.md)) | `food_suggestions` (the dishes shown; `picked_at` when added), `food_images` (a picture request per new dish; the picture goes to the private `food-images` bucket) | `food_logs` (nothing logged in 90 days, lighter than the usual meal), `foods`; pictures by `GET /api/v1/nutrition/food-image/{key}` |
 
 ## 7. How it is built today, and one catch
 
-Built and loaded on 2026-10-05 (data-model-v2.md section 11): the schema is Alembic 0017 to 0020; the demo patient comes from `scripts/generate_mr_tan.py` and `scripts/load_mr_tan_v2.py`; Gold is built by `scripts/build_gold_v2.py` (the timeline is Python, the SQL view `v_timeline_5min` is not written yet). Dependency order of the tables: extensions, enums and `users`; Reference; the ten Bronze tables; Silver; App and Gold; Operations; then the views.
+Built and loaded on 2026-10-05 (data-model-v2.md section 11): the schema was Alembic 0017 to 0020 then and is **0040 on 2026-10-15** (76 tables; the changes since are listed in data-model-v2.md section 11); Mr Tan's example record (read-only for everyone in the app) comes from `scripts/generate_mr_tan.py` and `scripts/load_mr_tan_v2.py`; Gold is built by `scripts/build_gold_v2.py` (the timeline is Python, the SQL view `v_timeline_5min` is not written yet). Dependency order of the tables: extensions, enums and `users`; Reference; the ten Bronze tables; Silver; App and Gold; Operations; then the views.
 
 **The catch (still true).** Four columns in kept tables point at Gold or Operations tables: `appointments.brief_id` and `doctor_questions.brief_id` (to `briefs`), `prescription_scans.agent_run_id` (to `agent_runs`) and `conversations.summary_episode_id` (to `memory_episodes`). They exist as real foreign keys since migration 0014. Everything else points the right way: Gold, Operations and views point at Silver, App and Reference, never the reverse.

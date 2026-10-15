@@ -1,6 +1,6 @@
 # F4 on the Home page: due now, next dose, and "why was it not confirmed?"
 
-**Status (2026-10-08): built, pending Joely's testing.** This is the first part of F4 (the adherence engine): what to take now, the next dose, the missed-dose question and its sheet H7. Reminders and notifications, refill reminders and the adherence timeline are not part of this build.
+**Status (2026-10-08): built, pending Joely's testing.** This is the first part of F4 (the adherence engine): what to take now, the next dose, the missed-dose question and its sheet H7. Reminders and notifications, refill reminders and the adherence timeline are not part of this build. **Updated 2026-10-15:** the card described below has since been reshaped: `DoseCard.tsx` no longer exists. The due-now dose is a banner on Home (`apps/web/src/features/home/HomeBanners.tsx`, from `GET /doses/today` via `useDoses`) and the day's doses sit in Today's plan (`TodayPlan.tsx`). `POST /doses/{id}/untaken` was added. The wording and states in section 1 are the original design and were not re-checked against the new Home.
 
 ## 1. What the person sees (Home, screen B1)
 
@@ -47,17 +47,18 @@ Answering twice is refused ("already answered"), and a dose that can still be ta
 | `GET /doses/today` | `app/api/routers/doses.py`: due, unconfirmed (up to 3), next dose, doses taken today, whether there are medicines with set times |
 | `POST /doses/{id}/taken` | marks taken now (idempotent) |
 | `POST /doses/{id}/reason` | `{reason, note}` as above |
-| Home card | `apps/web/src/features/home/DoseCard.tsx`, refreshed every minute |
+| `POST /doses/{id}/untaken` | "I did not take it after all": back to waiting, and the pill goes back on the stock |
+| Home | `apps/web/src/features/home/HomeBanners.tsx` (due now) and `TodayPlan.tsx` (the day's plan); the data is refreshed every minute (`useDoses`). The earlier `DoseCard.tsx` is gone |
 | Sheet H7 | `apps/web/src/features/sheets/MissSheet.tsx`, registered in `app/sheetRegistry.tsx` |
 | Tests | `tests/unit/test_dose_text.py` (18), `tests/db/test_dose_store.py` (16) |
 
 ## 5. Tried on 2026-10-08
 
-Real browser, phone size, Demo account (one medicine, CRESTOR at 8:00 am): the card says "Next: CRESTOR, 1 Tab, tomorrow at 8:00 am." With three planted test doses (one open now, one from this morning, one from yesterday): "Due now" with Taken, then two "not confirmed" notes; "Side effects" with a note saved the dose as missed, kept the note and added the doctor question; "I took it, forgot to log" and Taken both worked and the card ended on "All done for now". The test rows and question were removed afterwards (the append-only event log keeps its entries). Mr Tan's own history (554 doses) was not touched; the app made pending rows for today and tomorrow when his Home was opened, and they were removed again after testing.
+Real browser, phone size, the demo account of that time (since removed) (one medicine, CRESTOR at 8:00 am): the card says "Next: CRESTOR, 1 Tab, tomorrow at 8:00 am." With three planted test doses (one open now, one from this morning, one from yesterday): "Due now" with Taken, then two "not confirmed" notes; "Side effects" with a note saved the dose as missed, kept the note and added the doctor question; "I took it, forgot to log" and Taken both worked and the card ended on "All done for now". The test rows and question were removed afterwards (the append-only event log keeps its entries). Mr Tan's own history (554 doses) was not touched; the app made pending rows for today and tomorrow when his Home was opened, and they were removed again after testing.
 
 ## 6. Not built, and open
 
-- Reminders at the dose time and one hour later (notifications), and refill reminders 7 days ahead.
+- Reminders at the dose time and one hour later (notifications), and refill reminders 7 days ahead. In-app notifications and reminder emails now exist (`app/api/routers/notifications.py`, `app/services/notify_email.py`, docs/specs/email-notifications.md); which reminders they cover was not traced here.
 - The adherence timeline and reason breakdown in the doctor brief (the brief should read `medication_log` and `miss_note`).
 - A per-medicine window length.
 - Nothing yet turns a long-unanswered dose into `missed` by itself: it stays "not confirmed" for 2 days, then is simply not asked about.

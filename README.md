@@ -72,7 +72,7 @@ Equinox gives the patient a calm, everyday companion and gives the doctor the no
 | API | Python, FastAPI, background jobs with APScheduler, LangGraph agents |
 | Data | PostgreSQL (Supabase) with Alembic migrations; private file storage for photos |
 | AI | Google Vertex AI: Gemini for text and photos, a Gemini image model for dish pictures, embeddings for memory; ElevenLabs for speech |
-| Integrations | Workato (calendar reminders and e-mail), optional Google Cloud Vision |
+| Integrations | Workato (calendar reminders and e-mail), Google Cloud Vision (optional label reader, with offline OCR as the default) |
 | Hosting | Firebase Hosting for the web app, Cloud Run for the API (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)) |
 
 ```
@@ -112,6 +112,7 @@ How the pieces fit together. Click an image to see it full size.
 
 ## Documentation
 
+- [**Full project dossier**: problem, solution, every screen, ethics, feasibility, limitations and future work](docs/EQUINOX-PROJECT-DOSSIER.md)
 - [Product requirements](docs/specs/prd.md)
 - [Architecture](docs/specs/architecture.md)
 - [App flow and features](docs/specs/app-flow-and-features.md)

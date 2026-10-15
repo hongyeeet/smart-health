@@ -1,6 +1,6 @@
 # Bronze and Silver: how the data layers work, table by table
 
-> **History only (2026-10-05).** This walkthrough describes the v1 Bronze and Silver tables (one `ingestion_events` table and 31 Silver tables). They were replaced by data model v2 (one Bronze and one Silver table per source): see [data-model-v2.md](data-model-v2.md) and [data-flow.md](data-flow.md).
+> **History only (2026-10-05).** This walkthrough describes the v1 Bronze and Silver tables (one `ingestion_events` table and 31 Silver tables). They were replaced by data model v2 (one Bronze and one Silver table per source): see [data-model-v2.md](data-model-v2.md) and [data-flow.md](data-flow.md). On 2026-10-15 the database has 76 tables at Alembic 0040 (Bronze 10, Silver 17, Gold 15, App 16, Reference 12, Operations 6); the "43 tables" and "no sign-in screens" below describe the old state. Today the app opens on Mr Tan's read-only example record, anyone can create their own user from the avatar menu, and the user is chosen by an `X-User` header (demo-grade, no real login).
 
 A guide to the two lower layers of the Equinox database (the **medallion** layers): what each table is for, who or what writes into it, and exactly how the columns link to each other. It covers the **43 tables** built in E1-1 and E1-2 (1 Bronze, 31 Silver, 11 Reference). Gold (derived values, memory, briefs) is built in E1-3 and is only mentioned where Silver feeds it.
 

@@ -12,15 +12,15 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 
 1. **No medication advice, ever.** No code path may produce text recommending starting, stopping, skipping, changing, doubling or substituting a medication or dose. Dose text shown to users comes **only** from `medications` and `medication_schedule` fields the user confirmed.
 2. **LLM generates language, code generates facts.** Interactions (`services/clash.py`), thresholds (`services/thresholds.py`), adherence, momentum, food response and every number in the brief are computed deterministically. Never ask an LLM to compute, infer or "estimate" these. (The only allowed estimate is meal nutrients, see rule 13.)
-3. **`app/services/` must not import from `app/agents/`, `app/llm/`, `app/decision/` or `app/memory/`.** (Enforced by an import-linter test.)
-4. **Every patient-facing AI output passes `guardrails/output_guard.py`.** No direct `llm.generate()` → UI path. On guard failure, return the approved template, never the raw draft.
+3. **`app/services/` must not import from `app/agents/` or `app/llm/`** (the JEV client is `app/llm/jev.py`; there is no `app/decision/` or `app/memory/` folder in the code). `services/api/tests/unit/test_layering.py` checks only the medicine-scan modules today (`scheduler.py` imports `app.agents`), so the rule is not yet enforced for every service.
+4. **Every patient-facing AI output passes the output guard** (today in the code: `nutritionstore.guarded`, the JEV guard, and `app/services/chat_guard.py` for chat; there is no `guardrails/output_guard.py` file). No direct `llm.generate()` → UI path. On guard failure, return the approved template, never the raw draft.
 5. **Urgent path has no LLM.** Threshold breaches and red-flag symptoms go straight to templated urgent content. Never block or delay it on a network/LLM call.
 6. **No diagnosis.** Never output condition names as a conclusion about the user ("you have neuropathy"). Patterns are phrased as "worth discussing with your doctor".
 7. **Honest uncertainty.** Unknown → say unknown: `null` + confidence 0 in extraction, "not checked" for interactions without reference data, "learning" for baselines with < 10 days. Never default to "safe", "normal" or 0.
 8. **No hidden findings.** Anything placed in a doctor brief must be viewable by the patient.
 9. **Cited health content only.** Lifestyle/drug explanations must come from `knowledge_chunks` and carry source ids; the output guard rejects uncited health claims.
 10. **Agents have least privilege.** Tools are registered per agent (architecture.md §5.2). Do not add a write tool to an agent without updating that table and adding tests. No agent may write medications, doses, thresholds or consents.
-11. **Thresholds live in `config/thresholds.yaml`**, never hard-coded, and carry the comment `# clinical validation pending`.
+11. **Thresholds live in settings** (`app/core/config.py`, placeholders such as `meal_high_sodium_mg`, set from the environment; there is no `config/thresholds.yaml`), never hard-coded in logic, and carry the comment `# clinical validation pending`.
 12. **Red-team suite must be 100% green** (`services/api/tests/redteam/`). Never skip, xfail or weaken a red-team test to make CI pass.
 13. **Estimates are labelled as estimates.** The LLM may estimate meal nutrients from a photo or text. Store them as `evidence_status = inferred` with a confidence, keep the original and the raw analysis, show "Estimated" until the user confirms, and let the user edit. Never present an estimate as measured. Everything downstream is computed in code from the stored values.
 14. **JEV supports decisions and never controls safety.** Urgent thresholds, interaction lookup, refusal rules and dose logic run in code. A JEV answer below the confidence floor (start at 0.8), or a JEV outage, takes the conservative path (refusal template, "not checked", ask the user). A rule that fires always beats a JEV answer.
@@ -61,7 +61,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 - Pydantic v2 models for every request/response; no raw dicts across layers.
 - Layering: `routers` (HTTP only) → `services` (domain logic, deterministic) / `agents` (LLM orchestration) → `db` (models, queries). Routers contain no business logic.
 - Async SQLAlchemy 2.0; no N+1 queries in list endpoints (use `selectinload` / joins).
-- All external calls (LLM, TTS, OCR, Calendar, storage) go through a wrapper in `llm/`, `decision/` or `integrations/`, with timeout, retry and logging. Never call SDKs directly from routers/services.
+- All external calls (LLM, TTS, OCR, Calendar, storage) go through a wrapper in `llm/` (including the JEV client `llm/jev.py`) or `integrations/`, with timeout, retry and logging. Never call SDKs directly from routers/services.
 - Prompts live in `agents/prompts/*.md` with a `version:` header; `agent_runs.prompt_version` records it. No prompt strings inline in Python.
 - LLM calls that return structure use JSON-schema / function-calling output and are validated with Pydantic; on validation failure retry once, then fail safe.
 - Config via `pydantic-settings` from env; every new variable is added to `.env.example` with a comment.
@@ -81,7 +81,7 @@ These protect patients and are what the judges score under Responsible AI. **Bre
 ### Backend
 - Define domain errors in `core/errors.py` (`NotFound`, `ValidationFailed`, `InvalidTransition`, `ConsentRequired`, `ExternalServiceError`, `GuardBlocked`, `RateLimited`). Map them to RFC 7807 `application/problem+json` responses with a stable `code` field. Never leak stack traces or SQL to clients.
 - Validate at boundaries (request bodies, uploaded files, external API responses, LLM outputs). Trust internal calls.
-- External services: timeout (LLM 30 s, vision 45 s, TTS 10 s, others 10 s), retry with exponential backoff + jitter for 429/5xx (max 3), no retry on 4xx.
+- External services: timeout (LLM and vision 45 s as set by `LLM_TIMEOUT_S`, JEV 10 s, TTS 10 s, others 10 s), retry with exponential backoff + jitter for 429/5xx (max 3), no retry on 4xx.
 
 ### Fail-safe matrix (what users see when something fails)
 | Failure | Behaviour |
@@ -117,7 +117,7 @@ A task is done only when:
 
 Demo scope: row-level security, consent-scoped retrieval, data-classification tagging and retention workflows are deferred (memory.md section 13). The basics below still apply.
 - No secrets in code, fixtures or git history; use `.env` (git-ignored) and `.env.example`.
-- JWT auth on every non-public route; every query scoped by `user_id` from the token (never from the request body).
+- Demo scope: the app has no sign-in. A person is the key the app sends as the `X-User` header (made on the device at set-up); every query is scoped by that key (never by the request body). Mr Tan's example record is read-only for everyone. Real JWT auth is still to do before any real use.
 - Share tokens: 32 random bytes, stored as SHA-256 hash, expiring, revocable, access-logged.
 - File uploads: allow-list MIME types (jpeg, png, heic, csv, zip, xml), size limit 10 MB, strip EXIF before storage.
 - Treat all user text, image text and imported file content as untrusted input for agents (prompt-injection defence: delimited, never concatenated into system prompts).
