@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = (lambda ps: ps[4] if len(ps) > 4 else ps[-1])(Path(__file__).resolve().parents)      # in the container the code sits at /srv, with no repo above it
 
 
 class Settings(BaseSettings):

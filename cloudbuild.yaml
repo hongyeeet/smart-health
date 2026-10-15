@@ -1,0 +1,61 @@
+# Builds the API image once and deploys it as two Cloud Run services (docs/handover/deployment-gcp.md, step 5):
+#   equinox-api     the web app's API, scheduler OFF, scales 0 to 5
+#   equinox-worker  the same image, scheduler ON, exactly one instance with the CPU always on (reminders, emails, dish pictures, nightly learning)
+# Secrets come from Secret Manager (never from this file). The three Workato webhook ADDRESSES are secrets too: for a Workato webhook the address is
+# the only password, so they are kept in Secret Manager and not written here as plain environment variables.
+# SCAN_OCR_ENGINE is deliberately not set: the code default is "local" (offline reader). Set it to "vision" only after Joely confirms (the original
+# photo, with name and ID, then goes to Google Cloud Vision); add it with `gcloud run services update ... --update-env-vars SCAN_OCR_ENGINE=vision`.
+substitutions:
+  _REGION: asia-southeast1
+  _REPO: equinox
+  _RUN_SA: equinox-run@smart-health-510414.iam.gserviceaccount.com
+  _SECRETS: DATABASE_URL=equinox-database-url:latest,SUPABASE_URL=equinox-supabase-url:latest,SUPABASE_SERVICE_KEY=equinox-supabase-service-key:latest,GOOGLE_API_KEY=equinox-google-api-key:latest,OPEN_ROUTER_API_KEY=equinox-open-router-key:latest,WORKATO_WEBHOOK_TOKEN=equinox-workato-webhook-token:latest,WORKATO_EMAIL_WEBHOOK_TOKEN=equinox-workato-email-token:latest,NOTIFY_SECRET=equinox-notify-secret:latest,WORKATO_WEBHOOK_URL=equinox-workato-calendar-url:latest,WORKATO_CALENDAR_REMOVE_URL=equinox-workato-remove-url:latest,WORKATO_EMAIL_WEBHOOK_URL=equinox-workato-email-url:latest
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:latest', 'services/api']
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api']
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - equinox-api
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA
+      - --region=${_REGION}
+      - --service-account=${_RUN_SA}
+      - --allow-unauthenticated
+      - --min-instances=0
+      - --max-instances=5
+      - --concurrency=40
+      - --memory=2Gi
+      - --cpu=1
+      - --timeout=120
+      - --set-env-vars=^@^APP_NAME=Equinox@APP_BASE_URL=https://team-shika-equinox.web.app@API_PUBLIC_URL=https://team-shika-equinox.web.app@DEMO_MODE=true@SCHEDULER_ENABLED=false@SCAN_OCR_ENABLED=true@GOOGLE_CLOUD_PROJECT=$PROJECT_ID@CORS_ORIGINS=https://team-shika-equinox.web.app,https://team-shika-equinox.firebaseapp.com
+      - --update-secrets=${_SECRETS}
+  - id: deploy-worker
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - equinox-worker
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA
+      - --region=${_REGION}
+      - --service-account=${_RUN_SA}
+      - --no-allow-unauthenticated
+      - --min-instances=1
+      - --max-instances=1
+      - --no-cpu-throttling
+      - --memory=2Gi
+      - --cpu=1
+      - --set-env-vars=^@^APP_NAME=Equinox@APP_BASE_URL=https://team-shika-equinox.web.app@API_PUBLIC_URL=https://team-shika-equinox.web.app@DEMO_MODE=true@SCHEDULER_ENABLED=true@SCAN_OCR_ENABLED=true@GOOGLE_CLOUD_PROJECT=$PROJECT_ID
+      - --update-secrets=${_SECRETS}
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA
+options:
+  logging: CLOUD_LOGGING_ONLY
+serviceAccount: projects/$PROJECT_ID/serviceAccounts/equinox-build@$PROJECT_ID.iam.gserviceaccount.com
