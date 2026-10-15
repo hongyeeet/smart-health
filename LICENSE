@@ -1,0 +1,27 @@
+Equinox Proprietary Licence
+
+Copyright (c) 2026 Team Shika (Teo Hong Yi, Joely Lim, Damien Chua). All rights reserved.
+
+This repository and everything in it (source code, database migrations, documents, designs, images, logos and demo data) are the
+property of Team Shika. The project is published so that it can be viewed and evaluated, for example by the judges of the AI CAN DO
+IT Tencent Cloud Hackathon Singapore 2026 and by prospective clients and partners.
+
+You MAY:
+  - read and run the code on your own computer for the sole purpose of evaluating Equinox;
+  - quote short excerpts with credit to Team Shika.
+
+You MAY NOT, without the prior written permission of Team Shika:
+  - copy, modify, merge, translate or create derivative works of any part of the project;
+  - distribute, sublicense, sell, rent or host the project, or offer it as a service, whether free or for payment;
+  - use the project, in whole or in part, in another product, or to train or fine-tune any machine learning model;
+  - remove or change this notice, the copyright statement or the Equinox name and logo;
+  - use the Equinox name or logo to identify any other product or service.
+
+Third-party components (for example open-source libraries listed in the package and requirements files) remain under their own
+licences, which this licence does not change. Demo data is described in data/demo/DISCLOSURE.md.
+
+Equinox is a self-care and information tool. It is not a medical device and gives no medical advice. THE PROJECT IS PROVIDED "AS IS",
+WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. TO THE FULLEST EXTENT PERMITTED BY LAW, THE AUTHORS ARE NOT LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM THE PROJECT OR ITS USE.
+
+To ask for permission, contact the team through the GitHub repository owner.

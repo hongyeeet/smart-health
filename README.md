@@ -84,36 +84,31 @@ docs/specs/          product and architecture documents
 docs/DEPLOYMENT.md   Google Cloud deployment guide
 ```
 
-## Run it locally
+## Architecture
 
-You need Node 20+, Python 3.12+ and a PostgreSQL database.
+How the pieces fit together. Click an image to see it full size.
 
-```bash
-# 1. Configure: copy the example file and fill in your own keys (never commit .env)
-cp .env.example .env
+**System architecture:** what the person uses, what runs behind it and the outside services it calls.
 
-# 2. Database
-cd services/api
-pip install -r requirements.txt -r requirements-db.txt
-alembic upgrade head
+![System architecture](docs/assets/diagrams/03-system-architecture.png)
 
-# 3. API on http://localhost:8000
-python -m uvicorn app.main:app --port 8000
+**Agents and the learning loop:** one orchestrator routes each event; the learning loop only proposes and the person decides.
 
-# 4. Web app on http://localhost:5174 (in a second terminal)
-cd apps/web
-npm install
-npm run dev
-```
+![Agents and the learning loop](docs/assets/diagrams/04-agents-and-learning-loop.png)
 
-The web app proxies `/api` to the API. Medicine scanning also needs `pip install -r requirements-scan.txt`.
+**Agent flows by use case, with JEV safety gates:**
 
-Run the checks:
+![Agent flows by use case](docs/assets/diagrams/05-agent-flows.png)
 
-```bash
-cd services/api && python -m pytest tests/unit -q
-cd apps/web && npx tsc -b
-```
+**Ask Equinox, trust and safety:** what the chat can and can never read, and the checks every message passes.
+
+![Ask Equinox trust and safety](docs/assets/diagrams/06-chat-trust-and-safety.png)
+
+**Data model:** Bronze (as received), Silver (typed facts) and Gold (computed numbers), plus app, reference and operations tables.
+
+![Data model](docs/assets/diagrams/01-data-model.png)
+
+![Core tables](docs/assets/diagrams/02-core-tables.png)
 
 ## Documentation
 
@@ -127,3 +122,7 @@ cd apps/web && npx tsc -b
 ## Team
 
 **Team Shika:** Teo Hong Yi, Joely Lim, Damien Chua.
+
+## Licence
+
+Copyright (c) 2026 Team Shika. All rights reserved. Equinox is proprietary software: you may view and evaluate it, but you may not copy, modify, redistribute or use it commercially without written permission. See [LICENSE](LICENSE).
