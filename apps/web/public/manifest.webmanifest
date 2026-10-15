@@ -1,1 +1,1 @@
-{ "name": "Equinox", "short_name": "Equinox", "display": "standalone", "start_url": "/", "background_color": "#F6F4EE", "theme_color": "#F6F4EE", "icons": [] }
+{ "name": "Equinox", "short_name": "Equinox", "display": "standalone", "start_url": "/", "background_color": "#F6F4EE", "theme_color": "#F6F4EE", "icons": [{ "src": "/equinox-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }] }

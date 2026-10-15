@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { appConfig } from '@/config/app'
+import { Logo } from '@/ui/Logo'
 import { useTranslation } from 'react-i18next'
 import { useUi } from '@/state/store'
 import { cn } from '@/lib/cn'
@@ -216,7 +217,10 @@ function SideRail({ active, ask }: { active: TabKey | null; ask: boolean }) {
   const navigate = useNavigate()
   return (
     <nav aria-label={t('shell.mainNav', 'Main')} className="absolute inset-y-0 left-0 z-20 hidden w-24 flex-col gap-1 border-r border-line bg-card px-2 py-5 md:flex lg:w-60 lg:px-4">
-      <p className="mb-4 hidden px-3 font-serif text-h2 font-medium text-ink lg:block">{appConfig.name}</p>
+      <div className="mb-4 flex items-center justify-center gap-2.5 px-3 lg:justify-start">
+        <Logo size={30} />
+        <p className="hidden font-serif text-h2 font-medium text-ink lg:block">{appConfig.name}</p>
+      </div>
       {TABS.map(({ key, icon: Icon }) => {
         const label = labels[key]
         const on = active === key
