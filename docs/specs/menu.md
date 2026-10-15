@@ -1,0 +1,45 @@
+# Meal suggestions menu (E9)
+
+Decided by Hong Yi on 2026-10-14. A menu-style page, like a food-delivery app, of dishes for one meal. The mock-up is the artifact "Meal suggestions delivery mockup".
+It replaces the old "Lunch ideas" cards as the place to browse ideas (E8 stays for the reminder link). The care-team rating page K11 is now "Rate the meal ideas" on the Log tab.
+
+## What the person sees
+- Tabs All, Breakfast, Lunch, Dinner, Snack (first tab by the time of day in Singapore). Filters: Lower salt, Lower carbs, Hawker stall, Home cooked.
+- **Only new dishes.** A dish the person has logged in the last 90 days is never shown (same name, same words in another order, or a near match). The page never suggests what they already eat.
+- **Only lighter dishes.** A dish must be lighter than the person's usual meal of that kind (average of the last 60 days, needs 3 meals): lower in at least two of calories, carbohydrate and salt, and not more than 15% higher in the third. The cut-offs are placeholders pending the clinical owner. With no usual meal to compare with, the shelf rules decide.
+- Two sections: **Lighter versions of what you eat** (up to 3; a lighter swap for a food habit the memory loop noticed; lunch and dinner only) and **New to try** (up to 6; other database dishes). Raw or single-ingredient entries (raw, uncooked, powder, dried, flour, bran, syrup) are left out.
+- A dish card: picture, badge (Lighter swap, or New to you), name, serving, kcal, carbs, salt, why, and an estimated glucose rise.
+- "Your picks": up to three dishes; "Log when I eat" stamps them as picked and opens the meal log. (A "Remind me" button was in the mock and is not built.)
+- "How we choose" lists the three rules and a summary line with the real counts.
+
+## Numbers (all in code, `app/services/menu.py`)
+- Every glucose rise on this page is an **estimate**, because every dish is new to the person: the dish's carbohydrate times the person's own median rise per gram of
+  carbohydrate (from their own meals with 10 g of carbs or more), shown as a range of plus or minus 0.5 mmol/L. With no such history there is **no number** ("Glucose rise not known yet").
+- kcal for their own meals is worked out from the logged macros (4, 4 and 9 kcal per gram); for database dishes it is the published value.
+- Tag cut-offs are **placeholders pending the clinical owner**: lower salt at or below 700 mg, lower carbs at or below 45 g. A person's own meals have no hawker or home tag (not known).
+- The typical time on the active tab is the median time the person logs that meal (last 20, needs 5), otherwise 7:30 am, 12:15 pm, 6:30 pm, 4:00 pm.
+
+## Pictures (`app/services/food_images.py`)
+- One picture per DISH, shared by every person. `food_images.dish_key` is the dish name lower-cased, letters and digits joined by dashes.
+- A dish seen for the first time gets a `pending` row. A background job (every minute, at most 3 pictures) and the menu request itself make it in two steps on Vertex: **Gemini 3.8 Flash** (`gemini-3.8-flash`, the app's text model, which cannot output images in this project) writes one short sentence on how the dish looks when served in Singapore, then **`gemini-2.5-flash-image`** draws it from the dish name plus that sentence. If the sentence fails the picture is still made from the name
+  (the project's existing Vertex key works; no extra credentials). The result is shrunk to an 800 by 600 JPEG and stored in the **private** bucket `food-images`; the app loads it through
+  `GET /api/v1/nutrition/food-image/{key}` with a one-year immutable cache header.
+- A `ready` dish is **never generated again**, and opening the page never generates a picture: it only reads the row. A failed one is retried after 15 minutes, at most 3 times in all.
+  A daily cap `AI_CAP_VERTEX_IMAGE` (default 60) stops the worker; the dish keeps a plain placeholder until the next day. The page asks again every 8 seconds, up to 10 times, while pictures are waiting.
+- Only the dish name (and that one sentence) is sent to a model, in a fixed prompt: overhead photo, plain light background, no text, no people. The page tells the person the pictures are AI-made and only a guide.
+
+## Data (Alembic 0039)
+- `food_images` (Reference): `dish_key` primary key, `name`, `status` (pending, generating, ready, failed), `storage_key`, `model`, `prompt_hash`, `attempts`, `last_error` (a code, no private detail), timestamps.
+- `food_suggestions` (App): what was shown to one person for one meal on one day (`user_id`, `day`, `meal`, `suggestion_key`, `section`, `dish_key`, `name`, `payload` jsonb), and `picked_at`. Unique per person, day, meal and key.
+
+## Endpoints
+`GET /api/v1/nutrition/menu?meal=` (builds, stores, queues missing pictures), `GET /api/v1/nutrition/food-image/{key}` (public picture, immutable), `POST /api/v1/nutrition/menu/pick` (stamps `picked_at` and counts the suggestion as acted on).
+
+## Model choice
+On 2026-10-14 the project's key could reach only `gemini-2.5-flash-image` for pictures: `imagen-3.0-generate-002`, `imagen-3.0-fast-generate-001`, `imagen-4.0-generate-001` and the Gemini 3 and 3.1 image models all answered 404 (not found or no access), and `gemini-3.8-flash` cannot output images. Hong Yi chose the best reachable Gemini model. If another image model becomes available, change `FOOD_IMAGE_MODEL`.
+
+## Settings
+`FOOD_IMAGE_MODEL` (default `gemini-2.5-flash-image`), `FOOD_IMAGE_BUCKET` (default `food-images`), `AI_CAP_VERTEX_IMAGE` (default 60).
+
+## Not built
+A "Remind me" button; a Quick filter (it cannot be worked out from the data); pictures of dishes in other languages; removing or replacing a bad picture (set the row back to `pending` and `attempts` to 0 to make a new one).

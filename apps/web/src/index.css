@@ -1,0 +1,257 @@
+@import 'tailwindcss';
+@import '@fontsource/atkinson-hyperlegible/400.css';
+@import '@fontsource/atkinson-hyperlegible/700.css';
+@import '@fontsource/newsreader/400.css';
+@import '@fontsource/newsreader/500.css';
+@import '@fontsource/newsreader/600.css';
+
+@theme inline {
+  --color-canvas: var(--c-canvas);
+  --color-card: var(--c-card);
+  --color-well: var(--c-well);
+  --color-line: var(--c-line);
+  --color-ink: var(--c-ink);
+  --color-ink2: var(--c-ink2);
+  --color-ink3: var(--c-ink3);
+  --color-brand: var(--c-brand);
+  --color-brand-press: var(--c-brand-press);
+  --color-brand-soft: var(--c-brand-soft);
+  --color-on-brand: var(--c-on-brand);
+  --color-brass: var(--c-brass);
+  --color-brass-soft: var(--c-brass-soft);
+  --color-ok: var(--c-ok);
+  --color-ok-soft: var(--c-ok-soft);
+  --color-warn: var(--c-warn);
+  --color-warn-soft: var(--c-warn-soft);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-info: var(--c-info);
+  --color-info-soft: var(--c-info-soft);
+  --color-urgent: var(--c-urgent-bg);
+  --color-overlay: var(--c-overlay);
+
+  --font-sans: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', 'Noto Sans SC', 'Noto Sans Tamil', sans-serif;
+  --font-serif: 'Newsreader', 'Iowan Old Style', Georgia, 'Noto Serif SC', serif;
+
+  /* type scale follows the text-size setting (--ts is 1, or 1.5 for larger text) */
+  --text-display: calc(44px * var(--ts, 1));
+  --text-display--line-height: 1.02;
+  --text-xl: calc(32px * var(--ts, 1));
+  --text-xl--line-height: 1.08;
+  /* screen titles grow less than body text at 200%, so a long word such as "afternoon" still fits on a phone */
+  --text-h1: calc(28px * (1 + (var(--ts, 1) - 1) * 0.6));
+  --text-h1--line-height: 1.15;
+  --text-h2: calc(20px * var(--ts, 1));
+  --text-h2--line-height: 1.22;
+  --text-body: calc(18px * var(--ts, 1));
+  --text-body--line-height: 1.38;
+  --text-sub: calc(16px * var(--ts, 1));
+  --text-sub--line-height: 1.38;
+  --text-micro: calc(13px * var(--ts, 1));
+  --text-micro--line-height: 1.3;
+  /* bottom bar and side rail labels: they grow with the text setting, but less, so five labels still fit across a phone at 200% */
+  --text-tab: calc(14px * (1 + (var(--ts, 1) - 1) * 0.15));
+  --text-tab--line-height: 1.1;
+  /* button labels grow to 150% at the 200% setting, not 200%: a full-width button stays one line and the bottom bar stays short */
+  --text-btn: calc(18px * (1 + (var(--ts, 1) - 1) * 0.5));
+  --text-btn--line-height: 1.25;
+  --text-btn-sm: calc(16px * (1 + (var(--ts, 1) - 1) * 0.5));
+  --text-btn-sm--line-height: 1.25;
+  /* the one big number on the urgent screen */
+  --text-giant: calc(96px * (1 + (var(--ts, 1) - 1) * 0.4));
+  --text-giant--line-height: 1;
+  /* small floating controls (Ask): readable at 200% without growing into the page */
+  --text-ctl: calc(16px * (1 + (var(--ts, 1) - 1) * 0.3));
+  --text-ctl--line-height: 1.2;
+
+  --radius-chip: 999px;
+  --radius-card: 18px;
+  --radius-field: 12px;
+  --radius-sheet: 26px;
+
+  --shadow-sheet: 0 -10px 40px -12px rgba(10, 20, 15, 0.28);
+  --shadow-lift: 0 1px 2px rgba(10, 20, 15, 0.05), 0 8px 24px -14px rgba(10, 20, 15, 0.22);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  --ts: 1;
+  color-scheme: light;
+  /* height of the bottom tab bar (phone): 4rem of buttons and padding plus the safe area. Screens reserve exactly this much at their end */
+  --tab-space: calc(4rem + max(1.25rem, env(safe-area-inset-bottom)));
+}
+/* Home and Insights show a floating Ask button above the tab bar on a phone: pages keep that much extra room at their end */
+.has-ask {
+  --ask-space: 3.75rem;
+}
+@media (min-width: 768px) {
+  .has-ask {
+    --ask-space: 0px;
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@layer base {
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+html {
+  /* stop phones from inflating text on rotate, and the page from rubber-banding or pull-to-refreshing under the app */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+body {
+  overscroll-behavior: none;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  background: var(--c-canvas);
+  color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+  /* A long word (Tamil and Malay words are long, and 200% text makes them wider) breaks instead of pushing the page sideways. */
+  overflow-wrap: anywhere;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  /* no 300 ms tap delay and no double-tap zoom on controls */
+  touch-action: manipulation;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+:focus-visible {
+  outline: 3px solid var(--c-brand);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+}
+
+/* press feedback: every pressable thing acknowledges the finger */
+.press {
+  transition:
+    transform 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+.hide-scroll {
+  scrollbar-width: none;
+}
+/* scroll areas: momentum on iOS, and scrolling inside never drags the page behind it */
+.scroll-area {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.hide-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* serif numerals for readings and titles */
+.num {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press:active {
+    transform: none;
+  }
+  .press,
+  .scroll-area * {
+    transition-duration: 1ms !important;
+  }
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+}
+
+/* Not in a layer, so it wins over Tailwind's utility: the break-words class lets a long word overflow when its box is a flex item; anywhere also lowers the minimum width. */
+.break-words {
+  overflow-wrap: anywhere;
+}
+
+/* The bottom tab names are one short word each. A long word in Tamil or Malay is kept whole and the size follows the screen width, instead of being broken in the middle (5 tabs share 375 px). */
+.tab-label {
+  overflow-wrap: normal;
+}
+html:not([lang='en']) .tab-label {
+  font-size: min(var(--text-tab), 3.2vw);
+}
+
+/* the waiting steps in the chat appear one at a time */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* the one-line "thinking" text in the chat: a soft light that moves across the words (plain text when the person asks for less motion) */
+.think-shimmer {
+  color: var(--c-ink2);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .think-shimmer {
+    background: linear-gradient(90deg, var(--c-ink3) 0%, var(--c-ink) 45%, var(--c-ink3) 90%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 1.8s linear infinite;
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}

@@ -1,0 +1,499 @@
+{
+  "brief": {
+    "aiInsight": "AI insight.",
+    "alerts": "Alerts in the report",
+    "noAlerts": "No alerts were raised from your data in this period. That does not mean nothing needs attention.",
+    "sources": "From: {{sources}}. Sensor worn: {{wear}}."
+  },
+  "chat": {
+    "typing": "Equinox is typing"
+  },
+  "day": {
+    "bandNote": "The shaded band is your target range, set in your profile.",
+    "everything": "Everything logged",
+    "goTo": "Go to {{day}}",
+    "loggedLine": "Logged: {{summary}}.",
+    "moveAria": "Move between days with data",
+    "noGlucose": "No glucose readings for this day.",
+    "noNext": "No later day with data",
+    "noPrev": "No earlier day with data",
+    "noSleep": "No sleep total for this day.",
+    "slept": "Slept about {{h}} hours."
+  },
+  "home": {
+    "action": {
+      "checkin": "Do the check-in",
+      "workout": "Log a workout"
+    },
+    "bar": {
+      "activeMin": "Active minutes",
+      "ofGoal": "{{value}} of {{goal}}",
+      "strength": "Strength sessions"
+    },
+    "demo": {
+      "label": "Demo:",
+      "simulate": "Simulate a low reading"
+    },
+    "done": "Done",
+    "dose": {
+      "addSub": "Then we can show you what to take and when.",
+      "addTitle": "Add your medicines",
+      "after": "After this: {{title}}, {{when}}.",
+      "allDone": "All done for now",
+      "dueNow": "Due now",
+      "loadError": "We could not load your medicines. Tap to try again.",
+      "next": "Next: <0>{{title}}</0>, {{when}}.",
+      "notConfirmed": "{{when}} is not confirmed.",
+      "saveError": "We could not save that just now. Please try again.",
+      "tellUs": "Tell us why",
+      "withFood": ", with food",
+      "yourMeds": "Your medicines"
+    },
+    "food": {
+      "label": "Food",
+      "notNow": "Not now"
+    },
+    "hero": {
+      "caughtUp": "All caught up. Well done.",
+      "goodTime": "A good time to log",
+      "next": "Next: {{label}}",
+      "nothingDue": "Nothing more is due for now.",
+      "today": "Today's logging"
+    },
+    "loadError": "We could not load today's logs. Tap to try again.",
+    "log": "Log",
+    "lunch": {
+      "title": "Lunch ideas for you"
+    },
+    "more": {
+      "less": "See less",
+      "more": "See more"
+    },
+    "notYet": "Not yet",
+    "ring": {
+      "label": "{{done}} of {{total}} logs done today",
+      "of": "of {{total}}"
+    },
+    "row": {
+      "due": "{{label}}. A good time to log this."
+    },
+    "sensor": "Glucose comes from your sensor, so there is nothing to type.",
+    "streak": {
+      "many": "{{n}} days in a row",
+      "one": "{{n}} day in a row"
+    },
+    "week": "This week",
+    "whatToLog": "What to log today",
+    "worth": {
+      "body": "You have had {{label}} <0>{{n}} times</0> in the last 2 weeks, about <1>{{kcal}}</1> kcal and <2>{{sodium}}</2> mg salt each. Those are your own logged numbers.",
+      "heaviest": "Your {{dish}} ({{n}} times) is the heaviest. Next time you could try",
+      "notAdvice": "An idea for next time, not advice. Your logged meals are never changed.",
+      "notForMe": "Not for me",
+      "servingNote": "{{serving}} {{source}}. Typical values, so your portion may differ.",
+      "title": "Worth a look"
+    }
+  },
+  "insights": {
+    "bp": {
+      "legendBottom": "Bottom number",
+      "legendBottomV2": "Bottom number: diastolic BP",
+      "legendTop": "Top number",
+      "legendTopV2": "Top number: systolic BP"
+    },
+    "food": {
+      "avgPerDay": "Average {{value}} {{unit}} a day",
+      "carbsDay": "Carbohydrate",
+      "fatDay": "Fat",
+      "gapNote": "A gap means that day has no value for it, which is not the same as zero.",
+      "kcalDay": "Calories",
+      "mealsLogged": "{{meals}} meals logged. {{salt}} were high in salt and {{sugar}} high in sugar.",
+      "movedPlain": "The rise in glucose in the 2 hours after each food, from your sensor. Gentlest first.",
+      "proteinDay": "Protein",
+      "saltChart": "Salt (sodium)",
+      "seenRise": "Seen {{n}} times, rise {{low}} to {{high}} mmol/L"
+    },
+    "glucose": {
+      "avgChart": "Average glucose by day, mmol/L",
+      "avgEachDay": "Average each day",
+      "events": "{{spikes}} sharp rises, {{sustained}} long stretches above range, {{lows}} low readings.",
+      "fastingChart": "Morning fasting glucose by day, mmol/L",
+      "fastingPlain": "The average of your readings between 5 and 7 am each day.",
+      "fastingPlainBand": "The average of your readings between 5 and 7 am each day. The shaded band is your usual range from the 60 days before.",
+      "fastingTitle": "Morning (fasting) glucose",
+      "gmiSub": "Worked out from your average",
+      "inRange": "{{pct}}% of your readings were between {{low}} and {{high}} mmol/L.",
+      "inThisPeriod": "In this period",
+      "wornSub": "of this period"
+    },
+    "grid": {
+      "weekKey": "A darker square means more. A dash means there is no data for that day."
+    },
+    "overview": {
+      "alsoSame": "About the same as the {{n}} days before: {{list}}.",
+      "amountHours": "{{n}} hours",
+      "amountMinutes": "{{n}} minutes",
+      "amountMmol": "{{n}} mmol/L",
+      "amountPoints": "{{n}} points",
+      "amountSteps": "{{n}} steps a day",
+      "before7": "in the 7 days before",
+      "beforeDays": "in the {{n}} days before",
+      "change": {
+        "fasting": "Morning (fasting) glucose",
+        "steps": "Steps a day"
+      },
+      "changeLine": "{{label}}: {{current}} {{curWhen}}, {{previous}} {{prevWhen}}. {{move}}.",
+      "down": "Down {{amount}}",
+      "hint": {
+        "activity": "Minutes of activity that day.",
+        "doses": "Share of that day’s scheduled doses you took.",
+        "glucose": "Share of the day’s readings in range, as a percentage.",
+        "meals": "Meals logged that day.",
+        "sleep": "Hours slept, from your watch.",
+        "stress": "Your stress rating that day, from 1 (low) to 5 (high)."
+      },
+      "lastDays": "in the last {{n}} days",
+      "noCompare": "There is not enough data in both periods to compare yet.",
+      "notEnough": "Not enough data in one of the two periods to compare: {{list}}.",
+      "nothingMoved": "Nothing changed much from the {{n}} days before.",
+      "up": "Up {{amount}}",
+      "v": {
+        "avg": "Average glucose",
+        "cv": "Glucose ups and downs (CV)",
+        "doses": "Doses taken",
+        "gmi": "Estimated A1c (GMI)",
+        "sensor": "Sensor worn",
+        "steps": "Steps a day"
+      },
+      "valueHours": "{{n}} hours a night",
+      "valueMinutes": "{{n}} minutes",
+      "valueMmol": "{{n}} mmol/L",
+      "valuePct": "{{n}}%",
+      "valueScore": "{{n}} out of 5",
+      "valuesNote": "Your doctor reviews what these mean.",
+      "valueSteps": "{{n}} steps a day",
+      "valuesTitle": "What the values show"
+    },
+    "tl": {
+      "aboveUsual": "above usual range",
+      "back30": "Back 30 minutes",
+      "base": {
+        "before": "Baseline: your average for each hour of the day over the 60 days before this period ({{from}} to {{to}}). Blood pressure: one fixed value.",
+        "period": "Baseline: your average over this period. Blood pressure: one fixed value.",
+        "start": "Baseline: your average over the first 30 days of this period ({{from}} to {{to}}), as there is not enough before it. Blood pressure: one fixed value."
+      },
+      "belowUsual": "below usual range",
+      "bpTop": "Blood pressure (top number)",
+      "cmp": {
+        "falling": "Daily average falling about {{n}} a week.",
+        "flat": "Daily average is steady across the period.",
+        "lastDays": "Last {{n}} days",
+        "noteBefore": "Baseline: your average over the 60 days before this period. These are numbers from your own readings, not a verdict.",
+        "noteStart": "Baseline: your average over the first 30 days of this period. These are numbers from your own readings, not a verdict.",
+        "rising": "Daily average rising about {{n}} a week."
+      },
+      "dayBack": "−1 day",
+      "dayFwd": "+1 day",
+      "fwd30": "Forward 30 minutes",
+      "help": "Drag the marker, or click or tap anywhere on the charts. Arrow keys move it. The gauge on each chart shows your usual range as a bar, your baseline as a thin line, and the reading at the marker as a block.",
+      "lastMeal": "Last meal: {{line}}",
+      "legend": {
+        "baseShort": "Baseline",
+        "lowHigh": "Day’s low to high",
+        "night": "Night",
+        "outside": "Outside usual",
+        "trend": "Trend",
+        "usual": "Usual range",
+        "work": "Work hours",
+        "workDays": "Work days"
+      },
+      "meal": {
+        "breakfast": "Breakfast",
+        "dinner": "Dinner",
+        "lunch": "Lunch",
+        "snack": "Snack"
+      },
+      "mealLine": "{{meal}} at {{time}} ({{ago}} before){{food}}",
+      "mealWord": "Meal",
+      "min30back": "−30 min",
+      "min30fwd": "+30 min",
+      "missedMany": "{{n}} doses marked missed",
+      "missedOne": "a dose marked missed",
+      "nextMeal": "Go to the next meal",
+      "noMeal": "No meal logged before this moment.",
+      "nothingNear": "No symptoms, missed doses or exercise within 2 hours.",
+      "prevMeal": "Go to the previous meal",
+      "symptomNoted": "{{s}} noted",
+      "tapDay": "Drag the marker or tap a day to read it. Open a day for its 5-minute detail.",
+      "within2h": "Within 2 hours: {{list}}.",
+      "withinUsual": "within usual range",
+      "work": {
+        "outside": "Outside work hours"
+      }
+    }
+  },
+  "log": {
+    "hub": {
+      "mealSub": "Photo of your food",
+      "suggestionsSub": "The meal ideas Equinox made. Rate each one: reasonable, not reasonable or unsafe."
+    },
+    "meal": {
+      "chooseFile": "Pick a photo from your files",
+      "choosePhoto": "Choose a photo of your meal",
+      "dish": "Dish",
+      "opensCamera": "Opens your camera",
+      "subResult": "These numbers are estimates. Change anything that is not right, then save.",
+      "tip4": "The numbers are estimates. You can correct any of them before you save.",
+      "upload": "Choose from your photos"
+    },
+    "sym": {
+      "afterExercise": "After exercise",
+      "afterMeal": "After a meal",
+      "asleep": "While asleep",
+      "atRest": "At rest",
+      "beforeMeal": "Before a meal",
+      "blurry": "Blurry vision",
+      "bothFeet": "Both feet",
+      "breathless": "Breathlessness at rest",
+      "chestPain": "Chest pain",
+      "confusion": "Confusion",
+      "dizzy": "Dizzy",
+      "elsewhere": "Somewhere else",
+      "fainting": "Fainting",
+      "footPain": "Foot pain",
+      "hands": "Hands",
+      "headache": "Headache",
+      "howLongLabel": "How long you felt it",
+      "label": "Symptom",
+      "leftFoot": "Left foot",
+      "nightSweats": "Night sweats",
+      "numbness": "Numbness",
+      "other": "Something else",
+      "pickTime": "Pick a time",
+      "rightFoot": "Right foot",
+      "severe": "Severe",
+      "shaky": "Shaky or sweaty",
+      "spinning": "Spinning",
+      "standUp": "When I stand up",
+      "stomach": "Upset stomach",
+      "thirsty": "More thirsty than usual",
+      "tingling": "Tingling",
+      "tired": "Tired more than usual",
+      "today": "Today",
+      "unknown": "Still going or not sure",
+      "urine": "Passing more urine",
+      "visionLoss": "Sudden vision loss or a curtain across my vision",
+      "vomiting": "Vomiting",
+      "weak": "Barely noticeable",
+      "wound": "Slow-healing wound",
+      "yesterday": "Yesterday"
+    }
+  },
+  "me": {
+    "account": {
+      "demoNotice": "Mr Tan is demo data. His record is not changed from here. To try editing, switch to the demo user.",
+      "f": {
+        "racePlaceholder": "For example, Chinese, Malay or Indian"
+      }
+    },
+    "email": {
+      "address": "Gmail address"
+    },
+    "language": {
+      "larger": "Larger, 200%"
+    },
+    "learned": {
+      "aiLine": "{{kind}}: <b>{{calls}}</b> of <b>{{cap}}</b> today",
+      "barrierIdeas": "Ideas about what gets in the way",
+      "barrierTitle": "What gets in the way",
+      "factMeta": "{{source}} · version {{version}}",
+      "guardCounts": "Safety checks on its own wording: <b>{{passed}}</b> passed, <b>{{blocked}}</b> blocked",
+      "kpiConfirmed": "Confirmed ideas",
+      "kpiConfirmedSub": "{{n}} waiting for you",
+      "kpiError": "We could not load these numbers just now.",
+      "kpiMissed": "Doses missed this week",
+      "kpiMissedSub": "Out of {{n}} doses this week",
+      "kpiOnTime": "Doses taken on time",
+      "kpiOnTimeSub": "Last {{days}} days, of {{n}} confirmed doses",
+      "kpiReason": "Most common reason",
+      "kpiReasonSub_one": "{{count}} of {{missed}} missed doses, last {{days}} days",
+      "kpiReasonSub_other": "{{count}} of {{missed}} missed doses, last {{days}} days",
+      "learningFrom": "Suggestions it is learning from",
+      "noticedMany": "<b>{{n}}</b> things noticed or changed",
+      "noticedOne": "<b>{{n}}</b> thing noticed or changed",
+      "reminderCounts": "<b>{{sent}}</b> reminders sent, <b>{{opened}}</b> opened, <b>{{acted}}</b> acted on",
+      "suggestionCounts": "<b>{{chosen}}</b> of <b>{{shown}}</b> suggestions chosen by you",
+      "suggestionLine": "{{name}}: shown {{shown}}, chosen {{chosen}}",
+      "thisWeek": "This week"
+    }
+  },
+  "onboarding": {
+    "demo": {
+      "0": "S",
+      "1": "t",
+      "2": "a",
+      "3": "r",
+      "4": "t",
+      "5": " ",
+      "6": "a",
+      "7": "s",
+      "8": " ",
+      "9": "d",
+      "10": "e",
+      "11": "m",
+      "12": "o",
+      "13": " ",
+      "14": "p",
+      "15": "a",
+      "16": "t",
+      "17": "i",
+      "18": "e",
+      "19": "n",
+      "20": "t",
+      "america": "\u001b[31mS\u001b[39m\u001b[37mt\u001b[39m\u001b[34ma\u001b[39m\u001b[31mr\u001b[39m\u001b[37mt\u001b[39m \u001b[31ma\u001b[39m\u001b[37ms\u001b[39m \u001b[31md\u001b[39m\u001b[37me\u001b[39m\u001b[34mm\u001b[39m\u001b[31mo\u001b[39m \u001b[34mp\u001b[39m\u001b[31ma\u001b[39m\u001b[37mt\u001b[39m\u001b[34mi\u001b[39m\u001b[31me\u001b[39m\u001b[37mn\u001b[39m\u001b[34mt\u001b[39m",
+      "bgBlack": "\u001b[40mStart as demo patient\u001b[49m",
+      "bgBlue": "\u001b[44mStart as demo patient\u001b[49m",
+      "bgBrightBlue": "\u001b[104mStart as demo patient\u001b[49m",
+      "bgBrightCyan": "\u001b[106mStart as demo patient\u001b[49m",
+      "bgBrightGreen": "\u001b[102mStart as demo patient\u001b[49m",
+      "bgBrightMagenta": "\u001b[105mStart as demo patient\u001b[49m",
+      "bgBrightRed": "\u001b[101mStart as demo patient\u001b[49m",
+      "bgBrightWhite": "\u001b[107mStart as demo patient\u001b[49m",
+      "bgBrightYellow": "\u001b[103mStart as demo patient\u001b[49m",
+      "bgCyan": "\u001b[46mStart as demo patient\u001b[49m",
+      "bgGray": "\u001b[100mStart as demo patient\u001b[49m",
+      "bgGreen": "\u001b[42mStart as demo patient\u001b[49m",
+      "bgGrey": "\u001b[100mStart as demo patient\u001b[49m",
+      "bgMagenta": "\u001b[45mStart as demo patient\u001b[49m",
+      "bgRed": "\u001b[41mStart as demo patient\u001b[49m",
+      "bgWhite": "\u001b[47mStart as demo patient\u001b[49m",
+      "bgYellow": "\u001b[43mStart as demo patient\u001b[49m",
+      "black": "\u001b[30mStart as demo patient\u001b[39m",
+      "blackBG": "\u001b[40mStart as demo patient\u001b[49m",
+      "blue": "\u001b[34mStart as demo patient\u001b[39m",
+      "blueBG": "\u001b[44mStart as demo patient\u001b[49m",
+      "bold": "\u001b[1mStart as demo patient\u001b[22m",
+      "brightBlue": "\u001b[94mStart as demo patient\u001b[39m",
+      "brightCyan": "\u001b[96mStart as demo patient\u001b[39m",
+      "brightGreen": "\u001b[92mStart as demo patient\u001b[39m",
+      "brightMagenta": "\u001b[95mStart as demo patient\u001b[39m",
+      "brightRed": "\u001b[91mStart as demo patient\u001b[39m",
+      "brightWhite": "\u001b[97mStart as demo patient\u001b[39m",
+      "brightYellow": "\u001b[93mStart as demo patient\u001b[39m",
+      "cyan": "\u001b[36mStart as demo patient\u001b[39m",
+      "cyanBG": "\u001b[46mStart as demo patient\u001b[49m",
+      "dim": "\u001b[2mStart as demo patient\u001b[22m",
+      "gray": "\u001b[90mStart as demo patient\u001b[39m",
+      "green": "\u001b[32mStart as demo patient\u001b[39m",
+      "greenBG": "\u001b[42mStart as demo patient\u001b[49m",
+      "grey": "\u001b[90mStart as demo patient\u001b[39m",
+      "hidden": "\u001b[8mStart as demo patient\u001b[28m",
+      "inverse": "\u001b[7mStart as demo patient\u001b[27m",
+      "italic": "\u001b[3mStart as demo patient\u001b[23m",
+      "magenta": "\u001b[35mStart as demo patient\u001b[39m",
+      "magentaBG": "\u001b[45mStart as demo patient\u001b[49m",
+      "notice": "Mr Tan is demo data. His record is not changed from here. To try setup, switch to the demo user or start as a new person.",
+      "rainbow": "\u001b[31mS\u001b[39m\u001b[33mt\u001b[39m\u001b[32ma\u001b[39m\u001b[34mr\u001b[39m\u001b[35mt\u001b[39m \u001b[33ma\u001b[39m\u001b[32ms\u001b[39m \u001b[35md\u001b[39m\u001b[31me\u001b[39m\u001b[33mm\u001b[39m\u001b[32mo\u001b[39m \u001b[35mp\u001b[39m\u001b[31ma\u001b[39m\u001b[33mt\u001b[39m\u001b[32mi\u001b[39m\u001b[34me\u001b[39m\u001b[35mn\u001b[39m\u001b[31mt\u001b[39m",
+      "random": "\u001b[33mS\u001b[39m\u001b[35mt\u001b[39m\u001b[90ma\u001b[39m\u001b[37mr\u001b[39m\u001b[7mt\u001b[27m \u001b[31ma\u001b[39m\u001b[97ms\u001b[39m \u001b[34md\u001b[39m\u001b[93me\u001b[39m\u001b[92mm\u001b[39m\u001b[96mo\u001b[39m \u001b[92mp\u001b[39m\u001b[31ma\u001b[39m\u001b[90mt\u001b[39m\u001b[35mi\u001b[39m\u001b[31me\u001b[39m\u001b[94mn\u001b[39m\u001b[33mt\u001b[39m",
+      "red": "\u001b[31mStart as demo patient\u001b[39m",
+      "redBG": "\u001b[41mStart as demo patient\u001b[49m",
+      "reset": "\u001b[0mStart as demo patient\u001b[0m",
+      "strikethrough": "\u001b[9mStart as demo patient\u001b[29m",
+      "strip": "Start as demo patient",
+      "stripColors": "Start as demo patient",
+      "trap": "ϞŦ@ȐŁ ΛϨ Ɗ੬ԡ\u06dd Ҏ@Ŧ༏ËÑͳ",
+      "underline": "\u001b[4mStart as demo patient\u001b[24m",
+      "white": "\u001b[37mStart as demo patient\u001b[39m",
+      "whiteBG": "\u001b[47mStart as demo patient\u001b[49m",
+      "yellow": "\u001b[33mStart as demo patient\u001b[39m",
+      "yellowBG": "\u001b[43mStart as demo patient\u001b[49m",
+      "zalgo": "S̡̙̯̱͕̰̪̹͉͚͎̞͈̗̬͈͈̘̣̻̣̙̯̮̤͉̺͔͙̱̹̤̪̪̪͇͔͌̏̒̓͛ͤ͗̎̓͊ͤ͆ͬ͌̎̔̑ͬ͢t̛͉̻̮̥̙̭͙̟̥̙͙̩̙̩͔̲̰̲͓̜̟̰̫͈͉̬̗͚̬͎͚̬͂̇̂͒̃̇̐͟a̷̷̢͇͕̞̲̻͔̮͉͎̞̲̩̰̗̲͖̭̻̺͚̮͎͍̻̘̬̲̟̟͍̯̖̳̞̠̟̟̻̮̫͙̟̪̱̰̻͚̪̻̰̭͓̫̱͓͚͓̻̝̞͔̯͗ͭ̆̈́̚͡ͅͅr̶͔̤͍͇̜̫͚̱̠͍̜͕̤͈̂̊̅̓ͦ͐̅ͫͬͤ̒ͣ̅͂̿̈̉ͦ̚͘tͦ̊̋̑̿̈̆ͮ͂͂ͨ͐ͬ͋͡ ҉̨̠̺̱͓̝̲͙͕̖͖͉̗͔̗̪̳͎͙̲̭̯̹̤͖͉͇̖̗͕̞͇̱͓̮̳̹̙̣̱̼͔̻͓̗̣̮̘̦̥̮̗̞̟̮͔̯̙͙̳͔̞ͅͅͅͅ ̷̴̷̶̬̪̘͎̦̗̘̞̪͉͖̺̩̲̯͔͇͔̦̠͉̬͙̮̯̙͚̤͎̻͉̫͇̙̩̲̩͚̦̙͕̎̽̃̌̀ͣͪͪ̅̋͆͐ͩ̈́a̺̰̙͍̘̰͓̻̘̫̞̳̹̦̞̜̼̥̥̼̗ͨ̓ͥͯ͘͟sͯͧ̌̋͂͢ ҉̗̳͙͉̳̻̲̜̩̟͍̝̪ͅ ̷̶̡̛̣̭̫̗̝͙̱̜ͤ͊̊̊̽͗͐͒̾͛̏̄ͤ̚͟d̴̫̝͔̥̫̲̠̬̐ͦͪͤ͒̓ͭ͟ͅḝ̵̵̡̧̜͔̙̩̱̭̜̬̗̻̟̠̙̥͓̘̦̬͍̜̹̬̰͇̯͋ͮ̔̅͌̀ͦ͆͒ͧ͆͊ͬ͊̚ͅͅm̵̸̶̴̻̩̫̹͉̻̣̮̤̻͚͓̪̖̟̤͍͇̳̬͉̦͔͔̜̻͈̰̩̣̬̫̤͇̫̩͈̹̳͔̞͔̣̟͍͙̗̤̱̣̜̼̺͂ͨ̐̐̑́ͅͅo̷̧ͩ͗͆ͥ̓̍̀ͨ̂̈͐̿̓́ ҉͈̜̤̰̬̞̙̝͚̙̤̫͍̻̗̩ ̵̗̜̤̠͇̻̝̬͕̻͎̫̦̮̱̩͔̯̩͓͖̜͚͕̙̳͎̱̯̮̭̣̥͔͎̦̙͍͎̱̥̯̩͉̜̟̰̗̙̤̽͌̑͒ͪ̆̎̈́̓̔͊̉͐̏́̚͟ͅp̵̲̞̥̯̳̭̱̤̰̬̱̩͔̣̤̘̪̝̲̥͎̜͇̯̞̥͍͕̼͈̤̭̤̭̭̖̫̺̮͍̰͓̘̥̺̺̤̦̥̩̬̗̟͓̫̝̌ͥ͛͑̆̌͒̍͗̅͝͡a̛̟̫̞̼͚͓͖͉̻̪̰̜͕̖̗̭͚̦̺͙̮̜̯͙̫̟̲̱̣̺̞͈͇͖̰͔͓̣̠͖̮̱̬̬͈ͧ͒ͧ̇̐̒ͥ̂̋̅͒̈ͩ̑̀̚͡t̢̧̫̦͉̼̻̪̰̠͙̱̣̙̖͒ͬͩ̿͠į̵̷͙̟̱̮̤͓̙̻̱̬̹̯̙͕̜̣̰͉͔̪̬̥̖͎̗̺͙̼͚̲͓̺͕͔̜̲̩̭̤̥̗͉͚̖̟͎̙̹̫̣̤̠͈͓̜͖̽̇͗̒͌͗͌̂ͭͫͣ͐͜ͅͅę̵̶̯̩͎̺͎͙͍̳̠̫̯̥͖͉͉̪̫͇͔͍̲̞̱͖̘̲͎͕̼̺͎̟̤̞̱͖̠͕͓͚͕͕̦͈̯̞̹͓̮͔͍͓̞̳̜̲̬̰̦̆ͪͥ̈͌̽͞͞ͅǹ̡̛̍͊̾ͯͤ̅̒ͮ̔̈̍̂ͭ ҉̛̤̣̺̲̬͎͖͙̬̲̲͉̭͖̞̖͕͈͔͙̪͚̟̯͇̣͙͖͚͙̹͖̤͍͔̭͚̜̫̬̦̳͈̙̮̳̬̱̭̲̰̥̭̠͕͔͉̪̫͢ͅt̟̘̗̼̯̜̞̺̣͚͎͚̼̫̟̹͙̞̻͕̮̬̮̝̤̲͇̼͉̻̻͗̾̆̊ͫ̑̀̚̕͝",
+      "zebra": "S\u001b[7mt\u001b[27ma\u001b[7mr\u001b[27mt\u001b[7m \u001b[27ma\u001b[7ms\u001b[27m \u001b[7md\u001b[27me\u001b[7mm\u001b[27mo\u001b[7m \u001b[27mp\u001b[7ma\u001b[27mt\u001b[7mi\u001b[27me\u001b[7mn\u001b[27mt"
+    },
+    "email": {
+      "hint": "We email a gentle reminder when something is due, like logging a meal. Leave it blank to add it later."
+    },
+    "err": {
+      "email": "Enter an email address like name@gmail.com, or leave it blank."
+    },
+    "gold": {
+      "high": "7 = never aware"
+    },
+    "meds": {
+      "addTitle": "Add each medicine from its label",
+      "byHand": "Type it in",
+      "error": "We could not load your medicines just now. You can carry on, and check them later in Medications.",
+      "intro": "Equinox copies what is on the label, and you check it. You can also do this later from Medications.",
+      "none": "No medicines saved yet.",
+      "note": "Equinox explains and reminds. It never tells you to start, stop or change a medicine.",
+      "savedTitle": "Medicines saved so far",
+      "scan": "Scan a label",
+      "scope": "Equinox is for diabetes medicines and the medicines or supplements you take every day."
+    },
+    "race": {
+      "other": "Or type it in"
+    },
+    "s5": {
+      "name": "Medicines",
+      "sub": "Scan the label of each medicine you take. You can check or change them later.",
+      "title": "Your medicines"
+    },
+    "skipV2": "Skip",
+    "sum": {
+      "gold": "Knows when a hypo is starting (1 always, 7 never)",
+      "loading": "Loading…",
+      "medicines": "Saved medicines",
+      "medsError": "Could not load them just now"
+    }
+  },
+  "setup": {
+    "meds": "Medicines are not asked here. Scan the label of each medicine you take instead.",
+    "scan": "Scan a label"
+  },
+  "switch": {
+    "newPerson": "New person",
+    "startFailed": "We could not start a new person just now. Check your connection, then try again.",
+    "starting": "Starting…",
+    "startNew": "Start as new person",
+    "startNewSub": "A clean start at step 1. No one else is changed.",
+    "startNewSubV2": "Set-up from step 1, like the demo user. Saved only when you finish.",
+    "user": {
+      "demo": "Demo user",
+      "demoSub": "A blank account for trying things",
+      "tanSub": "About 90 days of history"
+    }
+  },
+  "workout": {
+    "log": {
+      "allOut": "All-out",
+      "awful": "Awful",
+      "effort1": "Barely moving. You could chat or sing.",
+      "effort2": "Light. You can sing.",
+      "effort3": "Moderate. You can talk but not sing.",
+      "effort4": "Hard. You can only say a few words.",
+      "effort5": "All-out. You cannot talk.",
+      "great": "Great",
+      "kind": {
+        "cycling": "Cycling",
+        "dance": "Dance",
+        "hiit": "HIIT",
+        "household": "Housework or gardening",
+        "other": "Something else",
+        "running": "Running",
+        "sports": "Sports",
+        "strength": "Strength",
+        "stretching": "Stretching",
+        "swimming": "Swimming",
+        "walking": "Walking",
+        "yogaPilates": "Yoga or pilates"
+      },
+      "name": "Name it",
+      "namePh": "For example, evening walk with Ah Ma",
+      "ofGoal": "{{value}} of {{goal}}",
+      "orName": "Or name it (optional)",
+      "quick": "Quick log",
+      "strengthTip": "Want every set and weight? Tap here to track a live strength session instead.",
+      "veryLight": "Very light",
+      "which": "Which one"
+    }
+  }
+}

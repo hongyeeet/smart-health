@@ -1,0 +1,21 @@
+query,expected_drug,kind
+metformin,metformin,generic
+atorvastatin,atorvastatin,generic
+amlodipine,amlodipine,generic
+lisinopril,lisinopril,generic
+glipizide,glipizide,generic
+losartan,losartan,generic
+simvastatin,simvastatin,generic
+metoprolol,metoprolol,generic
+Eliquis,apixaban,brand (openFDA)
+Gablofen,baclofen,brand (openFDA)
+Invokana,canagliflozin,brand (openFDA)
+Coreg,carvedilol,brand (openFDA)
+davaindia allopurinol 100mg tablet,allopurinol,product name (250k Medicines)
+dr best alprazolam 0.25 tablet,alprazolam,product name (250k Medicines)
+amitriptyline hcl 25mg tablet,amitriptyline,product name (250k Medicines)
+metformn,metformin,misspelling
+atorvastatine,atorvastatin,misspelling
+amlodipin,amlodipine,misspelling
+lisinopirl,lisinopril,misspelling
+simvastatn,simvastatin,misspelling

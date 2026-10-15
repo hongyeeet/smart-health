@@ -1,0 +1,470 @@
+{
+ "dose.unit.Tab": {
+  "en": "Tab",
+  "zh": "片",
+  "ms": "Tablet",
+  "ta": "மாத்திரை"
+ },
+ "dose.units.Tab": {
+  "en": "Tabs",
+  "zh": "片",
+  "ms": "Tablet",
+  "ta": "மாத்திரைகள்"
+ },
+ "dose.unit.Capsule": {
+  "en": "Capsule",
+  "zh": "胶囊",
+  "ms": "Kapsul",
+  "ta": "கேப்சூல்"
+ },
+ "dose.units.Capsule": {
+  "en": "Capsules",
+  "zh": "胶囊",
+  "ms": "Kapsul",
+  "ta": "கேப்சூல்கள்"
+ },
+ "dose.unit.ml": {
+  "en": "ml",
+  "zh": "ml",
+  "ms": "ml",
+  "ta": "ml"
+ },
+ "dose.units.ml": {
+  "en": "ml",
+  "zh": "ml",
+  "ms": "ml",
+  "ta": "ml"
+ },
+ "dose.unit.Sachet": {
+  "en": "Sachet",
+  "zh": "包",
+  "ms": "Paket",
+  "ta": "பாக்கெட்"
+ },
+ "dose.units.Sachet": {
+  "en": "Sachets",
+  "zh": "包",
+  "ms": "Paket",
+  "ta": "பாக்கெட்டுகள்"
+ },
+ "dose.unit.Drop": {
+  "en": "Drop",
+  "zh": "滴",
+  "ms": "Titis",
+  "ta": "சொட்டு"
+ },
+ "dose.units.Drop": {
+  "en": "Drops",
+  "zh": "滴",
+  "ms": "Titis",
+  "ta": "சொட்டுகள்"
+ },
+ "dose.unit.Puff": {
+  "en": "Puff",
+  "zh": "吸",
+  "ms": "Sedutan",
+  "ta": "பஃப்"
+ },
+ "dose.units.Puff": {
+  "en": "Puffs",
+  "zh": "吸",
+  "ms": "Sedutan",
+  "ta": "பஃப்கள்"
+ },
+ "dose.unit.Patch": {
+  "en": "Patch",
+  "zh": "贴",
+  "ms": "Tampalan",
+  "ta": "பேட்ச்"
+ },
+ "dose.units.Patch": {
+  "en": "Patches",
+  "zh": "贴",
+  "ms": "Tampalan",
+  "ta": "பேட்ச்கள்"
+ },
+ "dose.unit.Teaspoon": {
+  "en": "Teaspoon",
+  "zh": "茶匙",
+  "ms": "Sudu teh",
+  "ta": "தேக்கரண்டி"
+ },
+ "dose.units.Teaspoon": {
+  "en": "Teaspoons",
+  "zh": "茶匙",
+  "ms": "Sudu teh",
+  "ta": "தேக்கரண்டிகள்"
+ },
+ "dose.unit.Spoonful": {
+  "en": "Spoonful",
+  "zh": "汤匙",
+  "ms": "Sudu",
+  "ta": "கரண்டி அளவு"
+ },
+ "dose.units.Spoonful": {
+  "en": "Spoonfuls",
+  "zh": "汤匙",
+  "ms": "Sudu",
+  "ta": "கரண்டி அளவுகள்"
+ },
+ "dose.unit.Dose": {
+  "en": "Dose",
+  "zh": "剂",
+  "ms": "Dos",
+  "ta": "டோஸ்"
+ },
+ "dose.units.Dose": {
+  "en": "Doses",
+  "zh": "剂",
+  "ms": "Dos",
+  "ta": "டோஸ்கள்"
+ },
+ "dose.period.morning": {
+  "en": "morning",
+  "zh": "早上",
+  "ms": "pagi",
+  "ta": "காலை"
+ },
+ "dose.period.afternoon": {
+  "en": "afternoon",
+  "zh": "下午",
+  "ms": "tengah hari",
+  "ta": "மதியம்"
+ },
+ "dose.period.evening": {
+  "en": "evening",
+  "zh": "傍晚",
+  "ms": "petang",
+  "ta": "மாலை"
+ },
+ "dose.period.night": {
+  "en": "night",
+  "zh": "晚上",
+  "ms": "malam",
+  "ta": "இரவு"
+ },
+ "dose.day.this": {
+  "en": "This {period}'s dose",
+  "zh": "今天{period}的用药",
+  "ms": "Dos {period} ini",
+  "ta": "இந்த {period} டோஸ்"
+ },
+ "dose.day.yesterday": {
+  "en": "Yesterday's {period} dose",
+  "zh": "昨天{period}的用药",
+  "ms": "Dos {period} semalam",
+  "ta": "நேற்றைய {period} டோஸ்"
+ },
+ "dose.day.weekday": {
+  "en": "{weekday}'s {period} dose",
+  "zh": "{weekday}{period}的用药",
+  "ms": "Dos {period} {weekday}",
+  "ta": "{weekday} {period} டோஸ்"
+ },
+ "dose.when": {
+  "en": "{day} at {time}",
+  "zh": "{day} {time}",
+  "ms": "{day} pada {time}",
+  "ta": "{day} {time} மணிக்கு"
+ },
+ "dose.when.today": {
+  "en": "today",
+  "zh": "今天",
+  "ms": "hari ini",
+  "ta": "இன்று"
+ },
+ "dose.when.tomorrow": {
+  "en": "tomorrow",
+  "zh": "明天",
+  "ms": "esok",
+  "ta": "நாளை"
+ },
+ "care.origin.user": {
+  "en": "Added by you",
+  "zh": "由您添加",
+  "ms": "Ditambah oleh anda",
+  "ta": "நீங்களாகச் சேர்த்தது"
+ },
+ "care.origin.refused_chat": {
+  "en": "From your chat",
+  "zh": "来自您的对话",
+  "ms": "Daripada sembang anda",
+  "ta": "உங்கள் உரையாடலில் இருந்து"
+ },
+ "care.origin.checkin": {
+  "en": "From your check-in",
+  "zh": "来自您的记录",
+  "ms": "Daripada daftar masuk anda",
+  "ta": "உங்கள் செக்-இன் பதிவிலிருந்து"
+ },
+ "care.origin.agent_suggested": {
+  "en": "Suggested by Equinox",
+  "zh": "由 Equinox 建议",
+  "ms": "Dicadangkan oleh Equinox",
+  "ta": "Equinox பரிந்துரைத்தது"
+ },
+ "care.origin.saved": {
+  "en": "Saved",
+  "zh": "已保存",
+  "ms": "Disimpan",
+  "ta": "சேமிக்கப்பட்டது"
+ },
+ "care.kind.gp_review": {
+  "en": "GP review",
+  "zh": "全科医生复诊",
+  "ms": "Pemeriksaan GP",
+  "ta": "GP பரிசோதனை ஆலோசனை"
+ },
+ "care.kind.diabetes_review": {
+  "en": "Diabetes review",
+  "zh": "糖尿病复诊",
+  "ms": "Pemeriksaan diabetes",
+  "ta": "நீரிழிவு பரிசோதனை ஆலோசனை"
+ },
+ "care.kind.eye_screening": {
+  "en": "Eye screening",
+  "zh": "眼睛检查",
+  "ms": "Pemeriksaan mata",
+  "ta": "கண் பரிசோதனை"
+ },
+ "care.kind.foot_screening": {
+  "en": "Foot check",
+  "zh": "足部检查",
+  "ms": "Pemeriksaan kaki",
+  "ta": "பாதப் பரிசோதனை"
+ },
+ "care.kind.kidney_test": {
+  "en": "Kidney test",
+  "zh": "肾脏检查",
+  "ms": "Ujian buah pinggang",
+  "ta": "சிறுநீரகப் பரிசோதனை"
+ },
+ "care.kind.hba1c_test": {
+  "en": "HbA1c blood test",
+  "zh": "HbA1c 验血",
+  "ms": "Ujian darah HbA1c",
+  "ta": "HbA1c இரத்தப் பரிசோதனை"
+ },
+ "care.kind.vaccination": {
+  "en": "Vaccination",
+  "zh": "疫苗接种",
+  "ms": "Vaksinasi",
+  "ta": "தடுப்பூசி"
+ },
+ "care.kind.dental": {
+  "en": "Dental check",
+  "zh": "牙科检查",
+  "ms": "Pemeriksaan gigi",
+  "ta": "பல் பரிசோதனை"
+ },
+ "care.kind.other": {
+  "en": "Other visit",
+  "zh": "其他就诊",
+  "ms": "Lawatan lain",
+  "ta": "இதர சந்திப்பு"
+ },
+ "care.source.cgm": {
+  "en": "Glucose sensor",
+  "zh": "血糖传感器",
+  "ms": "Sensor glukosa",
+  "ta": "குளுக்கோஸ் சென்சார்"
+ },
+ "care.source.watch": {
+  "en": "Watch",
+  "zh": "手表",
+  "ms": "Jam tangan",
+  "ta": "கைக்கடிகாரம்"
+ },
+ "care.source.camera": {
+  "en": "Photo camera",
+  "zh": "相机",
+  "ms": "Kamera foto",
+  "ta": "கேமரா"
+ },
+ "care.src.on_device": {
+  "en": "On this device",
+  "zh": "在此设备上",
+  "ms": "Pada peranti ini",
+  "ta": "இந்தச் சாதனத்தில்"
+ },
+ "care.src.note.camera": {
+  "en": "Meal photos and medicine labels use this device's camera. There is nothing to connect.",
+  "zh": "拍摄饮食照片和药物标签使用的是这台设备的相机，无需连接任何设备。",
+  "ms": "Foto makanan dan label ubat menggunakan kamera peranti ini. Tiada apa-apa yang perlu disambungkan.",
+  "ta": "உணவுப் படங்கள் மற்றும் மருந்து விவரச் சீட்டுகளுக்கு இந்தச் சாதனத்தின் கேமரா பயன்படுத்தப்படுகிறது. எதையும் இணைக்கத் தேவையில்லை."
+ },
+ "care.src.not_connected": {
+  "en": "Not connected",
+  "zh": "未连接",
+  "ms": "Tidak disambungkan",
+  "ta": "இணைக்கப்படவில்லை"
+ },
+ "care.src.note.not_available": {
+  "en": "Connecting a {label} is not available yet.",
+  "zh": "暂不支持连接 {label}。",
+  "ms": "Menyambungkan {label} belum tersedia lagi.",
+  "ta": "{label}-ஐ இணைக்கும் வசதி இன்னும் கிடைக்கவில்லை."
+ },
+ "care.src.connected_no_data": {
+  "en": "Connected, no data yet",
+  "zh": "已连接，暂无数据",
+  "ms": "Disambungkan, belum ada data lagi",
+  "ta": "இணைக்கப்பட்டுள்ளது, தகவல் இன்னும் வரவில்லை"
+ },
+ "care.src.note.no_data": {
+  "en": "Readings will show here once they arrive.",
+  "zh": "收到读数后将显示在这里。",
+  "ms": "Bacaan akan dipaparkan di sini sebaik sahaja diterima.",
+  "ta": "அளவுகள் வந்ததும் இங்கே தோன்றும்."
+ },
+ "care.src.note.fresh": {
+  "en": "Up to date.",
+  "zh": "已是最新数据。",
+  "ms": "Terkini.",
+  "ta": "புதுப்பிக்கப்பட்டுள்ளது."
+ },
+ "care.src.note.stale": {
+  "en": "No new data for more than a day.",
+  "zh": "已超过一天没有新数据。",
+  "ms": "Tiada data baharu selama lebih daripada sehari.",
+  "ta": "ஒரு நாளுக்கு மேலாகப் புதிய தகவல் இல்லை."
+ },
+ "care.src.connected_last": {
+  "en": "Connected, last data {when}",
+  "zh": "已连接，最新数据时间：{when}",
+  "ms": "Disambungkan, data terakhir {when}",
+  "ta": "இணைக்கப்பட்டுள்ளது, கடைசியாக வந்த தகவல் {when}"
+ },
+ "care.prev.last": {
+  "en": "Last done {date}.",
+  "zh": "上次于 {date} 进行。",
+  "ms": "Terakhir dilakukan pada {date}.",
+  "ta": "கடைசியாகச் செய்யப்பட்டது {date}."
+ },
+ "care.prev.no_last": {
+  "en": "No date for the last one on record.",
+  "zh": "记录中没有上次的日期。",
+  "ms": "Tiada tarikh untuk yang terakhir dalam rekod.",
+  "ta": "கடைசியாகச் செய்த தேதி பதிவில் இல்லை."
+ },
+ "care.prev.no_next": {
+  "en": "{last} No next date on record.",
+  "zh": "{last} 记录中没有下次的日期。",
+  "ms": "{last} Tiada tarikh seterusnya dalam rekod.",
+  "ta": "{last} அடுத்த தேதி பதிவில் இல்லை."
+ },
+ "care.prev.none": {
+  "en": "No date on record yet.",
+  "zh": "记录中暂无日期。",
+  "ms": "Belum ada tarikh dalam rekod.",
+  "ta": "பதிவில் இன்னும் எந்தத் தேதியும் இல்லை."
+ },
+ "care.prev.overdue": {
+  "en": "{last} Was due {date}.",
+  "zh": "{last} 原本应于 {date} 进行。",
+  "ms": "{last} Sepatutnya dibuat pada {date}.",
+  "ta": "{last} {date} அன்று செய்திருக்க வேண்டும்."
+ },
+ "care.prev.next": {
+  "en": "{last} Next due {date}.",
+  "zh": "{last} 下次应于 {date} 进行。",
+  "ms": "{last} Tarikh seterusnya pada {date}.",
+  "ta": "{last} அடுத்து செய்ய வேண்டிய தேதி {date}."
+ },
+ "insights.period": {
+  "en": "{start} to {end} {year} ({days} days)",
+  "zh": "{start} 至 {end} {year}（{days} 天）",
+  "ms": "{start} hingga {end} {year} ({days} hari)",
+  "ta": "{start} முதல் {end} வரை {year} ({days} நாட்கள்)"
+ },
+ "chat.starter.glucose": {
+  "en": "How was my glucose this week?",
+  "zh": "我这周的血糖怎么样？",
+  "ms": "Bagaimanakah glukosa saya minggu ini?",
+  "ta": "இந்த வாரம் எனது குளுக்கோஸ் அளவு எப்படி இருந்தது?"
+ },
+ "chat.starter.med": {
+  "en": "What is {med} for?",
+  "zh": "{med} 是用来治疗什么的？",
+  "ms": "Apakah kegunaan {med}?",
+  "ta": "{med} எதற்கான மருந்து?"
+ },
+ "chat.starter.doctor": {
+  "en": "What should I ask my doctor?",
+  "zh": "我应该问医生什么？",
+  "ms": "Apakah yang patut saya tanya doktor saya?",
+  "ta": "மருத்துவரிடம் நான் என்ன கேட்க வேண்டும்?"
+ },
+ "chat.starter.help": {
+  "en": "What can you help me with?",
+  "zh": "你能帮我做些什么？",
+  "ms": "Apakah yang boleh anda bantu saya?",
+  "ta": "நீங்கள் எனக்கு என்ன உதவி செய்ய முடியும்?"
+ },
+ "review.msg.sample_none": {
+  "en": "No lighter swaps were found for the sample dishes.",
+  "zh": "未找到示例菜肴的更清淡替代选择。",
+  "ms": "Tiada pilihan pengganti yang lebih ringan ditemui untuk hidangan contoh.",
+  "ta": "மாதிரி உணவுகளுக்கு இலகுவான மாற்று உணவுகள் எதுவும் கிடைக்கவில்லை."
+ },
+ "review.msg.no_dishes": {
+  "en": "No dish you have logged yet is eaten {n} times or more, so there is nothing to check. Log a few meals and the swaps for your usual dishes will appear here. You can also try the sample dishes.",
+  "zh": "您记录的菜肴中，还没有吃过 {n} 次或以上的，因此目前没有可检查的内容。记录几餐后，您常吃菜肴的替代选择就会显示在这里。您也可以先看看示例菜肴。",
+  "ms": "Belum ada hidangan yang anda catat dimakan {n} kali atau lebih, jadi tiada apa-apa untuk disemak. Catatkan beberapa hidangan dan pilihan pengganti untuk hidangan biasa anda akan dipaparkan di sini. Anda juga boleh mencuba hidangan contoh.",
+  "ta": "நீங்கள் பதிவு செய்த உணவுகளில் எதுவும் {n} முறையோ அதற்கு மேலோ சாப்பிடப்படவில்லை, எனவே சரிபார்க்க எதுவும் இல்லை. சில வேளை உணவுகளைப் பதிவு செய்யுங்கள்; நீங்கள் வழக்கமாகச் சாப்பிடும் உணவுகளுக்கான மாற்றுகள் இங்கே தோன்றும். மாதிரி உணவுகளையும் நீங்கள் பார்க்கலாம்."
+ },
+ "review.msg.no_swaps": {
+  "en": "We found no lighter swap for your usual dishes yet. You can try the sample dishes.",
+  "zh": "我们暂时没有为您常吃的菜肴找到更清淡的替代选择。您可以先看看示例菜肴。",
+  "ms": "Kami belum menemui pilihan pengganti yang lebih ringan untuk hidangan biasa anda. Anda boleh mencuba hidangan contoh.",
+  "ta": "நீங்கள் வழக்கமாகச் சாப்பிடும் உணவுகளுக்கு இலகுவான மாற்றுகள் எதுவும் இன்னும் கிடைக்கவில்லை. நீங்கள் மாதிரி உணவுகளைப் பார்க்கலாம்."
+ },
+ "fmt.clock.am": {
+  "en": "{h}:{mm} am",
+  "zh": "上午{h}:{mm}",
+  "ms": "{h}:{mm} pagi",
+  "ta": "காலை {h}:{mm}"
+ },
+ "fmt.clock.pm": {
+  "en": "{h}:{mm} pm",
+  "zh": "下午{h}:{mm}",
+  "ms": "{h}:{mm} petang",
+  "ta": "மாலை {h}:{mm}"
+ },
+ "nudge.start.medication.title": {
+  "en": "Log your medication",
+  "zh": "记录您的用药",
+  "ms": "Catat ubat anda",
+  "ta": "உங்கள் மருந்துகளைப் பதிவுசெய்யுங்கள்"
+ },
+ "nudge.start.medication.body": {
+  "en": "Scan the label of each medicine you take, or type it in. Your dose reminders start from there.",
+  "zh": "扫描您服用的每种药物标签，或直接输入。您的服药提醒将从这里开始。",
+  "ms": "Imbas label setiap ubat yang anda ambil, atau taipkannya. Peringatan dos anda bermula dari situ.",
+  "ta": "நீங்கள் உட்கொள்ளும் ஒவ்வொரு மருந்தின் லேபிளையும் ஸ்கேன் செய்யுங்கள் அல்லது தட்டச்சு செய்யுங்கள். உங்கள் மருந்தளவு நினைவூட்டல்கள் அங்கிருந்து தொடங்கும்."
+ },
+ "nudge.start.meal.title": {
+  "en": "Log your first meal",
+  "zh": "记录您的第一餐",
+  "ms": "Catat hidangan pertama anda",
+  "ta": "உங்கள் முதல் உணவைப் பதிவுசெய்யுங்கள்"
+ },
+ "nudge.start.meal.body": {
+  "en": "Take a photo of what you eat. It lands on your timeline and starts your food insights.",
+  "zh": "拍下您吃的食物。它会显示在您的时间轴上，并开始生成饮食分析。",
+  "ms": "Ambil gambar apa yang anda makan. Ia akan dimasukkan ke dalam garis masa anda dan memulakan maklumat makanan anda.",
+  "ta": "நீங்கள் சாப்பிடுவதைப் படம் எடுங்கள். அது உங்கள் காலவரிசையில் பதிவாகி, உங்கள் உணவு பற்றிய தகவல்களைத் தொடங்கும்."
+ },
+ "nudge.start.checkin.title": {
+  "en": "Log how you slept and felt",
+  "zh": "记录您的睡眠和感受",
+  "ms": "Catat tidur dan perasaan anda",
+  "ta": "நீங்கள் எப்படித் தூங்கினீர்கள், எப்படி உணர்ந்தீர்கள் என்பதைப் பதிவுசெய்யுங்கள்"
+ },
+ "nudge.start.checkin.body": {
+  "en": "A thirty-second mood and sleep check-in.",
+  "zh": "只需30秒的心情与睡眠记录。",
+  "ms": "Semakan perasaan dan tidur selama tiga puluh saat.",
+  "ta": "முப்பது விநாடி மனநிலை மற்றும் தூக்கச் சரிபார்ப்பு."
+ }
+}

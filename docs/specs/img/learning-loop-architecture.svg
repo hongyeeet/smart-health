@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1110 1090" width="1110" height="1090" font-family="Segoe UI, Helvetica, Arial, sans-serif" role="img">
+<title>Learning loop architecture</title>
+<desc>Triggers pass the input guard to an orchestrator that routes to five sub-agents. Sub-agents ask JEV and read the Memory Service, and send drafts through an output guard and an approval queue to notifications. Data flows Bronze, Silver, Gold, with reference and operations tables.</desc>
+<rect width="1110" height="1090" fill="#FFFFFF"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text x="30" y="26" font-size="12" text-anchor="start" fill="#5F5E5A">LEARNING LOOP: AGENTS, JEV, MEMORY AND DATA (table names are real; * = proposed new table)</text>
+<rect x="30" y="40" width="340" height="66" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="42" y="60" font-size="14" font-weight="500" fill="#2C2C2A">App events</text>
+<text x="42" y="80" font-size="12" fill="#5F5E5A">log saved, dose tapped, "finished eating" tap</text>
+<text x="42" y="96" font-size="12" fill="#5F5E5A">written as Bronze, Silver, then Gold</text>
+<rect x="385" y="40" width="340" height="66" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="397" y="60" font-size="14" font-weight="500" fill="#2C2C2A">Scheduler</text>
+<text x="397" y="80" font-size="12" fill="#5F5E5A">tick every minute (rules), nightly 02:00</text>
+<text x="397" y="96" font-size="12" fill="#5F5E5A">reads medication_schedule, notifications</text>
+<rect x="740" y="40" width="340" height="66" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="752" y="60" font-size="14" font-weight="500" fill="#2C2C2A">Patient message</text>
+<text x="752" y="80" font-size="12" fill="#5F5E5A">chat, miss reasons, replies to "why?"</text>
+<text x="752" y="96" font-size="12" fill="#5F5E5A">free text may contain advice requests</text>
+<line x1="200" y1="106" x2="200" y2="134" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="555" y1="106" x2="555" y2="134" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="910" y1="106" x2="910" y2="134" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="30" y="134" width="1050" height="52" rx="6" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="42" y="154" font-size="14" font-weight="500" fill="#712B13">Input guard (frozen code, never learned)</text>
+<text x="42" y="174" font-size="12" fill="#993C1D">rules first, then JEV noul: med_advice, diagnosis, urgent. Low confidence or JEV down = conservative path. Logged in guardrail_events.</text>
+<line x1="555" y1="186" x2="555" y2="210" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="230" y="210" width="650" height="64" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="242" y="230" font-size="14" font-weight="500" fill="#085041">Orchestrator (main agent, LangGraph)</text>
+<text x="242" y="250" font-size="12" fill="#0F6E56">routes each event to one sub-agent using JEV choice(route); builds the evidence packet</text>
+<text x="242" y="266" font-size="12" fill="#0F6E56">every step written to agent_runs and agent_steps</text>
+<line x1="555" y1="274" x2="555" y2="292" stroke="#5F5E5A" stroke-width="1.3"/>
+<line x1="128" y1="292" x2="980" y2="292" stroke="#5F5E5A" stroke-width="1.3"/>
+<line x1="128" y1="292" x2="128" y2="312" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="341" y1="292" x2="341" y2="312" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="554" y1="292" x2="554" y2="312" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="767" y1="292" x2="767" y2="312" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="980" y1="292" x2="980" y2="312" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="30" y="312" width="196" height="128" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="42" y="332" font-size="14" font-weight="500" fill="#085041">Adherence agent</text>
+<text x="42" y="352" font-size="12" fill="#0F6E56">doses, anchoring, barriers</text>
+<text x="42" y="368" font-size="12" fill="#0F6E56">reads: medication_log,</text>
+<text x="42" y="384" font-size="12" fill="#0F6E56">medication_schedule,</text>
+<text x="42" y="400" font-size="12" fill="#0F6E56">refill_forecasts</text>
+<text x="42" y="416" font-size="12" fill="#0F6E56">writes: notifications,</text>
+<text x="42" y="432" font-size="12" fill="#0F6E56">adherence_barriers*</text>
+<rect x="243" y="312" width="196" height="128" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="255" y="332" font-size="14" font-weight="500" fill="#085041">Nutrition agent</text>
+<text x="255" y="352" font-size="12" fill="#0F6E56">Meal vision logs the</text>
+<text x="255" y="368" font-size="12" fill="#0F6E56">numbers (Gemini). Habit</text>
+<text x="255" y="384" font-size="12" fill="#0F6E56">finder, Swap ranker</text>
+<text x="255" y="400" font-size="12" fill="#0F6E56">reads: food_logs, foods,</text>
+<text x="255" y="416" font-size="12" fill="#0F6E56">meal_response</text>
+<text x="255" y="432" font-size="12" fill="#0F6E56">writes: memory_facts, notif.</text>
+<rect x="456" y="312" width="196" height="128" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="468" y="332" font-size="14" font-weight="500" fill="#085041">Activity agent</text>
+<text x="468" y="352" font-size="12" fill="#0F6E56">salt and movement prompts</text>
+<text x="468" y="368" font-size="12" fill="#0F6E56">reads: food_logs (sodium),</text>
+<text x="468" y="384" font-size="12" fill="#0F6E56">exercise_logs, exercise_response,</text>
+<text x="468" y="400" font-size="12" fill="#0F6E56">blood_pressure_readings</text>
+<text x="468" y="416" font-size="12" fill="#0F6E56">writes: notifications</text>
+<rect x="669" y="312" width="196" height="128" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="681" y="332" font-size="14" font-weight="500" fill="#085041">Preventive agent</text>
+<text x="681" y="352" font-size="12" fill="#0F6E56">screenings, vaccines</text>
+<text x="681" y="368" font-size="12" fill="#0F6E56">reads: preventive_items,</text>
+<text x="681" y="384" font-size="12" fill="#0F6E56">patient_preventive_status,</text>
+<text x="681" y="400" font-size="12" fill="#0F6E56">appointments</text>
+<text x="681" y="416" font-size="12" fill="#0F6E56">writes: notifications</text>
+<rect x="882" y="312" width="196" height="128" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="894" y="332" font-size="14" font-weight="500" fill="#085041">Reflection agent</text>
+<text x="894" y="352" font-size="12" fill="#0F6E56">nightly, proposes only</text>
+<text x="894" y="368" font-size="12" fill="#0F6E56">reads: daily_summary,</text>
+<text x="894" y="384" font-size="12" fill="#0F6E56">notifications (outcomes)</text>
+<text x="894" y="400" font-size="12" fill="#0F6E56">writes: memory_facts (proposed),</text>
+<text x="894" y="416" font-size="12" fill="#0F6E56">content_proposals*, nudge_policy*</text>
+<line x1="128" y1="440" x2="128" y2="458" stroke="#5F5E5A" stroke-width="1.3"/>
+<line x1="341" y1="440" x2="341" y2="458" stroke="#5F5E5A" stroke-width="1.3"/>
+<line x1="554" y1="440" x2="554" y2="458" stroke="#5F5E5A" stroke-width="1.3"/>
+<line x1="767" y1="440" x2="767" y2="458" stroke="#5F5E5A" stroke-width="1.3"/>
+<line x1="980" y1="440" x2="980" y2="458" stroke="#5F5E5A" stroke-width="1.3"/>
+<line x1="128" y1="458" x2="980" y2="458" stroke="#5F5E5A" stroke-width="1.3"/>
+<line x1="375" y1="458" x2="375" y2="482" stroke="#5F5E5A" stroke-width="1.3" marker-start="url(#a)" marker-end="url(#a)"/>
+<line x1="905" y1="458" x2="905" y2="482" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<text x="388" y="476" font-size="12" text-anchor="start" fill="#5F5E5A">ask and read</text>
+<text x="918" y="476" font-size="12" text-anchor="start" fill="#5F5E5A">drafts</text>
+<rect x="30" y="482" width="690" height="98" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="42" y="502" font-size="13" font-weight="500" fill="#3C3489">JEV decision gateway (typesafe/jev-1.13 via OpenRouter, behind our gateway)</text>
+<text x="42" y="522" font-size="12" fill="#534AB7">choice: route, message intent, fact type, "same dish?" (top-5 candidates)</text>
+<text x="42" y="538" font-size="12" fill="#534AB7">score: how relevant is this fact right now    noul: guards, "does the evidence support this fact?"</text>
+<text x="42" y="554" font-size="12" fill="#534AB7">de-identified state only. Rules always win. No model fallback: below the 0.8 floor, take the safe path.</text>
+<line x1="375" y1="580" x2="375" y2="604" stroke="#5F5E5A" stroke-width="1.3" marker-start="url(#a)" marker-end="url(#a)"/>
+<rect x="30" y="604" width="690" height="128" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="42" y="624" font-size="13" font-weight="500" fill="#085041">Memory Service (our code, the only door to memory, no free SQL)</text>
+<text x="42" y="644" font-size="12" fill="#0F6E56">get_context  get_timeline  search_memories  propose_memory  supersede_memory</text>
+<text x="42" y="660" font-size="12" fill="#0F6E56">Semantic:     memory_facts, memory_episodes</text>
+<text x="42" y="676" font-size="12" fill="#0F6E56">Relationship: pattern_candidates, clinical_flags, interaction_alerts</text>
+<text x="42" y="692" font-size="12" fill="#0F6E56">Entity:       medications, foods, appointments, care_summary</text>
+<text x="42" y="708" font-size="12" fill="#0F6E56">Temporal:     timeline_5min, daily_summary, meal_response, exercise_response</text>
+<rect x="740" y="482" width="340" height="66" rx="6" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="752" y="502" font-size="14" font-weight="500" fill="#712B13">Output guard (frozen code)</text>
+<text x="752" y="522" font-size="12" fill="#993C1D">same med-advice and diagnosis checks on</text>
+<text x="752" y="538" font-size="12" fill="#993C1D">every draft; blocks invented dishes</text>
+<line x1="910" y1="548" x2="910" y2="568" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="740" y="568" width="340" height="68" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="5 4"/>
+<text x="752" y="588" font-size="14" font-weight="500" fill="#2C2C2A">content_proposals*</text>
+<text x="752" y="608" font-size="12" fill="#5F5E5A">new wording or routine waits for</text>
+<text x="752" y="624" font-size="12" fill="#5F5E5A">user or team approval</text>
+<line x1="910" y1="636" x2="910" y2="656" stroke="#5F5E5A" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="740" y="656" width="340" height="84" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="752" y="676" font-size="14" font-weight="500" fill="#2C2C2A">notifications</text>
+<text x="752" y="696" font-size="12" fill="#5F5E5A">sent_at, opened_at, acted_at: the outcome</text>
+<text x="752" y="712" font-size="12" fill="#5F5E5A">feeds nudge_policy*</text>
+<text x="752" y="728" font-size="12" fill="#5F5E5A">to the patient app</text>
+<line x1="375" y1="732" x2="375" y2="760" stroke="#5F5E5A" stroke-width="1.3" marker-start="url(#a)" marker-end="url(#a)"/>
+<text x="388" y="752" font-size="12" text-anchor="start" fill="#5F5E5A">deterministic jobs build each layer from the one before (no model)</text>
+<rect x="30" y="764" width="252" height="218" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="42" y="784" font-size="13" font-weight="500" fill="#2C2C2A">Bronze: as received</text>
+<text x="42" y="804" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">bronze_food</text>
+<text x="42" y="820" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">bronze_exercise</text>
+<text x="42" y="836" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">bronze_symptom</text>
+<text x="42" y="852" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">bronze_wellbeing</text>
+<text x="42" y="868" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">bronze_medication</text>
+<text x="42" y="884" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">bronze_cgm</text>
+<text x="42" y="900" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">bronze_watch</text>
+<rect x="296" y="764" width="252" height="218" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="308" y="784" font-size="13" font-weight="500" fill="#2C2C2A">Silver: typed facts</text>
+<text x="308" y="804" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">food_logs</text>
+<text x="308" y="820" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">exercise_logs, exercise_sets</text>
+<text x="308" y="836" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">symptom_logs</text>
+<text x="308" y="852" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">wellbeing_logs</text>
+<text x="308" y="868" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">medication_log</text>
+<text x="308" y="884" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">medication_schedule</text>
+<text x="308" y="900" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">cgm_readings, watch_readings</text>
+<text x="308" y="916" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">blood_pressure_readings</text>
+<rect x="562" y="764" width="252" height="218" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="574" y="784" font-size="13" font-weight="500" fill="#2C2C2A">Gold: derived</text>
+<text x="574" y="804" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">timeline_5min</text>
+<text x="574" y="820" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">daily_summary</text>
+<text x="574" y="836" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">meal_response, exercise_response</text>
+<text x="574" y="852" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">baselines, glucose_events</text>
+<text x="574" y="868" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">clinical_flags, care_summary</text>
+<text x="574" y="884" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">adherence_summary (view)</text>
+<text x="574" y="900" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">nudge_policy*</text>
+<text x="574" y="916" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">adherence_barriers*</text>
+<rect x="828" y="764" width="252" height="218" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="840" y="784" font-size="13" font-weight="500" fill="#2C2C2A">Reference and operations</text>
+<text x="840" y="804" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">foods (+ Singapore dataset)</text>
+<text x="840" y="820" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">knowledge_chunks</text>
+<text x="840" y="836" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">preventive_items</text>
+<text x="840" y="852" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">interaction_rules</text>
+<text x="840" y="868" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">appointments</text>
+<text x="840" y="884" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">patient_preventive_status</text>
+<text x="840" y="900" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">refill_forecasts</text>
+<text x="840" y="916" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">agent_runs, agent_steps</text>
+<text x="840" y="932" font-size="12" font-family="Consolas, Menlo, monospace" fill="#5F5E5A">guardrail_events, event_log</text>
+<rect x="30" y="1002" width="510" height="62" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="42" y="1022" font-size="14" font-weight="500" fill="#633806">Vertex AI: Gemini 3.8 Flash</text>
+<text x="42" y="1042" font-size="12" fill="#854F0B">reads meal photos and logs the calories and macros, words the</text>
+<text x="42" y="1058" font-size="12" fill="#854F0B">nudges from the evidence packet. Daily call and budget cap.</text>
+<rect x="570" y="1002" width="510" height="62" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="582" y="1022" font-size="14" font-weight="500" fill="#633806">Singapore food dataset (CSV, 2,689 rows, per serving)</text>
+<text x="582" y="1042" font-size="12" fill="#854F0B">a shelf of lighter dishes for the NEXT meal; never sets logged</text>
+<text x="582" y="1058" font-size="12" fill="#854F0B">numbers. Searched only by the Swap ranker (code + JEV check).</text>
+<line x1="555" y1="1002" x2="555" y2="982" stroke="#5F5E5A" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#a)"/>
+</svg>

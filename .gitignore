@@ -8,6 +8,7 @@
 
 # raw datasets (large and licensed): never commit
 data/raw/
+data/processed/
 data/kaggle/
 data/uci/
 data/physionet/
@@ -22,3 +23,9 @@ __pycache__/
 .expo/
 dist/
 .DS_Store
+
+# design exports used as a one-off reference (owner deletes later)
+reference/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

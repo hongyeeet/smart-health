@@ -1,0 +1,105 @@
+/*
+ * The printable doctor report (L3). Always light and print-safe, whatever the app theme is, like the A4 brief in apps/mock.
+ * Layout follows Damien's report design: a dense two-part page for a clinician scanning it in a couple of minutes.
+ * Status is never colour alone: every tag carries its word, and every band its label.
+ */
+.rp-page { min-height: 100%; background: #e8e8e4; padding: 1px 0 40px; }
+.rp-bar { max-width: 794px; margin: 16px auto 0; padding: 0 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; font-size: 15px; color: #111; }
+.rp-bar button, .rp-bar select { font: inherit; font-weight: 700; min-height: 44px; padding: 8px 16px; border-radius: 10px; border: 2px solid #111; background: #fff; color: #111; cursor: pointer; }
+.rp-bar .rp-primary { background: #1d4a3c; border-color: #1d4a3c; color: #fff; }
+.rp-bar.rp-filters { margin-top: 8px; }
+.rp-bar .rp-off { opacity: .55; border-style: dashed; }
+.rp-bar .rp-on { background: #e6f4ee; }
+.rp-bar.rp-filters button { min-height: 36px; padding: 4px 12px; font-size: 14px; }
+.rp-bar > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.rp-sheet { width: 794px; max-width: calc(100% - 16px); min-height: 1123px; box-sizing: border-box; margin: 20px auto; padding: 44px 48px 36px; background: #fff; color: #101828; box-shadow: 0 10px 40px -20px rgba(0, 0, 0, 0.35); font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; font-size: 13px; line-height: 1.45; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 14px; overflow-x: auto; }
+.rp-sheet h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+.rp-sheet h2 { margin: 0 0 6px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #344054; }
+.rp-sheet section { break-inside: avoid; }
+.rp-muted { color: #475467; font-size: 12px; }
+.rp-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; border-bottom: 2px solid #101828; padding-bottom: 10px; }
+.rp-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1d4a3c; }
+.rp-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 24px; }
+.rp-facts b, .rp-cells b { display: block; font-weight: 700; }
+.rp-box { border: 1px solid #d0d5dd; border-radius: 8px; padding: 12px 16px; background: #f8f9fb; }
+.rp-sheet ul { list-style: disc outside; }
+.rp-box ul { margin: 0; padding-left: 18px; }
+.rp-box li + li { margin-top: 3px; }
+
+.rp-sheet table { width: 100%; border-collapse: collapse; }
+.rp-sheet th { text-align: left; color: #475467; font-size: 12px; font-weight: 700; padding: 4px 8px 4px 0; border-bottom: 1px solid #98a2b3; vertical-align: bottom; }
+.rp-sheet td { padding: 5px 8px 5px 0; border-bottom: 1px solid #eaecf0; vertical-align: top; }
+.rp-sheet th.rp-num, .rp-sheet td.rp-num { text-align: right; padding-right: 0; padding-left: 8px; white-space: nowrap; }
+.rp-strong { font-weight: 700; }
+.rp-sheet td.rp-label { width: 230px; }
+.rp-out { font-weight: 700; color: #b42318; }
+.rp-row-urgent td { background: #fef3f2; }
+.rp-ai { margin: 8px 0 0; padding: 8px 10px; border-left: 3px solid #1d4a3c; background: #eef6f2; font-size: 12px; color: #1d2939; }
+.rp-baseline-note { margin: 0; }
+
+.rp-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.rp-tag-urgent { background: #b42318; color: #fff; }
+.rp-tag-interaction { background: #fee4e2; color: #912018; border: 1px solid #912018; }
+.rp-tag-review { background: #fff; color: #5c4306; border: 1px dashed #5c4306; }
+
+.rp-two { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.rp-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+.rp-cells { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.rp-worth { margin: 0; padding-left: 18px; }
+.rp-worth li + li { margin-top: 6px; }
+.rp-scroll { overflow-x: auto; }
+.rp-night { font-size: 11px; }
+.rp-night th, .rp-night td { padding-left: 6px; }
+.rp-night td:first-child, .rp-night th:first-child { padding-left: 0; white-space: normal; }
+.rp-cells b { font-size: 16px; }
+.rp-break { break-before: page; border-top: 2px solid #101828; padding-top: 10px; margin-top: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.rp-foot { margin-top: auto; border-top: 1px solid #d0d5dd; padding-top: 8px; font-size: 12px; color: #475467; line-height: 1.5; }
+.rp-state { max-width: 794px; margin: 40px auto; padding: 0 16px; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; font-size: 18px; color: #111; }
+
+@media (max-width: 700px) {
+  .rp-sheet { padding: 24px 16px; }
+  .rp-facts, .rp-two { grid-template-columns: 1fr; }
+  .rp-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rp-head { flex-direction: column; align-items: flex-start; }
+}
+
+/*
+ * Phones, on screen only: the wide tables (alerts, symptoms, symptom entries, medications) become one block per row, each value with its
+ * column name in front of it, so nothing runs off the sheet and nothing scrolls sideways. The printed page keeps the real tables.
+ */
+@media screen and (max-width: 700px) {
+  .rp-sheet { overflow-x: hidden; }
+  .rp-stack, .rp-stack tbody, .rp-stack tr, .rp-stack td { display: block; width: auto; }
+  .rp-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .rp-stack tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid #eaecf0; }
+  .rp-stack td { border: 0; padding: 0 !important; white-space: normal !important; text-align: left !important; min-width: 0; overflow-wrap: anywhere; }
+  .rp-stack td:not([data-label]) { grid-column: 1 / -1; }
+  .rp-stack td:first-child { font-weight: 700; }
+  .rp-stack td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 400; color: #475467; }
+  .rp-stack td[data-label="Note"], .rp-stack td[data-label="Last dose taken before"] { grid-column: 1 / -1; }
+  /* two-column label/value tables (health summary): the label sits over its value, so a long value gets the whole width */
+  .rp-sheet td.rp-label { display: block; width: auto; padding-bottom: 0; border-bottom: 0; }
+  .rp-sheet td.rp-label + td { display: block; padding-top: 0; }
+  .rp-row-urgent td { background: transparent; }
+  .rp-stack.rp-row-urgent, .rp-stack tr.rp-row-urgent { background: #fef3f2; }
+  /* alerts: the tag and the title on one line, the detail under them */
+  .rp-alerts tr { grid-template-columns: auto minmax(0, 1fr); align-items: baseline; }
+  .rp-alerts td:nth-child(-n+2) { grid-column: auto; }
+  .rp-alerts td:nth-child(3) { grid-column: 1 / -1; }
+  .rp-alerts td:nth-child(2) { font-weight: 700; }
+}
+
+@page { size: A4; margin: 12mm; }
+@media print {
+  html, body, #root { height: auto !important; overflow: visible !important; background: #fff !important; }
+  /* the page is a fixed, scrolling layer on screen (inline style); on paper it must flow, or only the first sheet prints */
+  .rp-page { background: #fff; padding: 0; position: static !important; inset: auto !important; overflow: visible !important; height: auto !important; }
+  .rp-bar { display: none; }
+  .rp-sheet { margin: 0; box-shadow: none; width: auto; max-width: none; min-height: 0; padding: 0; overflow: visible; }
+  .rp-box, .rp-tag, .rp-swatch, .rp-row-urgent td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* a box, a table row or a heading is not split across two printed pages; a heading stays with what follows it */
+  .rp-box, .rp-sheet tr, .rp-sheet h2, .rp-sheet h3 { break-inside: avoid; page-break-inside: avoid; }
+  .rp-sheet h2, .rp-sheet h3 { break-after: avoid; page-break-after: avoid; }
+  .rp-sheet thead { display: table-header-group; }
+}

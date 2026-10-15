@@ -1,0 +1,327 @@
+{
+  "onboarding": {
+    "allergy": {
+      "add": "Tambah alahan",
+      "label": "Alahan",
+      "none": "Saya tiada alahan yang diketahui",
+      "reaction": "Apa yang berlaku (pilihan)",
+      "remove": "Keluarkan alahan ini",
+      "substance": "Anda alah kepada apa?",
+      "substancePh": "Ubat, makanan atau bahan"
+    },
+    "backToSummary": "Kembali ke ringkasan",
+    "birthYear": "Tahun kelahiran",
+    "birthYearHint": "Diperlukan untuk meneruskan.",
+    "calc": {
+      "age": "Umur tahun ini",
+      "bmi": "Indeks jisim badan (BMI)",
+      "fpg": "Glukosa semasa berpuasa dalam unit lain",
+      "hba1c": "HbA1c dalam unit lain",
+      "note": "Pengiraan mudah dan penukaran unit sahaja. Equinox tidak menilai nombor ini; doktor anda yang menilainya.",
+      "title": "Dikira daripada jawapan anda"
+    },
+    "cancelNew": "Batal. Jangan cipta pengguna ini",
+    "care": {
+      "gp": "GP atau klinik keluarga",
+      "hospital": "Klinik pakar hospital",
+      "label": "Di mana anda biasa pergi untuk diabetes anda?",
+      "none": "Tiada doktor tetap",
+      "polyclinic": "Poliklinik"
+    },
+    "cgm": {
+      "label": "Sensor mana yang anda gunakan?",
+      "none": "Tiada sensor glukosa",
+      "other": "Sensor lain",
+      "title": "Sensor glukosa (CGM)"
+    },
+    "check": {
+      "never": "Tidak pernah atau tidak pasti",
+      "overYear": "Lebih daripada setahun lalu",
+      "title": "Pemeriksaan diabetes terakhir anda",
+      "withinYear": "Dalam masa setahun yang lalu"
+    },
+    "cond": {
+      "anaemia": "Anemia atau talasemia",
+      "cholesterol": "Kolesterol tinggi",
+      "eye": "Penyakit mata diabetes",
+      "eyeSub": "Retinopati",
+      "fattyLiver": "Hati berlemak",
+      "footUlcer": "Pernah mengalami ulser kaki atau amputasi",
+      "heart": "Penyakit jantung atau pernah serangan jantung",
+      "heartFailure": "Kegagalan jantung",
+      "hypertension": "Tekanan darah tinggi",
+      "kidney": "Penyakit buah pinggang",
+      "kidneySub": "Atau protein dalam air kencing",
+      "label": "Pernahkah doktor memberitahu anda mempunyai mana-mana keadaan ini?",
+      "nerve": "Masalah saraf pada kaki",
+      "nerveSub": "Kebas, rasa semut-semut atau rasa dicucuk jarum",
+      "none": "Tiada satu pun daripada ini",
+      "other": "Sebarang keadaan lain (pilihan)",
+      "sleepApnoea": "Apnea tidur",
+      "stroke": "Strok atau strok ringan"
+    },
+    "connect": {
+      "button": "Sambung",
+      "chosen": "Dipilih: {{names}}. Ia belum dipadankan lagi. Anda boleh memadankannya kemudian dalam Saya, Sumber yang disambungkan.",
+      "connecting": "Menyambung…",
+      "demo": "En Tan ialah data demo, jadi tiada pilihan disimpan di sini.",
+      "failed": "Kami tidak dapat menyimpan pilihan anda sebentar tadi. Ia disimpan pada peranti ini.",
+      "later": "Bukan sekarang. Anda boleh lakukan ini kemudian dalam Saya, Sumber yang disambungkan.",
+      "notNow": "Bukan sekarang",
+      "title": "Sambung"
+    },
+    "consent": {
+      "data": "Gunakan data kesihatan saya",
+      "dataSub": "Diperlukan. Saya bersetuju untuk Equinox mengumpul dan menggunakan maklumat kesihatan yang saya masukkan dan bacaan daripada peranti saya.",
+      "research": "Gunakan data saya untuk penyelidikan",
+      "researchSub": "Pilihan. Untuk penyelidikan diabetes, tanpa nama atau butiran hubungan saya.",
+      "share": "Kongsi ringkasan doktor",
+      "shareSub": "Pilihan. Anda tentukan setiap kali.",
+      "title": "Privasi dan kebenaran"
+    },
+    "contact": {
+      "email": "E-mel mereka",
+      "hintV2": "Digunakan untuk keselamatan sahaja. Anda boleh menukarnya kemudian di bahagian Saya, Data dan akaun.",
+      "name": "Nama mereka",
+      "namePh": "Waris atau penjaga",
+      "needed": "Diperlukan untuk meneruskan.",
+      "phone": "Nombor telefon bimbit mereka",
+      "phoneHint": "Nombor digit, dengan pilihan tanda + di hadapan.",
+      "relation": "Hubungan dengan anda",
+      "relationPh": "Contohnya, isteri, anak lelaki atau rakan"
+    },
+    "continueAnyway": "Teruskan juga",
+    "demo": {
+      "notice": "Encik Tan ialah data demo. Rekod beliau tidak diubah dari sini. Untuk mencuba persediaan, beralih ke pengguna demo atau mulakan sebagai orang baharu."
+    },
+    "demoStartV2": "Mulakan sebagai pesakit demo",
+    "diagYear": "Tahun anda diberitahu menghidap diabetes jenis 2",
+    "elig": {
+      "adult": "Adakah anda berumur 18 tahun ke atas?",
+      "out": "Ia direka untuk orang dewasa yang menghidap diabetes jenis 2. Sila berbincang dengan pasukan penjagaan anda yang boleh membantu anda dengan lebih baik. Anda belum didaftarkan.",
+      "outTitle": "Equinox belum direka untuk ini",
+      "pregnant": "Adakah anda hamil?",
+      "step": "Pemeriksaan pantas",
+      "sub": "Equinox direka untuk orang dewasa yang menghidap diabetes jenis 2.",
+      "t2": "Adakah anda menghidap diabetes jenis 2?",
+      "title": "Adakah aplikasi ini sesuai untuk anda?",
+      "unsure": "Jika anda tidak pasti, tanya doktor anda dahulu. Anda masih boleh meneruskan dan melihat-lihat."
+    },
+    "email": {
+      "hint": "Kami akan menghantar e-mel peringatan mesra apabila tiba masanya, seperti merekod makanan. Biarkan kosong untuk menambahnya kemudian.",
+      "hintV2": "Kami akan menghantar e-mel peringatan mesra apabila tiba masanya, seperti merekodkan hidangan.",
+      "label": "E-mel untuk peringatan (pilihan)",
+      "labelV2": "Alamat e-mel",
+      "notSavedV2": "Kami tidak dapat menyimpan e-mel peringatan anda tadi. Ia disimpan pada peranti ini. Anda boleh menambahnya kemudian di bahagian Saya, Data dan akaun.",
+      "on": "Hantarkan saya e-mel peringatan",
+      "onSubV2": "Anda boleh mematikannya pada bila-bila masa di bahagian Saya, Data dan akaun.",
+      "waiting": "Kami akan menyimpan e-mel anda apabila profil anda dicipta. Ia disimpan pada peranti ini sehingga itu."
+    },
+    "err": {
+      "adult": "Equinox adalah untuk orang dewasa berumur 18 tahun ke atas.",
+      "between": "Masukkan nombor dari {{lo}} hingga {{hi}} {{unit}}, atau biarkan kosong.",
+      "diagYear": "Masukkan tahun 4 digit, bukan sebelum anda dilahirkan dan bukan pada masa depan.",
+      "email": "Masukkan alamat e-mel seperti name@gmail.com, atau biarkan kosong.",
+      "emailV2": "Masukkan alamat e-mel seperti name@example.com.",
+      "future": "Tarikh ini pada masa depan.",
+      "labDate": "Masukkan tarikh ujian darah anda. Ia diperlukan bersama nombor ini.",
+      "phone": "Masukkan nombor telefon bimbit dengan digit, seperti +65 9123 4567.",
+      "year": "Masukkan tahun 4 digit, seperti 1968."
+    },
+    "exampleNoticeV2": "Mr Tan ialah rekod contoh. Ia tidak diubah dari sini. Untuk menyediakannya bagi diri anda, cipta pengguna anda sendiri daripada menu di bahagian atas Laman Utama.",
+    "eyeCheck": "Pemeriksaan mata (foto retina)",
+    "footCheck": "Pemeriksaan kaki",
+    "fpg": "Glukosa berpuasa",
+    "fpgUnit": "Unit glukosa berpuasa",
+    "gender": {
+      "female": "Perempuan",
+      "label": "Jantina",
+      "male": "Lelaki"
+    },
+    "goHome": "Pergi ke Laman Utama",
+    "gold": {
+      "high": "7 = tidak pernah sedar",
+      "highV2": "5 = tidak pernah sedar",
+      "low": "1 = sentiasa sedar",
+      "note": "Biarkan kosong jika anda tidak pernah mengalami hipo.",
+      "q": "Adakah anda sedar apabila hipo anda mula berlaku?"
+    },
+    "hba1c": "HbA1c",
+    "hba1cUnit": "Unit HbA1c",
+    "height": "Ketinggian",
+    "hsg": {
+      "label": "Adakah anda mendaftar dalam Healthier SG?",
+      "no": "Tidak mendaftar",
+      "yes": "Mendaftar"
+    },
+    "hypo": {
+      "count": "Berapa kali anda mengalami hipo dalam 3 bulan yang lalu?",
+      "few": "1 atau 2 kali",
+      "many": "3 kali atau lebih",
+      "none": "Tiada",
+      "severe": "Dalam 12 bulan yang lalu, pernahkah anda mengalami hipo sehingga memerlukan bantuan orang lain?",
+      "tip": "Hipo ialah bacaan glukosa yang rendah, di bawah {{low}} mmol/L, selalunya dengan rasa berpeluh, menggigil atau pening.",
+      "what": "Apakah itu hipo?",
+      "whatLabel": "Apakah itu hipo?"
+    },
+    "insulin": "Insulin berpuasa (pilihan)",
+    "keptHere": "Sesetengah jawapan disimpan pada peranti ini buat masa sekarang. Ia akan ditambah ke rekod anda setelah sedia.",
+    "labDate": "Tarikh ujian darah",
+    "labDateHint": "Diperlukan jika anda memasukkan sebarang nombor di bawah.",
+    "later": "Selesaikan kemudian",
+    "loadFailed": "Kami tidak dapat memuatkan jawapan anda yang disimpan tadi. Jawapan pada peranti ini dipaparkan.",
+    "loading": "Memuatkan jawapan anda",
+    "meds": {
+      "addTitle": "Tambah setiap ubat daripada labelnya",
+      "byHand": "Taipkan sendiri",
+      "error": "Kami tidak dapat memuatkan ubat anda tadi. Anda boleh teruskan, dan semaknya kemudian di bahagian Ubat-ubatan.",
+      "intro": "Equinox menyalin apa yang ada pada label, dan anda menyemaknya. Anda juga boleh melakukannya kemudian daripada bahagian Ubat-ubatan.",
+      "none": "Belum ada ubat yang disimpan.",
+      "note": "Equinox memberi penjelasan dan peringatan. Ia tidak sekali-kali menyuruh anda memula, menghentikan atau menukar ubat.",
+      "savedTitle": "Ubat yang disimpan setakat ini",
+      "scan": "Imbas label",
+      "scope": "Equinox adalah untuk ubat diabetes dan ubat atau suplemen yang anda ambil setiap hari."
+    },
+    "mention": {
+      "eye": "Pemeriksaan mata diabetes terakhir anda lebih daripada setahun yang lalu, atau anda tidak pasti bila.",
+      "foot": "Pemeriksaan kaki diabetes terakhir anda lebih daripada setahun yang lalu, atau anda tidak pasti bila.",
+      "hba1c": "Anda tidak memasukkan keputusan HbA1c.",
+      "title": "Wajar diberitahu kepada doktor anda"
+    },
+    "name": "Apa panggilan yang sesuai untuk anda?",
+    "namePlaceholder": "Contohnya, Encik Tan",
+    "noRead": "Jawapan anda yang disimpan tidak dapat dibaca, jadi tiada apa yang disimpan buat masa ini. Jawapan anda kekal dalam peranti ini.",
+    "progress": "Langkah {{step}} daripada {{total}}",
+    "race": {
+      "chinese": "Cina",
+      "indian": "India",
+      "label": "Kumpulan etnik",
+      "malay": "Melayu",
+      "other": "Atau taipkan di sini",
+      "otherV2": "Sila nyatakan yang mana",
+      "others": "Lain-lain"
+    },
+    "s10": {
+      "name": "Minggu bekerja anda",
+      "sub": "Bila anda biasanya bekerja, supaya peringatan boleh disesuaikan dengan hari anda.",
+      "title": "Minggu bekerja anda"
+    },
+    "s11": {
+      "name": "Hubungan kecemasan",
+      "sub": "Semua empat butiran diperlukan. Ia digunakan untuk keselamatan sahaja.",
+      "title": "Siapa yang patut kami hubungi jika berlaku kecemasan?"
+    },
+    "s3": {
+      "name": "Mengenai anda",
+      "sub": "Beberapa maklumat asas. Hanya tahun kelahiran diperlukan untuk meneruskan.",
+      "title": "Mengenai anda"
+    },
+    "s4": {
+      "name": "Sejarah diabetes",
+      "sub": "Bila ia dikesan, dan siapa yang memantaunya.",
+      "title": "Diabetes dan penjagaan anda"
+    },
+    "s5": {
+      "name": "Ubat-ubatan",
+      "sub": "Imbas label setiap ubat yang anda ambil. Anda boleh menyemak atau menukarnya kemudian.",
+      "title": "Ubat-ubatan anda"
+    },
+    "s6": {
+      "name": "Glukosa rendah",
+      "sub": "Jawab apa yang anda boleh. Ketik ikon i untuk ketahui apa itu hipo.",
+      "title": "Glukosa rendah (hipo)"
+    },
+    "s7": {
+      "name": "Keadaan dan pemeriksaan lain",
+      "sub": "Perkara yang diberitahu oleh doktor, alahan anda, dan pemeriksaan diabetes terakhir anda.",
+      "title": "Keadaan dan pemeriksaan kesihatan lain"
+    },
+    "s8": {
+      "name": "Keputusan makmal",
+      "sub": "Salin nombor daripada laporan terkini anda. Biarkan kosong apa-apa yang anda tiada.",
+      "title": "Keputusan makmal"
+    },
+    "s9": {
+      "name": "Peranti",
+      "sub": "Pilih apa yang anda gunakan. Tiada apa-apa yang dipasangkan pada halaman ini.",
+      "title": "Jam tangan dan sensor anda"
+    },
+    "saveFailed": "Kami tidak dapat menyimpan halaman ini tadi. Jawapan anda disimpan pada peranti ini.",
+    "skipV2": "Langkau",
+    "sum": {
+      "care": "Tempat rawatan biasa",
+      "cgm": "Sensor glukosa",
+      "conditions": "Keadaan kesihatan",
+      "demo": "Encik Tan ialah data demo. Tiada apa-apa yang anda lihat di sini disimpan ke dalam rekod beliau.",
+      "demoDone": "Encik Tan ialah data demo, jadi tiada apa-apa yang disimpan ke dalam rekod beliau.",
+      "diagYear": "Tahun didiagnosis",
+      "done": "Persediaan selesai",
+      "edit": "Edit",
+      "emailUnknown": "Tidak dapat menyemaknya tadi",
+      "eye": "Pemeriksaan mata terakhir",
+      "failed": "Persediaan belum selesai. Jawapan anda masih ada pada peranti ini. Betulkan perkara di bawah, atau periksa sambungan anda, kemudian ketik Selesai sekali lagi.",
+      "fine": "Equinox memberi penerangan, menyusun dan mengingatkan. Ia bukan diagnosis dan tidak menggantikan doktor anda.",
+      "finish": "Selesai",
+      "foot": "Pemeriksaan kaki terakhir",
+      "gold": "Tahu bila hipo bermula (1 sentiasa, 7 tidak pernah)",
+      "goldV2": "Sedar apabila hipo bermula (1 sentiasa, 5 tidak pernah)",
+      "hsg": "Healthier SG",
+      "hypo3m": "Hipo dalam tempoh 3 bulan yang lalu",
+      "insulin": "Insulin semasa berpuasa",
+      "labDate": "Tarikh ujian darah",
+      "loading": "Memuatkan…",
+      "local": "Beberapa jawapan, seperti sejarah diabetes dan keputusan ujian makmal, disimpan pada peranti ini buat masa ini.",
+      "medicines": "Ubat yang disimpan",
+      "medsError": "Tidak dapat memuatkannya tadi",
+      "name": "Nama",
+      "noAllergies": "Tiada alahan yang diketahui",
+      "noRead": "Jawapan anda yang disimpan tidak dapat dibaca, jadi Selesai tidak dapat menyimpan sekarang. Periksa sambungan anda, kemudian ketik Selesai sekali lagi.",
+      "notGiven": "Tidak diberikan",
+      "notSaved": "Belum disimpan ke dalam rekod anda lagi. Ketik Selesai untuk menyimpannya.",
+      "notSavedYet": "Belum disimpan lagi",
+      "off": "Mati",
+      "on": "Hidup",
+      "savedAt": "Rekod anda kali terakhir disimpan pada {{date}}.",
+      "severe": "Perlukan bantuan untuk hipo dalam tempoh 12 bulan yang lalu",
+      "step": "Semua langkah selesai",
+      "sub": "Ini apa yang anda beritahu kami. Ubah apa-apa yang tidak betul.",
+      "title": "Ringkasan profil anda",
+      "titleFor": "Ringkasan profil anda, {{name}}",
+      "waist": "Pinggang",
+      "watch": "Jam pintar",
+      "work": "Kerja",
+      "workDays": "Hari kerja",
+      "workHours": "Waktu kerja"
+    },
+    "tag": "Persediaan",
+    "toSummary": "Semak jawapan saya",
+    "waist": "Pinggang (pilihan)",
+    "waistHint": "Diukur di sekeliling pinggang anda, searas dengan pusat anda.",
+    "wear": {
+      "label": "Jam tangan mana yang anda pakai?",
+      "none": "Tiada jam tangan",
+      "other": "Jam tangan lain",
+      "title": "Jam pintar"
+    },
+    "weight": "Berat badan",
+    "welcome": {
+      "step": "Selamat datang",
+      "sub": "Ia mengambil masa kira-kira 5 minit. Jawapan anda membantu Equinox mengikuti hari anda dan menyediakan ringkasan yang jelas untuk doktor anda. Ia tidak sekali-kali memberikan nasihat perubatan dan tidak sekali-kali membuat diagnosis.",
+      "title": "Sediakan Equinox untuk anda"
+    },
+    "work": {
+      "days": "Hari anda biasanya bekerja",
+      "desk": "Kebanyakannya duduk",
+      "end": "Kerja tamat",
+      "label": "Kerja anda",
+      "mixed": "Campuran",
+      "needed": "Pilih hari dan waktu kerja anda untuk meneruskan. Bagi syif malam, waktu tamat boleh lebih awal daripada waktu mula.",
+      "notWorking": "Bersara atau tidak bekerja",
+      "physical": "Kerja fizikal",
+      "shift": "Syif atau waktu malam",
+      "standing": "Kebanyakannya berdiri",
+      "start": "Kerja bermula"
+    },
+    "yourAnswers": "Jawapan anda"
+  }
+}

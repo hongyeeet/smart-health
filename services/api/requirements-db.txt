@@ -1,0 +1,6 @@
+# Packages for the database migrations and checks (E1). The backend skeleton (E0-2) will add its own.
+alembic>=1.13
+sqlalchemy>=2.0
+psycopg[binary]>=3.2
+pytest>=8
+requests>=2.31
