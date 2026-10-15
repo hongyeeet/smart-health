@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import time
 
+import psycopg
+
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
@@ -36,7 +38,10 @@ def _list(history: bool = False) -> list[dict]:
     now = time.monotonic()
     if hit and now - hit[0] < CACHE_SECONDS:
         return hit[1]
-    out = logstore.notifications(create=not _read_only(), history=history)
+    try:
+        out = logstore.notifications(create=not _read_only(), history=history)
+    except psycopg.errors.ForeignKeyViolation:
+        return []                  # a new person whose set-up is open has no user row until Finish: nothing to show yet, and no error
     _cache[key] = (now, out)
     return out
 

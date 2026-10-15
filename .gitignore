@@ -29,3 +29,7 @@ reference/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+
+# Firebase CLI cache and logs
+.firebase/
+firebase-debug.log

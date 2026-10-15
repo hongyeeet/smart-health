@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = (lambda ps: ps[4] if len(ps) > 4 else ps[-1])(Path(__file__).resolve().parents)      # in the container the code sits at /srv, with no repo above it
 
 
 def _load_env() -> None:
