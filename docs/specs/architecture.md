@@ -6,13 +6,18 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 
 > **Platform decisions (2026-09-29, override anything below that disagrees):**
 > - **Front end is a mobile-first web app shown in a phone-sized frame or WebView**, not a store-published native app (no store fees). Wherever this document says Expo / React Native / Health Connect / HealthKit, read "mobile-first web app". Device data arrives by replay of the cited datasets and file import, not live phone-health APIs.
-> - **Local app, Supabase database.** The web app and API run on each developer's machine. The database is Supabase (Postgres 16 with pgvector): every developer uses the same project through a private `.env` that is never committed. Row-level security is enabled on every table with no policies, so the public API key cannot read or write anything, and only the backend connects (direct connection string or service key, server-side only). Photos and exports go to a private Supabase Storage bucket. The only other outbound calls are the AI APIs (Hunyuan, and JEV if it is not run locally). There is no hosting for the app and no Docker requirement. Postgres is standard, so the database can move later without a redesign.
-> - **No sign-up/sign-in flows.** A "Start as demo patient" button creates a session, and every query is scoped by the session's user id. Consent records, the audit log and doctor share-link tokens stay.
-> - **AI provider (decided 2026-10-02, D-047; see [ai-models.md](ai-models.md)).** Everything runs through Google Cloud Vertex AI (Claude Sonnet 5.5 for text and photos, Gemini Embedding, Cloud Translation) except speech (ElevenLabs) and the JEV decision model (TypeSafe). There is no Tencent fallback. Everything calls the AI through the gateway in `llm/gateway.py`.
+> - **Local app, Supabase database (hosting update 2026-10-15: the plan is Firebase Hosting for the web app and Cloud Run for the API and the worker, see [../handover/deployment-gcp.md](../handover/deployment-gcp.md)).** The web app and API run on each developer's machine. The database is Supabase (Postgres 16 with pgvector): every developer uses the same project through a private `.env` that is never committed. Row-level security is enabled on every table with no policies, so the public API key cannot read or write anything, and only the backend connects (direct connection string or service key, server-side only). Photos and exports go to a private Supabase Storage bucket. The only other outbound calls are the AI APIs (Vertex AI, ElevenLabs and JEV), the Workato reminder webhooks and, if switched on, Google Cloud Vision. For local work there is no Docker requirement. Postgres is standard, so the database can move later without a redesign.
+> - **No sign-up/sign-in flows (updated 2026-10-15).** The app opens on Mr Tan's example record, which is read-only for everyone (any write is refused with a plain message), and anyone can create their own user from the avatar menu. The person is chosen by an `X-User` header (demo-grade, no real login), and every query is scoped by that user id. There is no demo user and no "Start as demo patient" button any more. Consent records, the audit log and doctor share-link tokens stay.
+> - **AI provider (decided 2026-10-02, D-047; see [ai-models.md](ai-models.md)).** Everything runs through Google Cloud Vertex AI (Gemini 3.8 Flash for text and photos, which replaced Claude Sonnet 5.5 in D-059; Gemini Embedding; `gemini-2.5-flash-image` for dish pictures; Cloud Translation) except speech (ElevenLabs) and the JEV decision model (TypeSafe). There is no Tencent fallback. Everything calls the AI through the gateway in `llm/gateway.py`.
 > - **JEV** is the typed decision layer ([OpenJev](https://github.com/razorback16/openjev): yes/no, choice and score answers with calibrated confidence). It is wired in backlog task E0-3 and always called through `decision/`. If JEV is off or unreachable, every decision takes the conservative path (no model fallback). See [memory.md](memory.md) and [ai-models.md](ai-models.md).
 > - **Security is demo-grade.** Row-level security, consent-scoped retrieval, data-classification tagging and retention workflows are deferred (memory.md section 13). The clinical safety path is never deferred.
 
 ## 1. System overview
+
+![System architecture: the person, web app, API, scheduler, database and outside services](../assets/diagrams/03-system-architecture.png)
+
+*Figure: system architecture, updated 2026-10-15. The text diagram below shows the same system in more detail.*
+
 
 ```
 ┌──────────────────────── Patient device (untrusted) ────────────────────────┐
@@ -31,8 +36,8 @@ Blueprint for AI coding agents and humans. Read [prd.md](prd.md) for the *what/w
 │             (JEV decisions in guard, router) ─► OUTPUT GUARD ─► log        │
 │             tools = typed wrappers over services and the Memory Service    │
 │                                                                            │
-│  Worker (APScheduler): reminders · window close · nightly momentum ·       │
-│          reflection (memory) · brief pre-generation · replay feeder         │
+│  Scheduler (APScheduler, in the API process; own worker service in         │
+│          production): tick · emails · food_pictures · nightly · calendar    │
 │                                                                            │
 │  PostgreSQL 16 + pgvector   ·   Object storage (images, PDFs, audio)       │
 └───────┬───────────────────────┬──────────────────────┬─────────────────────┘
@@ -89,16 +94,16 @@ Originals are never overwritten. A better analysis is a new record that links to
 | i18n | `i18next` + `react-i18next` (en, zh, ms, ta); keys written as `t('key', 'English default')`, extracted with `i18next-parser` | Multilingual |
 | Backend | **Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0 (async), Alembic** | Typed APIs; strong data/ML ecosystem |
 | Agents | **LangGraph** (state graphs, checkpoints) + own guardrail and memory layer | Observable, controllable agent flows |
-| LLM | **Claude Sonnet 5.5** (chat, explainer, brief narrative, photos) and **Gemini Embedding** (768 dimensions) on Google Cloud Vertex AI, **Google Cloud Translation** for fixed text, wrapped by `llm/gateway.py` | One cloud, one bill; model chosen per job (ai-models.md); swappable by configuration |
+| LLM | **Gemini 3.8 Flash** (chat, explainer, brief narrative, photos; Claude Sonnet 5.5 was replaced in D-059), **`gemini-2.5-flash-image`** (dish pictures) and **Gemini Embedding** (768 dimensions) on Google Cloud Vertex AI, **Google Cloud Translation** for fixed text, wrapped by `llm/gateway.py` | One cloud, one bill; model chosen per job (ai-models.md); swappable by configuration |
 | Decision layer (JEV) | **OpenJev** typed decisions (`noul`, `choice`, `score`) behind `decision/`; hosted, small CPU models, or self-hosted; if it is off or unreachable, the conservative path applies | Fast, bounded, calibrated classification for routing and guards. The TypeSafe JEV model (`typesafe/jev-1.13`) is used, hosted on OpenRouter |
 | Vector search | **pgvector** in Postgres | One DB for relational and vectors |
 | DB | Supabase (managed PostgreSQL 16 with pgvector), one shared project | JSONB, enums, pgvector; RLS on with no policies |
-| Jobs | APScheduler in a separate worker process, jobs persisted in Postgres | Simple, no Redis needed |
+| Jobs | APScheduler (`AsyncIOScheduler`) inside the API process, switched by `SCHEDULER_ENABLED`; in production it runs in a separate single-instance worker service. Jobs: `tick`, `emails`, `food_pictures`, `nightly`, `calendar_top_up`. Reminder e-mails and Google Calendar dose reminders go through Workato (recipes owned by Joely, not finished) | Simple, no Redis needed |
 | Brief rendering | Jinja2 HTML + Matplotlib (SVG charts) → WeasyPrint PDF | Deterministic, printable, no headless browser |
 | TTS and STT | **ElevenLabs** (`eleven_multilingual_v2` for cached explainers, `eleven_flash_v2_5` for live lines, Scribe v2 for transcription) | Multilingual speech; audio is cached by text hash |
 | Calendar | Google Calendar API (OAuth, user-initiated) + `.ics` fallback | Scheduling |
 | Storage | Supabase Storage, private bucket (`STORAGE_BACKEND=supabase`) | Images, PDFs, audio, exports |
-| Runtime | Web app and API run locally on each machine; database and file storage on Supabase (Postgres 16 + pgvector, private Storage bucket); one command to start | No hosting cost for the app; one shared database with the same seeded demo data for everyone |
+| Runtime | Locally: web app and API on each machine. Planned hosting: Firebase Hosting (web) plus Cloud Run (API and worker), see [../handover/deployment-gcp.md](../handover/deployment-gcp.md). Database and file storage on Supabase (Postgres 16 + pgvector, private Storage buckets) | One shared database with the same seeded example record (Mr Tan) for everyone |
 | Quality | Backend: ruff, mypy (strict), pytest, pytest-asyncio. App: eslint, prettier, tsc, jest + RNTL | See rules.md |
 
 > Verify current package names, model IDs, regions and prices in the vendor consoles at setup time; keep them in `.env`, never hard-coded.
@@ -108,7 +113,7 @@ Originals are never overwritten. A better analysis is a new record that links to
 ## 3. Repository structure
 
 ```
-smart-health/
+TencentHackathon/                   # the Equinox repository (the tree below is the original blueprint; the code now differs in detail)
 ├─ README.md                         # what this is, where to start, branches
 ├─ docs/                             # ALL documents
 │  ├─ specs/                         # prd, architecture, flow, schema, design, rules, memory
@@ -394,10 +399,10 @@ OpenAPI is the contract; the mobile client is generated from it (`openapi-typesc
 ---
 
 ## 8. Configuration (`.env.example`)
-`DATABASE_URL` (Supabase direct connection string), `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (server only, never in the web app), `JWT_SECRET`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `LLM_VISION_CHALLENGER`, `EMBED_MODEL`, `EMBED_DIM`, `TRANSLATE_GLOSSARY_ID`, `ELEVENLABS_API_KEY`, `ELEVENLABS_TTS_MODEL`, `ELEVENLABS_TTS_LIVE_MODEL`, `ELEVENLABS_STT_MODEL`, `JEV_BASE_URL`, `JEV_API_KEY`, `AI_DAILY_CALL_CAP`, `AI_DAILY_BUDGET_USD`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `STORAGE_BACKEND`, `STORAGE_BUCKET`, `SHARE_LINK_TTL_HOURS`, `TZ=Asia/Singapore`, `DEMO_MODE`.
+`DATABASE_URL` (Supabase direct connection string), `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (server only, never in the web app), `JWT_SECRET`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `LLM_VISION_CHALLENGER`, `EMBED_MODEL`, `EMBED_DIM`, `TRANSLATE_GLOSSARY_ID`, `ELEVENLABS_API_KEY`, `ELEVENLABS_TTS_MODEL`, `ELEVENLABS_TTS_LIVE_MODEL`, `ELEVENLABS_STT_MODEL`, `JEV_BASE_URL`, `JEV_API_KEY`, `AI_DAILY_CALL_CAP`, `AI_DAILY_BUDGET_USD`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `STORAGE_BACKEND`, `STORAGE_BUCKET`, `FOOD_IMAGE_BUCKET`, `FOOD_IMAGE_MODEL`, `SCHEDULER_ENABLED`, `WORKATO_EMAIL_WEBHOOK_URL`, `SHARE_LINK_TTL_HOURS`, `TZ=Asia/Singapore`, `DEMO_MODE`.
 
 ## 9. Demo mode
-`DEMO_MODE=true` → seed demo patient (Mr Tan, 91 days of history with continuous CGM: `scripts/load_mr_tan_v2.py` then `scripts/build_gold_v2.py`), `replay.py` streams today's CGM/watch data at 1× or accelerated speed, and a hidden debug menu in the app lets you trigger: a missed dose, a hypo reading, a momentum flag, a clash, and brief generation. See flow.md §5.
+`DEMO_MODE` (default `true`) → the example patient (Mr Tan, 91 days of history with continuous CGM: `scripts/load_mr_tan_v2.py` then `scripts/build_gold_v2.py`), `replay.py` streams today's CGM/watch data at 1× or accelerated speed, and a hidden debug menu in the app lets you trigger: a missed dose, a hypo reading, a momentum flag, a clash, and brief generation. See flow.md §5.
 
 ## 10. Build order (critical path)
 1. Repo, Supabase connection and migrations baseline, demo session, event log

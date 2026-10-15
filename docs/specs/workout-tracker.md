@@ -2,7 +2,7 @@
 
 A live strength-session tracker: how long the person trains, what they do, every set with reps and weight, and a rest timer. When the session is saved, the server works out how hard it was from the watch heart rate and the person's own resting-heart-rate baseline, and the doctor brief and Insights can use the result. Read it with [prd.md](prd.md) (F6 exercise, F18 timeline), [data-model-v2.md](data-model-v2.md) (the tables `exercise_logs` and `exercise_sets`) and [memory.md](memory.md) (evidence statuses). Since data model v2 (2026-10-05) the session is saved as a `bronze_exercise` row, then `exercise_logs` with its `exercise_sets`; the older `workouts` and `workout_sets` tables no longer exist.
 
-**Status (2026-10-11): built and connected, not yet verified on the database.** The screen, the on-device session store, the effort calculation, the save endpoint (`POST /workouts`) and the week progress (`GET /workouts/week`) exist. The sets are saved in `exercise_sets` under `exercise_logs` (migration 0018). The **rating is optional** from 2026-10-11 (migration 0036), and the **honest label** and the **beta-blocker and coverage rules** are in section 4. Not built: the model sentence (section 2) and the Gold resting-heart-rate baseline. Originally decided on 2026-10-03 (D-055).
+**Status (2026-10-11): built and connected, not yet verified on the database.** The screen, the on-device session store, the effort calculation, the save endpoint (`POST /workouts`) and the week progress (`GET /workouts/week`) exist. The sets are saved in `exercise_sets` under `exercise_logs` (migration 0018). The **rating is optional** from 2026-10-11 (migration 0036), and the **honest label** and the **beta-blocker and coverage rules** are in section 4. Not built: the model sentence (section 2) and the Gold resting-heart-rate baseline. Originally decided on 2026-10-03 (D-055). **Quick log editing (checked 2026-10-15):** a workout saved from the quick log (F1, `LogWorkout.tsx`) can be read and edited: `GET /logs/workout/{id}` returns it and `PUT /logs/workout/{id}` updates it (title "Workout updated"); the app loads one of the last five workouts into the form. This is separate from the live session, which is saved once with `POST /workouts`.
 
 ## 1. What the person does
 
@@ -30,7 +30,7 @@ The rule is the same as everywhere else in the project: **the model writes langu
 
 ## 3. How it uses the Gold tables
 
-Gold tables are derived values built from Silver (data-flow.md). They are built today by `scripts/build_gold_v2.py` for the demo patient. The effort is computed from Silver (`watch_readings` heart rate, and `user_profile.birth_year` for the age) and can use the Gold inputs below.
+Gold tables are derived values built from Silver (data-flow.md). They are built today by `scripts/build_gold_v2.py` for Mr Tan's example record. The effort is computed from Silver (`watch_readings` heart rate, and `user_profile.birth_year` for the age) and can use the Gold inputs below.
 
 | Need | Source now | Source once Gold exists |
 |---|---|---|
@@ -64,7 +64,7 @@ Gold tables are derived values built from Silver (data-flow.md). They are built 
 | Effort and volume calculation | Built; unit tests (`tests/unit/test_workout_effort.py`, `test_workouts_router.py`). Not run against the database |
 | Tables for the sets | `workout_sets` (migration 0015) became `exercise_sets` under `exercise_logs` in migration 0018 (2026-10-05); same columns |
 | Save endpoint that reads heart rate, calls the calculation and stores the summary | Built: `POST /workouts` (`services/api/app/api/routers/workouts.py`), stored as `bronze_exercise`, then `exercise_logs` and `exercise_sets` |
-| Gold inputs (resting heart rate, glucose after sessions) | Built for the demo patient (`daily_summary`, `exercise_response`); the nightly job that fills them is not built |
+| Gold inputs (resting heart rate, glucose after sessions) | Built for Mr Tan's example record (`daily_summary`, `exercise_response`); the nightly job that fills them is not built |
 | Model sentence | Not built (section 2) |
 | Link from the Log hub (E1) and the quick log (F1) | Built: the Workout tile on the Log hub opens F1, and F1 has "Start a live session" for `/log/workout/live` |
 

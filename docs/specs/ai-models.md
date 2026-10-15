@@ -2,11 +2,15 @@
 
 Which AI model does each job, how the AI is called, what it costs, and how we keep the output good. This is the written decision for backlog task E0-3 (provider and model choice). Read it with [architecture.md](architecture.md) (where the gateway sits), [memory.md](memory.md) (JEV and the evidence packet) and [rules.md](rules.md) (what the AI may never do).
 
-**Status: updated 2026-10-05. The text and photo model changed from Claude Sonnet 5.5 to Gemini 3.8 Flash (D-059, accepted by Hong Yi, reported by Joely). It replaces the model choice in D-047; D-048 (768-dimension embeddings) and D-049 (JEV) are unchanged.** The Gemini model names, the embedding size and the Vertex region were tested live on 2026-10-05 (section 10). ElevenLabs details and prices still come from public search summaries, not the vendors' own pages: **confirm them in the vendor consoles before the gateway is built.**
+**Status: updated 2026-10-15 against the code (`services/api/app/llm/gateway.py`, `app/llm/vertex.py`, `app/core/config.py`, `app/services/usage.py`).** The text below was first written on 2026-10-05.
+
+**Status of the choice (2026-10-05). The text and photo model changed from Claude Sonnet 5.5 to Gemini 3.8 Flash (D-059, accepted by Hong Yi, reported by Joely). It replaces the model choice in D-047; D-048 (768-dimension embeddings) and D-049 (JEV) are unchanged.** The Gemini model names, the embedding size and the Vertex region were tested live on 2026-10-05 (section 10). ElevenLabs details and prices still come from public search summaries, not the vendors' own pages: **confirm them in the vendor consoles before the gateway is built.**
+
+**What the code does today (2026-10-15).** Built: Gemini 3.8 Flash for chat, photos, wording and the translation of model-written explanations (`app/services/ui_translate.py`, through the gateway); `gemini-embedding-001` at 768 dimensions for food search; `gemini-2.5-flash-image` for dish pictures; JEV on OpenRouter. Fixed screen text is translated from a reviewed catalogue (`app/services/texts.py`, `texts_ui.json`), not by a live call. **Not found in the code:** ElevenLabs speech and Google Cloud Translation calls; they remain planned (their rows below are the decision, not a built feature). The `gemini-2.5-pro` challenger is set in configuration but no call site uses it in this pass.
 
 ## 1. The decision in one paragraph
 
-Everything runs through Google Cloud's Vertex AI (one project, one bill, one sign-in) except two things: speech (ElevenLabs) and the JEV decision model (the TypeSafe JEV model, hosted on OpenRouter). There is no Tencent fallback. Text work uses **Gemini 3.8 Flash** (`gemini-3.8-flash`) on Vertex AI. Embeddings use Gemini Embedding at 768 dimensions. Fixed text is translated by Google Cloud Translation. Photos (meals and medicine labels) also go to Gemini 3.8 Flash. No Claude model is used, so there is no Anthropic access form or Claude quota to wait for (section 10). Every call goes through one gateway, so a model can be swapped by changing configuration.
+Everything runs through Google Cloud's Vertex AI (one project, one bill, one sign-in) except two things: speech (ElevenLabs) and the JEV decision model (the TypeSafe JEV model, hosted on OpenRouter). There is no Tencent fallback. Text work uses **Gemini 3.8 Flash** (`gemini-3.8-flash`) on Vertex AI. Embeddings use Gemini Embedding at 768 dimensions. Fixed text is translated by Google Cloud Translation. Photos (meals and medicine labels) also go to Gemini 3.8 Flash. Dish pictures for the Meal suggestions page are made by `gemini-2.5-flash-image` (Gemini 3.8 Flash first writes a one-sentence description of the dish; see [menu.md](menu.md)). No Claude model is used, so there is no Anthropic access form or Claude quota to wait for (section 10). Every call goes through one gateway, so a model can be swapped by changing configuration.
 
 ## 2. Model per job
 
@@ -18,7 +22,8 @@ Everything runs through Google Cloud's Vertex AI (one project, one bill, one sig
 | Medicine label reading | Same model as meals (tested on a made-up label with a structured JSON answer: correct) | Vertex AI | E3-1 |
 | Translation of fixed text (UI strings, refusal and urgent templates) | **Google Cloud Translation** (Advanced, with a glossary so drug names stay unchanged) | Google Cloud | E18-1 |
 | Translation of explanations | **Gemini 3.8 Flash**, writing the explanation directly in the target language (Malay, Tamil and Chinese samples were fluent; a native speaker still has to review the medical wording) | Vertex AI | E4-1, E18-1 |
-| Embeddings | **`gemini-embedding-001`** at **768 dimensions** | Vertex AI | E4-1, E16-3, E17-1 |
+| Dish pictures (Meal suggestions) | **`gemini-2.5-flash-image`** (`FOOD_IMAGE_MODEL`; the only image model this project can reach, checked 2026-10-14: Imagen and the Gemini 3 image models answer 404). Gemini 3.8 Flash writes the one-sentence description first. One picture per dish, made once and stored | Vertex AI | menu.md |
+| Embeddings | **`gemini-embedding-001`** at **768 dimensions** (built: food search, `app/agents/food.py`) | Vertex AI | E4-1, E16-3, E17-1 |
 | Text to speech | **ElevenLabs**: `eleven_multilingual_v2` for cached explainers, `eleven_flash_v2_5` for live lines | ElevenLabs API | E4-1, E18-1 |
 | Speech to text (voice questions and logging, stretch) | **ElevenLabs Scribe v2**, batch (not realtime) | ElevenLabs API | S3 |
 | JEV typed decisions | **`typesafe/jev-1.13`** (snapshot `typesafe/jev-1.13-20260917`) | OpenRouter: `POST https://openrouter.ai/api/alpha/decisions` (see section 9) | E16-2, E17-1, E13-2 |
@@ -40,8 +45,8 @@ Everything runs through Google Cloud's Vertex AI (one project, one bill, one sig
 | Prompt caching | The fixed system prompt and the safety rules are cached where Vertex offers context caching for the model (check this for `gemini-3.8-flash`) |
 | Cache what repeats | Explainers (per medicine and language), TTS audio (by text hash) and translations are generated once |
 | Log tokens | `agent_runs.input_tokens`, `output_tokens` and `latency_ms` on every call |
-| Daily limits | A per-user and a per-day call cap in the gateway, plus a Google Cloud budget alert and an ElevenLabs usage limit |
-| Fail cheap | Timeouts as in rules.md (chat 30 s, vision 45 s, TTS 10 s), at most one retry, never a retry loop |
+| Daily limits | **Built** (`app/services/usage.py`, counted in `ai_usage_daily`): one cap per kind of call, each counted and blocked on its own, set in `app/core/config.py` as `AI_CAP_VERTEX_VISION` 300 (photo and label reads), `AI_CAP_VERTEX_GENERATE` 500 (text the person sees), `AI_CAP_VERTEX_IMAGE` 60 (dish pictures), `AI_CAP_VERTEX_EMBED` 2000 (embeddings, fall back to text search) and `AI_CAP_JEV` 500 (JEV decisions). A provider with no cap of its own uses `AI_DAILY_CALL_CAP` (500). `AI_DAILY_BUDGET_USD` (5.0) is checked per provider against its own reported cost (only JEV reports cost). When a cap is reached the call is refused and the caller takes its conservative path. There is also a Google Cloud budget alert and, planned, an ElevenLabs usage limit |
+| Fail cheap | Timeouts as in rules.md (chat 30 s, vision 45 s, TTS 10 s; `LLM_TIMEOUT_S` is 45 in the code), at most one retry (`LLM_MAX_RETRIES` is 1), never a retry loop |
 | Batch the nightly work | Reflection and brief pre-generation can run in batch if the vendor offers a discount |
 
 **Expected cost (indicative, verify):** the Gemini 3.8 Flash price has not been checked yet; read it from Google's Vertex AI pricing page before the gateway is built and write it here. Flash models are priced below the earlier Claude estimate (about $15 to $40 for a demo month of 2,000 mixed calls), but that is an expectation, not a measured figure. Embeddings cost about $0.15 per million tokens. A Google Cloud budget alert of S$15 a month is already set (section 10). ElevenLabs is about $0.10 per 1,000 characters (multilingual) and $0.05 (flash) for speech, and about $0.22 per hour for transcription; check whether it bills through a plan with included credits.
@@ -56,9 +61,9 @@ Everything runs through Google Cloud's Vertex AI (one project, one bill, one sig
 
 ## 5. How it is wired
 
-- One gateway per capability in `services/api/app/llm/` (text, vision, embedding, translation, speech) and `app/decision/` (JEV). Screens and services never call a vendor SDK directly (rules.md section 4).
+- The gateway is `services/api/app/llm/gateway.py` (vision and text with a validated JSON answer, and dish pictures through `generate_image`), with `app/llm/vertex.py` (the Vertex HTTP client with retry for 429 and 5xx, and web-grounded calls for the medicine explainer and clash checker), `app/llm/chat.py` (chat) and `app/llm/jev.py` (JEV). Embeddings are called from `app/agents/food.py` with the same Vertex key. There is no speech or Cloud Translation gateway in the code yet (see the status note below). Screens and services never call a vendor SDK directly (rules.md section 4).
 - One Google Cloud sign-in (a service account) covers Gemini on Vertex, Gemini embeddings and Cloud Translation. ElevenLabs and JEV have their own keys.
-- Environment variables to add to `.env.example` in E0-3 (names are a proposal): `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `LLM_VISION_CHALLENGER`, `EMBED_MODEL`, `EMBED_DIM`, `TRANSLATE_GLOSSARY_ID`, `ELEVENLABS_API_KEY`, `ELEVENLABS_TTS_MODEL`, `ELEVENLABS_TTS_LIVE_MODEL`, `ELEVENLABS_STT_MODEL`, `JEV_BASE_URL`, `JEV_MODEL`, `JEV_API_KEY`, `AI_DAILY_CALL_CAP`, `AI_DAILY_BUDGET_USD`.
+- Environment variables the code reads today: `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_API_KEY` (Vertex AI express-mode key, used when no service-account file is set), `LLM_CHAT_MODEL`, `LLM_VISION_MODEL`, `LLM_VISION_CHALLENGER`, `LLM_TIMEOUT_S`, `LLM_MAX_RETRIES`, `FOOD_IMAGE_MODEL`, `JEV_BASE_URL`, `JEV_MODEL`, `JEV_TIMEOUT_S`, `OPEN_ROUTER_API_KEY` (or `OPENROUTER_API_KEY`) for JEV, `AI_CAP_VERTEX_VISION`, `AI_CAP_VERTEX_GENERATE`, `AI_CAP_VERTEX_IMAGE`, `AI_CAP_VERTEX_EMBED`, `AI_CAP_JEV`, `AI_DAILY_CALL_CAP`, `AI_DAILY_BUDGET_USD`. Still proposals (not read by the code): `EMBED_MODEL`, `EMBED_DIM` (the model name and 768 are fixed in `app/agents/food.py`), `TRANSLATE_GLOSSARY_ID`, `ELEVENLABS_API_KEY`, `ELEVENLABS_TTS_MODEL`, `ELEVENLABS_TTS_LIVE_MODEL`, `ELEVENLABS_STT_MODEL`.
 - If JEV is off or unreachable, every decision takes the conservative path already defined in [memory.md](memory.md) section 5: refusal template, "not checked", default route. There is no model fallback.
 
 ## 6. Privacy and data handling
@@ -75,14 +80,14 @@ The embedding size is how many numbers describe one piece of text (a medicine fa
 
 | What it affects | Effect |
 |---|---|
-| **The database column** | `knowledge_chunks.embedding` and `memory_episodes.embedding` are declared with a fixed size, for example `vector(768)`. Both must use the same value. Today `knowledge_chunks` is `vector(1024)` (a placeholder), so it needs one migration |
+| **The database column** | `knowledge_chunks.embedding` and `memory_episodes.embedding` are declared with a fixed size, for example `vector(768)`. Both must use the same value. `knowledge_chunks` was a `vector(1024)` placeholder and was changed to 768 by migration `0016_embedding_768` |
 | **Search index** | pgvector's normal HNSW index only works up to 2,000 dimensions. Gemini Embedding's default of 3,072 cannot be indexed that way, which is why we use 768 |
 | **Storage and speed** | A 768-number vector is about 3 KB. 1,536 is 6 KB and 3,072 is 12 KB. Smaller is faster to search and cheaper to store |
 | **Quality** | Gemini Embedding is built so smaller sizes keep most of the quality. 768 is one of the sizes Google recommends |
 | **Model switch later** | Vectors from different models or sizes cannot be compared. Changing either means re-embedding everything and altering the column and index |
 | **API cost** | None. Embeddings are billed by input tokens, not by size |
 
-**Action:** while the tables are empty, change `knowledge_chunks.embedding` to 768 in a new migration (drop the HNSW index, alter the column, recreate the index), set `EMBED_DIM=768` in `.env`, and create `memory_episodes.embedding` at 768 in E1-3. Tell Joely, who owns the migration that created the column. Embed documents and questions with the model's document and query modes.
+**Done:** migration `0016_embedding_768` changed `knowledge_chunks.embedding` to 768, and the later migrations create the other embedding columns at 768 (for example `0021_learning_loop`). Embed documents and questions with the model's document and query modes.
 
 ## 8. Does this satisfy E0-3?
 
@@ -90,8 +95,8 @@ The embedding size is how many numbers describe one piece of text (a medicine fa
 |---|---|
 | Provider decision recorded in the repo (chat, vision, embeddings) | **Done by this document** |
 | JEV option chosen and the data-handling note recorded | **Done.** Hosted on OpenRouter, model `typesafe/jev-1.13`, tested live on 2026-10-02 (section 9). Data-handling note in section 6 |
-| One gateway keeps the OpenJev request and response shape and returns probability and confidence; keys only in settings | To build |
-| Smoke test gets an answer from each kind of call; switching JEV off sends every call to the fallback | To build. "Fallback" now means the conservative path (section 5), not a model |
+| One gateway keeps the OpenJev request and response shape and returns probability and confidence; keys only in settings | **Built** (`app/llm/jev.py`, `app/llm/gateway.py`; keys in settings) |
+| Smoke test gets an answer from each kind of call; switching JEV off sends every call to the fallback | Not verified in this pass. "Fallback" now means the conservative path (section 5), not a model |
 
 Open items: confirm Malay and Tamil on both ElevenLabs voice models, tune the JEV confidence floor (section 9), run the photo accuracy test, and finish the service-account setup in section 10.
 
