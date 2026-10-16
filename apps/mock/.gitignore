@@ -1,4 +1,0 @@
-src/i18n/locales/*.generated.json
-
-.vercel
-.env*
