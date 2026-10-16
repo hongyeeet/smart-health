@@ -6,7 +6,8 @@ import { href } from '@/app/routeIds'
 import { cn } from '@/lib/cn'
 import { useCancelNewPerson, useIsNewPerson } from './newPerson'
 import { Alert, Button, Card, Skeleton, StatusPill, TextLink } from '@/ui/primitives'
-import { Check, Leaf, Lock } from '@/ui/icons'
+import { Check, Lock } from '@/ui/icons'
+import { Logo } from '@/ui/Logo'
 
 /** The pages the person sees: Welcome (1), eligibility (2), About you (3 to 10). The summary (A6) comes after the last one and is not counted. */
 export const TOTAL_STEPS = 10
@@ -18,9 +19,7 @@ export function TopBar() {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3 pt-2">
       <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-field bg-brand text-on-brand">
-          <Leaf size={20} aria-hidden />
-        </span>
+        <Logo size={34} />
         <span className="font-serif text-h2 font-medium tracking-tight">{appConfig.name}</span>
         <StatusPill tone="brand" bare>
           {t('onboarding.tag', 'Setup')}

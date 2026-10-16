@@ -3,8 +3,8 @@
 #   equinox-worker  the same image, scheduler ON, exactly one instance with the CPU always on (reminders, emails, dish pictures, nightly learning)
 # Secrets come from Secret Manager (never from this file). The three Workato webhook ADDRESSES are secrets too: for a Workato webhook the address is
 # the only password, so they are kept in Secret Manager and not written here as plain environment variables.
-# SCAN_OCR_ENGINE is deliberately not set: the code default is "local" (offline reader). Set it to "vision" only after Joely confirms (the original
-# photo, with name and ID, then goes to Google Cloud Vision); add it with `gcloud run services update ... --update-env-vars SCAN_OCR_ENGINE=vision`.
+# SCAN_OCR_ENGINE=vision (Joely, 2026-10-15): Google Cloud Vision reads the original photo, then name and ID are blacked out before the AI sees it;
+# the offline reader is the fall-back. --set-env-vars replaces every variable on a deploy, so it has to be listed here or a redeploy turns it off.
 substitutions:
   _REGION: asia-southeast1
   _REPO: equinox
@@ -34,7 +34,7 @@ steps:
       - --memory=2Gi
       - --cpu=1
       - --timeout=120
-      - --set-env-vars=^@^APP_NAME=Equinox@APP_BASE_URL=https://team-shika-equinox.web.app@API_PUBLIC_URL=https://team-shika-equinox.web.app@DEMO_MODE=true@SCHEDULER_ENABLED=false@SCAN_OCR_ENABLED=true@GOOGLE_CLOUD_PROJECT=$PROJECT_ID@CORS_ORIGINS=https://team-shika-equinox.web.app,https://team-shika-equinox.firebaseapp.com
+      - --set-env-vars=^@^APP_NAME=Equinox@APP_BASE_URL=https://team-shika-equinox.web.app@API_PUBLIC_URL=https://team-shika-equinox.web.app@DEMO_MODE=true@SCHEDULER_ENABLED=false@SCAN_OCR_ENABLED=true@SCAN_OCR_ENGINE=vision@GOOGLE_CLOUD_PROJECT=$PROJECT_ID@CORS_ORIGINS=https://team-shika-equinox.web.app,https://team-shika-equinox.firebaseapp.com
       - --update-secrets=${_SECRETS}
   - id: deploy-worker
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -52,7 +52,7 @@ steps:
       - --no-cpu-throttling
       - --memory=2Gi
       - --cpu=1
-      - --set-env-vars=^@^APP_NAME=Equinox@APP_BASE_URL=https://team-shika-equinox.web.app@API_PUBLIC_URL=https://team-shika-equinox.web.app@DEMO_MODE=true@SCHEDULER_ENABLED=true@SCAN_OCR_ENABLED=true@GOOGLE_CLOUD_PROJECT=$PROJECT_ID
+      - --set-env-vars=^@^APP_NAME=Equinox@APP_BASE_URL=https://team-shika-equinox.web.app@API_PUBLIC_URL=https://team-shika-equinox.web.app@DEMO_MODE=true@SCHEDULER_ENABLED=true@SCAN_OCR_ENABLED=true@SCAN_OCR_ENGINE=vision@GOOGLE_CLOUD_PROJECT=$PROJECT_ID
       - --update-secrets=${_SECRETS}
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA
