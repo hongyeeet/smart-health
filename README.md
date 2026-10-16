@@ -66,8 +66,6 @@ Equinox gives the patient a calm, everyday companion and gives the doctor the no
 
 ## Tech stack
 
-![Equinox tech stack](docs/assets/diagrams/07-tech-stack.png)
-
 | Layer | Technology |
 |---|---|
 | **Web app** | React 19, TypeScript, Vite, Tailwind CSS 4, React Router, TanStack Query, Zustand, react-i18next (English, Mandarin, Malay, Tamil), Motion for animation, Phosphor icons |
