@@ -1,73 +1,129 @@
+<p align="center">
+  <img src="docs/assets/equinox-cover.webp" alt="Equinox: the smart diabetes app that remembers, adapts and grows" width="100%" />
+</p>
+
 # Equinox
 
-An AI health companion for adults with Type 2 diabetes. It learns each person from their own food, watch, glucose and exercise data, helps them every day (medication understanding, reminders, tracking), and turns the weeks between visits into a clear, evidence-backed brief for their doctor. It explains, organises and reminds. It never advises on medication and never diagnoses.
+**The smart diabetes app that remembers, adapts and grows.**
 
-Built for the AI CAN DO IT Tencent Cloud Hackathon Singapore 2026, Healthcare track (NTU LKC Medicine), Challenge 2: *AI Healthier Every Day*, Scenario 2 (Type 2 diabetes self-care).
+Equinox is an AI health companion for adults living with Type 2 diabetes. It learns each person from their own meals, medicines, glucose, activity and symptoms, helps them every day, and turns the weeks between clinic visits into a clear, evidence-backed brief for their doctor.
 
-## Start here
+Equinox explains, organises and reminds. It never gives medication advice and never diagnoses.
 
-New to the repo, human or AI assistant? Read **[docs/handover/HANDOVER.md](docs/handover/HANDOVER.md)** first. It says what to read, what to ask, how to find your task, and how to leave a record of your session.
+Built by **Team Shika** (Teo Hong Yi, Joely Lim, Damien Chua) for the AI CAN DO IT Tencent Cloud Hackathon Singapore 2026, Healthcare track, Challenge 2 "AI Healthier Every Day", Scenario 2 (Type 2 diabetes self-care).
 
-## Repository layout
+---
+
+## The problem
+
+A person with Type 2 diabetes spends about ten minutes with their doctor every few months and the other 360-odd days on their own. In between, they have to:
+
+- understand several medicines, plus the supplements and traditional remedies they add;
+- take them on time, every day, and remember why a dose was missed;
+- make sense of glucose readings that come with no context;
+- eat, move, sleep and manage stress in ways that change their glucose;
+- keep up with eye, foot and kidney check-ups.
+
+The data exists, scattered across a watch, a glucometer, a pill box and memory, but nobody joins it up. The patient cannot interpret it safely, and the doctor never sees it. The consult starts from one HbA1c number and the question "how have you been?"
+
+## What Equinox does
+
+Equinox gives the patient a calm, everyday companion and gives the doctor the notes they always wished they had.
+
+| Typical diabetes app | Equinox |
+|---|---|
+| Logs data for the patient to look at | Turns the logs into a one-page **doctor brief**, so the doctor is a first-class user |
+| "Take your pill" reminders | Asks **why a dose was missed** (side effects, cost, ran out) and reports the pattern |
+| Generic diet advice | Learns which local foods raise *this* person's glucose, and suggests lighter dishes they have not tried |
+| Fixed-threshold alerts | Tracks each measure against the person's **own baseline**, so drift shows up early |
+| A chatbot that answers anything | A **bounded assistant**: a safety gate, and interaction checks from a database, not from a language model |
+| Hidden "AI memory" | **What Equinox has learned about you**: every learned fact shows its evidence and can be confirmed, corrected or deleted |
+| One language | Explanations in English, Mandarin, Malay and Tamil |
+
+## Key features
+
+- **Home** with today's doses, a health overview, a day-by-day calendar of what was logged, and a daily summary compared with the person's usual.
+- **Medicine scanning and explainer.** Photograph a label; Equinox reads it, adds it to the medicine list and explains it in plain words.
+- **Clash checker.** Drug-drug, drug-supplement and drug-herbal interactions, looked up in a reference database.
+- **Medication tracking.** Reminders, a status calendar showing what was taken and what was missed, missed-dose reasons, and refill forecasts. Reminders can also reach Google Calendar and e-mail through Workato.
+- **Easy logging.** Meals by photo (the AI reads the macros), blood pressure, symptoms, workouts and check-ins.
+- **Insights.** Glucose, food, activity, sleep and medication views, each compared with the person's own usual.
+- **Meal suggestions.** A food-delivery style menu of dishes the person has not logged and that are lighter than their usual meal, with AI-made pictures and an estimated glucose rise from their own history.
+- **What Equinox has learned.** A transparent memory of food and habit patterns, with evidence, confidence and a guard model that checks each lesson before it is kept.
+- **Doctor brief.** A printable report with glucose, blood pressure, SpO2 and heart-rate charts, medication adherence, symptoms, food and workouts, filterable by topic, plus a **private share link** the doctor can open without an account.
+- **Companion chat.** Answers questions about the person's own record, within safety guardrails; urgent symptoms go to a fixed escalation screen.
+- **Multilingual, accessible design.** Text size controls, light and dark themes, and layouts for phone, tablet and laptop.
+
+## Responsible by design
+
+- No medication advice, dose changes or diagnoses. Interaction checks are a database lookup.
+- Urgent symptoms bypass the AI and show a fixed safety message.
+- Every glucose estimate is labelled as an estimate; with no personal history there is no number.
+- The person can see, correct and delete everything Equinox has learned.
+- The example record (Mr Tan) is read-only; anyone can create their own user.
+
+> Equinox is a self-care and information tool. It is not a medical device and does not replace a clinician.
+
+## How it is built
+
+| Layer | Technology |
+|---|---|
+| Web app | React, TypeScript, Vite, Tailwind, TanStack Query, react-i18next |
+| API | Python, FastAPI, background jobs with APScheduler, LangGraph agents |
+| Data | PostgreSQL (Supabase) with Alembic migrations; private file storage for photos |
+| AI | Google Vertex AI: Gemini for text and photos, a Gemini image model for dish pictures, embeddings for memory; ElevenLabs for speech |
+| Integrations | Workato (calendar reminders and e-mail), Google Cloud Vision (optional label reader, with offline OCR as the default) |
+| Hosting | Firebase Hosting for the web app, Cloud Run for the API (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)) |
 
 ```
-README.md
-docs/                     all documents
-  specs/                  prd, architecture, flow, schema, data-flow, design, rules, memory
-  backlog/                SOT.md (central tracker), hongyi.md, joely.md, damien.md (one backlog each), details/
-  handover/               HANDOVER.md (start here), session-log-template.md, sessions/
-  mockup/                 prompt and outputs for the design mockup
-  reference/              superseded starting templates
-data/                     all data (see data/README.md)
-  plan/                   the datasets plan workbook
-  raw/  processed/        downloads and importer output (gitignored)
-  reference/  knowledge/  demo/
-.github/                  pull request template, CODEOWNERS
-scripts/                  verify_docs.py checks the documents, update_tracker.py refreshes the tracker; more arrive with development
-apps/mock/                the mock version: every screen on demo data (Vite, React, TypeScript): `cd apps/mock && npm install && npm run dev`
-apps/web/                 the production app: shell, design system and data layer, no screens yet: `cd apps/web && npm install && npm run dev`
-services/                 created when the backend starts (planned layout: docs/specs/architecture.md section 3)
+apps/web/            the Equinox web app
+services/api/        the FastAPI backend, migrations and tests
+data/demo/           demo data and its disclosure note
+scripts/             seeding and tooling scripts
+docs/specs/          product and architecture documents
+docs/DEPLOYMENT.md   Google Cloud deployment guide
 ```
 
-## Documents
+## Architecture
 
-| File | What it covers |
-|---|---|
-| [docs/specs/prd.md](docs/specs/prd.md) | What we are building and why: users, features F1-F18 with acceptance criteria, scope, assumptions |
-| [docs/specs/architecture.md](docs/specs/architecture.md) | Tech stack, trust boundaries, folder structure, data flows, agent harness |
-| [docs/specs/memory.md](docs/specs/memory.md) | Standard names, data layers, memory planes, evidence model, the JEV decision layer, Memory Service, meal analysis |
-| [docs/specs/ai-models.md](docs/specs/ai-models.md) | Which AI model does each job, how it is wired, cost control, and what the embedding size affects |
-| [docs/specs/workout-tracker.md](docs/specs/workout-tracker.md) | The strength workout tracker: what it records, what code computes from heart rate, how it will use the Gold tables, and what is still to build |
-| [docs/specs/schema.md](docs/specs/schema.md) | Database tables, layer map, consistency rules |
-| [docs/specs/data-flow.md](docs/specs/data-flow.md) | One-page picture of Bronze, Silver and Gold, where JEV sits, and the order to build the tables in. Start here before creating the database |
-| [docs/specs/bronze-silver.md](docs/specs/bronze-silver.md) | The Bronze and Silver layers table by table: what is existing data and what is user input, who writes each table, and how every column links (diagrams, all 49 foreign keys, worked examples) |
-| [docs/specs/flow.md](docs/specs/flow.md) | User journeys, screens, event logging, demo script |
-| [docs/specs/design.md](docs/specs/design.md) | UI/UX system: colours, type, components, accessibility |
-| [docs/specs/rules.md](docs/specs/rules.md) | Boundaries for AI coding agents: safety rules, data source policy, definition of done |
-| [docs/backlog/SOT.md](docs/backlog/SOT.md) | The central tracker: progress, gates, who can start now, who is blocked. Generated from the three personal backlogs |
-| [docs/backlog/hongyi.md](docs/backlog/hongyi.md), [joely.md](docs/backlog/joely.md), [damien.md](docs/backlog/damien.md) | One backlog per person: 52 tasks in total (epics E0-E21, with E2-E19 matching features F1-F18, plus four gates CP0-CP3), each with an Ask, what it needs first, subtasks and status. Each person edits only their own file |
-| [docs/handover/project-memory.md](docs/handover/project-memory.md) | Team memory: current state, decisions register, session index, spec change log, open questions. Read at the start of a session, update at the end. (Not the same as `docs/specs/memory.md`, which is the app's memory design) |
-| [docs/mockup/mockup-prompt.md](docs/mockup/mockup-prompt.md) | The prompt for the interactive design mockup |
-| [docs/reference/](docs/reference/) | The two starting-template documents that `memory.md` and `schema.md` grew from |
+How the pieces fit together. Click an image to see it full size.
 
-## Branches
+**System architecture:** what the person uses, what runs behind it and the outside services it calls.
 
-| Branch | Purpose |
-|---|---|
-| `dev` | Where the team works. Commit straight to `dev` (small commits, `git pull --rebase origin dev` before pushing); feature branches are optional |
-| `uat` | Acceptance testing. The owner promotes `dev` into `uat` |
-| `main` | Production, the submitted and demoed version. The owner promotes `uat` into `main` |
+![System architecture](docs/assets/diagrams/03-system-architecture.png)
 
-`dev` is the default branch, so a fresh clone lands on it. Never commit directly to `uat` or `main`. After cloning, run once: `git config core.hooksPath .githooks` (blocks commits and pushes to `uat` and `main`). Details: [docs/handover/HANDOVER.md](docs/handover/HANDOVER.md) section 3.
+**Agents and the learning loop:** one orchestrator routes each event; the learning loop only proposes and the person decides.
 
-## Data
+![Agents and the learning loop](docs/assets/diagrams/04-agents-and-learning-loop.png)
 
-Data comes only from the datasets in the hackathon download manifest and the GlucoBench Kaggle dataset. See [data/README.md](data/README.md) and [data/plan/smart_health_data_plan.xlsx](data/plan/smart_health_data_plan.xlsx). Raw datasets are never committed: several carry licences (for example CGMacros is CC BY-NC-SA 4.0) and are large.
+**Agent flows by use case, with JEV safety gates:**
 
-## Runtime
+![Agent flows by use case](docs/assets/diagrams/05-agent-flows.png)
 
-The web app and API run locally on each developer's machine. The database is Supabase (Postgres with pgvector), one shared project, reached through a private `.env` that is never committed. The other outbound calls are the AI APIs.
+**Ask Equinox, trust and safety:** what the chat can and can never read, and the checks every message passes.
 
-## Status
+![Ask Equinox trust and safety](docs/assets/diagrams/06-chat-trust-and-safety.png)
 
-Specification written. The mock version (all screens, demo data, no backend) is in `apps/mock`. The production app skeleton is in `apps/web`. The backend is not started.
+**Data model:** Bronze (as received), Silver (typed facts) and Gold (computed numbers), plus app, reference and operations tables.
+
+![Data model](docs/assets/diagrams/01-data-model.png)
+
+![Core tables](docs/assets/diagrams/02-core-tables.png)
+
+## Documentation
+
+- [**Full project dossier**: problem, solution, every screen, ethics, feasibility, limitations and future work](docs/EQUINOX-PROJECT-DOSSIER.md)
+- [Product requirements](docs/specs/prd.md)
+- [Architecture](docs/specs/architecture.md)
+- [App flow and features](docs/specs/app-flow-and-features.md)
+- [AI models](docs/specs/ai-models.md)
+- [Safety rules](docs/specs/rules.md)
+- [Deploying on Google Cloud](docs/DEPLOYMENT.md)
+
+## Team
+
+**Team Shika:** Teo Hong Yi, Joely Lim, Damien Chua.
+
+## Licence
+
+Copyright (c) 2026 Team Shika. All rights reserved. Equinox is proprietary software: you may view and evaluate it, but you may not copy, modify, redistribute or use it commercially without written permission. See [LICENSE](LICENSE).
