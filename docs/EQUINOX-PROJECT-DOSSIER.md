@@ -239,7 +239,7 @@ One rule runs through the whole design: **the model writes language, code produc
 | Decision model | JEV, `typesafe/jev-1.13`, called through OpenRouter (`POST /api/alpha/decisions`) | `app/llm/jev.py` |
 | Medicine label text reader | Google Cloud Vision (first choice), RapidOCR offline reader (fallback) | `app/integrations/vision_ocr.py`, `app/services/scan_privacy.py` |
 | E-mail and calendar | Workato recipes (webhooks) sending Gmail messages and Google Calendar events | `app/integrations/workato.py`, `workato_email.py` |
-| Hosting (prepared plan) | Firebase Hosting, Cloud Run (API, worker, migrations job), Cloud Build, Secret Manager, Artifact Registry | `docs/handover/deployment-gcp.md` |
+| Hosting (prepared plan) | Firebase Hosting, Cloud Run (API, worker, migrations job), Cloud Build, Secret Manager, Artifact Registry | `docs/DEPLOYMENT.md` |
 | Tests | pytest (backend), `tsc` type-check and Vite production build (frontend) | `services/api/tests`, `apps/web` |
 
 Two honest notes on the table. First, Google Cloud Translation appears in the model decision document, but **no code calls it**; it is planned, not built. Speech (text to speech and voice input) is not part of the product. Fixed screen text is translated from a reviewed catalogue instead (see the front-end and AI sections). Second, the early architecture blueprint mentioned react-hook-form, zod and a Python-only SQLAlchemy async stack; the shipped code does not use react-hook-form or zod, and its request path uses psycopg directly.
@@ -634,7 +634,7 @@ Lint and type tools (ruff, mypy strict) are listed as dependencies and in the pr
 
 ### 6.13 Deployment architecture (prepared plan, not confirmed live)
 
-**Status.** The deployment guide (`docs/handover/deployment-gcp.md`, written 2026-10-15) describes how to put Equinox on Google Cloud. It is a **prepared plan**. This dossier has no evidence that any of it has been deployed: the Dockerfile, `cloudbuild.yaml`, `firebase.json` and `.firebaserc` it describes are given as text in the guide to be added to the repo, the Cloud Run services and Firebase site are things the guide asks the project owner to create, and the guide's final step is a report back with the live URL. Treat the live URL as not confirmed.
+**Status.** The deployment guide (`docs/DEPLOYMENT.md`, written 2026-10-15) describes how to put Equinox on Google Cloud. It is a **prepared plan**. This dossier has no evidence that any of it has been deployed: the Dockerfile, `cloudbuild.yaml`, `firebase.json` and `.firebaserc` it describes are given as text in the guide to be added to the repo, the Cloud Run services and Firebase site are things the guide asks the project owner to create, and the guide's final step is a report back with the live URL. Treat the live URL as not confirmed.
 
 | Piece | Plan |
 |---|---|
