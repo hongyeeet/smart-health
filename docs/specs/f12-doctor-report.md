@@ -111,3 +111,5 @@ Tables read: `user_profile`, `cgm_readings`, `symptom_logs`, `medications`, `med
 - Events (`brief.viewed`, `brief.pdf.downloaded`) are not emitted.
 - The report is not saved in `briefs`; it is recomputed each time (the AI wording is cached in memory for a day).
 - Strings on the printable page are English only and not yet in the translation files.
+
+**Example record (2026-10-16):** Mr Tan's record is read-only for everyone, with one exception: a visitor may make a doctor link from it (`POST /brief/shares`) and turn it off (`DELETE /brief/shares/{id}`), so a reviewer can open a dedicated report. The link shows the same report anyone already sees on his record. The guard is `EXAMPLE_MAY_SHARE_RE` in `app/main.py`; the test is in `tests/unit/test_share.py`.

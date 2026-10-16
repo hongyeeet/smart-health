@@ -197,3 +197,29 @@ def test_brief_context_ignores_cancelled_visits():
                  "suggested_reason": None, "confirmed_by_user_at": NOW}
     assert svc.context(FakeConn([], []), uuid4(), NOW)["next_appointment"] is None
     assert svc.context(FakeConn([], [cancelled]), uuid4(), NOW)["next_appointment"] is None
+
+
+# ------------------------------------------------------------------------ the example record (Mr Tan)
+def test_a_visitor_can_make_and_turn_off_a_doctor_link_from_the_example_record(monkeypatch):
+    """Mr Tan's record is read-only for everyone, except that a visitor may make a doctor link and turn it off, to open a dedicated report."""
+    import contextlib
+
+    from fastapi.testclient import TestClient
+
+    from app.api.routers import share as share_router
+    from app.db import logstore
+    from app.main import app
+
+    @contextlib.contextmanager
+    def tx():
+        yield object()
+
+    made = {"id": uuid4(), "token": "t" * 43, "days": 14, "expires_at": NOW + timedelta(hours=24)}
+    monkeypatch.setattr(logstore, "tx", tx)
+    monkeypatch.setattr(share_router.svc, "create_share", lambda conn, user, days, hours, now: made)
+    monkeypatch.setattr(share_router.svc, "revoke_share", lambda *a, **k: {"id": made["id"], "revoked_at": NOW}, raising=False)
+    c = TestClient(app)
+    r = c.post("/api/v1/brief/shares", json={"days": 14, "hours": 24}, headers={"X-User": "mr-tan"})
+    assert r.status_code == 201 and r.json()["path"] == "/s/" + "t" * 43
+    # anything else that writes to the example record is still refused
+    assert c.post("/api/v1/logs", json={}, headers={"X-User": "mr-tan"}).status_code == 403

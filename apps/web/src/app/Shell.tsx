@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { appConfig } from '@/config/app'
 import { Logo } from '@/ui/Logo'
+import { ReviewerWelcome } from './ReviewerWelcome'
 import { useTranslation } from 'react-i18next'
 import { useUi } from '@/state/store'
 import { cn } from '@/lib/cn'
@@ -89,6 +90,9 @@ function AppFrame({ fullBleed }: { fullBleed?: boolean }) {
   const { pathname } = useLocation()
   const textScale = useUi((s) => s.textScale)
   const tab = activeTab(pathname)
+  /** The welcome for reviewers: shown on every fresh open of the app until it is closed (kept in memory only), never during set-up or on the urgent screen. */
+  const [welcome, setWelcome] = useState(true)
+  const showWelcome = welcome && !pathname.startsWith('/welcome') && !pathname.startsWith('/urgent')
   /** The floating Ask pill (phone) belongs to Home and Insights; the layout reads `has-ask` to leave room for it (index.css). */
   const rail = showRail(pathname)
   const askOn = !!built.I1 && (pathname === '/' || pathname === '/insights')
@@ -112,6 +116,7 @@ function AppFrame({ fullBleed }: { fullBleed?: boolean }) {
       {rail && <SideRail active={tab} ask={askInRail} />}
       {askOn && <AskButton />}
       <SheetHost />
+      {showWelcome && <ReviewerWelcome onClose={() => setWelcome(false)} />}
       <Toast rail={rail} />
     </div>
   )
