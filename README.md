@@ -64,16 +64,37 @@ Equinox gives the patient a calm, everyday companion and gives the doctor the no
 
 > Equinox is a self-care and information tool. It is not a medical device and does not replace a clinician.
 
-## How it is built
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Web app | React, TypeScript, Vite, Tailwind, TanStack Query, react-i18next |
-| API | Python, FastAPI, background jobs with APScheduler, LangGraph agents |
-| Data | PostgreSQL (Supabase) with Alembic migrations; private file storage for photos |
-| AI | Google Vertex AI: Gemini for text and photos, a Gemini image model for dish pictures, embeddings for memory; ElevenLabs for speech |
-| Integrations | Workato (calendar reminders and e-mail), Google Cloud Vision (optional label reader, with offline OCR as the default) |
-| Hosting | Firebase Hosting for the web app, Cloud Run for the API (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)) |
+| **Web app** | React 19, TypeScript, Vite, Tailwind CSS 4, React Router, TanStack Query, Zustand, react-i18next (English, Mandarin, Malay, Tamil), Motion for animation, Phosphor icons |
+| **Design** | Light and dark themes from design tokens, Newsreader and Atkinson Hyperlegible fonts, larger-text setting, layouts for phone, tablet and laptop |
+| **API** | Python 3.12, FastAPI, Pydantic, Uvicorn; background jobs with APScheduler |
+| **Agents** | LangGraph orchestrator that routes each event to one agent; a bounded learning loop with four learning agents |
+| **Database** | PostgreSQL on Supabase with pgvector; SQLAlchemy and psycopg 3; Alembic migrations; Bronze, Silver and Gold data layers |
+| **File storage** | Private Supabase Storage buckets for label copies and dish pictures |
+
+### AI models and services
+
+| Model or service | Used for |
+|---|---|
+| **Gemini 3.8 Flash** on Google Vertex AI | Chat answers, meal and medicine-label photo reading, wording in the doctor brief and in learned facts |
+| **JEV** (`typesafe/jev-1.13`, hosted on OpenRouter) | The safety and routing decision gate: yes-or-no and choice questions such as "does this ask for medication advice?" It can stop a step but never writes text |
+| **Gemini Embedding** (`gemini-embedding-001`, 768 dimensions) | Meaning-based search over the guidance knowledge base |
+| **Gemini 2.5 Flash Image** | One AI-made picture per suggested dish, made once and reused |
+| **Google Cloud Vision** and **RapidOCR** | Reading text on medicine labels (Vision is optional; offline RapidOCR is the default and the fallback) |
+| **Workato** | Reminder e-mails and Google Calendar dose reminders |
+
+Every AI call goes through one gateway with daily caps per kind of call.
+
+### Hosting and tooling
+
+| Area | Technology |
+|---|---|
+| Hosting | Firebase Hosting for the web app; Cloud Run for the API and a single-instance background worker (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)) |
+| Build and delivery | Docker, Cloud Build, Artifact Registry, Secret Manager |
+| Quality | pytest (about 2,900 unit tests), strict TypeScript type-check, mypy and Ruff |
 
 ```
 apps/web/            the Equinox web app
