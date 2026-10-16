@@ -135,6 +135,7 @@ How the pieces fit together. Click an image to see it full size.
 
 ## Documentation
 
+- [**Project description**: overview, real-world insights, solution design, how prompts drive the AI, and business value](docs/SUBMISSION-PROJECT-DESCRIPTION.md)
 - [**Full project dossier**: problem, solution, every screen, ethics, feasibility, limitations and future work](docs/EQUINOX-PROJECT-DOSSIER.md)
 - [Product requirements](docs/specs/prd.md)
 - [Architecture](docs/specs/architecture.md)
