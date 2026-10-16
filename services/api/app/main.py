@@ -47,6 +47,8 @@ logger = logging.getLogger(__name__)
 # would notice: asking the assistant, reading a meal photo or a typed answer, and noting that a reminder was opened.
 EXAMPLE_MAY_SEND = ("/api/v1/chat/", "/api/v1/meals/analyze", "/api/v1/onboarding/chat", "/api/v1/users")
 EXAMPLE_MAY_SEND_RE = re.compile(r"/api/v1/notifications/[^/]+/open")
+# A visitor may also make a doctor link from the example record (and turn it off), so a reviewer can open a dedicated report. The link shows the same report anyone already sees.
+EXAMPLE_MAY_SHARE_RE = re.compile(r"/api/v1/brief/shares(/[^/]+)?")
 EXAMPLE_REFUSED = "Mr Tan is an example record, so it cannot be changed. Create your own user to log your own information."
 
 
@@ -64,7 +66,7 @@ async def _act_as(request: Request, x_user: str | None = Header(default=None), x
         raise HTTPException(400, f"unknown user {x_user!r}; use mr-tan or a key from Start as new person")
     if logstore.is_read_only(logstore.current_user()) and request.method not in ("GET", "HEAD", "OPTIONS"):
         path = request.url.path
-        if not (path.startswith(EXAMPLE_MAY_SEND) or EXAMPLE_MAY_SEND_RE.fullmatch(path)):
+        if not (path.startswith(EXAMPLE_MAY_SEND) or EXAMPLE_MAY_SEND_RE.fullmatch(path) or (request.method in ("POST", "DELETE") and EXAMPLE_MAY_SHARE_RE.fullmatch(path))):
             raise HTTPException(403, EXAMPLE_REFUSED)
 
 
