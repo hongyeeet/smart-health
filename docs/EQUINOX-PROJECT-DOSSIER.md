@@ -212,6 +212,8 @@ Equinox does not try to beat a CGM vendor at glucose alerts, or a national platf
 
 ## 6. How the solution is built technically
 
+![Equinox tech stack](assets/diagrams/07-tech-stack.png)
+
 
 Equinox is a mobile-first web app for adults with Type 2 diabetes. It has a React front end, a FastAPI back end, a Supabase Postgres database, Gemini on Google Vertex AI for language and vision, a small decision model (JEV) on OpenRouter, and Workato for e-mail and Google Calendar. This section is written for a technical judge and for a client. Every statement below was checked against the code or the project documents on 2026-10-15. Where something could not be checked, it says "not verified".
 
@@ -240,7 +242,7 @@ One rule runs through the whole design: **the model writes language, code produc
 | Hosting (prepared plan) | Firebase Hosting, Cloud Run (API, worker, migrations job), Cloud Build, Secret Manager, Artifact Registry | `docs/handover/deployment-gcp.md` |
 | Tests | pytest (backend), `tsc` type-check and Vite production build (frontend) | `services/api/tests`, `apps/web` |
 
-Two honest notes on the table. First, speech (ElevenLabs text to speech and speech to text) and Google Cloud Translation appear in the model decision document, but **no code calls them**; they are planned, not built. Fixed screen text is translated from a reviewed catalogue instead (see the front-end and AI sections). Second, the early architecture blueprint mentioned react-hook-form, zod and a Python-only SQLAlchemy async stack; the shipped code does not use react-hook-form or zod, and its request path uses psycopg directly.
+Two honest notes on the table. First, Google Cloud Translation appears in the model decision document, but **no code calls it**; it is planned, not built. Speech (text to speech and voice input) is not part of the product. Fixed screen text is translated from a reviewed catalogue instead (see the front-end and AI sections). Second, the early architecture blueprint mentioned react-hook-form, zod and a Python-only SQLAlchemy async stack; the shipped code does not use react-hook-form or zod, and its request path uses psycopg directly.
 
 ---
 
@@ -661,7 +663,7 @@ Lint and type tools (ruff, mypy strict) are listed as dependencies and in the pr
 | Alembic head `0040`, 76 tables | Documented in the data model and the deployment guide; the migration files up to `0040` exist |
 | Unit tests | 2,893 collected; about 2,880 reported passing; not re-run here |
 | Frontend tests | None |
-| Speech (ElevenLabs) and Cloud Translation | Planned only; no call in the code |
+| Cloud Translation | Planned only; no call in the code |
 | Workato e-mail and calendar recipes | Our side built; recipes not finished; not confirmed live |
 | Google Cloud deployment | Prepared plan; not confirmed live |
 | Sign-in | Not built; demo-grade `X-User` selection |
@@ -2485,7 +2487,7 @@ Honest, in plain words. Each is a known gap, not a hidden one.
 ### 10.3 AI and product
 13. **Model dependence.** Chat, photo reading and wording depend on Google Vertex AI (Gemini); the decision gate depends on a third-party model on OpenRouter. If JEV is off, the conservative path applies (more fixed replies).
 14. **Image generation** uses `gemini-2.5-flash-image`, the best model reachable in the project at build time; Imagen and newer image models were not reachable, and pictures can take over a minute to appear the first time.
-15. **Speech.** ElevenLabs text-to-speech and Google Cloud Translation for fixed text are planned in the design but are not in the code.
+15. **Translation.** Google Cloud Translation for fixed text is planned in the design but is not in the code. There is no speech (text to speech or voice input).
 16. **Languages.** The whole app is translated, but strings added late may be English only; Tamil and Malay quality has had limited review.
 17. **No caregiver view.**
 18. **Notifications.** E-mail and Google Calendar reminders depend on Workato recipes that are not finished; there are no push notifications; emergency contact delivery is e-mail only.
@@ -2557,6 +2559,10 @@ Ordered roughly by importance for real-world use.
 
 The diagrams below are kept in `docs/assets/diagrams`.
 
+**Tech stack**
+
+![Tech stack](assets/diagrams/07-tech-stack.png)
+
 **System architecture**
 
 ![System architecture](assets/diagrams/03-system-architecture.png)
@@ -2599,7 +2605,7 @@ While writing this dossier the code was compared with the registry and the speci
 | Doctor brief | The printable page has eight filters; the on-screen brief has nine (it adds "Work days") |
 | Me | K8 still shows the calendar consent row the spec says was removed; K5 offers light and dark only |
 | Chat | The code sends the last 8 messages, not 6 as one spec says; the guidance knowledge base has no content loaded; the chat signposts still point to K11 and E8 |
-| Planned, not in code | ElevenLabs speech and Google Cloud Translation; Workato recipes unfinished; deployment prepared but not confirmed live |
+| Planned, not in code | Google Cloud Translation; Workato recipes unfinished; deployment prepared but not confirmed live |
 | Example record | Mr Tan's record refuses every non-read request; exceptions are chat, meal analysis, onboarding chat, creating a user and opening a notification |
 
 ---
